@@ -210,7 +210,7 @@ public final class DeletedMessagesActivity {
 
         void setup() {
             activity.setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_USER);
-            messages = PikoMessageDb.getInstance(activity).getDeletedMessages();
+            messages = new ArrayList<>();
             Locale locale = activity.getResources().getConfiguration().getLocales().get(0);
             String skeleton = DateFormat.is24HourFormat(activity) ? "yMMMdHm" : "yMMMdhm";
             timestampFormatter = new SimpleDateFormat(
@@ -325,7 +325,7 @@ public final class DeletedMessagesActivity {
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
             content.addView(empty, match);
             content.addView(messageList, match);
-            messageList.setEmptyView(empty);
+            loadMessages(null, empty);
             root.addView(content, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
 
@@ -391,6 +391,28 @@ public final class DeletedMessagesActivity {
             }
 
             activity.setContentView(root);
+        }
+
+        /** Deletes and reloads off the main thread; the empty view is attached once rows are known. */
+        private void loadMessages(List<String> deleteIds, View empty) {
+            Utils.runOnBackgroundThread(() -> {
+                List<String[]> loaded;
+                try {
+                    PikoMessageDb db = PikoMessageDb.getInstance(activity);
+                    if (deleteIds != null) db.deleteSaved(deleteIds);
+                    loaded = db.getDeletedMessages();
+                } catch (Exception e) {
+                    Logger.printException(() -> "loadMessages: ", e);
+                    return;
+                }
+                Utils.runOnMainThread(() -> {
+                    if (activity.isFinishing() || activity.isDestroyed()) return;
+                    messages = loaded;
+                    adapter.notifyDataSetChanged();
+                    if (empty != null) messageList.setEmptyView(empty);
+                    cancelSelection();
+                });
+            });
         }
 
         boolean isSelecting() {
@@ -479,16 +501,8 @@ public final class DeletedMessagesActivity {
                     str("piko_delete_selected_confirm"), selectedIds.size());
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                     .setMessage(prompt)
-                    .setPositiveButton(str("piko_delete"), (dialog, which) -> {
-                        PikoMessageDb db = PikoMessageDb.getInstance(activity);
-                        db.deleteSaved(selectedIds);
-                        selectionMode = false;
-                        messageList.clearChoices();
-                        messageList.setChoiceMode(ListView.CHOICE_MODE_NONE);
-                        messages = db.getDeletedMessages();
-                        adapter.notifyDataSetChanged();
-                        updateSelectionUi();
-                    })
+                    .setPositiveButton(str("piko_delete"), (dialog, which) ->
+                            loadMessages(selectedIds, null))
                     .setNegativeButton(str("piko_cancel"), null)
                     .show();
         }
