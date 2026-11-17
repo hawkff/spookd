@@ -72,6 +72,9 @@ public final class MediaUrls {
     public static long expiresAt(String url) {
         if (url == null) return 0L;
         try {
+            // The query ends at the fragment.
+            int fragment = url.indexOf('#');
+            if (fragment >= 0) url = url.substring(0, fragment);
             int query = url.indexOf('?');
             if (query < 0) return 0L;
             for (int i = url.indexOf("oe=", query); i >= 0; i = url.indexOf("oe=", i + 1)) {

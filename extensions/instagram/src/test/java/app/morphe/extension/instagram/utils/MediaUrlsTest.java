@@ -26,5 +26,7 @@ public class MediaUrlsTest {
         assertEquals(0L, MediaUrls.expiresAt("https://www.instagram.com/p/abc/"));
         assertEquals(0L, MediaUrls.expiresAt("https://x.fbcdn.net/a.jpg?shoe=65A1B2C3"));
         assertEquals(0L, MediaUrls.expiresAt("https://x.fbcdn.net/a.jpg?oe=&x=1"));
+        assertEquals(0L, MediaUrls.expiresAt("https://x.fbcdn.net/a.jpg?shoe=1#&oe=65A1B2C3"));
+        assertEquals(0L, MediaUrls.expiresAt("https://x.fbcdn.net/a.jpg#?oe=65A1B2C3"));
     }
 }
