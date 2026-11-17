@@ -49,6 +49,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -67,6 +69,8 @@ import app.morphe.extension.shared.ui.SelectionCheck;
 public final class DeletedMessagesActivity {
 
     private static final Map<Activity, Controller> sControllers = new WeakHashMap<>();
+    // Serial, so a delete queued by a screen that was closed runs before a reopened screen loads.
+    private static final Executor sDbJobs = Executors.newSingleThreadExecutor();
 
     private DeletedMessagesActivity() {}
 
@@ -399,7 +403,7 @@ public final class DeletedMessagesActivity {
             // One job at a time; parallel jobs could apply an older snapshot last.
             if (loading) return;
             loading = true;
-            Utils.runOnBackgroundThread(() -> {
+            sDbJobs.execute(() -> {
                 List<String[]> loaded = null;
                 try {
                     PikoMessageDb db = PikoMessageDb.getInstance(activity);
