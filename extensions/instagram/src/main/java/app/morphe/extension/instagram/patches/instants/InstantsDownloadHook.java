@@ -8,6 +8,11 @@ package app.morphe.extension.instagram.patches.instants;
 
 import android.content.Context;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.db.PikoInstantsDb;
 import app.morphe.extension.instagram.entity.MediaData;
@@ -23,7 +28,9 @@ import app.morphe.extension.shared.Utils;
 public class InstantsDownloadHook {
 
     /** The item constructor runs again whenever the app rebuilds an item. */
-    private static volatile String sLastCapturedId;
+    // Ids stored or being stored this session; one deleted, cleared or purged from the vault is not captured again until restart.
+    private static final Set<String> sCapturedIds = ConcurrentHashMap.newKeySet();
+    private static final ExecutorService sDbExecutor = Executors.newSingleThreadExecutor();
 
     /** Called from the per-instant item's constructor with that instant's Media. */
     public static void noteInstantMedia(Object media) {
@@ -47,13 +54,7 @@ public class InstantsDownloadHook {
             } catch (Throwable t) {
                 return; // without a stable id it can't be deduped or referenced later
             }
-            if (id == null || id.isEmpty() || id.equals(sLastCapturedId)) return;
-            sLastCapturedId = id;
-
-            Context ctx = Utils.getContext();
-            if (ctx == null) return;
-            PikoInstantsDb db = PikoInstantsDb.getInstance(ctx);
-            if (db.has(id)) return;
+            if (id == null || id.isEmpty() || sCapturedIds.contains(id)) return;
 
             boolean isVideo = safeBool(() -> md.isVideo());
             String imageUrl = safeStr(() -> md.getImageLink());
@@ -63,7 +64,21 @@ public class InstantsDownloadHook {
             Long takenAtMillis = safeTakenAtMillis(md);
             String shortcode = safeStr(md::getShortcode);
 
-            db.insertOrIgnore(id, username, userId, imageUrl, videoUrl, isVideo, takenAtMillis, shortcode);
+            if (!sCapturedIds.add(id)) return;
+            sDbExecutor.execute(() -> {
+                try {
+                    Context ctx = Utils.getContext();
+                    PikoInstantsDb db = ctx == null ? null : PikoInstantsDb.getInstance(ctx);
+                    if (db != null && !db.has(id)) {
+                        db.insertOrIgnore(id, username, userId, imageUrl, videoUrl, isVideo, takenAtMillis, shortcode);
+                    }
+                    // An id that did not reach the vault is dropped so the next rebuild tries again.
+                    if (db == null || !db.has(id)) sCapturedIds.remove(id);
+                } catch (Throwable t) {
+                    sCapturedIds.remove(id);
+                    Logger.printException(() -> "instants capture: store failed", t);
+                }
+            });
         } catch (Throwable t) {
             Logger.printException(() -> "instants capture: captureMedia failed", t);
         }
