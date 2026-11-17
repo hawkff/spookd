@@ -35,6 +35,7 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.xmlpull.v1.XmlPullParser;
 
+import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.patches.customise.font.FontStorage;
 import app.morphe.extension.instagram.patches.dm.InboxLock;
@@ -147,12 +148,14 @@ public class RestorePrefFragment extends Fragment {
     }
 
     private void receiveFileForRestore(Context ctx, Uri uri) {
-        File tempFile = new File(destinationFile.getPath() + ".tmp");
+        File tempFile = null;
         try {
             File parent = destinationFile.getParentFile();
             if (parent != null && !parent.exists()) {
                 parent.mkdirs();
             }
+            // A temp file of its own, so an earlier restore still copying cannot write into it.
+            tempFile = File.createTempFile(destinationFile.getName(), ".tmp", parent);
             long total = 0;
             try (InputStream in = ctx.getContentResolver().openInputStream(uri);
                  FileOutputStream out = new FileOutputStream(tempFile)) {
@@ -172,15 +175,17 @@ public class RestorePrefFragment extends Fragment {
                 toast(str("piko_import_fail"));
                 return;
             }
+            // A pending apply() would otherwise overwrite the restored file before the restart.
+            SharedPref.flush();
             if (!tempFile.renameTo(destinationFile)) {
                 throw new IOException("Could not replace " + destinationFile);
             }
 
             toast(str("piko_import_success"));
-            InstaUtils.restartApp(ctx);
+            mainHandler.post(() -> InstaUtils.restartApp(ctx));
 
         } catch (Exception e) {
-            tempFile.delete();
+            if (tempFile != null) tempFile.delete();
             toast(str("piko_import_fail"));
             Logger.printException(() -> "import failure", e);
         }
@@ -295,7 +300,12 @@ public class RestorePrefFragment extends Fragment {
                 receiveFont(ctx, uri);
                 return;
             } else {
-                receiveFileForRestore(ctx, uri);
+                // Finishes itself once the file is restored off the main thread.
+                new Thread(() -> {
+                    receiveFileForRestore(ctx, uri);
+                    mainHandler.post(this::finishHost);
+                }).start();
+                return;
             }
         }
         finishHost();
