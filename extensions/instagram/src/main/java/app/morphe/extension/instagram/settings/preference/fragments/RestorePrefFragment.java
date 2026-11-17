@@ -148,12 +148,14 @@ public class RestorePrefFragment extends Fragment {
     }
 
     private void receiveFileForRestore(Context ctx, Uri uri) {
-        File tempFile = new File(destinationFile.getPath() + ".tmp");
+        File tempFile = null;
         try {
             File parent = destinationFile.getParentFile();
             if (parent != null && !parent.exists()) {
                 parent.mkdirs();
             }
+            // A temp file of its own, so an earlier restore still copying cannot write into it.
+            tempFile = File.createTempFile(destinationFile.getName(), ".tmp", parent);
             long total = 0;
             try (InputStream in = ctx.getContentResolver().openInputStream(uri);
                  FileOutputStream out = new FileOutputStream(tempFile)) {
@@ -183,7 +185,7 @@ public class RestorePrefFragment extends Fragment {
             mainHandler.post(() -> InstaUtils.restartApp(ctx));
 
         } catch (Exception e) {
-            tempFile.delete();
+            if (tempFile != null) tempFile.delete();
             toast(str("piko_import_fail"));
             Logger.printException(() -> "import failure", e);
         }
