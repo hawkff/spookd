@@ -1,3 +1,7 @@
+> spookd is a fork of [Piko](https://github.com/crimera/piko) focused on Instagram. It tracks Piko's `dev` branch.
+> The rest of this file is Piko's README, and its links point to Piko.
+> Patched clients may violate Instagram's terms of use.
+
 <div align="center">
 
 <img src="https://socialify.git.ci/crimera/piko/image?forks=1&language=1&name=1&owner=1&pattern=Circuit%20Board&stargazers=1&theme=Auto" alt="piko" width="640" height="320" />
