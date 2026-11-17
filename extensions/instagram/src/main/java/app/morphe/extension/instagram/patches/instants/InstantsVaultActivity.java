@@ -191,27 +191,42 @@ public final class InstantsVaultActivity {
             int gap = dp(2);
             tileSize = (screenW - gap * (COLUMNS + 1)) / COLUMNS;
 
-            PikoInstantsDb db = PikoInstantsDb.getInstance(activity);
-            db.purgeExpired();
-            items = db.getAll();
-            pruneThumbCache();
+            items = new ArrayList<>();
 
             LinearLayout root = new LinearLayout(activity);
             root.setOrientation(LinearLayout.VERTICAL);
             root.setBackgroundColor(InstagramPreferenceStyle.backgroundColor());
             InstagramPreferenceStyle.applySystemBarStyle(activity);
             root.addView(buildToolbar());
-            if (!items.isEmpty()) {
-                searchBar = buildSearchField();
-                root.addView(searchBar);
-            }
 
             content = new FrameLayout(activity);
             content.addOnLayoutChangeListener(contentLayoutListener);
             root.addView(content, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
             root.addView(buildDeleteAction());
-            rebuildContent();
+            updateSelectionUi();
+
+            Utils.runOnBackgroundThread(() -> {
+                List<String[]> loaded;
+                try {
+                    PikoInstantsDb db = PikoInstantsDb.getInstance(activity);
+                    db.purgeExpired();
+                    loaded = db.getAll();
+                } catch (Exception e) {
+                    PikoUtils.logger(e);
+                    return;
+                }
+                ui.post(() -> {
+                    if (activity.isFinishing() || activity.isDestroyed()) return;
+                    items = loaded;
+                    pruneThumbCache();
+                    if (!items.isEmpty()) {
+                        searchBar = buildSearchField();
+                        root.addView(searchBar, 1);
+                    }
+                    rebuildContent();
+                });
+            });
 
             root.setOnApplyWindowInsetsListener((v, insets) -> {
                 v.setPadding(0, insets.getSystemWindowInsetTop(), 0,
