@@ -65,6 +65,8 @@ public class SettingsStatus {
     public static void saveDeletedMessages() {
         saveDeletedMessages = true;
     }
+    public static boolean dmMediaVault = false;
+    public static void dmMediaVault() { dmMediaVault = true; }
     public static boolean ghostSection() {
         return (viewStoriesAnonymously || viewLiveAnonymously || disableScreenshotDetection || disableTypingStatus || viewDmAnonymously || markAsReadAfterReply);
     }
