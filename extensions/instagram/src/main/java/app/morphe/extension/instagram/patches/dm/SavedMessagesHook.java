@@ -127,23 +127,24 @@ public class SavedMessagesHook {
             sWorkerThread = new android.os.HandlerThread("piko-dm-hook");
             sWorkerThread.start();
             sWorker = new android.os.Handler(sWorkerThread.getLooper());
+            sWorker.post(SavedMessagesHook::warmUpRevokeCache);
         }
         return sWorker;
     }
 
     /** REST thread-history path. */
     public static void onMessageReceived(final Object item) {
-        enqueueReceivedItem(item, null, null);
+        enqueueReceivedItem(item, null, null, true);
     }
 
     /** MQTT path. Parameters match A0P's contiguous p0..p2 registers. */
     public static void onMessageReceived(final Object item, final UserSession userSession,
                                          final Object delta) {
-        enqueueReceivedItem(item, userSession, delta);
+        enqueueReceivedItem(item, userSession, delta, false);
     }
 
     private static void enqueueReceivedItem(final Object item, final UserSession userSession,
-                                            final Object delta) {
+                                            final Object delta, final boolean restPath) {
         boolean enabled = Pref.saveDeletedMessages();
         if (item == null || !enabled) return;
         boolean acceptedClass = item.getClass().getName().startsWith("X.");
@@ -154,8 +155,48 @@ public class SavedMessagesHook {
             if (!isBlank(sessionUserId)) rememberMyUserId(sessionUserId);
         } catch (Exception ignored) {}
         final String viewerId = sessionUserId;
+        final boolean restHidden = restPath && restoreRevokedItem(item);
         getWorker().post(() -> processReceivedItem(
-                item, resolveThreadIdHint(delta), viewerId, userSession));
+                item, resolveThreadIdHint(delta), viewerId, userSession, restPath, restHidden));
+    }
+
+    /** Runs on the REST parser thread before the item is returned; memory lookups only. */
+    private static boolean restoreRevokedItem(Object item) {
+        boolean hidden = false;
+        try {
+            DirectItem directItem = new DirectItem(item);
+            hidden = directItem.isHideInThread();
+            if (!hidden) return false;
+            RevokeCache.Entry entry = RevokeCache.INSTANCE.get(
+                    directItem.getItemId(), directItem.getClientContext());
+            if (entry != null) antiRevokeItem(directItem, entry.content);
+        } catch (Exception e) {
+            piko("SavedMessagesHook.restoreRevokedItem: " + e);
+        }
+        return hidden;
+    }
+
+    private static void warmUpRevokeCache() {
+        try {
+            PikoMessageDb db = PikoMessageDb.getInstance(PikoUtils.getContext());
+            // Oldest first, so the newest rows end up most recently used.
+            android.database.Cursor c = db.getReadableDatabase().rawQuery(
+                    "SELECT message_id, server_id, client_context, content FROM"
+                            + " (SELECT id, message_id, server_id, client_context, content"
+                            + " FROM saved_messages ORDER BY id DESC LIMIT 2048) ORDER BY id ASC",
+                    null);
+            try {
+                while (c.moveToNext()) {
+                    String content = c.getString(3);
+                    RevokeCache.INSTANCE.put(c.getString(1), c.getString(2), c.getString(0),
+                            isBlank(content) ? null : content);
+                }
+            } finally {
+                c.close();
+            }
+        } catch (Exception e) {
+            piko("SavedMessagesHook.warmUpRevokeCache: " + e);
+        }
     }
 
     static String resolveThreadIdHint(Object delta) {
@@ -202,7 +243,8 @@ public class SavedMessagesHook {
     }
 
     private static void processReceivedItem(Object item, String threadIdHint,
-                                            String sessionViewerId, UserSession session) {
+                                            String sessionViewerId, UserSession session,
+                                            boolean restPath, boolean restHidden) {
         try {
             DirectItem directItem = new DirectItem(item);
             String senderId = directItem.getUserId();
@@ -225,7 +267,7 @@ public class SavedMessagesHook {
             String type = directItem.getItemType();
             if (type != null) type = type.trim().toLowerCase(java.util.Locale.ROOT);
             long timestamp = directItem.getTimestampMs();
-            boolean hidden = directItem.isHideInThread();
+            boolean hidden = restPath ? restHidden : directItem.isHideInThread();
 
             if ("action_log".equals(type) || "expired_placeholder".equals(type)
                     || "placeholder".equals(type)) {
@@ -246,13 +288,20 @@ public class SavedMessagesHook {
                 if (messageId == null) return;
                 markDeletedAndNotify(db, messageId);
                 String storedContent = db.getStoredContent(messageId);
-                antiRevokeItem(directItem,
-                        !isBlank(storedContent) ? storedContent : content);
+                RevokeCache.INSTANCE.put(serverId, clientContext, messageId, storedContent);
+                if (!restPath) {
+                    antiRevokeItem(directItem,
+                            !isBlank(storedContent) ? storedContent : content);
+                }
                 return;
             }
 
-            db.upsertMessage(serverId, clientContext, threadId, senderId,
+            String messageId = db.upsertMessage(serverId, clientContext, threadId, senderId,
                     senderUsername, content, type, timestamp);
+            if (messageId != null) {
+                RevokeCache.INSTANCE.put(serverId, clientContext, messageId,
+                        db.getStoredContent(messageId));
+            }
         } catch (Exception e) {
             piko("SavedMessagesHook.processReceivedItem: " + e);
         }

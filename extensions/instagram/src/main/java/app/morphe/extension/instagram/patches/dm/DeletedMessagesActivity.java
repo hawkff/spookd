@@ -407,7 +407,10 @@ public final class DeletedMessagesActivity {
                 List<String[]> loaded = null;
                 try {
                     PikoMessageDb db = PikoMessageDb.getInstance(activity);
-                    if (deleteIds != null) db.deleteSaved(deleteIds);
+                    if (deleteIds != null) {
+                        db.deleteSaved(deleteIds);
+                        RevokeCache.INSTANCE.removeMessages(deleteIds);
+                    }
                     loaded = db.getDeletedMessages();
                 } catch (Exception e) {
                     Logger.printException(() -> "loadMessages: ", e);
