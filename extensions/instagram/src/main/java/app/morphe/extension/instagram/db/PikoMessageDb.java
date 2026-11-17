@@ -18,7 +18,7 @@ import java.util.List;
 public class PikoMessageDb extends SQLiteOpenHelper {
 
     private static final String DB_NAME = "piko_dm_vault.db";
-    static final int DB_VERSION = 4;
+    static final int DB_VERSION = 5;
     private static final String TABLE = "saved_messages";
     // sender_id → username directory. MQTT-delivered items carry only a numeric sender_id;
     // the REST path occasionally carries a full UserInfo. Every time we resolve a username we
@@ -47,6 +47,27 @@ public class PikoMessageDb extends SQLiteOpenHelper {
         };
     }
 
+    // Plain CREATE: a pre-existing saved_media table makes the upgrade fail and roll back.
+    static String[] savedMediaStatements() {
+        return new String[]{
+                "CREATE TABLE saved_media ("
+                        + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                        + "item_id TEXT NOT NULL UNIQUE,"
+                        + "account_id TEXT,"
+                        + "kind TEXT NOT NULL,"
+                        + "url TEXT,"
+                        + "url_expires_at INTEGER NOT NULL,"
+                        + "msg_timestamp INTEGER NOT NULL,"
+                        + "state TEXT NOT NULL,"
+                        + "attempts INTEGER NOT NULL DEFAULT 0,"
+                        + "next_attempt_at INTEGER NOT NULL DEFAULT 0,"
+                        + "size_bytes INTEGER NOT NULL DEFAULT 0,"
+                        + "mime TEXT"
+                        + ")",
+                "CREATE INDEX idx_media_state_time ON saved_media(state, msg_timestamp)"
+        };
+    }
+
     static String[] upgradeStatements(int oldVersion) {
         List<String> statements = new ArrayList<>();
         if (oldVersion < 3) {
@@ -55,6 +76,9 @@ public class PikoMessageDb extends SQLiteOpenHelper {
             statements.add("UPDATE " + TABLE + " SET server_id = message_id "
                     + "WHERE message_id GLOB '[0-9]*' AND message_id NOT GLOB '*[^0-9]*'");
             java.util.Collections.addAll(statements, identityIndexStatements());
+        }
+        if (oldVersion < 5) {
+            java.util.Collections.addAll(statements, savedMediaStatements());
         }
         return statements.toArray(new String[0]);
     }
@@ -95,6 +119,9 @@ public class PikoMessageDb extends SQLiteOpenHelper {
         db.execSQL("CREATE INDEX idx_is_deleted ON " + TABLE + "(is_deleted)");
         createIdentityIndexes(db);
         createDirTable(db);
+        for (String statement : savedMediaStatements()) {
+            db.execSQL(statement);
+        }
     }
 
     private void createDirTable(SQLiteDatabase db) {
