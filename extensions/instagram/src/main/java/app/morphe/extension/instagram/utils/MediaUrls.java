@@ -72,13 +72,17 @@ public final class MediaUrls {
     public static long expiresAt(String url) {
         if (url == null) return 0L;
         try {
-            int i = url.indexOf("oe=");
-            // Must start a parameter, so "?oe=" or "&oe=" — not the tail of another name.
-            if (i < 1 || (url.charAt(i - 1) != '?' && url.charAt(i - 1) != '&')) return 0L;
-            int end = i + 3;
-            while (end < url.length() && Character.digit(url.charAt(end), 16) >= 0) end++;
-            if (end == i + 3) return 0L;
-            return Long.parseLong(url.substring(i + 3, end), 16) * 1000L;
+            int query = url.indexOf('?');
+            if (query < 0) return 0L;
+            for (int i = url.indexOf("oe=", query); i >= 0; i = url.indexOf("oe=", i + 1)) {
+                // Must start a parameter: right after the query's "?" or after an "&", not inside another name or value.
+                if (i != query + 1 && url.charAt(i - 1) != '&') continue;
+                int end = i + 3;
+                while (end < url.length() && Character.digit(url.charAt(end), 16) >= 0) end++;
+                if (end == i + 3) return 0L;
+                return Long.parseLong(url.substring(i + 3, end), 16) * 1000L;
+            }
+            return 0L;
         } catch (Exception e) {
             return 0L;
         }
