@@ -290,6 +290,11 @@ public final class InboxLock {
 
     /** Sets up a deleted-messages or Instants viewer once the lock is confirmed, kept out of recents and closed when the lock engages again. */
     public static void confirmViewer(Activity activity, Runnable setup) {
+        // A prompt that is already up keeps its own callbacks, so a viewer opened meanwhile closes instead of staying blank.
+        if (prompting) {
+            activity.finish();
+            return;
+        }
         confirmIfLocked(activity, () -> {
             if (initialized && Pref.inboxLock()) {
                 viewers.add(activity);
