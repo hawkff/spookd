@@ -67,11 +67,15 @@ public final class InboxLock {
     private static boolean autoPrompted;
     private static Runnable cancelAction;
     private static final Set<Activity> secured = Collections.newSetFromMap(new WeakHashMap<>());
+    private static final Set<Activity> viewers = Collections.newSetFromMap(new WeakHashMap<>());
     private static int startedActivities;
     private static WeakReference<Activity> watched = new WeakReference<>(null);
     private static ViewTreeObserver.OnPreDrawListener drawListener;
     private static final List<WeakReference<View>> covers = new ArrayList<>();
     private static WeakReference<View> bannerWindow = new WeakReference<>(null);
+    // Resolved on first use, retried while 0; only touched on the main thread, like visibleRect.
+    private static int listId, listContainerId, threadId, threadContainerId;
+    private static final Rect visibleRect = new Rect();
 
     private InboxLock() {
     }
@@ -88,7 +92,12 @@ public final class InboxLock {
                 @Override public void onActivityStopped(Activity activity) {
                     // A rotation stops and restarts the activity; only really leaving the app locks again.
                     startedActivities--;
-                    if (startedActivities <= 0 && !activity.isChangingConfigurations()) unlocked = false;
+                    if (startedActivities <= 0 && !activity.isChangingConfigurations()) {
+                        unlocked = false;
+                        // The viewers have no cover, so they close and ask again when reopened.
+                        if (Pref.inboxLock()) for (Activity viewer : viewers) viewer.finish();
+                        viewers.clear();
+                    }
                 }
 
                 @Override public void onActivityResumed(Activity activity) { watch(activity); }
@@ -125,14 +134,18 @@ public final class InboxLock {
     private static void check(Activity activity) {
         try {
             View decor = activity.getWindow().getDecorView();
+            if (listId == 0) listId = ResourceUtils.getIdentifier(ResourceType.ID, LIST_ID);
+            if (listContainerId == 0) listContainerId = ResourceUtils.getIdentifier(ResourceType.ID, LIST_CONTAINER_ID);
+            if (threadId == 0) threadId = ResourceUtils.getIdentifier(ResourceType.ID, THREAD_ID);
+            if (threadContainerId == 0) threadContainerId = ResourceUtils.getIdentifier(ResourceType.ID, THREAD_CONTAINER_ID);
             if (unlocked || !Pref.inboxLock()) {
                 removeCovers();
-                hideFromRecents(activity, unlocked && (isVisible(decor, LIST_ID) || isVisible(decor, THREAD_ID)));
+                hideFromRecents(activity, unlocked && (viewers.contains(activity) || isVisible(decor, listId) || isVisible(decor, threadId)));
                 return;
             }
             hideFromRecents(activity, false);
-            cover(activity, decor, LIST_ID, LIST_CONTAINER_ID);
-            cover(activity, decor, THREAD_ID, THREAD_CONTAINER_ID);
+            cover(activity, decor, listId, listContainerId);
+            cover(activity, decor, threadId, threadContainerId);
 
             // Ask once each time a covered screen shows up; cancelling leaves the Unlock button instead of asking in a loop.
             if (!anyCoverShown()) {
@@ -148,8 +161,7 @@ public final class InboxLock {
 
     // Tab pages stay attached and VISIBLE while swiped out of view, so isShown() alone can't tell.
     private static boolean onScreen(View view) {
-        Rect visible = new Rect();
-        return view.isShown() && view.getGlobalVisibleRect(visible) && visible.width() * 2 > view.getWidth();
+        return view.isShown() && view.getGlobalVisibleRect(visibleRect) && visibleRect.width() * 2 > view.getWidth();
     }
 
     // The recents snapshot is taken after the app is left, too late for a cover, so an open inbox or chat is kept out of it.
@@ -169,14 +181,14 @@ public final class InboxLock {
         }
     }
 
-    private static boolean isVisible(View decor, String id) {
-        View view = decor.findViewById(ResourceUtils.getIdentifier(ResourceType.ID, id));
+    private static boolean isVisible(View decor, int id) {
+        View view = decor.findViewById(id);
         return view != null && partlyVisible(view);
     }
 
     // Any visible pixel counts, so a screen swiped in is covered before its first half shows.
     private static boolean partlyVisible(View view) {
-        return view.isShown() && view.getGlobalVisibleRect(new Rect());
+        return view.isShown() && view.getGlobalVisibleRect(visibleRect);
     }
 
     private static boolean anyCoverShown() {
@@ -188,10 +200,10 @@ public final class InboxLock {
     }
 
     /** Puts a cover over the container of the screen found by anchorId; true if one was added now. */
-    private static boolean cover(Activity activity, View decor, String anchorId, String containerId) {
-        View anchor = decor.findViewById(ResourceUtils.getIdentifier(ResourceType.ID, anchorId));
+    private static boolean cover(Activity activity, View decor, int anchorId, int containerId) {
+        View anchor = decor.findViewById(anchorId);
         if (anchor == null || !partlyVisible(anchor)) return false;
-        View container = decor.findViewById(ResourceUtils.getIdentifier(ResourceType.ID, containerId));
+        View container = decor.findViewById(containerId);
         if (!(container instanceof FrameLayout)) return false;
         FrameLayout host = (FrameLayout) container;
         if (host.findViewWithTag(COVER_TAG) != null) return false;
@@ -274,6 +286,22 @@ public final class InboxLock {
         }
         cancelAction = onCancel;
         authenticate(activity, action);
+    }
+
+    /** Sets up a deleted-messages or Instants viewer once the lock is confirmed, kept out of recents and closed when the lock engages again. */
+    public static void confirmViewer(Activity activity, Runnable setup) {
+        // A prompt that is already up keeps its own callbacks, so a viewer opened meanwhile closes instead of staying blank.
+        if (prompting) {
+            activity.finish();
+            return;
+        }
+        confirmIfLocked(activity, () -> {
+            if (initialized && Pref.inboxLock()) {
+                viewers.add(activity);
+                hideFromRecents(activity, true);
+            }
+            setup.run();
+        }, activity::finish);
     }
 
     private static void authenticate(Activity activity, Runnable afterUnlock) {

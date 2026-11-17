@@ -23,6 +23,7 @@ import app.morphe.extension.crimera.legacydownloader.FolderPickerFragment;
 import app.morphe.extension.crimera.legacydownloader.StorageUtils;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.patches.dm.DeletedMessagesActivity;
+import app.morphe.extension.instagram.patches.dm.InboxLock;
 import app.morphe.extension.instagram.patches.instants.InstantsVaultActivity;
 import app.morphe.extension.instagram.settings.preference.fragments.BackupPrefFragment;
 import app.morphe.extension.instagram.settings.preference.fragments.RestorePrefFragment;
@@ -162,10 +163,10 @@ public class ActivityHook {
                 SettingsActivity.setupOnActivity(activity, savedInstanceState);
                 break;
             case LAUNCH_TYPE_DELETED_MESSAGES:
-                DeletedMessagesActivity.setupOnActivity(activity);
+                InboxLock.confirmViewer(activity, () -> DeletedMessagesActivity.setupOnActivity(activity));
                 break;
             case LAUNCH_TYPE_INSTANTS_VAULT:
-                InstantsVaultActivity.setupOnActivity(activity);
+                InboxLock.confirmViewer(activity, () -> InstantsVaultActivity.setupOnActivity(activity));
                 break;
             case LAUNCH_TYPE_BACKUP:
             case LAUNCH_TYPE_RESTORE:
