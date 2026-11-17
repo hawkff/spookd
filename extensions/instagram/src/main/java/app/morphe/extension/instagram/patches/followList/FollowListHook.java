@@ -36,6 +36,7 @@ import com.instagram.common.session.UserSession;
 public class FollowListHook {
 
     private static final String BADGE_TAG = "piko_follow_list_badge";
+    private static int avatarId;
 
     // Parameter order matches bindView(int, View, Object, Object) exactly, since it's called with
     // all of bindView's own parameters passed straight through.
@@ -123,9 +124,9 @@ public class FollowListHook {
     }
 
     private static FrameLayout findAvatar(View row) {
-        int id = row.getContext().getResources()
+        if (avatarId == 0) avatarId = row.getContext().getResources()
                 .getIdentifier("follow_list_user_imageview", "id", row.getContext().getPackageName());
-        View avatar = id != 0 ? row.findViewById(id) : null;
+        View avatar = avatarId != 0 ? row.findViewById(avatarId) : null;
         // GradientSpinnerAvatarView is a FrameLayout; leave unknown layouts untouched.
         return avatar instanceof FrameLayout ? (FrameLayout) avatar : null;
     }
