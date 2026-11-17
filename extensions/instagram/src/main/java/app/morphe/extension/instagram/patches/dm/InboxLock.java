@@ -67,6 +67,7 @@ public final class InboxLock {
     private static boolean autoPrompted;
     private static Runnable cancelAction;
     private static final Set<Activity> secured = Collections.newSetFromMap(new WeakHashMap<>());
+    private static final Set<Activity> viewers = Collections.newSetFromMap(new WeakHashMap<>());
     private static int startedActivities;
     private static WeakReference<Activity> watched = new WeakReference<>(null);
     private static ViewTreeObserver.OnPreDrawListener drawListener;
@@ -91,7 +92,12 @@ public final class InboxLock {
                 @Override public void onActivityStopped(Activity activity) {
                     // A rotation stops and restarts the activity; only really leaving the app locks again.
                     startedActivities--;
-                    if (startedActivities <= 0 && !activity.isChangingConfigurations()) unlocked = false;
+                    if (startedActivities <= 0 && !activity.isChangingConfigurations()) {
+                        unlocked = false;
+                        // The viewers have no cover, so they close and ask again when reopened.
+                        if (Pref.inboxLock()) for (Activity viewer : viewers) viewer.finish();
+                        viewers.clear();
+                    }
                 }
 
                 @Override public void onActivityResumed(Activity activity) { watch(activity); }
@@ -134,7 +140,7 @@ public final class InboxLock {
             if (threadContainerId == 0) threadContainerId = ResourceUtils.getIdentifier(ResourceType.ID, THREAD_CONTAINER_ID);
             if (unlocked || !Pref.inboxLock()) {
                 removeCovers();
-                hideFromRecents(activity, unlocked && (isVisible(decor, listId) || isVisible(decor, threadId)));
+                hideFromRecents(activity, unlocked && (viewers.contains(activity) || isVisible(decor, listId) || isVisible(decor, threadId)));
                 return;
             }
             hideFromRecents(activity, false);
@@ -280,6 +286,17 @@ public final class InboxLock {
         }
         cancelAction = onCancel;
         authenticate(activity, action);
+    }
+
+    /** Sets up a deleted-messages or Instants viewer once the lock is confirmed, kept out of recents and closed when the lock engages again. */
+    public static void confirmViewer(Activity activity, Runnable setup) {
+        confirmIfLocked(activity, () -> {
+            if (initialized && Pref.inboxLock()) {
+                viewers.add(activity);
+                hideFromRecents(activity, true);
+            }
+            setup.run();
+        }, activity::finish);
     }
 
     private static void authenticate(Activity activity, Runnable afterUnlock) {

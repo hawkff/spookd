@@ -163,10 +163,10 @@ public class ActivityHook {
                 SettingsActivity.setupOnActivity(activity, savedInstanceState);
                 break;
             case LAUNCH_TYPE_DELETED_MESSAGES:
-                InboxLock.confirmIfLocked(activity, () -> DeletedMessagesActivity.setupOnActivity(activity), activity::finish);
+                InboxLock.confirmViewer(activity, () -> DeletedMessagesActivity.setupOnActivity(activity));
                 break;
             case LAUNCH_TYPE_INSTANTS_VAULT:
-                InboxLock.confirmIfLocked(activity, () -> InstantsVaultActivity.setupOnActivity(activity), activity::finish);
+                InboxLock.confirmViewer(activity, () -> InstantsVaultActivity.setupOnActivity(activity));
                 break;
             case LAUNCH_TYPE_BACKUP:
             case LAUNCH_TYPE_RESTORE:
