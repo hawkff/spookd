@@ -6,12 +6,12 @@ group = "crimera"
 
 patches {
     about {
-        name = "Piko"
-        description = "Morphe patches focused on Twitter/X"
-        source = "git@github.com:crimera/piko.git"
-        author = "crimera"
+        name = "spookd"
+        description = "Morphe patches for Instagram and Twitter/X, forked from Piko"
+        source = "git@github.com:hawkff/spookd.git"
+        author = "hawkff, based on Piko by crimera"
         contact = "na"
-        website = "https://github.com/crimera/piko"
+        website = "https://github.com/hawkff/spookd"
         license = "GNU General Public License v3.0"
     }
 }
