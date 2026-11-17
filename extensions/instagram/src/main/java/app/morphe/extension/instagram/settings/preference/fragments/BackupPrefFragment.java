@@ -25,6 +25,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import app.morphe.extension.crimera.PikoUtils;
+import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.shared.Logger;
 
@@ -90,6 +91,8 @@ public class BackupPrefFragment extends Fragment {
     }
 
     private void copyFile(Uri uri) {
+        // Write out pending apply() calls so the export has the latest settings.
+        SharedPref.flush();
         try (FileInputStream in = new FileInputStream(sourceFile);
              OutputStream out = context.getContentResolver().openOutputStream(uri)) {
             if (out == null) {
