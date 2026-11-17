@@ -225,15 +225,13 @@ public class PikoMessageDb extends SQLiteOpenHelper {
 
     private String findMessageIdByColumn(SQLiteDatabase db, String identityColumn,
                                          String identity) {
-        Cursor cursor = db.query(
-                TABLE,
-                new String[]{"message_id"},
-                identityColumn + " = ? OR message_id = ?",
-                new String[]{identity, identity},
-                null,
-                null,
-                "id ASC",
-                "1"
+        // One indexed lookup per column; the "!= ''" term lets SQLite use the partial index.
+        Cursor cursor = db.rawQuery(
+                "SELECT message_id FROM (SELECT id, message_id FROM " + TABLE
+                        + " WHERE " + identityColumn + " = ? AND " + identityColumn + " != ''"
+                        + " UNION ALL SELECT id, message_id FROM " + TABLE
+                        + " WHERE message_id = ?) ORDER BY id ASC LIMIT 1",
+                new String[]{identity, identity}
         );
         String result = cursor.moveToFirst() ? cursor.getString(0) : null;
         cursor.close();
