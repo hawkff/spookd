@@ -7,6 +7,8 @@
 
 package app.morphe.extension.instagram.entity;
 
+import java.lang.reflect.Method;
+
 import app.morphe.extension.crimera.PikoUtils;
 
 public class DeveloperOptionsItem {
@@ -17,10 +19,9 @@ public class DeveloperOptionsItem {
     private String universalId;
     private String paramId;
 
-    // This class is instantiated for every single MobileConfig flag check hooked by HookFlags
-    // (every feature-flag/A-B-test read anywhere in the app), so Class.forName is cached here -
-    // the class name is fixed, so re-resolving it fresh on every check is pure waste.
+    // getUniversalId(long) runs on MobileConfig flag checks hooked by HookFlags, so the reflection lookups are cached.
     private static volatile Class<?> universalIdHelperClassCache;
+    private static volatile Method universalIdMethodCache;
 
     public DeveloperOptionsItem(long mobileConfigSpecifier, String universalName, String paramName) {
         this.mobileConfigSpecifier = mobileConfigSpecifier;
@@ -40,7 +41,7 @@ public class DeveloperOptionsItem {
         this.paramId = this.getParamId(mobileConfigSpecifier);
     }
 
-    private Class<?> getUniversalIdHelperClass() throws Exception {
+    private static Class<?> getUniversalIdHelperClass() throws Exception {
         Class<?> cached = universalIdHelperClassCache;
         if (cached != null) return cached;
 
@@ -49,10 +50,19 @@ public class DeveloperOptionsItem {
         return resolved;
     }
 
-    public String getUniversalId(long mobileConfigSpecifier) {
+    private static Method getUniversalIdMethod() throws Exception {
+        Method cached = universalIdMethodCache;
+        if (cached != null) return cached;
+
+        Method resolved = getUniversalIdHelperClass().getDeclaredMethod("A00", long.class);
+        resolved.setAccessible(true);
+        universalIdMethodCache = resolved;
+        return resolved;
+    }
+
+    public static String getUniversalId(long mobileConfigSpecifier) {
         try {
-            Class<?> universalIdHelperClass = this.getUniversalIdHelperClass();
-            int universalId = (int) new Entity().getMethod(universalIdHelperClass, "A00", new Class[]{long.class}, mobileConfigSpecifier);
+            int universalId = (int) getUniversalIdMethod().invoke(null, mobileConfigSpecifier);
             return String.valueOf(universalId);
         } catch (Exception e){
             PikoUtils.logger(e);
@@ -60,7 +70,7 @@ public class DeveloperOptionsItem {
         return "0";
     }
 
-    public String getParamId(long mobileConfigSpecifier) {
+    public static String getParamId(long mobileConfigSpecifier) {
         try{
             long shifted = mobileConfigSpecifier >>> 16;
             boolean flag = ((mobileConfigSpecifier >>> 62) & 1L) == 1L;

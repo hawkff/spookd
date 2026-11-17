@@ -44,9 +44,15 @@ public class FlagsSharedPref extends BaseSharedPref {
         try {
             JSONObject flags = INSTANCE.all();
             Iterator<String> keys = flags.keys();
+            boolean skippedEntry = false;
             while (keys.hasNext()) {
                 String key = keys.next();
-                String flagState = (String) flags.get(key);
+                Object storedState = flags.opt(key);
+                if (!(storedState instanceof String)) {
+                    skippedEntry = true;
+                    continue;
+                }
+                String flagState = (String) storedState;
                 // Long-typed flags share this same pref file, so their stored
                 // value (a number, or empty) won't match either bool state --
                 // only treat it as a bool override if it actually looks like one.
@@ -55,6 +61,7 @@ public class FlagsSharedPref extends BaseSharedPref {
                 // PikoUtils.logger(key+" : "+Boolean.valueOf(value));
                 if (!key.contains(",")) outFlags.put(key, value);
             }
+            if (skippedEntry) PikoUtils.logger("Skipped non-string recommended flag overrides");
             // A grouped choice takes precedence over older individual overrides, including Default.
             keys = flags.keys();
             while (keys.hasNext()) {
@@ -73,7 +80,7 @@ public class FlagsSharedPref extends BaseSharedPref {
                 }
             }
         } catch (Exception e) {
-
+            PikoUtils.logger(e);
         }
         return outFlags;
     }
@@ -83,9 +90,15 @@ public class FlagsSharedPref extends BaseSharedPref {
         try {
             JSONObject flags = INSTANCE.all();
             Iterator<String> keys = flags.keys();
+            boolean skippedEntry = false;
             while (keys.hasNext()) {
                 String key = keys.next();
-                String flagState = (String) flags.get(key);
+                Object storedState = flags.opt(key);
+                if (!(storedState instanceof String)) {
+                    skippedEntry = true;
+                    continue;
+                }
+                String flagState = (String) storedState;
                 try {
                     Long value = Long.parseLong(flagState);
                     outFlags.put(key, value);
@@ -93,8 +106,9 @@ public class FlagsSharedPref extends BaseSharedPref {
                     // Not a long override (empty, or a bool flag's own state) -- skip.
                 }
             }
+            if (skippedEntry) PikoUtils.logger("Skipped non-string recommended flag overrides");
         } catch (Exception e) {
-
+            PikoUtils.logger(e);
         }
         return outFlags;
     }
