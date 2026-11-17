@@ -25,6 +25,8 @@ public class EphemeralMediaPatch {
         MAKE_EPHEMERAL_MEDIA_PERMANENT = Pref.makeEphemeralMediaPermanent();
     }
 
+    public static boolean isMakeEphemeralMediaPermanent() { return MAKE_EPHEMERAL_MEDIA_PERMANENT; }
+
     public static boolean shouldSuppressEphemeralMediaReceipt(UserSession session, Object item) {
         if (!MAKE_EPHEMERAL_MEDIA_PERMANENT) return false;
         try {
