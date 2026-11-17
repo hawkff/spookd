@@ -9,9 +9,12 @@ package app.morphe.extension.instagram.patches.dm;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,6 +31,7 @@ public class HiddenChatsPref extends BaseSharedPref {
     }
 
     private static final String KEY_PREFIX = "chats_";
+    private static final Map<String, Set<String>> idsByUser = new HashMap<>();
 
     private static String key(String userId) {
         return KEY_PREFIX + userId;
@@ -54,9 +58,13 @@ public class HiddenChatsPref extends BaseSharedPref {
     }
 
     /** The ids of the chats an account has hidden. */
-    public static Set<String> ids(String userId) {
-        Set<String> ids = new HashSet<>();
+    public static synchronized Set<String> ids(String userId) {
+        Set<String> ids = idsByUser.get(userId);
+        if (ids != null) return ids;
+        ids = new HashSet<>();
         for (String chat : get(userId)) ids.add(idOf(chat));
+        ids = Collections.unmodifiableSet(ids);
+        idsByUser.put(userId, ids);
         return ids;
     }
 
@@ -73,17 +81,19 @@ public class HiddenChatsPref extends BaseSharedPref {
         INSTANCE.setString(key(userId), new JSONArray(chats).toString());
     }
 
-    public static void add(String userId, String chat) {
+    public static synchronized void add(String userId, String chat) {
         Set<String> chats = get(userId);
         String id = idOf(chat);
         chats.removeIf(saved -> idOf(saved).equals(id));
         chats.add(chat);
         save(userId, chats);
+        idsByUser.remove(userId);
     }
 
-    public static void remove(String userId, String chat) {
+    public static synchronized void remove(String userId, String chat) {
         Set<String> chats = get(userId);
         String id = idOf(chat);
         if (chats.removeIf(saved -> idOf(saved).equals(id))) save(userId, chats);
+        idsByUser.remove(userId);
     }
 }

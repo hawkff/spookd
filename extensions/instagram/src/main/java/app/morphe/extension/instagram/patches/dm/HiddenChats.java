@@ -570,10 +570,15 @@ public final class HiddenChats {
                 field.setAccessible(true);
                 if (field.get(task) instanceof List) listField = field;
             }
-            Field[] path = pathTo(task, UserSession.class);
+            Field[] path = ownerPaths.get(task.getClass());
+            if (path == null) {
+                path = pathTo(task, UserSession.class);
+                // Only a found path is kept, so a miss is searched again on the next build.
+                if (path != NO_PATH) ownerPaths.put(task.getClass(), path);
+            }
             if (listField == null || path == NO_PATH) return;
             Object session = task;
-            for (Field field : path) session = field.get(session);
+            for (Field field : path) session = session == null ? null : field.get(session);
             if (!(session instanceof UserSession)) return;
 
             String userId = ((UserSession) session).getUserId();
