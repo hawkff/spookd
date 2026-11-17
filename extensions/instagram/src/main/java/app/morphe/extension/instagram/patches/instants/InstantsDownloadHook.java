@@ -65,7 +65,7 @@ public class InstantsDownloadHook {
             String shortcode = safeStr(md::getShortcode);
 
             if (!sCapturedIds.add(id)) return;
-            sDbExecutor.execute(() -> {
+            Runnable store = () -> {
                 try {
                     Context ctx = Utils.getContext();
                     PikoInstantsDb db = ctx == null ? null : PikoInstantsDb.getInstance(ctx);
@@ -78,7 +78,13 @@ public class InstantsDownloadHook {
                     sCapturedIds.remove(id);
                     Logger.printException(() -> "instants capture: store failed", t);
                 }
-            });
+            };
+            try {
+                sDbExecutor.execute(store);
+            } catch (Throwable t) {
+                sCapturedIds.remove(id);
+                throw t;
+            }
         } catch (Throwable t) {
             Logger.printException(() -> "instants capture: captureMedia failed", t);
         }
