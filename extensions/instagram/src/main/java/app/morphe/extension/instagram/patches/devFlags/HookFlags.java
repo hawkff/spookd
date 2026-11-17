@@ -23,9 +23,9 @@ public class HookFlags {
     private static Map<String, Boolean> BOOL_FLAGS = new HashMap<>();
     private static Map<String, Long> LONG_FLAGS = new HashMap<>();
     private static DeveloperOptions developerOptions = new DeveloperOptions();
-    // Universal ids that have any override; published once by load() so flag checks without one return early.
-    private static volatile Set<String> boolUniversalIds = new HashSet<>();
-    private static volatile Set<String> longUniversalIds = new HashSet<>();
+    // Universal ids that have any override; null until load() publishes them, so earlier checks still read the maps.
+    private static volatile Set<String> boolUniversalIds = null;
+    private static volatile Set<String> longUniversalIds = null;
 
     private static void simpleOverflowMenuFlags() {
         BOOL_FLAGS.put("104772", false); //ig_ini
@@ -97,13 +97,13 @@ public class HookFlags {
 
     public static Boolean handleBoolFlags(long mobileConfigSpecifier) {
         Set<String> overriddenIds = boolUniversalIds;
-        if (overriddenIds.isEmpty()) return null;
+        if (overriddenIds != null && overriddenIds.isEmpty()) return null;
         try {
             // Sometimes I want to block all the subflags inside a universal ID.
             // In which case I would only add the universal ID in the BOOL_MAP map.
             // If a boolean value is found then it will return else it will check for for the usual config ID
             String universalId = DeveloperOptionsItem.getUniversalId(mobileConfigSpecifier);
-            if (!overriddenIds.contains(universalId)) return null;
+            if (overriddenIds != null && !overriddenIds.contains(universalId)) return null;
             Boolean universalFlag = BOOL_FLAGS.getOrDefault(universalId, null);
             if(universalFlag!=null) return universalFlag;
 
@@ -119,10 +119,10 @@ public class HookFlags {
     // as long instead of boolean
     public static Long handleLongFlags(long mobileConfigSpecifier) {
         Set<String> overriddenIds = longUniversalIds;
-        if (overriddenIds.isEmpty()) return null;
+        if (overriddenIds != null && overriddenIds.isEmpty()) return null;
         try {
             String universalId = DeveloperOptionsItem.getUniversalId(mobileConfigSpecifier);
-            if (!overriddenIds.contains(universalId)) return null;
+            if (overriddenIds != null && !overriddenIds.contains(universalId)) return null;
             Long universalFlag = LONG_FLAGS.getOrDefault(universalId, null);
             if(universalFlag!=null) return universalFlag;
 
