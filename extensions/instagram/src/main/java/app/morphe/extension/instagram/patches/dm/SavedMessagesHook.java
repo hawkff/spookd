@@ -19,6 +19,9 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.db.PikoMessageDb;
 import app.morphe.extension.instagram.entity.DirectItem;
+import app.morphe.extension.instagram.entity.DirectItemWrappers;
+import app.morphe.extension.instagram.patches.dm.vault.MediaEligibility;
+import app.morphe.extension.instagram.patches.dm.vault.MediaVault;
 import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.instagram.settings.ActivityHook;
 import app.morphe.extension.instagram.utils.MediaUrls;
@@ -301,10 +304,22 @@ public class SavedMessagesHook {
             if (messageId != null) {
                 RevokeCache.INSTANCE.put(serverId, clientContext, messageId,
                         db.getStoredContent(messageId));
+                if (Pref.dmMediaVault()) captureMedia(item, directItem, serverId, viewerId, type, timestamp);
             }
         } catch (Exception e) {
             piko("SavedMessagesHook.processReceivedItem: " + e);
         }
+    }
+
+    /** Queues the media of an ordinary received photo, video or voice item for the vault. */
+    private static void captureMedia(Object item, DirectItem directItem, String serverId,
+                                     String viewerId, String type, long timestamp) {
+        if (isBlank(serverId) || !MediaEligibility.shouldCapture(type, new DirectItemWrappers(item).read(),
+                EphemeralMediaPatch.isMakeEphemeralMediaPermanent())) return;
+        String url = directItem.getMediaUrl();
+        if (url == null) return;
+        String kind = "voice_media".equals(type) ? "voice" : MediaUrls.isVideo(url) ? "video" : "photo";
+        MediaVault.get().enqueue(serverId, viewerId, kind, url, timestamp);
     }
 
     private static void antiRevokeItem(DirectItem directItem, String restoredContent) {
