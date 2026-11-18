@@ -416,10 +416,7 @@ public final class DeletedMessagesActivity {
                 Set<String> stored = Collections.emptySet();
                 try {
                     PikoMessageDb db = PikoMessageDb.getInstance(activity);
-                    if (deleteIds != null) {
-                        MediaVault.get().deleteForMessages(deleteIds);
-                        SavedMessagesHook.deleteSavedMessages(deleteIds);
-                    }
+                    if (deleteIds != null) SavedMessagesHook.deleteSavedMessages(deleteIds);
                     loaded = db.getDeletedMessages();
                     stored = MediaVault.get().storedMessageIds();
                 } catch (Exception e) {

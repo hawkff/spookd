@@ -418,9 +418,11 @@ public class SavedMessagesHook {
         return String.format(str("piko_media_deleted"), label);
     }
 
-    /** Deletes rows and their cached text on the worker and waits; never call from the main thread. */
+    /** Deletes stored media, rows and their cached text on the worker and waits; never call from the main thread. */
     public static void deleteSavedMessages(final java.util.List<String> messageIds) throws Exception {
         java.util.concurrent.FutureTask<Void> task = new java.util.concurrent.FutureTask<Void>(() -> {
+            // On the worker, so no capture of these messages can slip in between the media and the rows.
+            MediaVault.get().deleteForMessages(messageIds);
             PikoMessageDb.getInstance(PikoUtils.getContext()).deleteSaved(messageIds);
             RevokeCache.INSTANCE.removeMessages(messageIds);
             return null;
