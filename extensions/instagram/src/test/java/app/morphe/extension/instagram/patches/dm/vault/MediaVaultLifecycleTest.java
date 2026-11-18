@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import android.content.ContentValues;
@@ -190,7 +191,7 @@ public final class MediaVaultLifecycleTest {
         Thread delete = thread(() -> vault.deleteForMessages(Collections.singletonList("stored")),
                 failures, 1);
         try {
-            // Recovery is held mid-scan while the user deletes the stored item.
+            // Recovery is held at the key, before its scan, while the user deletes the stored item.
             recovery.start();
             assertTrue(inRecovery.await(10, TimeUnit.SECONDS));
             delete.start();
@@ -226,7 +227,7 @@ public final class MediaVaultLifecycleTest {
         assertEquals(0, vault.reservations);
     }
 
-    /** A queued row with the complete file a crash after the rename leaves; recovery reads the key for it. */
+    /** A queued row with the complete file a crash after the rename leaves; recovery publishes it. */
     private long queuedWithFile(String itemId) throws IOException {
         long id = new VaultStore(db).insertQueued(itemId, "acct", "photo", LIVE, NOW + 3_600_000, NOW - 1000);
         writePkv(pkv(id), body(1000));
@@ -694,6 +695,73 @@ public final class MediaVaultLifecycleTest {
         assertEquals(0, vault.reservations);
     }
 
+    @Test
+    public void retentionSweepKeepsTheQueuedDownloadOfAnUnsentMessage() {
+        unsend("writer");
+        network.respond = url -> {
+            FakeConnection connection = new FakeConnection(url, 200, body(100_000));
+            connection.midStream = () -> {
+                clock[0] = NOW + MediaVault.RETENTION_MS;
+                vault.sweep();
+            };
+            return connection;
+        };
+        long id = enqueue("writer");
+        executor.runAll();
+
+        assertEquals("stored", column("state", id));
+        assertTrue(pkv(id).exists());
+        assertEquals(VaultFile.fileSize(100_000), vault.storedBytes);
+    }
+
+    @Test
+    public void deleteBeforeTheRequestStopsTheDownloadWithoutEviction() throws IOException {
+        long old = storedRow("old", CAP - 50_000, NOW - 2000);
+        vault.recover();
+        unsend("deleted");
+        network.respond = url -> {
+            // The attempt is already counted; the delete lands before the request is sent.
+            vault.deleteForMessages(Collections.singletonList("deleted"));
+            return new FakeConnection(url, 200, body(100_000));
+        };
+        long id = enqueue("deleted");
+        executor.runAll();
+
+        assertEquals("dropped", column("state", id));
+        assertEquals("1", column("attempts", id));
+        assertFalse(network.only().requested);
+        assertEquals("stored", column("state", old));
+        assertTrue(pkv(old).exists());
+        assertFalse(pkv(id).exists());
+        assertFalse(part(id).exists());
+        assertEquals(CAP - 50_000, vault.storedBytes);
+        assertEquals(0, vault.reservations);
+    }
+
+    @Test
+    public void unavailableKeyKeepsEveryFileUntilARecoveryWithTheKey() throws IOException {
+        long crashed = queuedWithFile("crashed");
+        File leftover = new File(dir, "777.part");
+        assertTrue(leftover.createNewFile());
+        AtomicBoolean failedOnce = new AtomicBoolean();
+        restart(() -> {
+            if (!failedOnce.getAndSet(true)) throw new GeneralSecurityException("keystore unavailable");
+            return KEK.get();
+        });
+
+        assertThrows(IllegalStateException.class, vault::recover);
+        assertTrue(pkv(crashed).exists());
+        assertTrue(leftover.exists());
+        assertEquals("queued", column("state", crashed));
+
+        // Recovery is not marked done, so the next task's recovery runs and publishes the file.
+        vault.recover();
+        assertEquals("stored", column("state", crashed));
+        assertEquals(String.valueOf(pkv(crashed).length()), column("size_bytes", crashed));
+        assertFalse(leftover.exists());
+        assertEquals(pkv(crashed).length(), vault.storedBytes);
+    }
+
     private long enqueue(String itemId) {
         vault.enqueue(itemId, "acct", "photo", LIVE, NOW - 1000);
         return id(itemId);
@@ -793,6 +861,7 @@ public final class MediaVaultLifecycleTest {
         long declared;
         boolean honorDisconnect = true;
         boolean disconnected;
+        boolean requested;
         /** Runs once, when half of the body has been read. */
         Runnable midStream;
 
@@ -805,6 +874,7 @@ public final class MediaVaultLifecycleTest {
 
         @Override
         public int getResponseCode() {
+            requested = true;
             return code;
         }
 

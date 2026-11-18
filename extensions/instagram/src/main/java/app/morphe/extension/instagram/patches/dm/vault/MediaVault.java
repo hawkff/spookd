@@ -14,6 +14,7 @@ import java.net.CookieHandler;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -24,6 +25,8 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.LongSupplier;
+import javax.crypto.BadPaddingException;
+import javax.crypto.SecretKey;
 
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.db.PikoMessageDb;
@@ -248,9 +251,14 @@ public final class MediaVault {
         File part = file(id, PART);
         File pkv = file(id, PKV);
         HttpURLConnection connection = opener.open(url);
-        connections.put(id, connection);
         long reserved = 0;
         try {
+            // Under the monitor a delete holds, so it either finds this connection or wins here.
+            synchronized (this) {
+                VaultStore.Media row = store.row(id);
+                if (row == null || !VaultStore.QUEUED.equals(row.state)) return false;
+                connections.put(id, connection);
+            }
             connection.setInstanceFollowRedirects(false);
             connection.setUseCaches(false);
             connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
@@ -382,7 +390,7 @@ public final class MediaVault {
         }
     }
 
-    /** Retention: drops unkept stored and queued media past the retention, then old tombstones. */
+    /** Retention: drops unkept stored and queued media past the retention, then old tombstones; kept media stays. */
     void sweep() {
         long before = clock.getAsLong() - RETENTION_MS;
         evict(before, 0);
@@ -393,6 +401,13 @@ public final class MediaVault {
     /** Reconciles files with rows after a crash; runs once, before any fetch, then schedules queued rows. */
     synchronized void recover() {
         if (recovered) return;
+        // Without the key a complete file cannot be told from a corrupt one: keep every file, retry later.
+        SecretKey key;
+        try {
+            key = kek.get();
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("Vault key unavailable; recovery will retry", e);
+        }
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IllegalStateException("Cannot create " + dir);
         File[] files = dir.listFiles();
         if (files == null) throw new IllegalStateException("Cannot list " + dir);
@@ -400,7 +415,8 @@ public final class MediaVault {
         long leftover = 0;
         for (File file : files) {
             String name = file.getName();
-            if ((name.endsWith(PART) || (name.endsWith(PKV) && !keepFound(file, name))) && !unlink(file)) {
+            if ((name.endsWith(PART) || (name.endsWith(PKV) && !keepFound(file, name, key)))
+                    && !unlink(file)) {
                 leftover += file.length();
             }
         }
@@ -417,7 +433,7 @@ public final class MediaVault {
     }
 
     /** Whether a .pkv found at startup stays; a complete one left queued by a crash is published. */
-    private boolean keepFound(File file, String name) {
+    private boolean keepFound(File file, String name, SecretKey key) {
         long id;
         try {
             id = Long.parseLong(name.substring(0, name.length() - PKV.length()));
@@ -428,10 +444,12 @@ public final class MediaVault {
         if (row == null) return false;
         if (VaultStore.STORED.equals(row.state)) return true;
         if (!VaultStore.QUEUED.equals(row.state)) return false;
-        try (VaultFile vault = VaultFile.open(file, kek)) {
+        try (VaultFile vault = VaultFile.open(file, () -> key)) {
             vault.verify();
         } catch (IOException e) {
-            return false;
+            // Only a layout or authentication failure proves the file invalid; anything else may pass later.
+            if (e.getCause() == null || e.getCause() instanceof BadPaddingException) return false;
+            throw new IllegalStateException("Cannot check " + file + "; recovery will retry", e);
         }
         synchronized (storageLock) {
             return store.publish(id, file.length(), null) == 1;

@@ -109,7 +109,7 @@ final class VaultStore {
 
     int dropQueuedBefore(long before) {
         return update("UPDATE saved_media SET state = 'dropped', url = NULL"
-                + " WHERE state = 'queued' AND msg_timestamp < ?", before);
+                + " WHERE state = 'queued' AND msg_timestamp < ? AND NOT " + KEPT, before);
     }
 
     int deleteTombstonesBefore(long before) {
