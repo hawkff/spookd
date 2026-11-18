@@ -167,9 +167,9 @@ public class SavedMessagesHook {
             DirectItem directItem = new DirectItem(item);
             hidden = directItem.isHideInThread();
             if (!hidden) return false;
-            RevokeCache.Entry entry = RevokeCache.INSTANCE.get(
+            RevokeCache.Saved saved = RevokeCache.INSTANCE.get(
                     directItem.getItemId(), directItem.getClientContext());
-            if (entry != null) antiRevokeItem(directItem, entry.content);
+            if (saved != null) antiRevokeItem(directItem, saved.content);
         } catch (Exception e) {
             piko("SavedMessagesHook.restoreRevokedItem: " + e);
         }
@@ -178,6 +178,7 @@ public class SavedMessagesHook {
 
     private static void warmUpRevokeCache() {
         try {
+            long cacheGeneration = RevokeCache.INSTANCE.generation();
             PikoMessageDb db = PikoMessageDb.getInstance(PikoUtils.getContext());
             // Oldest first, so the newest rows end up most recently used.
             android.database.Cursor c = db.getReadableDatabase().rawQuery(
@@ -189,7 +190,7 @@ public class SavedMessagesHook {
                 while (c.moveToNext()) {
                     String content = c.getString(3);
                     RevokeCache.INSTANCE.put(c.getString(1), c.getString(2), c.getString(0),
-                            isBlank(content) ? null : content);
+                            isBlank(content) ? null : content, cacheGeneration);
                 }
             } finally {
                 c.close();
@@ -260,6 +261,7 @@ public class SavedMessagesHook {
             if (isBlank(threadId) && !isBlank(threadIdHint)) threadId = threadIdHint;
             if (threadId == null) threadId = "";
 
+            long cacheGeneration = RevokeCache.INSTANCE.generation();
             PikoMessageDb db = PikoMessageDb.getInstance(PikoUtils.getContext());
             String senderUsername = resolveSenderUsername(
                     db, senderId, threadId, session, sessionViewerId);
@@ -288,7 +290,8 @@ public class SavedMessagesHook {
                 if (messageId == null) return;
                 markDeletedAndNotify(db, messageId);
                 String storedContent = db.getStoredContent(messageId);
-                RevokeCache.INSTANCE.put(serverId, clientContext, messageId, storedContent);
+                RevokeCache.INSTANCE.put(serverId, clientContext, messageId, storedContent,
+                        cacheGeneration);
                 if (!restPath) {
                     antiRevokeItem(directItem,
                             !isBlank(storedContent) ? storedContent : content);
@@ -300,7 +303,7 @@ public class SavedMessagesHook {
                     senderUsername, content, type, timestamp);
             if (messageId != null) {
                 RevokeCache.INSTANCE.put(serverId, clientContext, messageId,
-                        db.getStoredContent(messageId));
+                        db.getStoredContent(messageId), cacheGeneration);
             }
         } catch (Exception e) {
             piko("SavedMessagesHook.processReceivedItem: " + e);
@@ -412,9 +415,12 @@ public class SavedMessagesHook {
     private static void processMessageHiddenFromDb(String serverId, String clientContext) {
         try {
             if (!Pref.saveDeletedMessages()) return;
+            long cacheGeneration = RevokeCache.INSTANCE.generation();
             PikoMessageDb db = PikoMessageDb.getInstance(PikoUtils.getContext());
             String messageId = db.resolveAndMergeMessageId(serverId, clientContext);
             if (messageId == null) return;
+            RevokeCache.INSTANCE.put(serverId, clientContext, messageId,
+                    db.getStoredContent(messageId), cacheGeneration);
             if (!shouldCaptureStored(db.getSenderId(messageId), myUserId())) return;
             markDeletedAndNotify(db, messageId);
         } catch (Exception e) {

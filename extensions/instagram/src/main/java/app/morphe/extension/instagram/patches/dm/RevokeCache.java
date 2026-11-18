@@ -18,50 +18,58 @@ final class RevokeCache {
 
     static final RevokeCache INSTANCE = new RevokeCache(4096);
 
-    static final class Entry {
+    static final class Saved {
         final String messageId;
         final String content;
 
-        Entry(String messageId, String content) {
+        Saved(String messageId, String content) {
             this.messageId = messageId;
             this.content = content;
         }
     }
 
-    private final Map<String, Entry> entries;
+    private final Map<String, Saved> entries;
+    private long generation;
 
     RevokeCache(final int capacity) {
-        entries = new LinkedHashMap<String, Entry>(16, 0.75f, true) {
+        entries = new LinkedHashMap<String, Saved>(16, 0.75f, true) {
             @Override
-            protected boolean removeEldestEntry(Map.Entry<String, Entry> eldest) {
+            protected boolean removeEldestEntry(Map.Entry<String, Saved> eldest) {
                 return size() > capacity;
             }
         };
     }
 
-    /** Points both aliases at the message, replacing whatever they pointed at before. */
-    synchronized void put(String serverId, String clientContext, String messageId, String content) {
-        if (messageId == null) return;
-        Entry entry = new Entry(messageId, content);
-        String serverKey = serverKey(serverId);
-        String clientKey = clientKey(clientContext);
-        if (serverKey != null) entries.put(serverKey, entry);
-        if (clientKey != null) entries.put(clientKey, entry);
+    /** Capture before reading the database; a put with an older value is dropped. */
+    synchronized long generation() {
+        return generation;
     }
 
-    /** The entry for either alias, server id first, or null on a miss. */
-    synchronized Entry get(String serverId, String clientContext) {
+    /** Points both aliases at the message, unless an invalidation ran since {@code readGeneration}. */
+    synchronized void put(String serverId, String clientContext, String messageId, String content,
+                          long readGeneration) {
+        if (messageId == null || readGeneration != generation) return;
+        Saved saved = new Saved(messageId, content);
         String serverKey = serverKey(serverId);
-        Entry entry = serverKey != null ? entries.get(serverKey) : null;
-        if (entry != null) return entry;
+        String clientKey = clientKey(clientContext);
+        if (serverKey != null) entries.put(serverKey, saved);
+        if (clientKey != null) entries.put(clientKey, saved);
+    }
+
+    /** The saved text for either alias, server id first, or null on a miss. */
+    synchronized Saved get(String serverId, String clientContext) {
+        String serverKey = serverKey(serverId);
+        Saved saved = serverKey != null ? entries.get(serverKey) : null;
+        if (saved != null) return saved;
         String clientKey = clientKey(clientContext);
         return clientKey != null ? entries.get(clientKey) : null;
     }
 
-    /** Removes every alias that points at one of these messages. */
+    /** Removes every alias that points at one of these messages and rejects puts read before now. */
     synchronized void removeMessages(Collection<String> messageIds) {
+        generation++;
         Set<String> ids = new HashSet<>(messageIds);
-        for (Iterator<Entry> it = entries.values().iterator(); it.hasNext(); ) {
+        for (Iterator<Saved> it = entries.values().iterator(); it.hasNext(); ) {
             if (ids.contains(it.next().messageId)) it.remove();
         }
     }
