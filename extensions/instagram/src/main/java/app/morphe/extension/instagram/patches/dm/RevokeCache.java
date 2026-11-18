@@ -29,7 +29,6 @@ final class RevokeCache {
     }
 
     private final Map<String, Saved> entries;
-    private long generation;
 
     RevokeCache(final int capacity) {
         entries = new LinkedHashMap<String, Saved>(16, 0.75f, true) {
@@ -40,15 +39,9 @@ final class RevokeCache {
         };
     }
 
-    /** Capture before reading the database; a put with an older value is dropped. */
-    synchronized long generation() {
-        return generation;
-    }
-
-    /** Points both aliases at the message, unless an invalidation ran since {@code readGeneration}. */
-    synchronized void put(String serverId, String clientContext, String messageId, String content,
-                          long readGeneration) {
-        if (messageId == null || readGeneration != generation) return;
+    /** Points both aliases at the message, replacing whatever they pointed at before. */
+    synchronized void put(String serverId, String clientContext, String messageId, String content) {
+        if (messageId == null) return;
         Saved saved = new Saved(messageId, content);
         String serverKey = serverKey(serverId);
         String clientKey = clientKey(clientContext);
@@ -65,12 +58,13 @@ final class RevokeCache {
         return clientKey != null ? entries.get(clientKey) : null;
     }
 
-    /** Removes every alias that points at one of these messages and rejects puts read before now. */
-    synchronized void removeMessages(Collection<String> messageIds) {
-        generation++;
+    /** Removes every alias that points at one of these messages. */
+    void removeMessages(Collection<String> messageIds) {
         Set<String> ids = new HashSet<>(messageIds);
-        for (Iterator<Saved> it = entries.values().iterator(); it.hasNext(); ) {
-            if (ids.contains(it.next().messageId)) it.remove();
+        synchronized (this) {
+            for (Iterator<Saved> it = entries.values().iterator(); it.hasNext(); ) {
+                if (ids.contains(it.next().messageId)) it.remove();
+            }
         }
     }
 

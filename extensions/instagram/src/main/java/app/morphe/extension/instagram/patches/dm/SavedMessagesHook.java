@@ -178,7 +178,6 @@ public class SavedMessagesHook {
 
     private static void warmUpRevokeCache() {
         try {
-            long cacheGeneration = RevokeCache.INSTANCE.generation();
             PikoMessageDb db = PikoMessageDb.getInstance(PikoUtils.getContext());
             // Oldest first, so the newest rows end up most recently used.
             android.database.Cursor c = db.getReadableDatabase().rawQuery(
@@ -190,7 +189,7 @@ public class SavedMessagesHook {
                 while (c.moveToNext()) {
                     String content = c.getString(3);
                     RevokeCache.INSTANCE.put(c.getString(1), c.getString(2), c.getString(0),
-                            isBlank(content) ? null : content, cacheGeneration);
+                            isBlank(content) ? null : content);
                 }
             } finally {
                 c.close();
@@ -261,7 +260,6 @@ public class SavedMessagesHook {
             if (isBlank(threadId) && !isBlank(threadIdHint)) threadId = threadIdHint;
             if (threadId == null) threadId = "";
 
-            long cacheGeneration = RevokeCache.INSTANCE.generation();
             PikoMessageDb db = PikoMessageDb.getInstance(PikoUtils.getContext());
             String senderUsername = resolveSenderUsername(
                     db, senderId, threadId, session, sessionViewerId);
@@ -290,8 +288,7 @@ public class SavedMessagesHook {
                 if (messageId == null) return;
                 markDeletedAndNotify(db, messageId);
                 String storedContent = db.getStoredContent(messageId);
-                RevokeCache.INSTANCE.put(serverId, clientContext, messageId, storedContent,
-                        cacheGeneration);
+                RevokeCache.INSTANCE.put(serverId, clientContext, messageId, storedContent);
                 if (!restPath) {
                     antiRevokeItem(directItem,
                             !isBlank(storedContent) ? storedContent : content);
@@ -303,7 +300,7 @@ public class SavedMessagesHook {
                     senderUsername, content, type, timestamp);
             if (messageId != null) {
                 RevokeCache.INSTANCE.put(serverId, clientContext, messageId,
-                        db.getStoredContent(messageId), cacheGeneration);
+                        db.getStoredContent(messageId));
             }
         } catch (Exception e) {
             piko("SavedMessagesHook.processReceivedItem: " + e);
@@ -406,6 +403,23 @@ public class SavedMessagesHook {
         return String.format(str("piko_media_deleted"), label);
     }
 
+    /** Deletes rows and their cached text on the worker and waits; never call from the main thread. */
+    public static void deleteSavedMessages(final java.util.List<String> messageIds) throws Exception {
+        java.util.concurrent.FutureTask<Void> task = new java.util.concurrent.FutureTask<Void>(() -> {
+            PikoMessageDb.getInstance(PikoUtils.getContext()).deleteSaved(messageIds);
+            RevokeCache.INSTANCE.removeMessages(messageIds);
+            return null;
+        });
+        android.os.Handler worker = getWorker();
+        if (worker.getLooper().isCurrentThread() || !worker.post(task)) task.run();
+        try {
+            task.get();
+        } catch (java.util.concurrent.ExecutionException e) {
+            if (e.getCause() instanceof Exception) throw (Exception) e.getCause();
+            throw e;
+        }
+    }
+
     public static void onMessageHiddenFromDb(String serverId, String clientContext) {
         if (!Pref.saveDeletedMessages()) return;
         if (isBlank(serverId) && isBlank(clientContext)) return;
@@ -415,12 +429,11 @@ public class SavedMessagesHook {
     private static void processMessageHiddenFromDb(String serverId, String clientContext) {
         try {
             if (!Pref.saveDeletedMessages()) return;
-            long cacheGeneration = RevokeCache.INSTANCE.generation();
             PikoMessageDb db = PikoMessageDb.getInstance(PikoUtils.getContext());
             String messageId = db.resolveAndMergeMessageId(serverId, clientContext);
             if (messageId == null) return;
             RevokeCache.INSTANCE.put(serverId, clientContext, messageId,
-                    db.getStoredContent(messageId), cacheGeneration);
+                    db.getStoredContent(messageId));
             if (!shouldCaptureStored(db.getSenderId(messageId), myUserId())) return;
             markDeletedAndNotify(db, messageId);
         } catch (Exception e) {
