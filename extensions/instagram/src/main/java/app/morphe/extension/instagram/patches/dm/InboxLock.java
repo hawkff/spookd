@@ -273,6 +273,7 @@ public final class InboxLock {
         return initialized && !unlocked;
     }
 
+    public static boolean isPrompting() { return prompting; }
     /** Asks for the device lock and runs afterUnlock once it is confirmed. */
     public static void confirm(Activity activity, Runnable afterUnlock) {
         authenticate(activity, afterUnlock);

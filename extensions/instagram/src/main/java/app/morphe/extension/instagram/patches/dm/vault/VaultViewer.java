@@ -46,7 +46,8 @@ public final class VaultViewer extends Dialog {
     private static final Executor LOADER = Executors.newSingleThreadExecutor();
     private static final Map<Activity, VaultViewer> shown = new WeakHashMap<>();
     private static final Set<Activity> confirmed = Collections.newSetFromMap(new WeakHashMap<>());
-    private static final Map<Activity, String> pending = new WeakHashMap<>();
+    // The token of each activity's outstanding unlock request; only that request's success may show media.
+    private static final Map<Activity, Object> pending = new WeakHashMap<>();
 
     private final Activity activity;
     private final FrameLayout root;
@@ -72,13 +73,19 @@ public final class VaultViewer extends Dialog {
                 showFor(activity, null);
                 return;
             }
-            // InboxLock ignores a request while its prompt is up, so that prompt opens the latest tap.
-            pending.put(activity, messageId);
+            // InboxLock drops a request while any prompt is up and keeps that prompt's callback.
+            if (InboxLock.isPrompting()) {
+                Utils.showToastShort(str("piko_vault_finish_unlocking"));
+                return;
+            }
+            Object request = new Object();
+            pending.put(activity, request);
             InboxLock.confirm(activity, () -> {
-                String id = pending.remove(activity);
-                if (id == null || activity.isFinishing() || activity.isDestroyed()) return;
+                if (pending.get(activity) != request) return;
+                pending.remove(activity);
+                if (activity.isFinishing() || activity.isDestroyed()) return;
                 confirmed.add(activity);
-                open(activity, id);
+                open(activity, messageId);
             });
         } catch (Exception e) {
             Logger.printException(() -> "VaultViewer.open failed", e);
@@ -88,6 +95,7 @@ public final class VaultViewer extends Dialog {
     /** Dismisses the activity's viewer and ends its confirmation; call when the activity stops or is destroyed. */
     public static void close(Activity activity) {
         try {
+            pending.remove(activity);
             confirmed.remove(activity);
             VaultViewer viewer = shown.remove(activity);
             if (viewer != null) viewer.dismiss();

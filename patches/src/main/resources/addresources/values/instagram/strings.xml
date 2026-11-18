@@ -532,6 +532,7 @@
     <string name="piko_dm_media_vault_desc">Downloads every received DM photo, video and voice message as it arrives, on any network, so it uses mobile data and up to 8 GB of storage. Media of messages that are not unsent is removed after 30 days. View-once media is never saved. Camera photos and videos are skipped while Make ephemeral media permanent is on. Saved media opens from View deleted messages after you confirm your screen lock.</string>
     <string name="piko_media_saved">saved</string>
     <string name="piko_media_unreadable">This saved media can\'t be read</string>
+    <string name="piko_vault_finish_unlocking">Finish unlocking, then tap the item again</string>
     <string name="piko_vault_needs_screen_lock">Saved media opens only after you confirm your screen lock. Set a screen lock on Android 10 or newer to view it.</string>
     <string name="piko_patch_theme">Theme</string>
     <string name="piko_patch_settings">Add settings</string>
