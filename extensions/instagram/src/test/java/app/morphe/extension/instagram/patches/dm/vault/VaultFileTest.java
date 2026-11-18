@@ -184,6 +184,15 @@ public class VaultFileTest {
     }
 
     @Test
+    public void fileSizeRejectsLengthsOutsideTheFormat() {
+        long max = VaultFile.MAX_CHUNKS * VaultFile.CHUNK;
+        assertEquals(VaultFile.HEADER + VaultFile.WRAP_KEYSTORE_LENGTH + max + VaultFile.TAG * VaultFile.MAX_CHUNKS,
+                VaultFile.fileSize(max));
+        assertThrows(IllegalArgumentException.class, () -> VaultFile.fileSize(-1));
+        assertThrows(IllegalArgumentException.class, () -> VaultFile.fileSize(max + 1));
+    }
+
+    @Test
     public void chunkCountEnforcesLayoutLimits() throws IOException {
         assertEquals(1, VaultFile.chunkCount(TAG));
         assertEquals(1, VaultFile.chunkCount(STRIDE));

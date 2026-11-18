@@ -55,6 +55,9 @@ public final class VaultFile implements Closeable {
 
     /** Size of a PKV file holding {@code plaintextLength} bytes, wrap type 1. */
     public static long fileSize(long plaintextLength) {
+        if (plaintextLength < 0 || plaintextLength > MAX_CHUNKS * CHUNK) {
+            throw new IllegalArgumentException("plaintext length out of range: " + plaintextLength);
+        }
         long chunkCount = plaintextLength == 0 ? 1 : (plaintextLength - 1) / CHUNK + 1;
         return HEADER + WRAP_KEYSTORE_LENGTH + plaintextLength + TAG * chunkCount;
     }
