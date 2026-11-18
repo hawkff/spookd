@@ -367,6 +367,19 @@ public class ScreenBuilder {
                     )
             );
         }
+
+        if (SettingsStatus.dmMediaVault) {
+            addPreference(
+                    helper.availableWhen(
+                            helper.switchPreference(
+                                    str("piko_dm_media_vault"),
+                                    str("piko_dm_media_vault_desc"),
+                                    Settings.DM_MEDIA_VAULT
+                            ),
+                            () -> SharedPref.getBooleanPref(Settings.SAVE_DELETED_MESSAGES)
+                    )
+            );
+        }
     }
 
     public void ghostSection() {

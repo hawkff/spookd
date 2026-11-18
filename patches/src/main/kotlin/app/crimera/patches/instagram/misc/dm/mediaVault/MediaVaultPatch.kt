@@ -23,7 +23,7 @@ import app.morphe.patcher.patch.patch
 val mediaVaultPatch =
     patch(
         name = "Save DM media",
-        description = "Preparation for saving received DM media. Resolves the fields that tell ordinary media from view-once media; nothing is saved yet.",
+        description = "Adds an option to save received DM photos, videos and voice messages encrypted on the device, so unsent ones can be viewed behind the screen lock. View-once media is never saved.",
     ) {
         dependsOn(saveDeletedMessagesPatch, directItemEntity, settingsPatch)
         compatibleWith(COMPATIBILITY_INSTAGRAM)
