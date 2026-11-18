@@ -330,6 +330,34 @@ public final class MediaVaultLifecycleTest {
     }
 
     @Test
+    public void opensOnlyStoredMediaOfAMessageWithItsKind() throws IOException {
+        byte[] body = body(100_000);
+        network.respond = url -> new FakeConnection(url, 200, body);
+        vault.enqueue("stored", "acct", "video", LIVE, NOW - 1000);
+        enqueue("dropped");
+        executor.runAll();
+        enqueue("queued");
+        for (String item : new String[]{"stored", "dropped", "queued"}) unsend(item);
+        vault.deleteForMessages(Collections.singletonList("dropped"));
+
+        MediaVault.Stored stored = vault.openForMessage("stored");
+        assertNotNull(stored);
+        try {
+            assertEquals("video", stored.kind);
+            byte[] plain = new byte[body.length];
+            assertEquals(body.length, stored.file.readAt(0, plain, 0, plain.length));
+            assertArrayEquals(body, plain);
+        } finally {
+            stored.file.close();
+        }
+        assertEquals("queued", column("state", id("queued")));
+        assertNull(vault.openForMessage("queued"));
+        assertEquals("dropped", column("state", id("dropped")));
+        assertNull(vault.openForMessage("dropped"));
+        assertNull(vault.openForMessage("unknown"));
+    }
+
+    @Test
     public void offlineWaitsWithoutCountingAndServerErrorsBackOff() {
         network.online = false;
         long id = enqueue("1");
