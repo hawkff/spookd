@@ -71,6 +71,10 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.SAVE_DELETED_MESSAGES);
     }
 
+    public static boolean dmMediaVault() {
+        return SharedPref.getBooleanPref(Settings.DM_MEDIA_VAULT) && SettingsStatus.dmMediaVault && saveDeletedMessages();
+    }
+
     public static boolean openLinksExternally() {
         return SharedPref.getBooleanPref(Settings.OPEN_LINKS_EXTERNALLY);
     }

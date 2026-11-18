@@ -44,10 +44,12 @@ import androidx.annotation.RequiresApi;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -57,10 +59,13 @@ import java.util.regex.Pattern;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.db.PikoMessageDb;
+import app.morphe.extension.instagram.patches.dm.vault.MediaVault;
+import app.morphe.extension.instagram.patches.dm.vault.VaultViewer;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.instagram.settings.ActivityHook;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.instagram.utils.MediaUrls;
+import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.shared.ui.Dim;
@@ -165,11 +170,12 @@ public final class DeletedMessagesActivity {
                 @Override public void onActivityStarted(Activity a) {}
                 @Override public void onActivityResumed(Activity a) {}
                 @Override public void onActivityPaused(Activity a) {}
-                @Override public void onActivityStopped(Activity a) {}
+                @Override public void onActivityStopped(Activity a) { if (a == activity) VaultViewer.close(a); }
                 @Override public void onActivitySaveInstanceState(Activity a, Bundle b) {}
                 @Override
                 public void onActivityDestroyed(Activity a) {
                     if (a == activity) {
+                        VaultViewer.close(a);
                         a.getApplication().unregisterActivityLifecycleCallbacks(this);
                         synchronized (sControllers) {
                             sControllers.remove(activity);
@@ -195,6 +201,7 @@ public final class DeletedMessagesActivity {
     private static class Controller {
         private final Activity activity;
         private List<String[]> messages;
+        private Set<String> storedIds = Collections.emptySet();
         private ListView messageList;
         private MessageAdapter adapter;
         private SimpleDateFormat timestampFormatter;
@@ -309,7 +316,9 @@ public final class DeletedMessagesActivity {
                 String messageId = message[0];
                 String body = message[3];
                 String type = message[4];
-                if (body != null && body.startsWith("http")) {
+                if (storedIds.contains(messageId)) {
+                    VaultViewer.open(activity, messageId);
+                } else if (body != null && body.startsWith("http")) {
                     showMediaOptions(messageId, body, type);
                 } else if (type != null && !"text".equals(type)) {
                     Toast.makeText(activity, str("piko_media_not_available"),
@@ -405,14 +414,18 @@ public final class DeletedMessagesActivity {
             loading = true;
             sDbJobs.execute(() -> {
                 List<String[]> loaded = null;
+                Set<String> stored = Collections.emptySet();
                 try {
                     PikoMessageDb db = PikoMessageDb.getInstance(activity);
                     if (deleteIds != null) SavedMessagesHook.deleteSavedMessages(deleteIds);
                     loaded = db.getDeletedMessages();
+                    if (Pref.dmMediaVault()) MediaVault.get().start();
+                    stored = MediaVault.get().storedMessageIds();
                 } catch (Exception e) {
                     Logger.printException(() -> "loadMessages: ", e);
                 }
                 List<String[]> result = loaded;
+                Set<String> storedResult = stored;
                 Utils.runOnMainThread(() -> {
                     loading = false;
                     if (activity.isFinishing() || activity.isDestroyed()) return;
@@ -421,6 +434,7 @@ public final class DeletedMessagesActivity {
                         return;
                     }
                     messages = result;
+                    storedIds = storedResult;
                     adapter.notifyDataSetChanged();
                     if (empty != null) messageList.setEmptyView(empty);
                     cancelSelection();
@@ -698,10 +712,13 @@ public final class DeletedMessagesActivity {
                 boolean isMediaUrl = content != null && content.startsWith("http");
                 if (isMediaUrl) {
                     contentView.setText(mediaLabel(type, content) + "  ·  "
-                            + str(isExpiredMediaUrl(content) ? "piko_media_expired" : "piko_tap_to_view"));
+                            + str(storedIds.contains(msg[0]) ? "piko_media_saved"
+                                    : isExpiredMediaUrl(content) ? "piko_media_expired" : "piko_tap_to_view"));
                 } else {
-                    contentView.setText(content != null && !content.isEmpty() ? content
-                            : (type != null ? "[" + type + "]" : str("piko_media_deleted_generic")));
+                    String text = content != null && !content.isEmpty() ? content
+                            : (type != null ? "[" + type + "]" : str("piko_media_deleted_generic"));
+                    contentView.setText(storedIds.contains(msg[0])
+                            ? text + "  ·  " + str("piko_media_saved") : text);
                 }
                 metaView.setText(timestampFormatter.format(new Date(timestamp)));
                 boolean checked = messageList.isItemChecked(position);

@@ -273,6 +273,7 @@ public final class InboxLock {
         return initialized && !unlocked;
     }
 
+    public static boolean isPrompting() { return prompting; }
     /** Asks for the device lock and runs afterUnlock once it is confirmed. */
     public static void confirm(Activity activity, Runnable afterUnlock) {
         authenticate(activity, afterUnlock);
@@ -326,24 +327,31 @@ public final class InboxLock {
         }
 
         prompting = true;
-        builder.build().authenticate(new CancellationSignal(), activity.getMainExecutor(),
-                new BiometricPrompt.AuthenticationCallback() {
-                    @Override
-                    public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
-                        prompting = false;
-                        cancelAction = null;
-                        unlock();
-                        if (afterUnlock != null) afterUnlock.run();
-                    }
+        try {
+            builder.build().authenticate(new CancellationSignal(), activity.getMainExecutor(),
+                    new BiometricPrompt.AuthenticationCallback() {
+                        @Override
+                        public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
+                            prompting = false;
+                            cancelAction = null;
+                            unlock();
+                            if (afterUnlock != null) afterUnlock.run();
+                        }
 
-                    @Override
-                    public void onAuthenticationError(int errorCode, CharSequence errString) {
-                        prompting = false;
-                        Runnable cancelled = cancelAction;
-                        cancelAction = null;
-                        if (cancelled != null) cancelled.run();
-                    }
-                });
+                        @Override
+                        public void onAuthenticationError(int errorCode, CharSequence errString) {
+                            prompting = false;
+                            Runnable cancelled = cancelAction;
+                            cancelAction = null;
+                            if (cancelled != null) cancelled.run();
+                        }
+                    });
+        } catch (RuntimeException e) {
+            // No callback will come, so a prompt that never started must not block later requests.
+            prompting = false;
+            cancelAction = null;
+            throw e;
+        }
     }
 
     /**

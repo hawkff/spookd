@@ -528,6 +528,12 @@
     <string name="piko_media_like">like</string>
     <string name="piko_media_link">link</string>
     <string name="piko_media_activity">activity</string>
+    <string name="piko_dm_media_vault">Save DM media</string>
+    <string name="piko_dm_media_vault_desc">Downloads every received DM photo, video and voice message as it arrives, on any network, so it uses mobile data and up to 8 GB of storage. Media of messages that are not unsent is removed after 30 days. After you turn this setting off, nothing new is saved, and once Instagram restarts the cleanup stops too. View-once media is never saved. Camera photos and videos are skipped while Make ephemeral media permanent is on. Saved media opens from View deleted messages after you confirm your screen lock, on Android 11 or newer.</string>
+    <string name="piko_media_saved">saved</string>
+    <string name="piko_media_unreadable">This saved media can\'t be read</string>
+    <string name="piko_vault_finish_unlocking">Finish unlocking, then tap the item again</string>
+    <string name="piko_vault_needs_screen_lock">Saved media opens only after you confirm your screen lock. This needs Android 11 or newer with a screen lock set.</string>
     <string name="piko_patch_theme">Theme</string>
     <string name="piko_patch_settings">Add settings</string>
 

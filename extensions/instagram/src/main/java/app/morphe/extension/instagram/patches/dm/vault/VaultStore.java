@@ -20,7 +20,7 @@ final class VaultStore {
     private static final String KEPT = "EXISTS (SELECT 1 FROM saved_messages s"
             + " WHERE s.server_id = saved_media.item_id AND s.server_id != '' AND s.is_deleted = 1)";
     private static final String COLUMNS = "saved_media.id, saved_media.state, saved_media.url,"
-            + " saved_media.url_expires_at, saved_media.attempts, saved_media.size_bytes";
+            + " saved_media.url_expires_at, saved_media.attempts, saved_media.size_bytes, saved_media.kind";
 
     /** One saved_media row. */
     static final class Media {
@@ -30,6 +30,7 @@ final class VaultStore {
         final long expiresAt;
         final int attempts;
         final long sizeBytes;
+        final String kind;
 
         private Media(Cursor cursor) {
             id = cursor.getLong(0);
@@ -38,6 +39,7 @@ final class VaultStore {
             expiresAt = cursor.getLong(3);
             attempts = cursor.getInt(4);
             sizeBytes = cursor.getLong(5);
+            kind = cursor.getString(6);
         }
     }
 

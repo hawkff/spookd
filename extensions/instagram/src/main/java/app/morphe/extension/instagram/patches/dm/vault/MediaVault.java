@@ -163,12 +163,34 @@ public final class MediaVault {
         }
     }
 
+    /** A stored media file and its kind: photo, video or voice. */
+    public static final class Stored {
+        public final VaultFile file;
+        public final String kind;
+
+        Stored(VaultFile file, String kind) {
+            this.file = file;
+            this.kind = kind;
+        }
+    }
+
+    /**
+     * Opens the stored media of a saved message id; null when it has none stored. The caller closes the file.
+     * Runs on the caller's background thread; throws IOException when the file is unreadable or deleted meanwhile.
+     */
+    public Stored openForMessage(String messageId) throws IOException {
+        VaultStore.Media row = store.rowForMessage(messageId);
+        if (row == null || !VaultStore.STORED.equals(row.state)) return null;
+        return new Stored(VaultFile.open(file(row.id, PKV), kek), row.kind);
+    }
+
     /** Ids of unsent saved messages whose media is stored. Runs on the caller's background thread. */
     public Set<String> storedMessageIds() {
         return store.storedMessageIds();
     }
 
-    private void start() {
+    /** Starts recovery, queued downloads and the retention sweep once per process; returns at once. */
+    public void start() {
         if (!started.compareAndSet(false, true)) return;
         executor.execute(() -> run("recovery", () -> {
         }));
