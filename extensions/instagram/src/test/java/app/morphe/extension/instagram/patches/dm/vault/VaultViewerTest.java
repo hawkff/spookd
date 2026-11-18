@@ -2,7 +2,6 @@ package app.morphe.extension.instagram.patches.dm.vault;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
@@ -61,20 +60,16 @@ public class VaultViewerTest {
     }
 
     @Test
-    public void closeWhileAPromptIsUpKeepsTheRequestAndEndsTheConfirmation() throws Exception {
+    public void closeWhileAPromptIsUpStillEndsTheRequest() throws Exception {
         activity = Robolectric.buildActivity(Activity.class).create().get();
-        Object request = new Object();
-        pending().put(activity, request);
+        pending().put(activity, new Object());
         confirmed().add(activity);
         setPrompting(true);
 
         VaultViewer.close(activity);
-        assertSame(request, pending().get(activity));
-        assertFalse(confirmed().contains(activity));
-
-        setPrompting(false);
-        VaultViewer.close(activity);
+        // With no request left, a success that arrives after the stop finds nothing to confirm.
         assertFalse(pending().containsKey(activity));
+        assertFalse(confirmed().contains(activity));
     }
 
     @SuppressWarnings("unchecked")
