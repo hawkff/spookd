@@ -43,6 +43,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -96,48 +97,117 @@ public final class MediaVaultLifecycleTest {
 
     @Test
     public void fetchWaitingForRecoveryIsNotScheduledAgainByIt() throws Exception {
-        // A complete file left queued by a crash makes recovery read the key, where it is held.
-        long crashed = new VaultStore(db).insertQueued("crashed", "acct", "photo", LIVE,
-                NOW + 3_600_000, NOW - 1000);
-        writePkv(pkv(crashed), body(1000));
+        long crashed = queuedWithFile("crashed");
         CountDownLatch inRecovery = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
-        restart(() -> {
-            inRecovery.countDown();
-            try {
-                release.await();
-            } catch (InterruptedException e) {
-                throw new GeneralSecurityException(e);
-            }
-            return KEK.get();
-        });
+        restart(heldKek(inRecovery, release, false));
         network.respond = url -> new FakeConnection(url, 503, new byte[0]);
         Throwable[] failures = new Throwable[2];
         Thread recovery = thread(vault::recover, failures, 0);
-        recovery.start();
-        assertTrue(inRecovery.await(10, TimeUnit.SECONDS));
+        Thread fetcher = null;
+        try {
+            recovery.start();
+            assertTrue(inRecovery.await(10, TimeUnit.SECONDS));
+            long id = enqueue("new");
+            // Recovery, retention, then the new row's fetch, which runs on a second thread.
+            assertEquals(Arrays.asList(0L, 30_000L, 0L), executor.delays);
+            executor.delays.remove(2);
+            fetcher = thread(executor.tasks.remove(2), failures, 1);
+            fetcher.start();
+            waitUntilBlocked(fetcher);
+            release.countDown();
+            recovery.join(10_000);
+            fetcher.join(10_000);
+            assertFalse(recovery.isAlive());
+            assertFalse(fetcher.isAlive());
+            assertNull(failures[0]);
+            assertNull(failures[1]);
 
+            assertEquals("stored", column("state", crashed));
+            assertEquals("1", column("attempts", id));
+            assertEquals("queued", column("state", id));
+            assertEquals(1, network.opened.size());
+            // No second fetch for the row: only its 30 s retry is left besides the start tasks.
+            assertEquals(Arrays.asList(0L, 30_000L, 30_000L), executor.delays);
+        } finally {
+            finish(release, recovery, fetcher);
+        }
+    }
+
+    @Test
+    public void fetchWhoseRecoveryFailsIsScheduledByTheNextRecovery() throws Exception {
+        long crashed = queuedWithFile("crashed");
+        CountDownLatch inRecovery = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        restart(heldKek(inRecovery, release, true));
         long id = enqueue("new");
-        // Recovery, retention, then the new row's fetch, which runs on a second thread.
         assertEquals(Arrays.asList(0L, 30_000L, 0L), executor.delays);
         executor.delays.remove(2);
-        Thread fetcher = thread(executor.tasks.remove(2), failures, 1);
-        fetcher.start();
-        waitUntilBlocked(fetcher);
-        release.countDown();
-        recovery.join(10_000);
-        fetcher.join(10_000);
-        assertFalse(recovery.isAlive());
-        assertFalse(fetcher.isAlive());
+        Throwable[] failures = new Throwable[2];
+        Thread fetcher = thread(executor.tasks.remove(2), failures, 0);
+        Thread recovery = thread(vault::recover, failures, 1);
+        try {
+            // The fetch task's recovery holds the key, then fails; the other recovery waits for it.
+            fetcher.start();
+            assertTrue(inRecovery.await(10, TimeUnit.SECONDS));
+            recovery.start();
+            waitUntilBlocked(recovery);
+            release.countDown();
+            fetcher.join(10_000);
+            recovery.join(10_000);
+            assertFalse(fetcher.isAlive());
+            assertFalse(recovery.isAlive());
+        } finally {
+            finish(release, fetcher, recovery);
+        }
+        // The fetch task logs its own failure; the second recovery succeeds.
         assertNull(failures[0]);
         assertNull(failures[1]);
-
         assertEquals("stored", column("state", crashed));
-        assertEquals("1", column("attempts", id));
         assertEquals("queued", column("state", id));
-        assertEquals(1, network.opened.size());
-        // No second fetch for the row: only its 30 s retry is left besides the start tasks.
-        assertEquals(Arrays.asList(0L, 30_000L, 30_000L), executor.delays);
+        assertTrue(network.opened.isEmpty());
+
+        // The second recovery scheduled the row again, so it is fetched.
+        executor.runAll();
+        assertEquals("stored", column("state", id));
+        assertEquals("1", column("attempts", id));
+    }
+
+    @Test
+    public void deleteDuringRecoveryKeepsAnUndeletableFileCounted() throws Exception {
+        long crashed = queuedWithFile("crashed");
+        long stored = storedRow("stored", 5000, NOW - 1000);
+        unsend("stored");
+        // A non-empty directory under the file's name cannot be unlinked.
+        assertTrue(pkv(stored).delete());
+        assertTrue(pkv(stored).mkdir());
+        assertTrue(new File(pkv(stored), "x").createNewFile());
+        CountDownLatch inRecovery = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        restart(heldKek(inRecovery, release, false));
+        Throwable[] failures = new Throwable[2];
+        Thread recovery = thread(vault::recover, failures, 0);
+        Thread delete = thread(() -> vault.deleteForMessages(Collections.singletonList("stored")),
+                failures, 1);
+        try {
+            // Recovery is held mid-scan while the user deletes the stored item.
+            recovery.start();
+            assertTrue(inRecovery.await(10, TimeUnit.SECONDS));
+            delete.start();
+            waitUntilBlocked(delete);
+            release.countDown();
+            recovery.join(10_000);
+            delete.join(10_000);
+            assertFalse(recovery.isAlive());
+            assertFalse(delete.isAlive());
+        } finally {
+            finish(release, recovery, delete);
+        }
+        assertNull(failures[0]);
+        assertNull(failures[1]);
+        assertEquals("dropped", column("state", stored));
+        assertTrue(pkv(stored).exists());
+        assertEquals(5000 + pkv(crashed).length(), vault.storedBytes);
     }
 
     @Test
@@ -156,14 +226,53 @@ public final class MediaVaultLifecycleTest {
         assertEquals(0, vault.reservations);
     }
 
+    /** A queued row with the complete file a crash after the rename leaves; recovery reads the key for it. */
+    private long queuedWithFile(String itemId) throws IOException {
+        long id = new VaultStore(db).insertQueued(itemId, "acct", "photo", LIVE, NOW + 3_600_000, NOW - 1000);
+        writePkv(pkv(id), body(1000));
+        return id;
+    }
+
+    /** The test key; its first use signals {@code reached}, waits for {@code release}, then fails if asked. */
+    private static VaultFile.Kek heldKek(CountDownLatch reached, CountDownLatch release, boolean failFirst) {
+        AtomicBoolean first = new AtomicBoolean(true);
+        return () -> {
+            if (first.getAndSet(false)) {
+                reached.countDown();
+                try {
+                    if (!release.await(30, TimeUnit.SECONDS)) throw new GeneralSecurityException("never released");
+                } catch (InterruptedException e) {
+                    throw new GeneralSecurityException(e);
+                }
+                if (failFirst) throw new IllegalStateException("recovery fails once");
+            }
+            return KEK.get();
+        };
+    }
+
     private static Thread thread(Runnable body, Throwable[] failures, int slot) {
-        return new Thread(() -> {
+        Thread thread = new Thread(() -> {
             try {
                 body.run();
             } catch (Throwable t) {
                 failures[slot] = t;
             }
         });
+        thread.setDaemon(true);
+        return thread;
+    }
+
+    /** Releases the held key and stops the workers, so a failed assertion leaves no live thread. */
+    private static void finish(CountDownLatch release, Thread... threads) throws InterruptedException {
+        release.countDown();
+        for (Thread thread : threads) {
+            if (thread == null) continue;
+            thread.join(10_000);
+            if (thread.isAlive()) {
+                thread.interrupt();
+                thread.join(1_000);
+            }
+        }
     }
 
     private static void waitUntilBlocked(Thread thread) throws InterruptedException {

@@ -64,6 +64,7 @@ public final class MediaVault {
     private final VaultFile.Kek kek;
     private final File dir;
     private final ScheduledExecutorService executor;
+    // Lock order: this (recovery, user delete) before storageLock; never the reverse.
     private final Object storageLock = new Object();
     // Guarded by storageLock: bytes of stored files, and bytes reserved by active writers.
     long storedBytes;
@@ -139,20 +140,23 @@ public final class MediaVault {
 
     /**
      * Drops the media of these saved message ids: unlinks stored files and stops their fetches.
-     * Runs on the caller's background thread; throws on database errors.
+     * Runs on the caller's background thread, may wait for startup recovery, and throws on database errors.
      */
     public void deleteForMessages(List<String> messageIds) {
-        for (String messageId : messageIds) {
-            VaultStore.Media row;
-            synchronized (storageLock) {
-                row = store.rowForMessage(messageId);
-                if (row == null || store.drop(row.id) != 1) continue;
-                if (VaultStore.STORED.equals(row.state) && unlink(file(row.id, PKV))) {
-                    storedBytes -= row.sizeBytes;
+        // Waits for a running recovery, so its total cannot drop a file this delete failed to unlink.
+        synchronized (this) {
+            for (String messageId : messageIds) {
+                VaultStore.Media row;
+                synchronized (storageLock) {
+                    row = store.rowForMessage(messageId);
+                    if (row == null || store.drop(row.id) != 1) continue;
+                    if (VaultStore.STORED.equals(row.state) && unlink(file(row.id, PKV))) {
+                        storedBytes -= row.sizeBytes;
+                    }
                 }
+                HttpURLConnection connection = connections.get(row.id);
+                if (connection != null) connection.disconnect();
             }
-            HttpURLConnection connection = connections.get(row.id);
-            if (connection != null) connection.disconnect();
         }
     }
 
@@ -183,11 +187,13 @@ public final class MediaVault {
         if (!pending.add(id)) return;
         executor.schedule(() -> {
             try {
-                // The marker stays while recovery runs, so recovery does not schedule this row again.
-                try {
-                    recover();
-                } finally {
-                    pending.remove(id);
+                // The marker leaves under the recovery monitor: no other recovery can see it in between.
+                synchronized (this) {
+                    try {
+                        recover();
+                    } finally {
+                        pending.remove(id);
+                    }
                 }
                 fetch(id);
             } catch (Exception e) {
