@@ -71,6 +71,20 @@ public class HookFlags {
         }
     }
 
+    private static void playbackSpeedFlags() {
+        if (Pref.playbackSpeedControls()) {
+            BOOL_FLAGS.put("103957::2", true); //ig_feed_video_2x_speed::enable_master_gating
+            BOOL_FLAGS.put("103957::1", true); //ig_feed_video_2x_speed::enable_for_organic
+            BOOL_FLAGS.put("103957::3", true); //ig_feed_video_2x_speed::enable_for_video
+            BOOL_FLAGS.put("103957::4", true); //ig_feed_video_2x_speed::enable_for_carousel
+            BOOL_FLAGS.put("103957::6", true); //ig_feed_video_2x_speed::use_static_edge_activation_threshold
+            BOOL_FLAGS.put("103957::8", true); //ig_feed_video_2x_speed::android_fix_long_press_overlay
+            BOOL_FLAGS.put("109947::0", true); //ig_android_reels_overflow_menu_playback_speed::is_enabled
+            BOOL_FLAGS.put("121815::0", true); //ig_reels_long_press_overflow_menu::is_enabled
+            BOOL_FLAGS.put("121815::12", true); //ig_reels_long_press_overflow_menu::context_playback_menu_enabled
+        }
+    }
+
     private static void addRecommendedFlags(){
         if(SettingsStatus.recommendedFlags) {
             Map<String, Boolean> recFlags = FlagsSharedPref.getAll();

@@ -144,6 +144,10 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.RESUME_REELS_AFTER_SCROLLING);
     }
 
+    public static boolean playbackSpeedControls() {
+        return SharedPref.getBooleanPref(Settings.PLAYBACK_SPEED_CONTROLS);
+    }
+
     public static boolean disableVideoAutoplay() {
         return SharedPref.getBooleanPref(Settings.DISABLE_VIDEO_AUTOPLAY);
     }

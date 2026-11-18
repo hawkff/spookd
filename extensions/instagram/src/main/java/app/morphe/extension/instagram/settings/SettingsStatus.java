@@ -223,6 +223,8 @@ public class SettingsStatus {
     public static void followListNonFollowerBadge() { followListNonFollowerBadge = true; }
     public static boolean resumeReelsAfterScrolling = false;
     public static void resumeReelsAfterScrolling() { resumeReelsAfterScrolling = true; }
+    public static boolean playbackSpeedControls = false;
+    public static void playbackSpeedControls() { playbackSpeedControls = true; }
     public static boolean improveImageViewing = false;
     public static void improveImageViewing() {
         improveImageViewing = true;
@@ -239,7 +241,7 @@ public class SettingsStatus {
     public static void moreOptionsOnPost() { moreOptionsOnPost = true; }
     public static boolean moreOptionsOnProfile = false;
     public static void moreOptionsOnProfile() { moreOptionsOnProfile = true; }
-    public static boolean miscSection() {return ( moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || followBackIndicator || followListNonFollowerBadge || customFont);}
+    public static boolean miscSection() {return ( moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || followBackIndicator || followListNonFollowerBadge || customFont);}
 
     //Font section.
     public static boolean customFont = false;
@@ -312,6 +314,7 @@ public class SettingsStatus {
         FLAGS.put(str("piko_hide_share_button"), SettingsStatus.hideShareButton);
         FLAGS.put(str("piko_improve_image_viewing"),SettingsStatus.improveImageViewing);
         FLAGS.put(str("piko_resume_reels_after_scrolling"), SettingsStatus.resumeReelsAfterScrolling);
+        FLAGS.put(str("piko_playback_speed_controls"), SettingsStatus.playbackSpeedControls);
         FLAGS.put(str("piko_unlimited_replays"),SettingsStatus.unlimitedReplaysOnEphemeralMedia);
         FLAGS.put(str("piko_disable_disappearing_messages_gesture"), SettingsStatus.disableDisappearingMessagesGesture);
         FLAGS.put(str("piko_send_keyboard_gifs"), SettingsStatus.sendKeyboardGifs);

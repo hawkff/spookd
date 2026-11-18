@@ -809,6 +809,13 @@ public class ScreenBuilder {
                     Settings.RESUME_REELS_AFTER_SCROLLING
             ));
         }
+        if (SettingsStatus.playbackSpeedControls) {
+            addPreference(helper.switchPreference(
+                    str("piko_playback_speed_controls"),
+                    str("piko_playback_speed_controls_desc"),
+                    Settings.PLAYBACK_SPEED_CONTROLS
+            ));
+        }
         if (SettingsStatus.improveImageViewing) {
             addPreference(
                     helper.switchPreference(
