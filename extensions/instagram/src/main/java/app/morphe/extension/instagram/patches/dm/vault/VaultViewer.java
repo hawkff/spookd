@@ -69,7 +69,8 @@ public final class VaultViewer extends Dialog {
             }
             KeyguardManager keyguard = (KeyguardManager) activity.getSystemService(Context.KEYGUARD_SERVICE);
             // InboxLock lets everyone through without a secure lock screen, so it is never asked then.
-            if (Build.VERSION.SDK_INT < 29 || keyguard == null || !keyguard.isDeviceSecure()) {
+            // Android 10 confirms on a separate screen, which stops this activity and lets Inbox lock close it mid-check.
+            if (Build.VERSION.SDK_INT < 30 || keyguard == null || !keyguard.isDeviceSecure()) {
                 showFor(activity, null);
                 return;
             }
