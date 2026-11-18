@@ -713,8 +713,10 @@ public final class DeletedMessagesActivity {
                             + str(storedIds.contains(msg[0]) ? "piko_media_saved"
                                     : isExpiredMediaUrl(content) ? "piko_media_expired" : "piko_tap_to_view"));
                 } else {
-                    contentView.setText(content != null && !content.isEmpty() ? content
-                            : (type != null ? "[" + type + "]" : str("piko_media_deleted_generic")));
+                    String text = content != null && !content.isEmpty() ? content
+                            : (type != null ? "[" + type + "]" : str("piko_media_deleted_generic"));
+                    contentView.setText(storedIds.contains(msg[0])
+                            ? text + "  ·  " + str("piko_media_saved") : text);
                 }
                 metaView.setText(timestampFormatter.format(new Date(timestamp)));
                 boolean checked = messageList.isItemChecked(position);
