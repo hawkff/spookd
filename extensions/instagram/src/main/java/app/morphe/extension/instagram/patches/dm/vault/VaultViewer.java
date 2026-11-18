@@ -92,10 +92,13 @@ public final class VaultViewer extends Dialog {
         }
     }
 
-    /** Dismisses the activity's viewer and ends its confirmation; call when the activity stops or is destroyed. */
+    /**
+     * Dismisses the activity's viewer and ends its confirmation; call when the activity stops or is destroyed.
+     * An unlock request survives while a prompt is up, since a full-screen credential screen stops the activity.
+     */
     public static void close(Activity activity) {
         try {
-            pending.remove(activity);
+            if (!InboxLock.isPrompting()) pending.remove(activity);
             confirmed.remove(activity);
             VaultViewer viewer = shown.remove(activity);
             if (viewer != null) viewer.dismiss();
