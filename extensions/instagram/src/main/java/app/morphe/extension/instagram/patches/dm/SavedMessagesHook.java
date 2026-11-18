@@ -130,6 +130,7 @@ public class SavedMessagesHook {
             sWorkerThread = new android.os.HandlerThread("piko-dm-hook");
             sWorkerThread.start();
             sWorker = new android.os.Handler(sWorkerThread.getLooper());
+            sWorker.post(SavedMessagesHook::startMediaVault);
             sWorker.post(SavedMessagesHook::warmUpRevokeCache);
         }
         return sWorker;
@@ -177,6 +178,15 @@ public class SavedMessagesHook {
             piko("SavedMessagesHook.restoreRevokedItem: " + e);
         }
         return hidden;
+    }
+
+    /** Resumes downloads and cleanup left from an earlier run, without waiting for a new item. */
+    private static void startMediaVault() {
+        try {
+            if (Pref.dmMediaVault()) MediaVault.get().start();
+        } catch (Exception e) {
+            piko("SavedMessagesHook.startMediaVault: " + e);
+        }
     }
 
     private static void warmUpRevokeCache() {

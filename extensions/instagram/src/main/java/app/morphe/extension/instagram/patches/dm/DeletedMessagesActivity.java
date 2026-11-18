@@ -65,6 +65,7 @@ import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.instagram.settings.ActivityHook;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.instagram.utils.MediaUrls;
+import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.shared.ui.Dim;
@@ -418,6 +419,7 @@ public final class DeletedMessagesActivity {
                     PikoMessageDb db = PikoMessageDb.getInstance(activity);
                     if (deleteIds != null) SavedMessagesHook.deleteSavedMessages(deleteIds);
                     loaded = db.getDeletedMessages();
+                    if (Pref.dmMediaVault()) MediaVault.get().start();
                     stored = MediaVault.get().storedMessageIds();
                 } catch (Exception e) {
                     Logger.printException(() -> "loadMessages: ", e);

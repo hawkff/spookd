@@ -189,7 +189,8 @@ public final class MediaVault {
         return store.storedMessageIds();
     }
 
-    private void start() {
+    /** Starts recovery, queued downloads and the retention sweep once per process; returns at once. */
+    public void start() {
         if (!started.compareAndSet(false, true)) return;
         executor.execute(() -> run("recovery", () -> {
         }));
