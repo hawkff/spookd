@@ -147,9 +147,10 @@ public final class MediaVault {
             synchronized (storageLock) {
                 row = store.rowForMessage(messageId);
                 if (row == null || store.drop(row.id) != 1) continue;
-                if (VaultStore.STORED.equals(row.state)) storedBytes -= row.sizeBytes;
+                if (VaultStore.STORED.equals(row.state) && unlink(file(row.id, PKV))) {
+                    storedBytes -= row.sizeBytes;
+                }
             }
-            if (VaultStore.STORED.equals(row.state)) file(row.id, PKV).delete();
             HttpURLConnection connection = connections.get(row.id);
             if (connection != null) connection.disconnect();
         }
@@ -181,8 +182,17 @@ public final class MediaVault {
     private void schedule(long id, long delayMs) {
         if (!pending.add(id)) return;
         executor.schedule(() -> {
-            pending.remove(id);
-            run("fetch", () -> fetch(id));
+            try {
+                // The marker stays while recovery runs, so recovery does not schedule this row again.
+                try {
+                    recover();
+                } finally {
+                    pending.remove(id);
+                }
+                fetch(id);
+            } catch (Exception e) {
+                Logger.printException(() -> "MediaVault fetch " + id + " failed", e);
+            }
         }, Math.max(0, delayMs), TimeUnit.MILLISECONDS);
     }
 
@@ -280,26 +290,50 @@ public final class MediaVault {
             if (!part.renameTo(pkv)) throw new IOException("Could not rename " + part);
             syncDirectory();
             long size = pkv.length();
-            boolean published;
-            synchronized (storageLock) {
-                reservations -= reserved;
-                reserved = 0;
-                published = store.publish(id, size, mime) == 1;
-                if (published) storedBytes += size;
+            boolean published = false;
+            try {
+                synchronized (storageLock) {
+                    published = store.publish(id, size, mime) == 1;
+                    if (published) {
+                        storedBytes += size;
+                        reservations -= reserved;
+                        reserved = 0;
+                    }
+                }
+            } finally {
+                // Deleted or dropped meanwhile, or the statement failed: the file goes, the row stays.
+                if (!published) discard(pkv);
             }
-            // Deleted or dropped by retention meanwhile: the row stays as it is.
-            if (!published) pkv.delete();
             return false;
         } finally {
             connections.remove(id);
             connection.disconnect();
-            part.delete();
+            discard(part);
             if (reserved > 0) {
                 synchronized (storageLock) {
                     reservations -= reserved;
                 }
             }
         }
+    }
+
+    /**
+     * Deletes a file before the reservation that covered it is released. A file that stays keeps
+     * its bytes counted until recovery at the next start deletes or publishes it.
+     */
+    private void discard(File file) {
+        if (unlink(file)) return;
+        long size = file.length();
+        synchronized (storageLock) {
+            storedBytes += size;
+        }
+    }
+
+    /** Deletes a file; false, logged, when it is still there. */
+    private static boolean unlink(File file) {
+        if (file.delete() || !file.exists()) return true;
+        Logger.printException(() -> "MediaVault: could not delete " + file);
+        return false;
     }
 
     private boolean failed(long id) {
@@ -337,8 +371,7 @@ public final class MediaVault {
     boolean dropStored(long id, long sizeBytes, long before) {
         synchronized (storageLock) {
             if (store.dropStored(id, before) != 1) return false;
-            storedBytes -= sizeBytes;
-            file(id, PKV).delete();
+            if (unlink(file(id, PKV))) storedBytes -= sizeBytes;
             return true;
         }
     }
@@ -357,15 +390,19 @@ public final class MediaVault {
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IllegalStateException("Cannot create " + dir);
         File[] files = dir.listFiles();
         if (files == null) throw new IllegalStateException("Cannot list " + dir);
+        // Files that cannot be deleted stay counted, so admission never ignores their space.
+        long leftover = 0;
         for (File file : files) {
             String name = file.getName();
-            if (name.endsWith(PART) || (name.endsWith(PKV) && !keepFound(file, name))) file.delete();
+            if ((name.endsWith(PART) || (name.endsWith(PKV) && !keepFound(file, name))) && !unlink(file)) {
+                leftover += file.length();
+            }
         }
         for (long[] row : store.stored()) {
             if (!file(row[0], PKV).exists()) store.markLost(row[0]);
         }
         synchronized (storageLock) {
-            storedBytes = store.storedBytes();
+            storedBytes = store.storedBytes() + leftover;
             reservations = 0;
         }
         long now = clock.getAsLong();

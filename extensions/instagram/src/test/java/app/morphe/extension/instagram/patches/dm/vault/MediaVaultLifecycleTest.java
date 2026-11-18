@@ -32,11 +32,14 @@ import java.net.CookieManager;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -83,8 +86,92 @@ public final class MediaVaultLifecycleTest {
 
     /** A crash: the old instance is dropped and a new one works on the same directory and database. */
     private void restart() {
+        restart(KEK);
+    }
+
+    private void restart(VaultFile.Kek kek) {
         executor = new ManualExecutor();
-        vault = new MediaVault(new VaultStore(db), network, () -> clock[0], KEK, dir, executor);
+        vault = new MediaVault(new VaultStore(db), network, () -> clock[0], kek, dir, executor);
+    }
+
+    @Test
+    public void fetchWaitingForRecoveryIsNotScheduledAgainByIt() throws Exception {
+        // A complete file left queued by a crash makes recovery read the key, where it is held.
+        long crashed = new VaultStore(db).insertQueued("crashed", "acct", "photo", LIVE,
+                NOW + 3_600_000, NOW - 1000);
+        writePkv(pkv(crashed), body(1000));
+        CountDownLatch inRecovery = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        restart(() -> {
+            inRecovery.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException e) {
+                throw new GeneralSecurityException(e);
+            }
+            return KEK.get();
+        });
+        network.respond = url -> new FakeConnection(url, 503, new byte[0]);
+        Throwable[] failures = new Throwable[2];
+        Thread recovery = thread(vault::recover, failures, 0);
+        recovery.start();
+        assertTrue(inRecovery.await(10, TimeUnit.SECONDS));
+
+        long id = enqueue("new");
+        // Recovery, retention, then the new row's fetch, which runs on a second thread.
+        assertEquals(Arrays.asList(0L, 30_000L, 0L), executor.delays);
+        executor.delays.remove(2);
+        Thread fetcher = thread(executor.tasks.remove(2), failures, 1);
+        fetcher.start();
+        waitUntilBlocked(fetcher);
+        release.countDown();
+        recovery.join(10_000);
+        fetcher.join(10_000);
+        assertFalse(recovery.isAlive());
+        assertFalse(fetcher.isAlive());
+        assertNull(failures[0]);
+        assertNull(failures[1]);
+
+        assertEquals("stored", column("state", crashed));
+        assertEquals("1", column("attempts", id));
+        assertEquals("queued", column("state", id));
+        assertEquals(1, network.opened.size());
+        // No second fetch for the row: only its 30 s retry is left besides the start tasks.
+        assertEquals(Arrays.asList(0L, 30_000L, 30_000L), executor.delays);
+    }
+
+    @Test
+    public void failedPublicationDeletesTheFileAndReleasesTheReservation() {
+        db.execSQL("CREATE TRIGGER reject_publish BEFORE UPDATE OF state ON saved_media"
+                + " WHEN NEW.state = 'stored' BEGIN SELECT RAISE(ABORT, 'rejected'); END");
+        network.respond = url -> new FakeConnection(url, 200, body(100_000));
+        long id = enqueue("1");
+        executor.runAll();
+
+        assertEquals(1, network.opened.size());
+        assertEquals("queued", column("state", id));
+        assertEquals("1", column("attempts", id));
+        assertEquals(0, dir.list().length);
+        assertEquals(0, vault.storedBytes);
+        assertEquals(0, vault.reservations);
+    }
+
+    private static Thread thread(Runnable body, Throwable[] failures, int slot) {
+        return new Thread(() -> {
+            try {
+                body.run();
+            } catch (Throwable t) {
+                failures[slot] = t;
+            }
+        });
+    }
+
+    private static void waitUntilBlocked(Thread thread) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (thread.getState() != Thread.State.BLOCKED) {
+            assertTrue("thread never blocked", System.nanoTime() < deadline);
+            Thread.sleep(1);
+        }
     }
 
     @Test
