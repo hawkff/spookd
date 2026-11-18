@@ -529,7 +529,7 @@
     <string name="piko_media_link">link</string>
     <string name="piko_media_activity">activity</string>
     <string name="piko_dm_media_vault">Save DM media</string>
-    <string name="piko_dm_media_vault_desc">Downloads every received DM photo, video and voice message as it arrives, on any network, so it uses mobile data and up to 8 GB of storage. Media of messages that are not unsent is removed after 30 days. View-once media is never saved. Camera photos and videos are skipped while Make ephemeral media permanent is on. Saved media opens from View deleted messages after you confirm your screen lock, on Android 11 or newer.</string>
+    <string name="piko_dm_media_vault_desc">Downloads every received DM photo, video and voice message as it arrives, on any network, so it uses mobile data and up to 8 GB of storage. Media of messages that are not unsent is removed after 30 days while this setting is on; turning it off pauses downloads and cleanup. View-once media is never saved. Camera photos and videos are skipped while Make ephemeral media permanent is on. Saved media opens from View deleted messages after you confirm your screen lock, on Android 11 or newer.</string>
     <string name="piko_media_saved">saved</string>
     <string name="piko_media_unreadable">This saved media can\'t be read</string>
     <string name="piko_vault_finish_unlocking">Finish unlocking, then tap the item again</string>
