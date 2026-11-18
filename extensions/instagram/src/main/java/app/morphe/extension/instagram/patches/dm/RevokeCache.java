@@ -43,6 +43,10 @@ final class RevokeCache {
     synchronized void put(String serverId, String clientContext, String messageId, String content) {
         if (messageId == null) return;
         Saved saved = new Saved(messageId, content);
+        // An alias left by an earlier capture of this message must not keep its older text.
+        for (Map.Entry<String, Saved> entry : entries.entrySet()) {
+            if (messageId.equals(entry.getValue().messageId)) entry.setValue(saved);
+        }
         String serverKey = serverKey(serverId);
         String clientKey = clientKey(clientContext);
         if (serverKey != null) entries.put(serverKey, saved);

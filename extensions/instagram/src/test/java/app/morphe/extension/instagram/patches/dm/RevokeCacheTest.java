@@ -71,6 +71,15 @@ public class RevokeCacheTest {
     }
 
     @Test
+    public void updateThroughOneAliasReachesTheOther() {
+        RevokeCache cache = new RevokeCache(16);
+        cache.put("s1", "c1", "m1", null);
+        cache.put("s1", null, "m1", "body");
+
+        assertEquals("body", cache.get(null, "c1").content);
+    }
+
+    @Test
     public void serverIdAndClientContextDoNotCollide() {
         RevokeCache cache = new RevokeCache(16);
         cache.put("123", null, "m1", "one");
