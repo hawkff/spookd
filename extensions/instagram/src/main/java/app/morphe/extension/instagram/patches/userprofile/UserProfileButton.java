@@ -15,6 +15,8 @@ import app.morphe.extension.instagram.entity.ProfileInfo;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.constants.Constants;
+import app.morphe.extension.instagram.settings.SettingsStatus;
+import app.morphe.extension.instagram.patches.navigation.NavigationBarPatch;
 import app.morphe.extension.instagram.patches.userprofile.ProfileMoreOption;
 
 public class UserProfileButton {
@@ -36,12 +38,28 @@ public class UserProfileButton {
         }
     }
 
+    // Read on every profile build: the tab layout can change without a process restart.
+    private static boolean isHomeTabVisible() {
+        try {
+            return !SettingsStatus.hideNavigationButtons
+                    || NavigationBarPatch.loadConfig().visible().contains(NavigationBarPatch.Tab.HOME);
+        } catch (Throwable e) {
+            try {
+                Logger.printException(() -> "Failed to read navigation tabs: ", e);
+            } catch (Throwable ignored) {
+            }
+            // Keep the profile button when the layout cannot be read.
+            return false;
+        }
+    }
+
     public static void addButtons(ViewGroup viewGroup, Object object) {
         try {
             ProfileInfo profileInfo = new ProfileInfo(object);
             Boolean isSelfProfile = profileInfo.isSelfProfile();
 
-            boolean showSettings = !isSettingsInActionBar && isSelfProfile;
+            boolean showSettings = !isSettingsInActionBar && isSelfProfile
+                    && !(SettingsStatus.homeLongPressSettings && isHomeTabVisible());
             boolean showProfileOptions = !userProfileABPref.contains(Constants.AB_PROFILE_INFO_ICON)
                     && Pref.isMoreOptionsOnProfilePatched();
 

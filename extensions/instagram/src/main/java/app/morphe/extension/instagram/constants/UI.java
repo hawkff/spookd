@@ -238,6 +238,7 @@ public class UI {
     }
 
     public static void welcomeDialogBox(Context context) {
+        boolean homeLongPress = app.morphe.extension.instagram.settings.SettingsStatus.homeLongPressSettings;
         InstagramDialogBox dialog = new InstagramDialogBox(context);
 
         ArrayList<String> options = new ArrayList<>();
@@ -252,7 +253,12 @@ public class UI {
                     String selectedOption = options.get(which);
 
                     if (selectedOption.equals(str("piko_goto_piko_settings"))) {
-                        PikoUtils.openUrl("instagram://profile",true);
+                        if (homeLongPress) {
+                            Pref.setFirstTimePiko(false);
+                            FragmentHook.startSettings();
+                        } else {
+                            PikoUtils.openUrl("instagram://profile",true);
+                        }
                     }
 
                 } catch (Exception e) {
@@ -263,7 +269,7 @@ public class UI {
         });
 
         dialog.setTitle(str("piko_welcome_title"));
-        dialog.setMessage(str("piko_welcome_message"));
+        dialog.setMessage(str(homeLongPress ? "piko_welcome_message_home_long_press" : "piko_welcome_message"));
         dialog.setCancelable(false);
         dialog.setCanceledOnTouchOutside(false);
 

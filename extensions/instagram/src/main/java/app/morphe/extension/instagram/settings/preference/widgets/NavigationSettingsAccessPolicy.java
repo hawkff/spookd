@@ -8,6 +8,7 @@ package app.morphe.extension.instagram.settings.preference.widgets;
 
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.patches.navigation.NavigationBarPatch.Tab;
+import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.utils.Pref;
 
 import java.util.Collections;
@@ -26,25 +27,30 @@ final class NavigationSettingsAccessPolicy {
     }
 
     static boolean hasDirectAccess(Set<Tab> requestedVisible) {
-        return hasDirectAccess(requestedVisible, actionBarsWithSettings());
+        return hasDirectAccess(requestedVisible, actionBarsWithSettings(),
+                SettingsStatus.homeLongPressSettings);
     }
 
-    private static boolean hasDirectAccess(
+    static boolean hasDirectAccess(
             Set<Tab> requestedVisible,
-            Set<ActionBar> actionBarsWithSettings
+            Set<ActionBar> actionBarsWithSettings,
+            boolean homeLongPressSettings
     ) {
         if (requestedVisible == null || actionBarsWithSettings == null) return false;
 
         Set<Tab> visible = requestedVisible.isEmpty()
                 ? Collections.singleton(Tab.HOME)
                 : requestedVisible;
-        boolean anyActionBarHasSettings = !actionBarsWithSettings.isEmpty();
+        // The profile button is shown only while no action bar has the gear, and with Home long-press only while Home is hidden.
+        boolean profileButton = actionBarsWithSettings.isEmpty()
+                && (!homeLongPressSettings || !visible.contains(Tab.HOME));
 
         return (visible.contains(Tab.HOME)
-                && actionBarsWithSettings.contains(ActionBar.MAIN_FEED))
+                && (homeLongPressSettings
+                || actionBarsWithSettings.contains(ActionBar.MAIN_FEED)))
                 || (visible.contains(Tab.PROFILE)
                 && (actionBarsWithSettings.contains(ActionBar.PROFILE)
-                || !anyActionBarHasSettings))
+                || profileButton))
                 || (visible.contains(Tab.MESSAGES)
                 && (actionBarsWithSettings.contains(ActionBar.INBOX)
                 || actionBarsWithSettings.contains(ActionBar.CHAT)));
@@ -61,7 +67,8 @@ final class NavigationSettingsAccessPolicy {
         if (proposedHasSettings) actionBarsWithSettings.add(changed);
         else actionBarsWithSettings.remove(changed);
 
-        return hasDirectAccess(requestedVisible, actionBarsWithSettings);
+        return hasDirectAccess(requestedVisible, actionBarsWithSettings,
+                SettingsStatus.homeLongPressSettings);
     }
 
     private static EnumSet<ActionBar> actionBarsWithSettings() {

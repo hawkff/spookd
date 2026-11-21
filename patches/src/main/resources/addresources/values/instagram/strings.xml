@@ -9,9 +9,9 @@
     <!-- Developer Options Section -->
     <string name="piko_category_dev_options">Developer options</string>
     <string name="piko_enable_dev_options">Enable developer options</string>
-    <string name="piko_enable_dev_options_desc">Unlocks developer option by long pressing home icon</string>
+    <string name="piko_enable_dev_options_desc">Long-press the Home tab to open developer options. If a menu appears, choose Developer options.</string>
     <string name="piko_directly_open_metaconfig">Directly opens MetaConfig overrides</string>
-    <string name="piko_directly_open_metaconfig_desc">Directly opens MetaConfig overrides on long pressing home icon</string>
+    <string name="piko_directly_open_metaconfig_desc">Long-press the Home tab to open MetaConfig overrides directly. If a menu appears, choose Developer options.</string>
     <string name="piko_export_dev_overrides">Export overrides</string>
     <string name="piko_import_dev_overrides">Import overrides</string>
     <string name="piko_import_id_mapping">Import mapping files</string>
@@ -358,6 +358,7 @@
     <string name="piko_welcome_title">Welcome to Piko</string>
     <string name="piko_welcome_message">To improve your experience with Piko, please vist Piko settings and adjust your preference</string>
     <string name="piko_goto_piko_settings">Goto Piko settings</string>
+    <string name="piko_welcome_message_home_long_press">To open Piko settings at any time, long-press the Home tab</string>
     <string name="piko_no_internet">Please connect to internet</string>
     <string name="piko_tap_here">Tap here !!</string>
 
@@ -536,6 +537,7 @@
     <string name="piko_vault_needs_screen_lock">Saved media opens only after you confirm your screen lock. This needs Android 11 or newer with a screen lock set.</string>
     <string name="piko_patch_theme">Theme</string>
     <string name="piko_patch_settings">Add settings</string>
+    <string name="piko_patch_home_long_press_settings">Open settings from Home</string>
 
     <!-- Recommended flags -->
     <string name="piko_rec_flag_73245_name" formatted="false">"Button with a black layout that appears when clicking on something in Stories"</string>

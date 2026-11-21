@@ -16,6 +16,8 @@ public class SettingsStatus {
     public static void theme() { theme = true; }
     public static boolean addSettings = false;
     public static void addSettings() { addSettings = true; }
+    public static boolean homeLongPressSettings = false;
+    public static void homeLongPressSettings() { homeLongPressSettings = true; }
 
     //Ads section.
     public static boolean disableAds = false;
@@ -293,6 +295,7 @@ public class SettingsStatus {
         public static void loadStatusMap(){
         FLAGS.put(str("piko_patch_theme"), SettingsStatus.theme);
         FLAGS.put(str("piko_patch_settings"), SettingsStatus.addSettings);
+        FLAGS.put(str("piko_patch_home_long_press_settings"), SettingsStatus.homeLongPressSettings);
         FLAGS.put(str("piko_disable_reels_scrolling"), SettingsStatus.disableReelsScrolling);
         FLAGS.put(str("piko_disable_ads"),SettingsStatus.disableAds);
         FLAGS.put(str("piko_hide_suggested_content"),SettingsStatus.hideSuggestedContent);
