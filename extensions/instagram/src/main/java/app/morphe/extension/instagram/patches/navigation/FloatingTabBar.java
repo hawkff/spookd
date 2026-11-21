@@ -286,7 +286,12 @@ public final class FloatingTabBar {
         ViewGroup group = (ViewGroup) view;
         for (int i = 0; i < group.getChildCount(); i++) {
             View child = group.getChildAt(i);
-            if (visible(child) && notEmpty(child, depth + 1)) return true;
+            if (!visible(child)) {
+                // Skipped children count too, so a container full of hidden views cannot run long.
+                if (++coverVisits > MAX_COVER_VISITS) return true;
+                continue;
+            }
+            if (notEmpty(child, depth + 1)) return true;
         }
         return false;
     }
