@@ -15,6 +15,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewStub;
 import android.view.ViewTreeObserver;
 import java.lang.ref.WeakReference;
 
@@ -50,6 +51,9 @@ public final class FloatingTabBar {
     private static WeakReference<View> feed = new WeakReference<>(null);
     private static final Rect feedRect = new Rect();
     private static final Rect coverRect = new Rect();
+    private static final int MAX_COVER_DEPTH = 6;
+    private static final int MAX_COVER_VISITS = 24;
+    private static int coverVisits;
 
     private static final ViewTreeObserver.OnGlobalLayoutListener layoutListener = FloatingTabBar::onLayout;
     private static final ViewTreeObserver.OnScrollChangedListener treeScrollListener = FloatingTabBar::onTreeScrolled;
@@ -162,6 +166,10 @@ public final class FloatingTabBar {
                 // The old views get their own offset cleared, and the new bar starts in place.
                 showNow();
                 findBar(activity);
+            } else if (shadow == null && tabBarShadowId != 0) {
+                // The shadow can appear after the bar; one found while the bar is away puts it back through the distance check.
+                View found = activity.findViewById(tabBarShadowId);
+                if (found != null) tabBarShadow = new WeakReference<>(found);
             }
             if (offset != 0f && (distance(tabBar.get()) != barDistance || distance(tabBarShadow.get()) != shadowDistance)) {
                 showNow();
@@ -239,7 +247,9 @@ public final class FloatingTabBar {
     // Tab pages stay shown while swiped away, and a screen drawn over the pager changes neither visibility nor clipping,
     // so the feed must be mostly on screen and not covered by any view drawn after it up to the content root.
     private static boolean feedInFront(View list) {
-        if (!list.isShown() || !list.getGlobalVisibleRect(feedRect) || feedRect.width() * 2 <= list.getWidth()) {
+        // A dialog or sheet in its own window can't be seen in this tree, but it takes the focus.
+        if (!list.hasWindowFocus() || !list.isShown()
+                || !list.getGlobalVisibleRect(feedRect) || feedRect.width() * 2 <= list.getWidth()) {
             return false;
         }
         long half = (long) feedRect.width() * feedRect.height() / 2;
@@ -255,23 +265,34 @@ public final class FloatingTabBar {
         return true;
     }
 
-    // Only views that paint a background count, so the empty full-screen containers above the pager never do.
+    // Siblings are compared by child index only; elevation and custom drawing order are not modeled.
     private static boolean covers(View view, long half) {
-        if (view.getVisibility() != View.VISIBLE || view.getAlpha() == 0f
-                || !view.getGlobalVisibleRect(coverRect) || !coverRect.intersect(feedRect)
+        if (!visible(view) || !view.getGlobalVisibleRect(coverRect) || !coverRect.intersect(feedRect)
                 || (long) coverRect.width() * coverRect.height() <= half) {
             return false;
         }
+        coverVisits = 0;
+        return notEmpty(view, 0);
+    }
+
+    // Errs toward true, which only keeps the bar visible; empty containers and ones holding only stubs are false.
+    private static boolean notEmpty(View view, int depth) {
+        if (++coverVisits > MAX_COVER_VISITS || depth > MAX_COVER_DEPTH) return true;
+        if (!(view instanceof ViewGroup)) return true;
         Drawable background = view.getBackground();
         if (background != null && !(background instanceof ColorDrawable && ((ColorDrawable) background).getAlpha() == 0)) {
             return true;
         }
-        if (!(view instanceof ViewGroup)) return false;
         ViewGroup group = (ViewGroup) view;
         for (int i = 0; i < group.getChildCount(); i++) {
-            if (covers(group.getChildAt(i), half)) return true;
+            View child = group.getChildAt(i);
+            if (visible(child) && notEmpty(child, depth + 1)) return true;
         }
         return false;
+    }
+
+    private static boolean visible(View view) {
+        return view.getVisibility() == View.VISIBLE && view.getAlpha() != 0f && !(view instanceof ViewStub);
     }
 
     private static void setHidden(boolean hide) {
