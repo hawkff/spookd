@@ -93,6 +93,110 @@ public class HookFlags {
         }
     }
 
+    private static void hideMetaAiFlags() {
+        if (Pref.hideMetaAi()) {
+            BOOL_FLAGS.put("59918::2", false); //Show Meta AI entry points and prompts
+            BOOL_FLAGS.put("59918::39", false);
+            BOOL_FLAGS.put("59918::46", false);
+            BOOL_FLAGS.put("59918::59", false);
+            BOOL_FLAGS.put("59918::61", false);
+            BOOL_FLAGS.put("62449::45", false);
+            BOOL_FLAGS.put("62485::0", false);
+            BOOL_FLAGS.put("62485::4", false);
+            BOOL_FLAGS.put("62485::5", false);
+            BOOL_FLAGS.put("62485::11", false);
+            BOOL_FLAGS.put("70108::0", false);
+            BOOL_FLAGS.put("71155::6", false);
+            BOOL_FLAGS.put("71628::0", false);
+            BOOL_FLAGS.put("72519::10", false);
+            BOOL_FLAGS.put("72519::11", false);
+            BOOL_FLAGS.put("72519::18", false);
+            BOOL_FLAGS.put("73643::0", false);
+            BOOL_FLAGS.put("73643::1", false);
+            BOOL_FLAGS.put("74933::17", false);
+            BOOL_FLAGS.put("74933::36", false);
+            BOOL_FLAGS.put("75278::0", false);
+            BOOL_FLAGS.put("75278::9", false);
+            BOOL_FLAGS.put("76479::0", false);
+            BOOL_FLAGS.put("77059::11", false);
+            BOOL_FLAGS.put("77059::14", false);
+            BOOL_FLAGS.put("78149::0", false);
+            BOOL_FLAGS.put("78149::1", false);
+            BOOL_FLAGS.put("78149::2", false);
+            BOOL_FLAGS.put("78970::1", false);
+            BOOL_FLAGS.put("78970::37", false);
+            BOOL_FLAGS.put("78970::38", false);
+            BOOL_FLAGS.put("80654::1", false);
+            BOOL_FLAGS.put("80654::37", false);
+            BOOL_FLAGS.put("91489::6", false);
+            BOOL_FLAGS.put("93548::1", false);
+            BOOL_FLAGS.put("93786::0", false);
+            BOOL_FLAGS.put("94598::84", false);
+            BOOL_FLAGS.put("96235::1", false);
+            BOOL_FLAGS.put("96543::0", false);
+            BOOL_FLAGS.put("105426::21", false);
+            BOOL_FLAGS.put("105426::27", false);
+            BOOL_FLAGS.put("105426::41", false);
+            BOOL_FLAGS.put("108911::19", false);
+            BOOL_FLAGS.put("109730::0", false);
+            BOOL_FLAGS.put("110316::0", false);
+            BOOL_FLAGS.put("110316::1", false);
+            BOOL_FLAGS.put("110316::11", false);
+            BOOL_FLAGS.put("119736::6", false);
+            BOOL_FLAGS.put("121836::0", false);
+            BOOL_FLAGS.put("122162::2", false);
+            BOOL_FLAGS.put("122162::3", false);
+            BOOL_FLAGS.put("128853::13", false);
+            BOOL_FLAGS.put("145349::1", false);
+            BOOL_FLAGS.put("145349::3", false);
+            BOOL_FLAGS.put("75278::4", true); //Hide additional Meta AI prompts and entry points
+            BOOL_FLAGS.put("75278::5", true);
+            BOOL_FLAGS.put("92518::1", true);
+            BOOL_FLAGS.put("92518::2", true);
+            BOOL_FLAGS.put("92518::6", true);
+            BOOL_FLAGS.put("94598::56", true);
+            BOOL_FLAGS.put("94598::117", true);
+            BOOL_FLAGS.put("122162::1", true);
+            BOOL_FLAGS.put("109730::0", false); //Add Meta AI in reels overflow menu
+            BOOL_FLAGS.put("109730::5", false);
+            BOOL_FLAGS.put("109730::6", false);
+            BOOL_FLAGS.put("109730::7", false);
+            BOOL_FLAGS.put("109730::9", false);
+            BOOL_FLAGS.put("109730::14", false);
+            BOOL_FLAGS.put("109730::15", false);
+            BOOL_FLAGS.put("109730::17", false);
+            BOOL_FLAGS.put("109730::20", false);
+            BOOL_FLAGS.put("109730::21", false);
+            BOOL_FLAGS.put("109730::22", false);
+            BOOL_FLAGS.put("109730::23", false);
+            BOOL_FLAGS.put("109730::25", false);
+            BOOL_FLAGS.put("109730::26", false);
+            BOOL_FLAGS.put("109730::27", false);
+            BOOL_FLAGS.put("109730::29", false);
+            BOOL_FLAGS.put("109730::30", false);
+            BOOL_FLAGS.put("109730::31", false);
+            BOOL_FLAGS.put("109730::32", false);
+            BOOL_FLAGS.put("109730::34", false);
+            BOOL_FLAGS.put("109730::35", false);
+            BOOL_FLAGS.put("80654::0", false); //Add Meta AI reels description pills
+            BOOL_FLAGS.put("80654::1", false);
+            BOOL_FLAGS.put("80654::22", false);
+            BOOL_FLAGS.put("80654::23", false);
+            BOOL_FLAGS.put("80654::24", false);
+            BOOL_FLAGS.put("80654::25", false);
+            BOOL_FLAGS.put("80654::26", false);
+            BOOL_FLAGS.put("80654::30", false);
+            BOOL_FLAGS.put("80654::31", false);
+            BOOL_FLAGS.put("80654::32", false);
+            BOOL_FLAGS.put("80654::33", false);
+            BOOL_FLAGS.put("80654::34", false);
+            BOOL_FLAGS.put("80654::36", false);
+            BOOL_FLAGS.put("80654::37", false);
+            BOOL_FLAGS.put("80654::39", false);
+            BOOL_FLAGS.put("111509::3", false); //Meta AI suggestions in search
+        }
+    }
+
     private static void addRecommendedFlags(){
         if(SettingsStatus.recommendedFlags) {
             Map<String, Boolean> recFlags = FlagsSharedPref.getAll();

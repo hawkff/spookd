@@ -67,6 +67,10 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.HIDE_SUGGESTED_CONTENT);
     }
 
+    public static boolean hideMetaAi() {
+        return SharedPref.getBooleanPref(Settings.HIDE_META_AI);
+    }
+
     public static boolean saveDeletedMessages() {
         return SharedPref.getBooleanPref(Settings.SAVE_DELETED_MESSAGES);
     }
