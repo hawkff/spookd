@@ -15,6 +15,7 @@ import app.morphe.extension.instagram.entity.ProfileInfo;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.constants.Constants;
+import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.patches.userprofile.ProfileMoreOption;
 
 public class UserProfileButton {
@@ -41,7 +42,8 @@ public class UserProfileButton {
             ProfileInfo profileInfo = new ProfileInfo(object);
             Boolean isSelfProfile = profileInfo.isSelfProfile();
 
-            boolean showSettings = !isSettingsInActionBar && isSelfProfile;
+            boolean showSettings = !isSettingsInActionBar && isSelfProfile
+                    && !SettingsStatus.homeLongPressSettings;
             boolean showProfileOptions = !userProfileABPref.contains(Constants.AB_PROFILE_INFO_ICON)
                     && Pref.isMoreOptionsOnProfilePatched();
 
