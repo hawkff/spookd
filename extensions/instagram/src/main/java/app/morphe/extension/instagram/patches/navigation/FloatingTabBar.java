@@ -10,6 +10,8 @@ import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.Application;
 import android.graphics.Rect;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -38,16 +40,20 @@ public final class FloatingTabBar {
     private static boolean watchingTreeScroll;
     // 0 is in place, 1 is fully below the screen.
     private static float offset;
+    // Distances to the parent's bottom edge that the current offset was applied with.
+    private static int barDistance, shadowDistance;
     private static ValueAnimator slide;
     private static TabBarScrollDecision decision;
     private static WeakReference<Activity> watched = new WeakReference<>(null);
     private static WeakReference<View> tabBar = new WeakReference<>(null);
     private static WeakReference<View> tabBarShadow = new WeakReference<>(null);
     private static WeakReference<View> feed = new WeakReference<>(null);
-    private static final Rect visibleRect = new Rect();
+    private static final Rect feedRect = new Rect();
+    private static final Rect coverRect = new Rect();
 
     private static final ViewTreeObserver.OnGlobalLayoutListener layoutListener = FloatingTabBar::onLayout;
     private static final ViewTreeObserver.OnScrollChangedListener treeScrollListener = FloatingTabBar::onTreeScrolled;
+    private static final ViewTreeObserver.OnWindowFocusChangeListener focusListener = FloatingTabBar::onWindowFocus;
     private static final View.OnScrollChangeListener feedScrollListener =
             (view, scrollX, scrollY, oldScrollX, oldScrollY) -> onFeedScrolled(view, scrollY - oldScrollY);
     private static final View.OnAttachStateChangeListener feedAttachListener = new View.OnAttachStateChangeListener() {
@@ -57,7 +63,7 @@ public final class FloatingTabBar {
             try {
                 if (view == feed.get()) showNow();
             } catch (Throwable t) {
-                Logger.printException(() -> "FloatingTabBar detach failed", t);
+                log("FloatingTabBar detach failed", t);
             }
         }
     };
@@ -77,7 +83,7 @@ public final class FloatingTabBar {
                     try {
                         if (MAIN_ACTIVITY.equals(activity.getClass().getName())) watch(activity);
                     } catch (Throwable t) {
-                        Logger.printException(() -> "FloatingTabBar resume failed", t);
+                        log("FloatingTabBar resume failed", t);
                     }
                 }
 
@@ -85,7 +91,7 @@ public final class FloatingTabBar {
                     try {
                         if (activity == watched.get()) unwatch();
                     } catch (Throwable t) {
-                        Logger.printException(() -> "FloatingTabBar destroy failed", t);
+                        log("FloatingTabBar destroy failed", t);
                     }
                 }
 
@@ -96,7 +102,7 @@ public final class FloatingTabBar {
                 @Override public void onActivitySaveInstanceState(Activity a, Bundle b) { }
             });
         } catch (Throwable t) {
-            Logger.printException(() -> "FloatingTabBar init failed", t);
+            log("FloatingTabBar init failed", t);
         }
     }
 
@@ -111,15 +117,14 @@ public final class FloatingTabBar {
         if (activity != watched.get()) {
             unwatch();
             watched = new WeakReference<>(activity);
-            activity.getWindow().getDecorView().getViewTreeObserver().addOnGlobalLayoutListener(layoutListener);
+            ViewTreeObserver observer = activity.getWindow().getDecorView().getViewTreeObserver();
+            observer.addOnGlobalLayoutListener(layoutListener);
+            observer.addOnWindowFocusChangeListener(focusListener);
         }
         // Settings open in another activity, so a change there is picked up here.
         hideOnScroll = Pref.floatingTabBarHideOnScroll();
-        View bar = activity.findViewById(tabBarId);
-        View shadow = tabBarShadowId == 0 ? null : activity.findViewById(tabBarShadowId);
-        tabBar = new WeakReference<>(bar);
-        tabBarShadow = new WeakReference<>(shadow);
         showNow();
+        findBar(activity);
         onLayout();
     }
 
@@ -129,6 +134,7 @@ public final class FloatingTabBar {
         if (activity != null) {
             ViewTreeObserver observer = activity.getWindow().getDecorView().getViewTreeObserver();
             observer.removeOnGlobalLayoutListener(layoutListener);
+            observer.removeOnWindowFocusChangeListener(focusListener);
             observer.removeOnScrollChangedListener(treeScrollListener);
         }
         watchingTreeScroll = false;
@@ -138,20 +144,38 @@ public final class FloatingTabBar {
         tabBarShadow = new WeakReference<>(null);
     }
 
-    // Layout passes catch the feed being created, replaced, or hidden behind another screen of this activity.
+    private static void findBar(Activity activity) {
+        View bar = activity.findViewById(tabBarId);
+        tabBar = new WeakReference<>(bar);
+        View shadow = tabBarShadowId == 0 ? null : activity.findViewById(tabBarShadowId);
+        tabBarShadow = new WeakReference<>(shadow);
+    }
+
+    // Layout passes catch the feed or the bar being created, replaced, resized, or covered by another screen of this activity.
     private static void onLayout() {
         try {
             Activity activity = watched.get();
             if (activity == null) return;
+            View bar = tabBar.get();
+            View shadow = tabBarShadow.get();
+            if (bar == null || !bar.isAttachedToWindow() || (shadow != null && !shadow.isAttachedToWindow())) {
+                // The old views get their own offset cleared, and the new bar starts in place.
+                showNow();
+                findBar(activity);
+            }
+            if (offset != 0f && (distance(tabBar.get()) != barDistance || distance(tabBarShadow.get()) != shadowDistance)) {
+                showNow();
+            }
+
             View list = feed.get();
             if (list == null || !list.isAttachedToWindow()) {
                 View pager = activity.findViewById(pagerId);
                 list = pager != null && pager.isShown() ? findFeed(pager) : null;
                 if (list != null) track(list);
             }
-            if (hidden && (list == null || !onScreen(list))) showNow();
+            if (hidden && (list == null || !feedInFront(list))) showNow();
         } catch (Throwable t) {
-            Logger.printException(() -> "FloatingTabBar layout check failed", t);
+            log("FloatingTabBar layout check failed", t);
         }
     }
 
@@ -159,18 +183,31 @@ public final class FloatingTabBar {
     private static void onTreeScrolled() {
         try {
             View list = feed.get();
-            if (list == null || !onScreen(list)) showNow();
+            if (list == null || !feedInFront(list)) showNow();
         } catch (Throwable t) {
-            Logger.printException(() -> "FloatingTabBar scroll check failed", t);
+            log("FloatingTabBar scroll check failed", t);
+        }
+    }
+
+    // A dialog or sheet in its own window takes the focus from the activity.
+    private static void onWindowFocus(boolean hasFocus) {
+        try {
+            if (!hasFocus) showNow();
+        } catch (Throwable t) {
+            log("FloatingTabBar focus check failed", t);
         }
     }
 
     private static void onFeedScrolled(View view, int dy) {
         try {
             if (view != feed.get() || !hideOnScroll) return;
+            if (!feedInFront(view)) {
+                showNow();
+                return;
+            }
             setHidden(decision.onScrolled(dy, !view.canScrollVertically(-1)));
         } catch (Throwable t) {
-            Logger.printException(() -> "FloatingTabBar feed scroll failed", t);
+            log("FloatingTabBar feed scroll failed", t);
         }
     }
 
@@ -199,9 +236,42 @@ public final class FloatingTabBar {
         }
     }
 
-    // Pages of the tab pager stay attached and shown while swiped away, so isShown() alone can't tell.
-    private static boolean onScreen(View view) {
-        return view.isShown() && view.getGlobalVisibleRect(visibleRect) && visibleRect.width() * 2 > view.getWidth();
+    // Tab pages stay shown while swiped away, and a screen drawn over the pager changes neither visibility nor clipping,
+    // so the feed must be mostly on screen and not covered by any view drawn after it up to the content root.
+    private static boolean feedInFront(View list) {
+        if (!list.isShown() || !list.getGlobalVisibleRect(feedRect) || feedRect.width() * 2 <= list.getWidth()) {
+            return false;
+        }
+        long half = (long) feedRect.width() * feedRect.height() / 2;
+        View child = list;
+        while (child.getParent() instanceof ViewGroup) {
+            ViewGroup parent = (ViewGroup) child.getParent();
+            for (int i = parent.indexOfChild(child) + 1; i < parent.getChildCount(); i++) {
+                if (covers(parent.getChildAt(i), half)) return false;
+            }
+            if (parent.getId() == android.R.id.content) break;
+            child = parent;
+        }
+        return true;
+    }
+
+    // Only views that paint a background count, so the empty full-screen containers above the pager never do.
+    private static boolean covers(View view, long half) {
+        if (view.getVisibility() != View.VISIBLE || view.getAlpha() == 0f
+                || !view.getGlobalVisibleRect(coverRect) || !coverRect.intersect(feedRect)
+                || (long) coverRect.width() * coverRect.height() <= half) {
+            return false;
+        }
+        Drawable background = view.getBackground();
+        if (background != null && !(background instanceof ColorDrawable && ((ColorDrawable) background).getAlpha() == 0)) {
+            return true;
+        }
+        if (!(view instanceof ViewGroup)) return false;
+        ViewGroup group = (ViewGroup) view;
+        for (int i = 0; i < group.getChildCount(); i++) {
+            if (covers(group.getChildAt(i), half)) return true;
+        }
+        return false;
     }
 
     private static void setHidden(boolean hide) {
@@ -241,16 +311,30 @@ public final class FloatingTabBar {
     private static void moveTo(float value) {
         try {
             offset = value;
-            translate(tabBar.get(), value);
-            translate(tabBarShadow.get(), value);
+            barDistance = translate(tabBar.get(), value);
+            shadowDistance = translate(tabBarShadow.get(), value);
         } catch (Throwable t) {
-            Logger.printException(() -> "FloatingTabBar move failed", t);
+            log("FloatingTabBar move failed", t);
         }
     }
 
-    // Moves the view by the given share of its distance to the bottom edge of its parent.
-    private static void translate(View view, float value) {
-        if (view == null || !(view.getParent() instanceof View)) return;
-        view.setTranslationY(value * (((View) view.getParent()).getHeight() - view.getTop()));
+    /** Moves the view by the given share of its distance to the bottom edge of its parent, and returns that distance. */
+    private static int translate(View view, float value) {
+        int distance = distance(view);
+        if (view != null) view.setTranslationY(value * distance);
+        return distance;
+    }
+
+    private static int distance(View view) {
+        if (view == null || !(view.getParent() instanceof View)) return 0;
+        return ((View) view.getParent()).getHeight() - view.getTop();
+    }
+
+    private static void log(String message, Throwable t) {
+        try {
+            Logger.printException(() -> message, t);
+        } catch (Throwable ignored) {
+            // Logging must never throw into Instagram.
+        }
     }
 }
