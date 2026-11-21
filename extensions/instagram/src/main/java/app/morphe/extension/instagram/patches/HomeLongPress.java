@@ -41,8 +41,8 @@ public class HomeLongPress {
                 FragmentHook.startSettings();
             }
             return true;
-        } catch (Exception e) {
-            Logger.printException(() -> "Home long-press failed", e);
+        } catch (Throwable t) {
+            logFailure("Home long-press failed", t);
             return false;
         }
     }
@@ -65,13 +65,21 @@ public class HomeLongPress {
                             replayingLongPress = false;
                         }
                     }
-                } catch (Exception e) {
-                    Logger.printException(() -> "Home long-press choice failed", e);
+                } catch (Throwable t) {
+                    logFailure("Home long-press choice failed", t);
                 }
             }
         });
 
         dialog.getDialog().show();
+    }
+
+    private static void logFailure(String message, Throwable t) {
+        try {
+            Logger.printException(() -> message, t);
+        } catch (Throwable ignored) {
+            // Logging must never throw into Instagram's long-click handling.
+        }
     }
 
     private static Activity activityOf(Context context) {
