@@ -157,8 +157,42 @@ public class HookFlags {
             BOOL_FLAGS.put("94598::56", true);
             BOOL_FLAGS.put("94598::117", true);
             BOOL_FLAGS.put("122162::1", true);
-            BOOL_FLAGS.put("109730", false); //Add Meta AI in reels overflow menu
-            BOOL_FLAGS.put("80654", false); //Add Meta AI reels description pills
+            BOOL_FLAGS.put("109730::0", false); //Add Meta AI in reels overflow menu
+            BOOL_FLAGS.put("109730::5", false);
+            BOOL_FLAGS.put("109730::6", false);
+            BOOL_FLAGS.put("109730::7", false);
+            BOOL_FLAGS.put("109730::9", false);
+            BOOL_FLAGS.put("109730::14", false);
+            BOOL_FLAGS.put("109730::15", false);
+            BOOL_FLAGS.put("109730::17", false);
+            BOOL_FLAGS.put("109730::20", false);
+            BOOL_FLAGS.put("109730::21", false);
+            BOOL_FLAGS.put("109730::22", false);
+            BOOL_FLAGS.put("109730::23", false);
+            BOOL_FLAGS.put("109730::25", false);
+            BOOL_FLAGS.put("109730::26", false);
+            BOOL_FLAGS.put("109730::27", false);
+            BOOL_FLAGS.put("109730::29", false);
+            BOOL_FLAGS.put("109730::30", false);
+            BOOL_FLAGS.put("109730::31", false);
+            BOOL_FLAGS.put("109730::32", false);
+            BOOL_FLAGS.put("109730::34", false);
+            BOOL_FLAGS.put("109730::35", false);
+            BOOL_FLAGS.put("80654::0", false); //Add Meta AI reels description pills
+            BOOL_FLAGS.put("80654::1", false);
+            BOOL_FLAGS.put("80654::22", false);
+            BOOL_FLAGS.put("80654::23", false);
+            BOOL_FLAGS.put("80654::24", false);
+            BOOL_FLAGS.put("80654::25", false);
+            BOOL_FLAGS.put("80654::26", false);
+            BOOL_FLAGS.put("80654::30", false);
+            BOOL_FLAGS.put("80654::31", false);
+            BOOL_FLAGS.put("80654::32", false);
+            BOOL_FLAGS.put("80654::33", false);
+            BOOL_FLAGS.put("80654::34", false);
+            BOOL_FLAGS.put("80654::36", false);
+            BOOL_FLAGS.put("80654::37", false);
+            BOOL_FLAGS.put("80654::39", false);
             BOOL_FLAGS.put("111509::3", false); //Meta AI suggestions in search
         }
     }
