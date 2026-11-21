@@ -49,10 +49,19 @@ public class NavigationSettingsAccessPolicyTest {
     }
 
     @Test
-    public void withHomeLongPressProfileNeedsTheProfileGear() {
-        assertFalse(access(EnumSet.of(Tab.PROFILE), NO_GEAR, true));
+    public void withHomeLongPressAndHomeHiddenTheProfileButtonCountsWithoutAnyGear() {
+        assertTrue(access(EnumSet.of(Tab.PROFILE), NO_GEAR, true));
+        assertTrue(access(EnumSet.of(Tab.PROFILE, Tab.REELS), NO_GEAR, true));
         assertFalse(access(EnumSet.of(Tab.PROFILE), EnumSet.of(ActionBar.MAIN_FEED), true));
+        assertFalse(access(EnumSet.of(Tab.PROFILE), EnumSet.of(ActionBar.INBOX), true));
         assertTrue(access(EnumSet.of(Tab.PROFILE), EnumSet.of(ActionBar.PROFILE), true));
+        assertFalse(access(EnumSet.of(Tab.REELS, Tab.SEARCH), NO_GEAR, true));
+    }
+
+    @Test
+    public void withHomeLongPressAndHomeVisibleHomeCountsWhateverTheGears() {
+        assertTrue(access(EnumSet.of(Tab.HOME, Tab.PROFILE), NO_GEAR, true));
+        assertTrue(access(EnumSet.of(Tab.HOME), EnumSet.of(ActionBar.INBOX), true));
     }
 
     @Test

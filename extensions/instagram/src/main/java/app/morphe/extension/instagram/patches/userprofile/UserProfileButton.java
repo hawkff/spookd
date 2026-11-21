@@ -16,13 +16,23 @@ import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.settings.SettingsStatus;
+import app.morphe.extension.instagram.patches.navigation.NavigationBarPatch;
 import app.morphe.extension.instagram.patches.userprofile.ProfileMoreOption;
 
 public class UserProfileButton {
     private static boolean isSettingsInActionBar;
     private static Set userProfileABPref;
+    private static boolean isHomeTabVisible;
 
     static {
+        try {
+            isHomeTabVisible = !SettingsStatus.hideNavigationButtons
+                    || NavigationBarPatch.loadConfig().visible().contains(NavigationBarPatch.Tab.HOME);
+        } catch (Throwable e) {
+            // Keep the profile button when the layout cannot be read.
+            isHomeTabVisible = false;
+            Logger.printException(() -> "Failed to read navigation tabs: ", e);
+        }
         userProfileABPref = Pref.userProfileActionBarButtons();
         if(userProfileABPref.contains(Constants.AB_SETTINGS_ICON)){
             isSettingsInActionBar = true;
@@ -43,7 +53,7 @@ public class UserProfileButton {
             Boolean isSelfProfile = profileInfo.isSelfProfile();
 
             boolean showSettings = !isSettingsInActionBar && isSelfProfile
-                    && !SettingsStatus.homeLongPressSettings;
+                    && !(SettingsStatus.homeLongPressSettings && isHomeTabVisible);
             boolean showProfileOptions = !userProfileABPref.contains(Constants.AB_PROFILE_INFO_ICON)
                     && Pref.isMoreOptionsOnProfilePatched();
 

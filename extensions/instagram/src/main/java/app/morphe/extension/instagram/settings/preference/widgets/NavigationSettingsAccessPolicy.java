@@ -41,8 +41,9 @@ final class NavigationSettingsAccessPolicy {
         Set<Tab> visible = requestedVisible.isEmpty()
                 ? Collections.singleton(Tab.HOME)
                 : requestedVisible;
-        // The profile button is shown only while no action bar has the gear and Home long-press is not patched.
-        boolean profileButton = !homeLongPressSettings && actionBarsWithSettings.isEmpty();
+        // The profile button is shown only while no action bar has the gear, and with Home long-press only while Home is hidden.
+        boolean profileButton = actionBarsWithSettings.isEmpty()
+                && (!homeLongPressSettings || !visible.contains(Tab.HOME));
 
         return (visible.contains(Tab.HOME)
                 && (homeLongPressSettings
