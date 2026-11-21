@@ -9,9 +9,9 @@
     <!-- Developer Options Section -->
     <string name="piko_category_dev_options">Developer options</string>
     <string name="piko_enable_dev_options">Enable developer options</string>
-    <string name="piko_enable_dev_options_desc">Long-press the Home tab, then choose Developer options to open them</string>
+    <string name="piko_enable_dev_options_desc">Long-press the Home tab to open developer options. If a menu appears, choose Developer options.</string>
     <string name="piko_directly_open_metaconfig">Directly opens MetaConfig overrides</string>
-    <string name="piko_directly_open_metaconfig_desc">Choosing Developer options after you long-press the Home tab opens MetaConfig overrides directly</string>
+    <string name="piko_directly_open_metaconfig_desc">Long-press the Home tab to open MetaConfig overrides directly. If a menu appears, choose Developer options.</string>
     <string name="piko_export_dev_overrides">Export overrides</string>
     <string name="piko_import_dev_overrides">Import overrides</string>
     <string name="piko_import_id_mapping">Import mapping files</string>
