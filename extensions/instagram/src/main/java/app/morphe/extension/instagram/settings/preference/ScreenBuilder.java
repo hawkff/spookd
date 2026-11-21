@@ -1078,6 +1078,23 @@ public class ScreenBuilder {
     }
 
     public void buildNavigationSection() {
+        if (SettingsStatus.floatingTabBar) {
+            addPreference(helper.switchPreference(
+                    str("piko_floating_tab_bar"),
+                    str("piko_floating_tab_bar_desc"),
+                    Settings.FLOATING_TAB_BAR
+            ));
+            addPreference(
+                    helper.availableWhen(
+                            helper.switchPreference(
+                                    str("piko_floating_tab_bar_hide_on_scroll"),
+                                    str("piko_floating_tab_bar_hide_on_scroll_desc"),
+                                    Settings.FLOATING_TAB_BAR_HIDE_ON_SCROLL
+                            ),
+                            () -> SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR)
+                    )
+            );
+        }
         if (!(SettingsStatus.hideNavigationButtons)) return;
 
         addPreference(
@@ -1337,7 +1354,7 @@ public class ScreenBuilder {
                 )
         );
 
-        if (SettingsStatus.hideNavigationButtons){
+        if (SettingsStatus.hideNavigationButtons || SettingsStatus.floatingTabBar){
             addPreference(
                     helper.categoryPreference(
                             str("piko_category_navigation_tabs"),
