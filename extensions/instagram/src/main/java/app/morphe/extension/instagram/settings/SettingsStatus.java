@@ -278,6 +278,8 @@ public class SettingsStatus {
     //Navigation Section
     public static boolean hideNavigationButtons = false;
     public static void hideNavigationButtons() { hideNavigationButtons = true; }
+    public static boolean floatingTabBar = false;
+    public static void floatingTabBar() { floatingTabBar = true; }
 
     // Developer section.
     public static boolean enableDeveloperOptions = false;
@@ -301,6 +303,7 @@ public class SettingsStatus {
         FLAGS.put(str("piko_hide_suggested_content"),SettingsStatus.hideSuggestedContent);
 
         FLAGS.put(str("piko_category_hide_navigation_buttons"),SettingsStatus.hideNavigationButtons);
+        FLAGS.put(str("piko_floating_tab_bar"), SettingsStatus.floatingTabBar);
 
         FLAGS.put(str("piko_category_downloads"),SettingsStatus.downloadMedia);
         FLAGS.put(str("piko_download_voice_media"),SettingsStatus.downloadVoiceMessage);

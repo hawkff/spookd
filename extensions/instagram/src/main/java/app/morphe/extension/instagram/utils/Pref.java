@@ -474,6 +474,14 @@ public class Pref {
         return SharedPref.setStringPref(Settings.NAVIGATION_TABS.key, value);
     }
 
+    public static boolean floatingTabBar() {
+        return SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR);
+    }
+
+    public static boolean floatingTabBarHideOnScroll() {
+        return floatingTabBar() && SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR_HIDE_ON_SCROLL);
+    }
+
     public static boolean removeEmptyBottomSpace() {
         return SharedPref.getBooleanPref(Settings.REMOVE_EMPTY_BOTTOM_SPACE);
     }

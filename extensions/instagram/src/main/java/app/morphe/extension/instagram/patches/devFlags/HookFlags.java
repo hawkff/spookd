@@ -85,6 +85,14 @@ public class HookFlags {
         }
     }
 
+    private static void floatingTabBarFlags() {
+        if (Pref.floatingTabBar()) {
+            BOOL_FLAGS.put("126024::12", true); //ig_android_modern_ui_edge_to_edge::is_floating_tab_bar_enabled
+            BOOL_FLAGS.put("126024::2", true); //ig_android_modern_ui_edge_to_edge::is_bottom_enabled_for_main_activity
+            BOOL_FLAGS.put("126411::0", true); //ig_android_modernization::enable_active_pills_on_tab_bar
+        }
+    }
+
     private static void addRecommendedFlags(){
         if(SettingsStatus.recommendedFlags) {
             Map<String, Boolean> recFlags = FlagsSharedPref.getAll();

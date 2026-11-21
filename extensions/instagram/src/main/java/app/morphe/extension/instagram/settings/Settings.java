@@ -25,7 +25,7 @@ public class Settings {
     public static final BooleanSetting SANITIZE_SHARE_LINKS = new BooleanSetting("sanitize_share_links", true, NOT_REQUIRED);
     public static final StringSetting CUSTOM_SHARING_DOMAIN = new StringSetting("custom_sharing_domain", "", NOT_REQUIRED);
     public static final BooleanSetting HIDE_SUGGESTED_CONTENT = new BooleanSetting("hide_suggested_content", true, REQUIRED);
-    public static final BooleanSetting DEVELOPER_OPTIONS = new BooleanSetting("enable_developer_options", true, NOT_REQUIRED);
+    public static final BooleanSetting DEVELOPER_OPTIONS = new BooleanSetting("enable_developer_options", false, NOT_REQUIRED);
     public static final BooleanSetting DIRECTLY_OPEN_METACONFIG = new BooleanSetting("directly_open_metaconfig",true, NOT_REQUIRED);
     public static final BooleanSetting DISABLE_DISCOVER_PEOPLE = new BooleanSetting("disable_discover_people", true, REQUIRED);
     public static final BooleanSetting LIMIT_FOLLOWING_FEED = new BooleanSetting("limit_following_feed", false, REQUIRED);
@@ -121,6 +121,8 @@ public class Settings {
     public static final BooleanSetting HIDE_NAVIGATION_SEARCH = new BooleanSetting("hide_navigation_search", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_NAVIGATION_CREATE = new BooleanSetting("hide_navigation_create", false, NOT_REQUIRED);
     public static final StringSetting NAVIGATION_TABS = new StringSetting("navigation_tabs", "", REQUIRED);
+    public static final BooleanSetting FLOATING_TAB_BAR = new BooleanSetting("floating_tab_bar", true, REQUIRED);
+    public static final BooleanSetting FLOATING_TAB_BAR_HIDE_ON_SCROLL = new BooleanSetting("floating_tab_bar_hide_on_scroll", true, NOT_REQUIRED);
     public static final BooleanSetting HIDE_HOME_CREATE_BUTTON = new BooleanSetting("hide_home_create_button", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_HOME_NOTIFICATIONS_BUTTON = new BooleanSetting("hide_home_notifications_button", false, NOT_REQUIRED);
 
