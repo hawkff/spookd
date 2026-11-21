@@ -482,6 +482,10 @@ public class Pref {
         return floatingTabBar() && SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR_HIDE_ON_SCROLL);
     }
 
+    public static boolean floatingTabBarGlass() {
+        return floatingTabBar() && SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR_GLASS);
+    }
+
     public static boolean removeEmptyBottomSpace() {
         return SharedPref.getBooleanPref(Settings.REMOVE_EMPTY_BOTTOM_SPACE);
     }

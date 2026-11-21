@@ -9,9 +9,11 @@ package app.morphe.extension.instagram.patches.navigation;
 import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.app.Application;
+import android.content.res.Configuration;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.InsetDrawable;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -37,6 +39,8 @@ public final class FloatingTabBar {
     private static boolean idsResolved;
     private static int tabBarId, tabBarShadowId, pagerId;
     private static boolean hideOnScroll;
+    private static boolean glass;
+    private static boolean glassSkipLogged;
     private static boolean hidden;
     private static boolean watchingTreeScroll;
     // 0 is in place, 1 is fully below the screen.
@@ -127,8 +131,10 @@ public final class FloatingTabBar {
         }
         // Settings open in another activity, so a change there is picked up here.
         hideOnScroll = Pref.floatingTabBarHideOnScroll();
+        glass = Pref.floatingTabBarGlass();
         showNow();
         findBar(activity);
+        if (!glass) removeGlass();
         onLayout();
     }
 
@@ -182,9 +188,72 @@ public final class FloatingTabBar {
                 if (list != null) track(list);
             }
             if (hidden && (list == null || !feedInFront(list))) showNow();
+            if (glass) applyGlass(activity);
         } catch (Throwable t) {
             log("FloatingTabBar layout check failed", t);
         }
+    }
+
+    // Instagram installs a new background when it rebuilds the bar's style, so this runs on every layout pass.
+    private static void applyGlass(Activity activity) {
+        try {
+            View bar = tabBar.get();
+            if (bar == null) return;
+            Drawable background = bar.getBackground();
+            GlassTabBarDrawable drawable;
+            if (background instanceof GlassTabBarDrawable) {
+                drawable = (GlassTabBarDrawable) background;
+            } else if (background instanceof InsetDrawable && ((InsetDrawable) background).getDrawable() != null) {
+                drawable = GlassTabBarDrawable.wrap((InsetDrawable) background);
+                bar.setBackground(drawable);
+            } else {
+                if (!glassSkipLogged) {
+                    glassSkipLogged = true;
+                    Logger.printInfo(() -> "FloatingTabBar glass skipped, tab bar background is " + background);
+                }
+                return;
+            }
+            boolean night = (activity.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                    == Configuration.UI_MODE_NIGHT_YES;
+            drawable.update(night);
+            // The views behind the bar may have changed; the next draw records them again.
+            bar.invalidate();
+        } catch (Throwable t) {
+            glass = false;
+            log("FloatingTabBar glass failed", t);
+            removeGlass();
+        }
+    }
+
+    /** Puts Instagram's own background back on the bar, with the padding Instagram set. */
+    private static void removeGlass() {
+        try {
+            View bar = tabBar.get();
+            if (bar == null || !(bar.getBackground() instanceof GlassTabBarDrawable)) return;
+            GlassTabBarDrawable drawable = (GlassTabBarDrawable) bar.getBackground();
+            InsetDrawable original = drawable.original;
+            original.setDrawable(drawable.getDrawable());
+            // setDrawable gives the pill the outer bounds; a bounds change makes the original inset it again.
+            Rect bounds = original.copyBounds();
+            original.setBounds(0, 0, 0, 0);
+            original.setBounds(bounds);
+            int left = bar.getPaddingLeft(), top = bar.getPaddingTop();
+            int right = bar.getPaddingRight(), bottom = bar.getPaddingBottom();
+            bar.setBackground(original);
+            bar.setPadding(left, top, right, bottom);
+        } catch (Throwable t) {
+            log("FloatingTabBar glass removal failed", t);
+        }
+    }
+
+    /** The bar, if the given drawable is its background; main thread. */
+    static View glassBar(Drawable drawable) {
+        View bar = tabBar.get();
+        return bar != null && bar.getBackground() == drawable ? bar : null;
+    }
+
+    static boolean barAway() {
+        return offset >= 1f;
     }
 
     // Registered only while the bar is away, so swiping to another tab brings it back.
@@ -339,6 +408,9 @@ public final class FloatingTabBar {
             offset = value;
             barDistance = translate(tabBar.get(), value);
             shadowDistance = translate(tabBarShadow.get(), value);
+            // A translation does not redraw the bar, and the blurred copy depends on where the bar is.
+            View bar = tabBar.get();
+            if (glass && bar != null && bar.getBackground() instanceof GlassTabBarDrawable) bar.invalidate();
         } catch (Throwable t) {
             log("FloatingTabBar move failed", t);
         }
