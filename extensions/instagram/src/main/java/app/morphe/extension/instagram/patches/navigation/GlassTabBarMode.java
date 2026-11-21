@@ -18,10 +18,9 @@ final class GlassTabBarMode {
     private GlassTabBarMode() {
     }
 
-    static int choose(boolean enabled, int sdk, boolean hardwareCanvas, boolean systemBlur,
-                      boolean blurFailed, boolean barAway) {
+    static int choose(boolean enabled, int sdk, boolean hardwareCanvas, boolean blurFailed, boolean barAway) {
         if (!enabled) return OFF;
-        if (sdk < 31 || !hardwareCanvas || !systemBlur || blurFailed || barAway) return OPAQUE;
+        if (sdk < 31 || !hardwareCanvas || blurFailed || barAway) return OPAQUE;
         return BLUR;
     }
 }

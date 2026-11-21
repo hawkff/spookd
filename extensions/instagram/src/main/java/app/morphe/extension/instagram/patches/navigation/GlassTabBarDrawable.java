@@ -11,6 +11,7 @@ import android.graphics.Color;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.LinearGradient;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
@@ -63,8 +64,7 @@ final class GlassTabBarDrawable extends InsetDrawable {
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint shadow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float radius;
-    private boolean night, builtNight;
-    private boolean systemBlur;
+    private boolean night;
     private boolean broken;
     private Blur blur;
 
@@ -94,11 +94,30 @@ final class GlassTabBarDrawable extends InsetDrawable {
     }
 
     /** Main thread; called from the bar's layout check. */
-    void update(boolean night, boolean systemBlur) {
-        if (night == this.night && systemBlur == this.systemBlur) return;
+    void update(boolean night) {
+        if (Build.VERSION.SDK_INT >= 31 && blur == null && !blurFailed) {
+            try {
+                blur = new Blur(Dim.dp(BLUR_RADIUS_DP));
+            } catch (Throwable t) {
+                blurFailed = true;
+                log("GlassTabBarDrawable blur setup failed, using the tint only", t);
+            }
+        }
+        if (night == this.night) return;
         this.night = night;
-        this.systemBlur = systemBlur;
+        build();
         invalidateSelf();
+    }
+
+    @Override
+    protected void onBoundsChange(Rect bounds) {
+        super.onBoundsChange(bounds);
+        try {
+            build();
+        } catch (Throwable t) {
+            broken = true;
+            log("GlassTabBarDrawable layout failed, showing Instagram's bar", t);
+        }
     }
 
     // Returning no padding keeps View.setBackground from replacing the padding Instagram set on the bar.
@@ -114,7 +133,7 @@ final class GlassTabBarDrawable extends InsetDrawable {
         int save = canvas.save();
         try {
             mode = GlassTabBarMode.choose(!broken, Build.VERSION.SDK_INT, canvas.isHardwareAccelerated(),
-                    systemBlur, blurFailed, FloatingTabBar.barAway());
+                    blurFailed, FloatingTabBar.barAway());
             if (mode != GlassTabBarMode.OFF) drawGlass(canvas, mode);
         } catch (Throwable t) {
             broken = true;
@@ -127,9 +146,7 @@ final class GlassTabBarDrawable extends InsetDrawable {
     }
 
     private void drawGlass(Canvas canvas, int mode) {
-        Rect bounds = getDrawable().getBounds();
-        if (bounds.isEmpty()) return;
-        if (!bounds.equals(pill) || night != builtNight) build(bounds);
+        if (pill.isEmpty()) return;
 
         canvas.save();
         canvas.clipOutPath(pillPath);
@@ -144,9 +161,11 @@ final class GlassTabBarDrawable extends InsetDrawable {
         canvas.drawRoundRect(rimRect, radius, radius, rim);
     }
 
-    // Only runs when the bounds or the night mode change.
-    private void build(Rect bounds) {
+    // Runs when the bounds or the night mode change, never from draw.
+    private void build() {
+        Rect bounds = getDrawable().getBounds();
         pill.set(bounds);
+        if (bounds.isEmpty()) return;
         pillRect.set(bounds);
         radius = bounds.height() / 2f;
         pillPath.reset();
@@ -157,16 +176,14 @@ final class GlassTabBarDrawable extends InsetDrawable {
         int top = Color.argb(night ? DARK_RIM_TOP_ALPHA : LIGHT_RIM_TOP_ALPHA, 255, 255, 255);
         int bottom = night ? Color.argb(DARK_RIM_BOTTOM_ALPHA, 255, 255, 255) : Color.argb(LIGHT_RIM_BOTTOM_ALPHA, 0, 0, 0);
         rim.setShader(new LinearGradient(0f, pillRect.top, 0f, pillRect.bottom, top, bottom, Shader.TileMode.CLAMP));
-        builtNight = night;
     }
 
     /** Returns false when nothing behind the bar was drawn, so the caller uses the opaque tint. */
     @RequiresApi(31)
     private boolean drawBlur(Canvas canvas) {
         View bar = FloatingTabBar.glassBar(this);
-        if (bar == null || !(bar.getParent() instanceof ViewGroup)) return false;
+        if (blur == null || bar == null || !(bar.getParent() instanceof ViewGroup)) return false;
         try {
-            if (blur == null) blur = new Blur(Dim.dp(BLUR_RADIUS_DP));
             if (!blur.record(bar, (ViewGroup) bar.getParent(), pill)) return false;
             canvas.save();
             canvas.clipPath(pillPath);
@@ -212,9 +229,16 @@ final class GlassTabBarDrawable extends InsetDrawable {
                 for (int i = 0; i < end; i++) {
                     View view = parent.getChildAt(i);
                     if (view.getVisibility() != View.VISIBLE || view.getAlpha() == 0f || view instanceof ViewStub) continue;
+                    // Applies what the parent applies when it draws the child: position, transform and alpha.
                     int save = canvas.save();
-                    canvas.translate(view.getLeft() + view.getTranslationX() - view.getScrollX() - originX,
-                            view.getTop() + view.getTranslationY() - view.getScrollY() - originY);
+                    canvas.translate(view.getLeft() - originX, view.getTop() - originY);
+                    Matrix matrix = view.getMatrix();
+                    if (!matrix.isIdentity()) canvas.concat(matrix);
+                    float alpha = view.getAlpha();
+                    if (alpha < 1f) {
+                        canvas.saveLayerAlpha(0f, 0f, view.getWidth(), view.getHeight(), Math.round(alpha * 255f));
+                    }
+                    canvas.translate(-view.getScrollX(), -view.getScrollY());
                     view.draw(canvas);
                     canvas.restoreToCount(save);
                     recorded = true;

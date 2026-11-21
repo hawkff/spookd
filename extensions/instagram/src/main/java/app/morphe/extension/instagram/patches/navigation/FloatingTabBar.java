@@ -14,7 +14,6 @@ import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.InsetDrawable;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -216,7 +215,7 @@ public final class FloatingTabBar {
             }
             boolean night = (activity.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
                     == Configuration.UI_MODE_NIGHT_YES;
-            drawable.update(night, Build.VERSION.SDK_INT >= 31 && activity.getWindowManager().isCrossWindowBlurEnabled());
+            drawable.update(night);
             // The views behind the bar may have changed; the next draw records them again.
             bar.invalidate();
         } catch (Throwable t) {
