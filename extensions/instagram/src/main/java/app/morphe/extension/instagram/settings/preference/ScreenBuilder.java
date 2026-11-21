@@ -137,6 +137,13 @@ public class ScreenBuilder {
                     )
             );
         }
+        if (SettingsStatus.hideMetaAi) {
+            addPreference(helper.switchPreference(
+                    str("piko_hide_meta_ai"),
+                    str("piko_hide_meta_ai_desc"),
+                    Settings.HIDE_META_AI
+            ));
+        }
     }
 
     public void buildFontSection() {

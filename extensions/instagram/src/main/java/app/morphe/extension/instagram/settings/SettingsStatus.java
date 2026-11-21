@@ -29,8 +29,10 @@ public class SettingsStatus {
     public static void hideSuggestedContent() {
         hideSuggestedContent = true;
     }
+    public static boolean hideMetaAi = false;
+    public static void hideMetaAi() { hideMetaAi = true; }
     public static boolean adsSection() {
-        return (disableAds || hideSuggestedContent);
+        return (disableAds || hideSuggestedContent || hideMetaAi);
     }
 
     //Filter content
@@ -301,6 +303,7 @@ public class SettingsStatus {
         FLAGS.put(str("piko_disable_reels_scrolling"), SettingsStatus.disableReelsScrolling);
         FLAGS.put(str("piko_disable_ads"),SettingsStatus.disableAds);
         FLAGS.put(str("piko_hide_suggested_content"),SettingsStatus.hideSuggestedContent);
+        FLAGS.put(str("piko_hide_meta_ai"), SettingsStatus.hideMetaAi);
 
         FLAGS.put(str("piko_category_hide_navigation_buttons"),SettingsStatus.hideNavigationButtons);
         FLAGS.put(str("piko_floating_tab_bar"), SettingsStatus.floatingTabBar);

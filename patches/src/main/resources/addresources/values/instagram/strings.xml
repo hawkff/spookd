@@ -5,6 +5,8 @@
     <string name="piko_disable_ads">Disable ads</string>
     <string name="piko_hide_suggested_content">Hide suggested content</string>
     <string name="piko_hide_suggested_content_desc">Hides suggested stories, reels, threads (Suggested posts will still be shown).</string>
+    <string name="piko_hide_meta_ai">Hide Meta AI</string>
+    <string name="piko_hide_meta_ai_desc">Removes Meta AI prompts in search, the Meta AI entry in messages and the Reels menu, and AI suggestions. Restart the app to apply.</string>
 
     <!-- Developer Options Section -->
     <string name="piko_category_dev_options">Developer options</string>
