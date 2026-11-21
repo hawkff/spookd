@@ -1094,6 +1094,16 @@ public class ScreenBuilder {
                             () -> SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR)
                     )
             );
+            addPreference(
+                    helper.availableWhen(
+                            helper.switchPreference(
+                                    str("piko_floating_tab_bar_glass"),
+                                    str("piko_floating_tab_bar_glass_desc"),
+                                    Settings.FLOATING_TAB_BAR_GLASS
+                            ),
+                            () -> SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR)
+                    )
+            );
         }
         if (!(SettingsStatus.hideNavigationButtons)) return;
 

@@ -123,6 +123,7 @@ public class Settings {
     public static final StringSetting NAVIGATION_TABS = new StringSetting("navigation_tabs", "", REQUIRED);
     public static final BooleanSetting FLOATING_TAB_BAR = new BooleanSetting("floating_tab_bar", true, REQUIRED);
     public static final BooleanSetting FLOATING_TAB_BAR_HIDE_ON_SCROLL = new BooleanSetting("floating_tab_bar_hide_on_scroll", true, NOT_REQUIRED);
+    public static final BooleanSetting FLOATING_TAB_BAR_GLASS = new BooleanSetting("floating_tab_bar_glass", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_HOME_CREATE_BUTTON = new BooleanSetting("hide_home_create_button", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_HOME_NOTIFICATIONS_BUTTON = new BooleanSetting("hide_home_notifications_button", false, NOT_REQUIRED);
 

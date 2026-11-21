@@ -294,6 +294,8 @@
     <string name="piko_floating_tab_bar_desc">Shows the tabs in a rounded bar that floats over your feed, with a highlight behind the selected tab. On Android 15 and later, the feed also shows below the bar, down to the bottom of the screen.</string>
     <string name="piko_floating_tab_bar_hide_on_scroll">Hide tab bar while scrolling</string>
     <string name="piko_floating_tab_bar_hide_on_scroll_desc">The tab bar slides away while you scroll down your feed and comes back when you scroll up or reach the top</string>
+    <string name="piko_floating_tab_bar_glass">Glass tab bar</string>
+    <string name="piko_floating_tab_bar_glass_desc">Makes the floating tab bar look like frosted glass, with a light edge and a soft shadow. On Android 12 and later, your feed shows blurred through the bar; on older versions the bar is a nearly solid tint. The blur can make scrolling less smooth on slower phones.</string>
     <string name="piko_navigation_tab_home">Home</string>
     <string name="piko_navigation_tab_reels">Reels</string>
     <string name="piko_navigation_tab_messages">Messages</string>
