@@ -282,7 +282,7 @@ public class UI {
 
         Context context = viewGroup.getContext();
         InstagramButton button = new InstagramButton(context);
-        button.setText(str("piko_title_settings"));
+        button.setText(str("spookd_title_settings"));
         button.setStyle(InstagramButtonStyleEnum.SECONDARY);
         button.setOnClickListener(FragmentHook::startSettings);
 

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="spookd_title_settings">Paramètres de spookd</string>
     <!-- Ads Section -->
     <string name="piko_category_ads">Publicités</string>
     <string name="piko_disable_ads">Désactiver les publicités</string>
@@ -283,16 +284,16 @@
     <string name="piko_navigation_tab_profile">Profil</string>
     <string name="piko_navigation_tab_notifications">Notifications</string>
     <string name="piko_navigation_tab_create">Créer</string>
-    <string name="piko_navigation_settings_lockout_title">Aucun bouton paramètres de Piko</string>
-    <string name="piko_navigation_settings_lockout_message">Cette configuration supprime toutes les entrées des paramètres de Piko des onglets visibles. Vous pouvez toujours ouvrir les paramètres de Piko en appuyant longuement sur l\'icône de l\'application, puis en sélectionnant \'Paramètres de Piko\'.</string>
+    <string name="piko_navigation_settings_lockout_title">Aucun bouton paramètres de spookd</string>
+    <string name="piko_navigation_settings_lockout_message">Cette configuration supprime toutes les entrées des paramètres de spookd des onglets visibles. Vous pouvez toujours ouvrir les paramètres de spookd en appuyant longuement sur l\'icône de l\'application, puis en sélectionnant \'Paramètres de spookd\'.</string>
     <!-- Information Section -->
     <string name="piko_category_about">À propos</string>
-    <string name="piko_export_pref">Exporter les paramètres Piko</string>
-    <string name="piko_import_pref">Importer les paramètres Piko</string>
-    <string name="piko_reset_pref">Réinitialiser les paramètres de Piko</string>
-    <string name="piko_reset_pref_confirm">Réinitialiser les paramètres de Piko ?</string>
-    <string name="piko_reset_pref_success">Réinitialisation des paramètres de Piko</string>
-    <string name="piko_reset_pref_failed">Échec de la réinitialisation des paramètres de Piko</string>
+    <string name="piko_export_pref">Exporter les paramètres spookd</string>
+    <string name="piko_import_pref">Importer les paramètres spookd</string>
+    <string name="piko_reset_pref">Réinitialiser les paramètres de spookd</string>
+    <string name="piko_reset_pref_confirm">Réinitialiser les paramètres de spookd ?</string>
+    <string name="piko_reset_pref_success">Réinitialisation des paramètres de spookd</string>
+    <string name="piko_reset_pref_failed">Échec de la réinitialisation des paramètres de spookd</string>
     <string name="piko_app_version">Version de l\'application: %s</string>
     <string name="piko_patch_version">Version du patch: %s</string>
     <string name="piko_patch_info_title">Informations sur le patch</string>
@@ -311,7 +312,7 @@
     <string name="piko_ok">OK</string>
     <string name="piko_reset">Réinitialiser</string>
     <string name="piko_cancel">Annuler</string>
-    <string name="piko_debug">Débogage de Piko</string>
+    <string name="piko_debug">Débogage de spookd</string>
     <string name="piko_debug_desc">Ajoute une option de débogage sur certains composants pour les tests</string>
     <string name="piko_export_experiment_list">Exporter la liste des expériences</string>
     <string name="piko_export_experiment_mappings">Exporter les mappages des expériences</string>
@@ -334,9 +335,9 @@
     <string name="piko_array_recmd_flag_state_enable">Activer</string>
     <string name="piko_array_recmd_flag_state_disable">Désactiver</string>
     <!-- Welcome Message -->
-    <string name="piko_welcome_title">Bienvenue sur Piko</string>
-    <string name="piko_welcome_message">Pour améliorer votre expérience avec Piko, veuillez visiter les paramètres de Piko et ajuster vos préférences</string>
-    <string name="piko_goto_piko_settings">Accéder aux paramètres de Piko</string>
+    <string name="piko_welcome_title">Bienvenue sur spookd</string>
+    <string name="piko_welcome_message">Pour améliorer votre expérience avec spookd, veuillez visiter les paramètres de spookd et ajuster vos préférences</string>
+    <string name="piko_goto_piko_settings">Accéder aux paramètres de spookd</string>
     <string name="piko_no_internet">Veuillez vous connecter à Internet</string>
     <string name="piko_tap_here">Appuyez ici !!</string>
     <!-- Action Bar Section -->

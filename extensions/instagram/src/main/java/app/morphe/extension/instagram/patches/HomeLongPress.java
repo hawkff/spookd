@@ -50,7 +50,7 @@ public class HomeLongPress {
     private static void showChoiceDialog(View view) {
         InstagramDialogBox dialog = new InstagramDialogBox(activityOf(view.getContext()));
 
-        CharSequence[] items = {str("piko_title_settings"), str("piko_category_dev_options")};
+        CharSequence[] items = {str("spookd_title_settings"), str("piko_category_dev_options")};
         dialog.addDialogMenuItems(items, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface d, int which) {

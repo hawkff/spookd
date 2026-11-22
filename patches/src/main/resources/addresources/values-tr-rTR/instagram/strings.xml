@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="spookd_title_settings">spookd ayarları</string>
     <!-- Ads Section -->
     <string name="piko_category_ads">Reklamlar</string>
     <string name="piko_disable_ads">Reklamları devre dışı bırak</string>
@@ -283,16 +284,16 @@
     <string name="piko_navigation_tab_profile">Profil</string>
     <string name="piko_navigation_tab_notifications">Bildirimler</string>
     <string name="piko_navigation_tab_create">Oluştur</string>
-    <string name="piko_navigation_settings_lockout_title">Piko ayarları butonu olmadan</string>
-    <string name="piko_navigation_settings_lockout_message">Bu yapılandırma, görünür sekmelerdeki tüm Piko ayarları girişlerini kaldırır. Piko ayarlarını yine de uygulama simgesine uzun basıp \"Piko ayarları\" seçeneğini belirleyerek açabilirsiniz.</string>
+    <string name="piko_navigation_settings_lockout_title">spookd ayarları butonu olmadan</string>
+    <string name="piko_navigation_settings_lockout_message">Bu yapılandırma, görünür sekmelerdeki tüm spookd ayarları girişlerini kaldırır. spookd ayarlarını yine de uygulama simgesine uzun basıp \"spookd ayarları\" seçeneğini belirleyerek açabilirsiniz.</string>
     <!-- Information Section -->
     <string name="piko_category_about">Hakkında</string>
-    <string name="piko_export_pref">Piko ayarlarını dışa aktar</string>
-    <string name="piko_import_pref">Piko ayarlarını içe aktar</string>
-    <string name="piko_reset_pref">Piko ayarlarını sıfırla</string>
-    <string name="piko_reset_pref_confirm">Piko ayarları sıfırlansın mı?</string>
-    <string name="piko_reset_pref_success">Piko ayarları sıfırlandı</string>
-    <string name="piko_reset_pref_failed">Piko ayarları sıfırlanamadı</string>
+    <string name="piko_export_pref">spookd ayarlarını dışa aktar</string>
+    <string name="piko_import_pref">spookd ayarlarını içe aktar</string>
+    <string name="piko_reset_pref">spookd ayarlarını sıfırla</string>
+    <string name="piko_reset_pref_confirm">spookd ayarları sıfırlansın mı?</string>
+    <string name="piko_reset_pref_success">spookd ayarları sıfırlandı</string>
+    <string name="piko_reset_pref_failed">spookd ayarları sıfırlanamadı</string>
     <string name="piko_app_version">Uygulama sürümü: %s</string>
     <string name="piko_patch_version">Yama sürümü: %s</string>
     <string name="piko_patch_info_title">Yama bilgisi</string>
@@ -311,7 +312,7 @@
     <string name="piko_ok">Tamam</string>
     <string name="piko_reset">Sıfırla</string>
     <string name="piko_cancel">İptal</string>
-    <string name="piko_debug">Piko hata ayıklama</string>
+    <string name="piko_debug">spookd hata ayıklama</string>
     <string name="piko_debug_desc">Test için bazı bileşenlere hata ayıklama seçeneği ekler</string>
     <string name="piko_export_experiment_list">Deneysel özellik listelerini dışa aktar</string>
     <string name="piko_export_experiment_mappings">Deneysel özellik eşlemelerini dışa aktar</string>
@@ -334,9 +335,9 @@
     <string name="piko_array_recmd_flag_state_enable">Etkinleştir</string>
     <string name="piko_array_recmd_flag_state_disable">Devre dışı bırak</string>
     <!-- Welcome Message -->
-    <string name="piko_welcome_title">Piko\'ya hoşgeldiniz</string>
-    <string name="piko_welcome_message">Piko deneyiminizi iyileştirmek için lütfen Piko ayarlarına gidin ve tercihlerinizi düzenleyin</string>
-    <string name="piko_goto_piko_settings">Piko ayarlarına git</string>
+    <string name="piko_welcome_title">spookd\'a hoş geldiniz</string>
+    <string name="piko_welcome_message">spookd deneyiminizi iyileştirmek için lütfen spookd ayarlarına gidin ve tercihlerinizi düzenleyin</string>
+    <string name="piko_goto_piko_settings">spookd ayarlarına git</string>
     <string name="piko_no_internet">Lütfen internete bağlanın</string>
     <string name="piko_tap_here">Buraya dokunun !!</string>
     <!-- Action Bar Section -->

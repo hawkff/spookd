@@ -23,7 +23,7 @@ import app.morphe.patcher.util.smali.ExternalLabel
 val homeLongPressSettingsPatch =
     patch(
         name = "Open settings from Home",
-        description = "Opens Piko settings when you long-press the Home tab, instead of a settings button on your profile",
+        description = "Opens spookd settings when you long-press the Home tab, instead of a settings button on your profile",
         default = true,
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="spookd_title_settings">إعدادات spookd</string>
     <!-- Ads Section -->
     <string name="piko_category_ads">إعلانات</string>
     <string name="piko_disable_ads">تعطيل الإعلانات</string>

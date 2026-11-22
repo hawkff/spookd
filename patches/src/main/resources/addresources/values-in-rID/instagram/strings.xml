@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="spookd_title_settings">Pengaturan spookd</string>
     <!-- Ads Section -->
     <string name="piko_category_ads">Iklan</string>
     <string name="piko_disable_ads">Nonaktifkan iklan</string>
@@ -158,16 +159,16 @@
     <string name="piko_navigation_tab_profile">Profil</string>
     <string name="piko_navigation_tab_notifications">Pemberitahuan</string>
     <string name="piko_navigation_tab_create">Buat</string>
-    <string name="piko_navigation_settings_lockout_title">Tidak ada tombol pengaturan Piko</string>
-    <string name="piko_navigation_settings_lockout_message">Pengaturan ini akan menghapus semua entri pengaturan Piko dari tab yang terlihat. Anda masih bisa membuka pengaturan Piko dengan menekan lama ikon aplikasi dan memilih pengaturan Piko.</string>
+    <string name="piko_navigation_settings_lockout_title">Tidak ada tombol pengaturan spookd</string>
+    <string name="piko_navigation_settings_lockout_message">Pengaturan ini akan menghapus semua entri pengaturan spookd dari tab yang terlihat. Anda masih bisa membuka pengaturan spookd dengan menekan lama ikon aplikasi dan memilih pengaturan spookd.</string>
     <!-- Information Section -->
     <string name="piko_category_about">Tentang</string>
-    <string name="piko_export_pref">Ekspor pengaturan Piko</string>
-    <string name="piko_import_pref">Impor pengaturan Piko</string>
-    <string name="piko_reset_pref">Atur ulang pengaturan Piko</string>
-    <string name="piko_reset_pref_confirm">Atur ulang pengaturan Piko?</string>
-    <string name="piko_reset_pref_success">Pengaturan Piko diatur ulang</string>
-    <string name="piko_reset_pref_failed">Gagal mengatur ulang pengaturan Piko</string>
+    <string name="piko_export_pref">Ekspor pengaturan spookd</string>
+    <string name="piko_import_pref">Impor pengaturan spookd</string>
+    <string name="piko_reset_pref">Atur ulang pengaturan spookd</string>
+    <string name="piko_reset_pref_confirm">Atur ulang pengaturan spookd?</string>
+    <string name="piko_reset_pref_success">Pengaturan spookd diatur ulang</string>
+    <string name="piko_reset_pref_failed">Gagal mengatur ulang pengaturan spookd</string>
     <string name="piko_app_version">Versi aplikasi: %s</string>
     <string name="piko_patch_version">Versi tambalan: %s</string>
     <string name="piko_patch_info_title">Informasi tambalan</string>
@@ -184,7 +185,7 @@
     <string name="piko_ok">OKE</string>
     <string name="piko_reset">Atur ulang</string>
     <string name="piko_cancel">Batalkan</string>
-    <string name="piko_debug">Debug Piko</string>
+    <string name="piko_debug">Debug spookd</string>
     <string name="piko_debug_desc">Menambahkan pilihan debug pada beberapa komponen untuk pengujian</string>
     <string name="piko_export_experiment_list">Ekspor daftar eksperimen</string>
     <string name="piko_export_experiment_mappings">Ekspor pemetaan eksperimen</string>
@@ -204,9 +205,9 @@
     <string name="piko_array_recmd_flag_state_enable">Aktifkan</string>
     <string name="piko_array_recmd_flag_state_disable">Nonaktifkan</string>
     <!-- Welcome Message -->
-    <string name="piko_welcome_title">Selamat datang di Piko</string>
-    <string name="piko_welcome_message">Untuk meningkatkan pengalaman Anda menggunakan Piko, silakan buka pengaturan Piko dan sesuaikan preferensi Anda</string>
-    <string name="piko_goto_piko_settings">Ke pengaturan Piko</string>
+    <string name="piko_welcome_title">Selamat datang di spookd</string>
+    <string name="piko_welcome_message">Untuk meningkatkan pengalaman Anda menggunakan spookd, silakan buka pengaturan spookd dan sesuaikan preferensi Anda</string>
+    <string name="piko_goto_piko_settings">Ke pengaturan spookd</string>
     <string name="piko_no_internet">Silakan sambungkan ke internet</string>
     <string name="piko_tap_here">Ketuk di sini !!</string>
     <!-- Action Bar Section -->

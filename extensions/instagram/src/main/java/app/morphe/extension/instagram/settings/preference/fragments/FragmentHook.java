@@ -62,7 +62,7 @@ public class FragmentHook {
     }
 
     public static void startSettings(){
-        ActivityHook.startPikoActivity(Constants.PIKO_FRAGMENT_SETTINGS,"piko_title_settings");
+        ActivityHook.startPikoActivity(Constants.PIKO_FRAGMENT_SETTINGS,"spookd_title_settings");
     }
 
 }

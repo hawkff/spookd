@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="spookd_title_settings">spookd 设置</string>
     <!-- Ads Section -->
     <string name="piko_category_ads">广告</string>
     <string name="piko_disable_ads">关闭广告</string>
@@ -276,16 +277,16 @@
     <string name="piko_navigation_tab_profile">个人资料</string>
     <string name="piko_navigation_tab_notifications">通知</string>
     <string name="piko_navigation_tab_create">创建</string>
-    <string name="piko_navigation_settings_lockout_title">没有 Piko 设置按钮</string>
-    <string name="piko_navigation_settings_lockout_message">此设置将从可见标签中删除每个Piko设置项。 您仍然可以长按应用程序图标并选择Piko设置来打开Piko设置。</string>
+    <string name="piko_navigation_settings_lockout_title">没有 spookd 设置按钮</string>
+    <string name="piko_navigation_settings_lockout_message">此设置将从可见标签中删除每个spookd设置项。 您仍然可以长按应用程序图标并选择spookd设置来打开spookd设置。</string>
     <!-- Information Section -->
     <string name="piko_category_about">关于</string>
-    <string name="piko_export_pref">导出 Piko 设置</string>
-    <string name="piko_import_pref">导入Piko设置</string>
-    <string name="piko_reset_pref">重置 Piko 设置</string>
-    <string name="piko_reset_pref_confirm">重置 Piko 设置？</string>
-    <string name="piko_reset_pref_success">重置 Piko 设置</string>
-    <string name="piko_reset_pref_failed">重置 Piko 设置失败</string>
+    <string name="piko_export_pref">导出 spookd 设置</string>
+    <string name="piko_import_pref">导入spookd设置</string>
+    <string name="piko_reset_pref">重置 spookd 设置</string>
+    <string name="piko_reset_pref_confirm">重置 spookd 设置？</string>
+    <string name="piko_reset_pref_success">重置 spookd 设置</string>
+    <string name="piko_reset_pref_failed">重置 spookd 设置失败</string>
     <string name="piko_app_version">软件版本：%s</string>
     <string name="piko_patch_version">补丁版本： %s</string>
     <string name="piko_patch_info_title">补丁信息</string>
@@ -304,7 +305,7 @@
     <string name="piko_ok">确定</string>
     <string name="piko_reset">重置</string>
     <string name="piko_cancel">取消</string>
-    <string name="piko_debug">Piko debug</string>
+    <string name="piko_debug">spookd debug</string>
     <string name="piko_debug_desc">在某些组件上添加了用于测试的调试选项</string>
     <string name="piko_export_experiment_list">导出实验功能列表</string>
     <string name="piko_export_experiment_mappings">导出实验映射</string>
@@ -327,9 +328,9 @@
     <string name="piko_array_recmd_flag_state_enable">启用</string>
     <string name="piko_array_recmd_flag_state_disable">禁用</string>
     <!-- Welcome Message -->
-    <string name="piko_welcome_title">欢迎使用 Piko</string>
-    <string name="piko_welcome_message">为了改善您在 Piko 上的体验，请访问 Piko 设置并调整您的偏好设置</string>
-    <string name="piko_goto_piko_settings">前往 Piko 设置</string>
+    <string name="piko_welcome_title">欢迎使用 spookd</string>
+    <string name="piko_welcome_message">为了改善您在 spookd 上的体验，请访问 spookd 设置并调整您的偏好设置</string>
+    <string name="piko_goto_piko_settings">前往 spookd 设置</string>
     <string name="piko_no_internet">请连接到网络</string>
     <string name="piko_tap_here">点击这里！！</string>
     <!-- Action Bar Section -->

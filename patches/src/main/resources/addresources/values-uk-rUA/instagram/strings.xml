@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="spookd_title_settings">Налаштування spookd</string>
     <!-- Ads Section -->
     <string name="piko_category_ads">Реклама</string>
     <string name="piko_disable_ads">Вимкнути рекламу</string>
@@ -283,16 +284,16 @@
     <string name="piko_navigation_tab_profile">Профіль</string>
     <string name="piko_navigation_tab_notifications">Сповіщення</string>
     <string name="piko_navigation_tab_create">Створити</string>
-    <string name="piko_navigation_settings_lockout_title">Без кнопки налаштувань Piko</string>
-    <string name="piko_navigation_settings_lockout_message">Це налаштування приховує всі пункти налаштувань Piko з видимих вкладок. Ви все одно зможете відкрити налаштування Piko, утримуючи піктограму застосунку та вибравши «Налаштування Piko».</string>
+    <string name="piko_navigation_settings_lockout_title">Без кнопки налаштувань spookd</string>
+    <string name="piko_navigation_settings_lockout_message">Це налаштування приховує всі пункти налаштувань spookd з видимих вкладок. Ви все одно зможете відкрити налаштування spookd, утримуючи піктограму застосунку та вибравши «Налаштування spookd».</string>
     <!-- Information Section -->
-    <string name="piko_category_about">Про Piko</string>
+    <string name="piko_category_about">Про spookd</string>
     <string name="piko_export_pref">Експортувати налаштування</string>
     <string name="piko_import_pref">Імпортувати налаштування</string>
-    <string name="piko_reset_pref">Скинути налаштування Piko</string>
-    <string name="piko_reset_pref_confirm">Скинути налаштування Piko?</string>
-    <string name="piko_reset_pref_success">Налаштування Piko видалено</string>
-    <string name="piko_reset_pref_failed">Не вдалося видалити налаштування Piko</string>
+    <string name="piko_reset_pref">Скинути налаштування spookd</string>
+    <string name="piko_reset_pref_confirm">Скинути налаштування spookd?</string>
+    <string name="piko_reset_pref_success">Налаштування spookd видалено</string>
+    <string name="piko_reset_pref_failed">Не вдалося видалити налаштування spookd</string>
     <string name="piko_app_version">Версія застосунку: %s</string>
     <string name="piko_patch_version">Версія patch: %s</string>
     <string name="piko_patch_info_title">Інформація про patch</string>
@@ -311,7 +312,7 @@
     <string name="piko_ok">ОК</string>
     <string name="piko_reset">Скинути</string>
     <string name="piko_cancel">Скасувати</string>
-    <string name="piko_debug">Відлагодження Piko</string>
+    <string name="piko_debug">Відлагодження spookd</string>
     <string name="piko_debug_desc">Додає опцію відлагодження до деяких компонентів для тестування</string>
     <string name="piko_export_experiment_list">Експортувати список експериментів</string>
     <string name="piko_export_experiment_mappings">Експортувати зіставлення експериментів</string>
@@ -334,9 +335,9 @@
     <string name="piko_array_recmd_flag_state_enable">Увімкнено</string>
     <string name="piko_array_recmd_flag_state_disable">Вимкнено</string>
     <!-- Welcome Message -->
-    <string name="piko_welcome_title">Вітаємо у Piko</string>
-    <string name="piko_welcome_message">Щоб покращити свій досвід використання Piko, будь ласка, відкрийте налаштування Piko та встановіть власні параметри</string>
-    <string name="piko_goto_piko_settings">Перейти до налаштувань Piko</string>
+    <string name="piko_welcome_title">Вітаємо у spookd</string>
+    <string name="piko_welcome_message">Щоб покращити свій досвід використання spookd, будь ласка, відкрийте налаштування spookd та встановіть власні параметри</string>
+    <string name="piko_goto_piko_settings">Перейти до налаштувань spookd</string>
     <string name="piko_no_internet">Будь ласка, підключіться до інтернету</string>
     <string name="piko_tap_here">Торкніться тут !!</string>
     <!-- Action Bar Section -->

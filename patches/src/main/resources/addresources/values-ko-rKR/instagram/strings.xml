@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="spookd_title_settings">spookd 설정</string>
     <!-- Ads Section -->
     <string name="piko_category_ads">광고</string>
     <string name="piko_disable_ads">광고 비활성화</string>
@@ -283,16 +284,16 @@
     <string name="piko_navigation_tab_profile">프로필</string>
     <string name="piko_navigation_tab_notifications">알림</string>
     <string name="piko_navigation_tab_create">만들기</string>
-    <string name="piko_navigation_settings_lockout_title">Piko 설정 버튼 없음</string>
-    <string name="piko_navigation_settings_lockout_message">이 설정은 표시되는 탭에서 모든 Piko 설정 항목을 제거합니다. 런처에 있는 앱 아이콘을 길게 탭하면 표시되는 메뉴에서 Piko 설정을 선택하면 Piko 설정을 계속 열 수 있습니다</string>
+    <string name="piko_navigation_settings_lockout_title">spookd 설정 버튼 없음</string>
+    <string name="piko_navigation_settings_lockout_message">이 설정은 표시되는 탭에서 모든 spookd 설정 항목을 제거합니다. 런처에 있는 앱 아이콘을 길게 탭하면 표시되는 메뉴에서 spookd 설정을 선택하면 spookd 설정을 계속 열 수 있습니다</string>
     <!-- Information Section -->
     <string name="piko_category_about">정보</string>
-    <string name="piko_export_pref">Piko 설정 내보내기</string>
-    <string name="piko_import_pref">Piko 설정 가져오기</string>
-    <string name="piko_reset_pref">Piko 설정 초기화</string>
-    <string name="piko_reset_pref_confirm">Piko 설정를 초기화하시겠습니까?</string>
-    <string name="piko_reset_pref_success">Piko 설정을 초기화하였습니다</string>
-    <string name="piko_reset_pref_failed">Piko 설정을 초기화할 수 없습니다</string>
+    <string name="piko_export_pref">spookd 설정 내보내기</string>
+    <string name="piko_import_pref">spookd 설정 가져오기</string>
+    <string name="piko_reset_pref">spookd 설정 초기화</string>
+    <string name="piko_reset_pref_confirm">spookd 설정를 초기화하시겠습니까?</string>
+    <string name="piko_reset_pref_success">spookd 설정을 초기화하였습니다</string>
+    <string name="piko_reset_pref_failed">spookd 설정을 초기화할 수 없습니다</string>
     <string name="piko_app_version">앱 버전: %s</string>
     <string name="piko_patch_version">패치 버전: %s</string>
     <string name="piko_patch_info_title">패치 정보</string>
@@ -311,7 +312,7 @@
     <string name="piko_ok">확인</string>
     <string name="piko_reset">초기화</string>
     <string name="piko_cancel">취소</string>
-    <string name="piko_debug">Piko 디버그</string>
+    <string name="piko_debug">spookd 디버그</string>
     <string name="piko_debug_desc">일부 구성요소에 테스트용 디버그 옵션을 추가합니다</string>
     <string name="piko_export_experiment_list">실험 목록 내보내기</string>
     <string name="piko_export_experiment_mappings">실험 매핑 내보내기</string>
@@ -334,9 +335,9 @@
     <string name="piko_array_recmd_flag_state_enable">활성화</string>
     <string name="piko_array_recmd_flag_state_disable">비활성화</string>
     <!-- Welcome Message -->
-    <string name="piko_welcome_title">Piko에 오신 것을 환영합니다</string>
-    <string name="piko_welcome_message">Piko 사용 경험을 개선하려면 Piko 설정으로 이동하여 원하는 대로 설정해 주세요</string>
-    <string name="piko_goto_piko_settings">Piko 설정으로 이동</string>
+    <string name="piko_welcome_title">spookd에 오신 것을 환영합니다</string>
+    <string name="piko_welcome_message">spookd 사용 경험을 개선하려면 spookd 설정으로 이동하여 원하는 대로 설정해 주세요</string>
+    <string name="piko_goto_piko_settings">spookd 설정으로 이동</string>
     <string name="piko_no_internet">인터넷에 연결해 주세요</string>
     <string name="piko_tap_here">여기를 탭하세요 !!</string>
     <!-- Action Bar Section -->
