@@ -54,6 +54,18 @@ public class PrefCachedTest {
         assertEquals(Integer.valueOf(2), cached.get());
     }
 
+    // Pref.invalidateCaches() loads Pref, whose settings need the shared library absent from the test runtime.
+    @Test
+    public void invalidatingAllCachesRecomputesTheValue() {
+        AtomicInteger loads = new AtomicInteger();
+        Pref.Cached<Integer> cached = new Pref.Cached<>(loads::incrementAndGet, listener -> true, KEY);
+
+        assertEquals(Integer.valueOf(1), cached.get());
+        Pref.Cached.invalidateAll();
+        assertEquals(Integer.valueOf(2), cached.get());
+        assertEquals(Integer.valueOf(2), cached.get());
+    }
+
     @Test
     public void readsEveryTimeUntilTheListenerIsRegistered() {
         AtomicInteger loads = new AtomicInteger();

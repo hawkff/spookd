@@ -9,7 +9,9 @@ package app.morphe.extension.instagram.utils;
 
 import java.util.Set;
 import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import android.app.Activity;
@@ -748,11 +750,18 @@ public class Pref {
         }
     }
 
+    /** Drops every cached setting; for writes off the main thread, whose change callbacks arrive later. */
+    public static void invalidateCaches() {
+        Cached.invalidateAll();
+        FOCUS_LOCK_SELECTIONS.clear();
+    }
+
     /**
      * A value computed from piko_settings and kept until one of {@code keys} changes, so hooks that
      * run on every render skip the reads. Until the change listener is registered it reads each time.
      */
     public static final class Cached<T> {
+        private static final List<Cached<?>> ALL = new CopyOnWriteArrayList<>();
         private final Supplier<T> loader;
         private final Predicate<SharedPreferences.OnSharedPreferenceChangeListener> registrar;
         private final String[] keys;
@@ -772,6 +781,13 @@ public class Pref {
             this.loader = loader;
             this.registrar = registrar;
             this.keys = keys;
+            ALL.add(this);
+        }
+
+        static void invalidateAll() {
+            for (Cached<?> cached : ALL) {
+                cached.onChanged(null);
+            }
         }
 
         public T get() {
