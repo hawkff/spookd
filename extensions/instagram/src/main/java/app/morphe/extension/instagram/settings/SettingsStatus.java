@@ -233,6 +233,19 @@ public class SettingsStatus {
     public static void squareProfileGrid() { squareProfileGrid = true; }
     public static boolean profileSavedTab = false;
     public static void profileSavedTab() { profileSavedTab = true; }
+    public static boolean confirmFollow = false;
+    public static void confirmFollow() { confirmFollow = true; }
+    public static boolean confirmFeedButtons = false;
+    public static void confirmFeedButtons() { confirmFeedButtons = true; }
+    public static boolean confirmReelLike = false;
+    public static void confirmReelLike() { confirmReelLike = true; }
+    public static boolean confirmReelRepost = false;
+    public static void confirmReelRepost() { confirmReelRepost = true; }
+    public static boolean confirmComment = false;
+    public static void confirmComment() { confirmComment = true; }
+    public static boolean confirmationsSection() {
+        return confirmFollow || confirmFeedButtons || confirmReelLike || confirmReelRepost || confirmComment;
+    }
     public static boolean resumeReelsAfterScrolling = false;
     public static void resumeReelsAfterScrolling() { resumeReelsAfterScrolling = true; }
     public static boolean playbackSpeedControls = false;
@@ -253,7 +266,7 @@ public class SettingsStatus {
     public static void moreOptionsOnPost() { moreOptionsOnPost = true; }
     public static boolean moreOptionsOnProfile = false;
     public static void moreOptionsOnProfile() { moreOptionsOnProfile = true; }
-    public static boolean miscSection() {return ( moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || followBackIndicator || followListNonFollowerBadge || profileAnalyzer || exactProfileCounts || squareProfileGrid || profileSavedTab || customFont);}
+    public static boolean miscSection() {return ( moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || followBackIndicator || followListNonFollowerBadge || profileAnalyzer || exactProfileCounts || squareProfileGrid || profileSavedTab || confirmationsSection() || customFont);}
 
     //Font section.
     public static boolean customFont = false;
@@ -346,6 +359,11 @@ public class SettingsStatus {
         FLAGS.put(str("piko_profile_analyzer"), SettingsStatus.profileAnalyzer);
         FLAGS.put(str("piko_square_profile_grid"), SettingsStatus.squareProfileGrid);
         FLAGS.put(str("piko_profile_saved_tab"), SettingsStatus.profileSavedTab);
+        FLAGS.put(str("piko_confirm_follow"), SettingsStatus.confirmFollow);
+        FLAGS.put(str("piko_patch_confirm_feed_buttons"), SettingsStatus.confirmFeedButtons);
+        FLAGS.put(str("piko_patch_confirm_reel_like"), SettingsStatus.confirmReelLike);
+        FLAGS.put(str("piko_patch_confirm_reel_repost"), SettingsStatus.confirmReelRepost);
+        FLAGS.put(str("piko_confirm_comment"), SettingsStatus.confirmComment);
         FLAGS.put(str("piko_disable_discover_people"),SettingsStatus.disableDiscoverPeople);
         FLAGS.put(str("piko_customise_story_ring_size"),SettingsStatus.customiseStoryRingSize);
 

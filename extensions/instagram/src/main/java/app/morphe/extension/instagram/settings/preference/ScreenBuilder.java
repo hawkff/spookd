@@ -893,6 +893,25 @@ public class ScreenBuilder {
                     )
             );
         }
+        if (SettingsStatus.confirmationsSection()) {
+            PreferenceCategory confirmations = addCategory(str("piko_category_confirmations"));
+            if (SettingsStatus.confirmFeedButtons || SettingsStatus.confirmReelLike) {
+                addPreference(confirmations, helper.switchPreference(
+                        str("piko_confirm_like"), str("piko_confirm_like_desc"), Settings.CONFIRM_LIKE));
+            }
+            if (SettingsStatus.confirmFollow) {
+                addPreference(confirmations, helper.switchPreference(
+                        str("piko_confirm_follow"), str("piko_confirm_follow_desc"), Settings.CONFIRM_FOLLOW));
+            }
+            if (SettingsStatus.confirmFeedButtons || SettingsStatus.confirmReelRepost) {
+                addPreference(confirmations, helper.switchPreference(
+                        str("piko_confirm_repost"), str("piko_confirm_repost_desc"), Settings.CONFIRM_REPOST));
+            }
+            if (SettingsStatus.confirmComment) {
+                addPreference(confirmations, helper.switchPreference(
+                        str("piko_confirm_comment"), str("piko_confirm_comment_desc"), Settings.CONFIRM_COMMENT));
+            }
+        }
     }
 
     public void buildInstantsSection() {
