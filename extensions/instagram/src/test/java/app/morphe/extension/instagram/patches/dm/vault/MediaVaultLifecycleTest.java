@@ -378,6 +378,7 @@ public final class MediaVaultLifecycleTest {
         assertEquals("acct", kept.accountId);
         assertEquals("bob", kept.senderUsername);
         assertEquals("42", kept.senderId);
+        assertEquals("fetched", kept.itemId);
         MediaVault.Item unkept = items.get(1);
         assertEquals(older, unkept.id);
         assertEquals(1000, unkept.sizeBytes);
@@ -385,6 +386,7 @@ public final class MediaVaultLifecycleTest {
         assertNull(unkept.accountId);
         assertNull(unkept.senderUsername);
         assertNull(unkept.senderId);
+        assertEquals("older", unkept.itemId);
     }
 
     @Test

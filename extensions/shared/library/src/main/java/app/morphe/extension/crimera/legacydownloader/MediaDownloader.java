@@ -188,7 +188,7 @@ public class MediaDownloader {
                 notificationManager.notify(finalNotificationId, builder.build());
 
                 try {
-                    PikoUtils.toast(downloadCompletedString);
+                    showToast(downloadCompletedString);
                 } catch (Exception ignored) {}
             });
         } catch (Exception | LinkageError e) {
@@ -209,6 +209,7 @@ public class MediaDownloader {
                 if (activeDestination != null) ACTIVE_DESTINATIONS.remove(activeDestination);
             }
             if (replacement != null) replacement.delete();
+            if (request.onFinished != null) request.onFinished.accept(downloadCompleted);
         }
     }
 
@@ -285,6 +286,16 @@ public class MediaDownloader {
 
     private void downloadSources(DownloadRequest request, Uri outputUri,
                                  Notification.Builder builder, int notificationId) throws Exception {
+        if (request.localSource != null) {
+            try (InputStream input = request.localSource.call()) {
+                OutputStream stream = context.getContentResolver().openOutputStream(outputUri);
+                if (stream == null) throw new IOException("Could not open download file");
+                try (OutputStream output = new BufferedOutputStream(stream)) {
+                    copyDownload(input, output, 0, builder, notificationId);
+                }
+            }
+            return;
+        }
         List<DownloadRequest.Source> sources = new ArrayList<>();
         sources.add(new DownloadRequest.Source(request.url, request.audioUrl));
         sources.addAll(request.fallbackSources);
@@ -452,7 +463,7 @@ public class MediaDownloader {
         }
     }
 
-    private void showToast(String msg) {
+    protected void showToast(String msg) {
         mainHandler.post(() -> PikoUtils.toast(msg));
     }
 

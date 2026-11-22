@@ -168,7 +168,7 @@ public final class GalleryStore {
                         throw e;
                     }
                     new File(dir, (String) existing[1]).delete();
-                    thumb(id).delete();
+                    thumb((String) existing[1]).delete();
                     return id;
                 }
                 // The row goes first, so a file never exists without one.
@@ -207,8 +207,17 @@ public final class GalleryStore {
         }
         db.delete("gallery_items", "id = ?", args);
         new File(dir, file).delete();
-        thumb(id).delete();
+        thumb(file).delete();
         return true;
+    }
+
+    /** {@link #delete(long)} only while {@code seen} is still the item's file, so an item overwritten meanwhile stays. */
+    public synchronized boolean delete(long id, File seen) {
+        try (Cursor c = db.rawQuery("SELECT file FROM gallery_items WHERE id = ?",
+                new String[]{String.valueOf(id)})) {
+            if (!c.moveToFirst() || !seen.getName().equals(c.getString(0))) return false;
+        }
+        return delete(id);
     }
 
     /**
@@ -222,7 +231,7 @@ public final class GalleryStore {
             if (!c.moveToFirst() || !file.getName().equals(c.getString(0)) || !file.isFile()) return false;
         }
         if (!thumbDir.isDirectory() && !thumbDir.mkdirs()) return false;
-        File thumb = thumb(id);
+        File thumb = thumb(file.getName());
         boolean written = false;
         try (OutputStream out = new FileOutputStream(thumb)) {
             written = write.test(out);
@@ -275,14 +284,14 @@ public final class GalleryStore {
             while (c.moveToNext()) rows.put(c.getString(0), c.getLong(1));
         }
         Set<String> thumbs = new HashSet<>();
-        for (long id : rows.values()) thumbs.add(thumb(id).getName());
+        for (String file : rows.keySet()) thumbs.add(thumb(file).getName());
         for (File file : files) {
             String name = file.getName();
             if (name.endsWith(PART) || rows.remove(name) == null) file.delete();
         }
-        for (long id : rows.values()) {
-            db.delete("gallery_items", "id = ?", new String[]{String.valueOf(id)});
-            thumbs.remove(thumb(id).getName());
+        for (Map.Entry<String, Long> row : rows.entrySet()) {
+            db.delete("gallery_items", "id = ?", new String[]{String.valueOf(row.getValue())});
+            thumbs.remove(thumb(row.getKey()).getName());
         }
         File[] cached = thumbDir.listFiles();
         if (cached != null) {
@@ -304,8 +313,9 @@ public final class GalleryStore {
         }
     }
 
-    private File thumb(long id) {
-        return new File(thumbDir, id + ".jpg");
+    /** The cached thumbnail of an item file; keyed by the file, so an overwrite never shows the old one. */
+    File thumb(String file) {
+        return new File(thumbDir, file + ".jpg");
     }
 
     private static String baseName(File part) {

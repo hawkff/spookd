@@ -9,8 +9,11 @@ package app.morphe.extension.crimera.legacydownloader;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 
 /** One file to download; the optional fields are set after construction. */
 public class DownloadRequest {
@@ -43,6 +46,10 @@ public class DownloadRequest {
     public final List<Source> fallbackSources = new ArrayList<>();
     /** Saves into app-private storage instead of the download folder; null keeps the folder. */
     public PrivateTarget privateTarget;
+    /** A local file to copy instead of fetching {@link #url}; opened and closed on the download thread. */
+    public Callable<InputStream> localSource;
+    /** Runs on the download thread when the request ends, with whether its file was saved; null for none. */
+    public Consumer<Boolean> onFinished;
 
     /** An app-private destination; every call runs on the download thread. */
     public interface PrivateTarget {
