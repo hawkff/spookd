@@ -271,6 +271,11 @@ val settingsPatch =
             }
 
             instagramInitHook.fingerprint.method.apply {
+                // Before super.onCreate and every reader, so stored data already has its new names.
+                addInstruction(
+                    0,
+                    "invoke-static/range {p0 .. p0}, $ACTIVITY_SETTINGS_CLASS/SpookdMigration;->run(Landroid/content/Context;)V",
+                )
 
                 val firstInvokeSuperIndex = indexOfFirstInstructionOrThrow(Opcode.INVOKE_SUPER)
                 val contextRegister = getInstruction(firstInvokeSuperIndex).registersUsed[0]
