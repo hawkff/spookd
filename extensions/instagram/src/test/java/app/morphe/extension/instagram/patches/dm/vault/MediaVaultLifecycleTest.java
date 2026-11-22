@@ -358,6 +358,83 @@ public final class MediaVaultLifecycleTest {
     }
 
     @Test
+    public void listsEveryStoredItemWithItsSenderNewestFirst() throws IOException {
+        long older = storedRow("older", 1000, NOW - 2000);
+        long dropped = storedRow("dropped", 3000, NOW - 500);
+        assertEquals(1, vault.store.drop(dropped));
+        long fetched = enqueue("fetched");
+        executor.runAll();
+        enqueue("queued");
+        unsend("fetched");
+
+        List<MediaVault.Item> items = vault.storedItems();
+        assertEquals(2, items.size());
+        MediaVault.Item kept = items.get(0);
+        assertEquals(fetched, kept.id);
+        assertEquals("photo", kept.kind);
+        assertEquals("image/jpeg", kept.mime);
+        assertEquals(VaultFile.fileSize(1000), kept.sizeBytes);
+        assertEquals(NOW - 1000, kept.msgTimestamp);
+        assertEquals("acct", kept.accountId);
+        assertEquals("bob", kept.senderUsername);
+        assertEquals("42", kept.senderId);
+        MediaVault.Item unkept = items.get(1);
+        assertEquals(older, unkept.id);
+        assertEquals(1000, unkept.sizeBytes);
+        assertEquals(NOW - 2000, unkept.msgTimestamp);
+        assertNull(unkept.accountId);
+        assertNull(unkept.senderUsername);
+        assertNull(unkept.senderId);
+    }
+
+    @Test
+    public void opensAndDeletesByRowIdKeepingTheAccounting() throws IOException {
+        long other = storedRow("other", 5000, NOW - 2000);
+        byte[] body = body(100_000);
+        network.respond = url -> new FakeConnection(url, 200, body);
+        long id = enqueue("1");
+        executor.runAll();
+        unsend("1");
+        assertEquals(5000 + VaultFile.fileSize(body.length), vault.storedBytes);
+
+        MediaVault.Stored stored = vault.open(id);
+        assertNotNull(stored);
+        try {
+            assertEquals("photo", stored.kind);
+            byte[] plain = new byte[body.length];
+            assertEquals(body.length, stored.file.readAt(0, plain, 0, plain.length));
+            assertArrayEquals(body, plain);
+        } finally {
+            stored.file.close();
+        }
+
+        vault.delete(id);
+        assertEquals("dropped", column("state", id));
+        assertEquals("0", column("size_bytes", id));
+        assertFalse(pkv(id).exists());
+        assertEquals(5000, vault.storedBytes);
+        assertNull(vault.open(id));
+        assertTrue(vault.storedMessageIds().isEmpty());
+        assertEquals(1, vault.storedItems().size());
+        assertEquals(other, vault.storedItems().get(0).id);
+
+        // A second delete and an unknown id change nothing.
+        vault.delete(id);
+        vault.delete(999);
+        assertEquals(5000, vault.storedBytes);
+        assertTrue(pkv(other).exists());
+
+        // A queued row is dropped before its fetch runs.
+        long queued = enqueue("queued");
+        vault.delete(queued);
+        executor.runAll();
+        assertEquals("dropped", column("state", queued));
+        assertEquals(1, network.opened.size());
+        assertEquals(5000, vault.storedBytes);
+        assertEquals(0, vault.reservations);
+    }
+
+    @Test
     public void offlineWaitsWithoutCountingAndServerErrorsBackOff() {
         network.online = false;
         long id = enqueue("1");

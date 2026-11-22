@@ -25,6 +25,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 import javax.crypto.BadPaddingException;
 import javax.crypto.SecretKey;
 
@@ -149,18 +150,33 @@ public final class MediaVault {
         // Waits for a running recovery, so its total cannot drop a file this delete failed to unlink.
         synchronized (this) {
             for (String messageId : messageIds) {
-                VaultStore.Media row;
-                synchronized (storageLock) {
-                    row = store.rowForMessage(messageId);
-                    if (row == null || store.drop(row.id) != 1) continue;
-                    if (VaultStore.STORED.equals(row.state) && unlink(file(row.id, PKV))) {
-                        storedBytes -= row.sizeBytes;
-                    }
-                }
-                HttpURLConnection connection = connections.get(row.id);
-                if (connection != null) connection.disconnect();
+                dropRow(() -> store.rowForMessage(messageId));
             }
         }
+    }
+
+    /**
+     * Drops the media of one row id: unlinks its stored file and stops its fetch.
+     * Runs on the caller's background thread, may wait for startup recovery, and throws on database errors.
+     */
+    public void delete(long id) {
+        synchronized (this) {
+            dropRow(() -> store.row(id));
+        }
+    }
+
+    /** Drops the row {@code lookup} reads under the storage lock; the caller holds this monitor. */
+    private void dropRow(Supplier<VaultStore.Media> lookup) {
+        VaultStore.Media row;
+        synchronized (storageLock) {
+            row = lookup.get();
+            if (row == null || store.drop(row.id) != 1) return;
+            if (VaultStore.STORED.equals(row.state) && unlink(file(row.id, PKV))) {
+                storedBytes -= row.sizeBytes;
+            }
+        }
+        HttpURLConnection connection = connections.get(row.id);
+        if (connection != null) connection.disconnect();
     }
 
     /** A stored media file and its kind: photo, video or voice. */
@@ -179,7 +195,15 @@ public final class MediaVault {
      * Runs on the caller's background thread; throws IOException when the file is unreadable or deleted meanwhile.
      */
     public Stored openForMessage(String messageId) throws IOException {
-        VaultStore.Media row = store.rowForMessage(messageId);
+        return openRow(store.rowForMessage(messageId));
+    }
+
+    /** {@link #openForMessage} by row id, as {@link #storedItems} lists it. */
+    public Stored open(long id) throws IOException {
+        return openRow(store.row(id));
+    }
+
+    private Stored openRow(VaultStore.Media row) throws IOException {
         if (row == null || !VaultStore.STORED.equals(row.state)) return null;
         return new Stored(VaultFile.open(file(row.id, PKV), kek), row.kind);
     }
@@ -187,6 +211,35 @@ public final class MediaVault {
     /** Ids of unsent saved messages whose media is stored. Runs on the caller's background thread. */
     public Set<String> storedMessageIds() {
         return store.storedMessageIds();
+    }
+
+    /** One stored media row; the sender is null when its message is not saved. */
+    public static final class Item {
+        public final long id;
+        public final String kind;
+        public final String mime;
+        public final long sizeBytes;
+        public final long msgTimestamp;
+        public final String accountId;
+        public final String senderUsername;
+        public final String senderId;
+
+        Item(long id, String kind, String mime, long sizeBytes, long msgTimestamp, String accountId,
+             String senderUsername, String senderId) {
+            this.id = id;
+            this.kind = kind;
+            this.mime = mime;
+            this.sizeBytes = sizeBytes;
+            this.msgTimestamp = msgTimestamp;
+            this.accountId = accountId;
+            this.senderUsername = senderUsername;
+            this.senderId = senderId;
+        }
+    }
+
+    /** Every stored media row, kept or not, newest first. Runs on the caller's background thread. */
+    public List<Item> storedItems() {
+        return store.storedItems();
     }
 
     /** Starts recovery, queued downloads and the retention sweep once per process; returns at once. */

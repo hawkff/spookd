@@ -157,6 +157,22 @@ final class VaultStore {
         return ids;
     }
 
+    /** Every stored row with its message's sender, kept or not, newest first. */
+    List<MediaVault.Item> storedItems() {
+        List<MediaVault.Item> items = new ArrayList<>();
+        try (Cursor cursor = db.rawQuery("SELECT m.id, m.kind, m.mime, m.size_bytes, m.msg_timestamp,"
+                + " m.account_id, s.sender_username, s.sender_id FROM saved_media m"
+                + " LEFT JOIN saved_messages s ON s.server_id = m.item_id AND s.server_id != ''"
+                + " WHERE m.state = 'stored' ORDER BY m.msg_timestamp DESC", null)) {
+            while (cursor.moveToNext()) {
+                items.add(new MediaVault.Item(cursor.getLong(0), cursor.getString(1), cursor.getString(2),
+                        cursor.getLong(3), cursor.getLong(4), cursor.getString(5), cursor.getString(6),
+                        cursor.getString(7)));
+            }
+        }
+        return items;
+    }
+
     private Media first(String sql, String arg) {
         try (Cursor cursor = db.rawQuery(sql, new String[]{arg})) {
             return cursor.moveToFirst() ? new Media(cursor) : null;
