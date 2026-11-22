@@ -55,6 +55,13 @@ public class AccountSettingsTest {
     }
 
     @Test
+    public void downloadDestinationAndGalleryCleanupStayGlobal() {
+        assertTrue(AccountSettings.isGlobal("save_downloads_to_phone_storage"));
+        assertTrue(AccountSettings.isGlobal("gallery_max_age_days"));
+        assertTrue(AccountSettings.isGlobal("gallery_max_size_gb"));
+    }
+
+    @Test
     public void failedReplacementLeavesNoMarker() {
         Map<String, Object> accounts = new HashMap<>();
         assertFalse(AccountSettings.replaceUnderMarker(() -> accounts.put("adopt_live_file", true) == null,
