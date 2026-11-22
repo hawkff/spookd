@@ -36,6 +36,7 @@ private const val CLICK_LISTENER = "Landroid/view/View\$OnClickListener;"
 private object FollowButtonTextTypeFingerprint : Fingerprint(
     definingClass = FOLLOW_BUTTON,
     name = "getCurrentTextType",
+    returnType = "L",
     parameters = emptyList(),
 )
 
@@ -128,6 +129,12 @@ val confirmFollowPatch =
 
         execute {
             val textType = FollowButtonTextTypeFingerprint.matchOrNull()?.method ?: return@execute
+            // Called with invoke-virtual and read with move-result-object below.
+            if (AccessFlags.STATIC.isSet(textType.accessFlags) || AccessFlags.PRIVATE.isSet(textType.accessFlags) ||
+                !textType.returnType.startsWith("L")
+            ) {
+                return@execute
+            }
             val added = addConfirmedPerformClick(
                 FOLLOW_BUTTON,
                 """
