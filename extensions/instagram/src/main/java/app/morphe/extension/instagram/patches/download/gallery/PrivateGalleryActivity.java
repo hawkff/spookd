@@ -199,6 +199,7 @@ public final class PrivateGalleryActivity {
         private int tileSize;
         private int loads;
         private boolean closed;
+        private boolean sharing; // main thread only
 
         Controller(Activity activity) {
             this.activity = activity;
@@ -563,16 +564,21 @@ public final class PrivateGalleryActivity {
 
         /** Copies on the jobs thread, then offers the copy to other apps from the main thread. */
         private void share(Item item) {
+            // One share at a time: the next share clears the copy the previous chooser still offers.
+            if (sharing) return;
+            sharing = true;
             Context app = activity.getApplicationContext();
             JOBS.execute(() -> {
                 Uri uri;
                 try {
                     uri = GalleryActions.shareCopy(app, item.fileName, item.vault, item.id, item.file);
                 } catch (Exception e) {
+                    ui.post(() -> sharing = false);
                     failed("share " + item.key(), e);
                     return;
                 }
                 ui.post(() -> {
+                    sharing = false;
                     if (closed) return;
                     try {
                         GalleryActions.share(activity, uri, GalleryActions.mimeType(item.fileName, item.kind));
