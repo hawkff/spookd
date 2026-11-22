@@ -23,11 +23,11 @@ public final class GalleryActionsTest {
 
     @Test
     public void shareUriPointsAtTheProviderCachePath() {
-        Uri uri = GalleryActions.shareUri("com.example.fileprovider", "a b#c.jpg");
+        Uri uri = GalleryActions.shareUri("com.example.fileprovider", "f00", "a b#c.jpg");
 
         assertEquals("content", uri.getScheme());
         assertEquals("com.example.fileprovider", uri.getAuthority());
-        assertEquals("/cache/piko_share/a%20b%23c.jpg", uri.getEncodedPath());
+        assertEquals("/cache/piko_share/f00/a%20b%23c.jpg", uri.getEncodedPath());
         assertEquals(Arrays.asList("cache", "piko_share", "a b#c.jpg"), uri.getPathSegments());
     }
 
