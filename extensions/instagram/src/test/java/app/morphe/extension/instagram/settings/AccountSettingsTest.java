@@ -33,19 +33,37 @@ public class AccountSettingsTest {
 
     @Test
     public void firstAccountAdoptsTheLiveFile() {
-        assertEquals(AccountSettings.Action.ADOPT, AccountSettings.action(null, "1", false));
-        assertEquals(AccountSettings.Action.ADOPT, AccountSettings.action("2", "1", true));
-        assertEquals(AccountSettings.Action.ADOPT, AccountSettings.action("1", "1", true));
+        assertEquals(AccountSettings.Action.ADOPT, AccountSettings.action(null, "1", false, false));
+        assertEquals(AccountSettings.Action.ADOPT, AccountSettings.action("2", "1", true, false));
+        assertEquals(AccountSettings.Action.ADOPT, AccountSettings.action("1", "1", true, false));
     }
 
     @Test
     public void sameOwnerChangesNothing() {
-        assertEquals(AccountSettings.Action.NONE, AccountSettings.action("1", "1", false));
+        assertEquals(AccountSettings.Action.NONE, AccountSettings.action("1", "1", false, false));
+    }
+
+    @Test
+    public void failedSwapIsRetriedForTheSameAccount() {
+        assertEquals(AccountSettings.Action.SWAP, AccountSettings.action("1", "1", false, true));
+    }
+
+    @Test
+    public void rollbackRestoresTheOutgoingAccount() {
+        Map<String, Object> outgoing = AccountSettings.snapshot(
+                map(OWNER, "1", "disable_ads", false, "amoled_theme", true), "1");
+        Map<String, Object> incoming = map(OWNER, "2", "disable_ads", true, "hide_meta_ai", false);
+
+        assertEquals(Collections.singleton("hide_meta_ai"), AccountSettings.keysToRemove(incoming, outgoing));
+        assertEquals(map(OWNER, "1", "disable_ads", false), AccountSettings.keysToPut(outgoing, "1"));
+
+        Map<String, Object> empty = Collections.emptyMap();
+        assertTrue(AccountSettings.keysToRemove(empty, outgoing).isEmpty());
     }
 
     @Test
     public void switchBetweenKnownAccountsSwapsPerAccountKeys() {
-        assertEquals(AccountSettings.Action.SWAP, AccountSettings.action("1", "2", false));
+        assertEquals(AccountSettings.Action.SWAP, AccountSettings.action("1", "2", false, false));
         Map<String, Object> live = map(OWNER, "1", "disable_ads", false, "disable_typing_status", true,
                 "amoled_theme", true);
         Map<String, Object> incoming = map(OWNER, "2", "disable_ads", true);

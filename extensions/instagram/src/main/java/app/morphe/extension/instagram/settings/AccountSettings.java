@@ -72,6 +72,8 @@ public final class AccountSettings {
     enum Action { NONE, ADOPT, SWAP }
 
     private static String pendingId;
+    // Account whose swap failed to reach the disk, so its next event swaps again.
+    private static String retryId;
     private static boolean callbacksRegistered;
     private static volatile boolean restartPending;
 
@@ -127,7 +129,7 @@ public final class AccountSettings {
         boolean adopt = accounts.getBoolean(ADOPT_LIVE_FILE_KEY, false);
         String owner = live.getString(OWNER_KEY, null);
 
-        switch (action(owner, id, adopt)) {
+        switch (action(owner, id, adopt, id.equals(retryId))) {
             case NONE:
                 return;
             case ADOPT:
@@ -139,23 +141,30 @@ public final class AccountSettings {
                 Map<String, Object> outgoing = snapshot(live.getAll(), owner);
                 SharedPreferences.Editor park = prefs(context, snapshotName(owner)).edit().clear();
                 putAll(park, outgoing);
-                if (!park.commit()) return;
+                if (!park.commit()) {
+                    logFailure("Failed to park the settings of the previous account", null);
+                    return;
+                }
 
                 Map<String, ?> incoming = prefs(context, snapshotName(id)).getAll();
-                SharedPreferences.Editor editor = live.edit();
-                for (String key : keysToRemove(outgoing, incoming)) {
-                    editor.remove(key);
+                boolean restart = restartRequired(outgoing, incoming);
+                if (commit(live, keysToRemove(outgoing, incoming), keysToPut(incoming, id))) {
+                    retryId = null;
+                    if (restart) restartPending = true;
+                    return;
                 }
-                putAll(editor, keysToPut(incoming, id));
-                if (editor.commit() && restartRequired(outgoing, incoming)) {
+                // commit() changes memory before the disk write fails, so readers already see the incoming values.
+                logFailure("Failed to write the settings of the current account", null);
+                retryId = id;
+                if (!commit(live, keysToRemove(incoming, outgoing), keysToPut(outgoing, owner))) {
                     restartPending = true;
                 }
         }
     }
 
-    static Action action(String owner, String id, boolean adoptLiveFile) {
+    static Action action(String owner, String id, boolean adoptLiveFile, boolean retry) {
         if (owner == null || adoptLiveFile) return Action.ADOPT;
-        return id.equals(owner) ? Action.NONE : Action.SWAP;
+        return id.equals(owner) && !retry ? Action.NONE : Action.SWAP;
     }
 
     static boolean isGlobal(String key) {
@@ -221,6 +230,15 @@ public final class AccountSettings {
 
     private static SharedPreferences prefs(Context context, String name) {
         return context.getSharedPreferences(name, Context.MODE_PRIVATE);
+    }
+
+    private static boolean commit(SharedPreferences prefs, Set<String> remove, Map<String, ?> put) {
+        SharedPreferences.Editor editor = prefs.edit();
+        for (String key : remove) {
+            editor.remove(key);
+        }
+        putAll(editor, put);
+        return editor.commit();
     }
 
     @SuppressWarnings("unchecked")
