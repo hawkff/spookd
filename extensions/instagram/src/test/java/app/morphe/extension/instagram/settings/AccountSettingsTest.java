@@ -2,6 +2,7 @@ package app.morphe.extension.instagram.settings;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
@@ -36,6 +37,30 @@ public class AccountSettingsTest {
         assertEquals(AccountSettings.Action.ADOPT, AccountSettings.action(null, "1", false, false));
         assertEquals(AccountSettings.Action.ADOPT, AccountSettings.action("2", "1", true, false));
         assertEquals(AccountSettings.Action.ADOPT, AccountSettings.action("1", "1", true, false));
+    }
+
+    @Test
+    public void failedReplacementLeavesNoMarker() {
+        Map<String, Object> accounts = new HashMap<>();
+        assertFalse(AccountSettings.replaceUnderMarker(() -> accounts.put("adopt_live_file", true) == null,
+                () -> false, () -> accounts.remove("adopt_live_file")));
+        assertTrue(accounts.isEmpty());
+
+        assertThrows(IllegalStateException.class, () -> AccountSettings.replaceUnderMarker(
+                () -> accounts.put("adopt_live_file", true) == null,
+                () -> { throw new IllegalStateException(); }, () -> accounts.remove("adopt_live_file")));
+        assertTrue(accounts.isEmpty());
+
+        assertTrue(AccountSettings.replaceUnderMarker(() -> accounts.put("adopt_live_file", true) == null,
+                () -> true, () -> accounts.remove("adopt_live_file")));
+        assertEquals(map("adopt_live_file", true), accounts);
+    }
+
+    @Test
+    public void failedMarkerCommitMeansNoReplacement() {
+        boolean[] replaced = {false};
+        assertFalse(AccountSettings.replaceUnderMarker(() -> false, () -> replaced[0] = true, () -> {}));
+        assertFalse(replaced[0]);
     }
 
     @Test

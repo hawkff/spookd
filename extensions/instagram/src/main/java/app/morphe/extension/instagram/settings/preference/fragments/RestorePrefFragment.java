@@ -176,10 +176,11 @@ public class RestorePrefFragment extends Fragment {
                 toast(str("piko_import_fail"));
                 return;
             }
-            if (destinationFile.getName().equals(Constants.PIKO_SETTINGS + ".xml")) AccountSettings.adoptLiveFile();
             // A pending apply() would otherwise overwrite the restored file before the restart.
             SharedPref.flush();
-            if (!tempFile.renameTo(destinationFile)) {
+            if (!(destinationFile.getName().equals(Constants.PIKO_SETTINGS + ".xml")
+                    ? AccountSettings.replaceLiveFile(tempFile, destinationFile)
+                    : tempFile.renameTo(destinationFile))) {
                 throw new IOException("Could not replace " + destinationFile);
             }
 

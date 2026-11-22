@@ -17,12 +17,14 @@ import android.os.Bundle;
 
 import com.instagram.common.session.UserSession;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
@@ -112,14 +114,41 @@ public final class AccountSettings {
         }
     }
 
-    /** Called before an imported file replaces the live file, so the active account takes it over. */
-    public static void adoptLiveFile() {
+    /** Replaces the live file with an imported one, which the account active after the restart takes over. */
+    public static synchronized boolean replaceLiveFile(File source, File destination) {
+        return replaceUnderMarker(AccountSettings::adoptLiveFile, () -> source.renameTo(destination),
+                AccountSettings::clearAdoptMarker);
+    }
+
+    /** Replaces only once the marker is on disk, and takes the marker back if the replacement fails. */
+    static boolean replaceUnderMarker(BooleanSupplier setMarker, BooleanSupplier replace, Runnable clearMarker) {
+        if (!setMarker.getAsBoolean()) return false;
+        boolean replaced = false;
+        try {
+            replaced = replace.getAsBoolean();
+        } finally {
+            if (!replaced) clearMarker.run();
+        }
+        return replaced;
+    }
+
+    private static synchronized boolean adoptLiveFile() {
         try {
             Context context = Utils.getContext();
-            if (context == null) return;
-            prefs(context, ACCOUNTS_PREF_NAME).edit().putBoolean(ADOPT_LIVE_FILE_KEY, true).commit();
+            return context != null
+                    && prefs(context, ACCOUNTS_PREF_NAME).edit().putBoolean(ADOPT_LIVE_FILE_KEY, true).commit();
         } catch (Throwable t) {
             logFailure("adoptLiveFile failure", t);
+            return false;
+        }
+    }
+
+    private static synchronized void clearAdoptMarker() {
+        try {
+            Context context = Utils.getContext();
+            if (context != null) prefs(context, ACCOUNTS_PREF_NAME).edit().remove(ADOPT_LIVE_FILE_KEY).commit();
+        } catch (Throwable t) {
+            logFailure("clearAdoptMarker failure", t);
         }
     }
 
