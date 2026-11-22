@@ -40,6 +40,7 @@ import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.patches.customise.font.FontStorage;
 import app.morphe.extension.instagram.patches.dm.InboxLock;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
+import app.morphe.extension.instagram.settings.AccountSettings;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 
@@ -175,6 +176,7 @@ public class RestorePrefFragment extends Fragment {
                 toast(str("piko_import_fail"));
                 return;
             }
+            if (destinationFile.getName().equals(Constants.PIKO_SETTINGS + ".xml")) AccountSettings.adoptLiveFile();
             // A pending apply() would otherwise overwrite the restored file before the restart.
             SharedPref.flush();
             if (!tempFile.renameTo(destinationFile)) {
