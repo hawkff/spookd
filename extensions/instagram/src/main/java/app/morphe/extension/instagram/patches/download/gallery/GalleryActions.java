@@ -20,6 +20,7 @@ import java.io.OutputStream;
 import java.net.URLConnection;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import app.morphe.extension.crimera.legacydownloader.DownloadRequest;
@@ -89,9 +90,13 @@ final class GalleryActions {
     /** Deletes earlier share copies and returns their directory. Runs on the caller's background thread. */
     static File clearShared(Context context) {
         File dir = new File(context.getCacheDir(), SHARE_DIR);
-        File[] files = dir.listFiles();
-        if (files != null) {
-            for (File file : files) file.delete();
+        File[] entries = dir.listFiles();
+        if (entries != null) {
+            for (File entry : entries) {
+                File[] inner = entry.listFiles();
+                if (inner != null) for (File file : inner) file.delete();
+                entry.delete();
+            }
         }
         return dir;
     }
@@ -103,7 +108,10 @@ final class GalleryActions {
     static Uri shareCopy(Context context, String name, boolean vault, long id, File file) throws Exception {
         File dir = clearShared(context);
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cannot create " + dir);
-        File copy = new File(dir, name.replace('/', '_'));
+        // A fresh random folder per share: a URI granted earlier never points at a later item.
+        File folder = new File(dir, UUID.randomUUID().toString());
+        if (!folder.mkdirs()) throw new IOException("Cannot create " + folder);
+        File copy = new File(folder, name.replace('/', '_'));
         try (InputStream in = open(vault, id, file); OutputStream out = new FileOutputStream(copy)) {
             byte[] buffer = new byte[8192];
             for (int count; (count = in.read(buffer)) != -1; ) out.write(buffer, 0, count);
@@ -111,7 +119,7 @@ final class GalleryActions {
             copy.delete();
             throw e;
         }
-        return shareUri(fileProviderAuthority(context), copy.getName());
+        return shareUri(fileProviderAuthority(context), folder.getName(), copy.getName());
     }
 
     static String fileProviderAuthority(Context context) throws PackageManager.NameNotFoundException {
@@ -121,9 +129,9 @@ final class GalleryActions {
     }
 
     /** The provider serves its {@code cache} path name from the cache directory. */
-    static Uri shareUri(String authority, String name) {
+    static Uri shareUri(String authority, String folder, String name) {
         return new Uri.Builder().scheme("content").authority(authority)
-                .appendPath("cache").appendPath(SHARE_DIR).appendPath(name).build();
+                .appendPath("cache").appendPath(SHARE_DIR).appendPath(folder).appendPath(name).build();
     }
 
     /** Main thread: lets the user pick where to send the shared copy. */
