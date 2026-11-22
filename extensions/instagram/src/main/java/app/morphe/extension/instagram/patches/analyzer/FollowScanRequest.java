@@ -4,6 +4,13 @@ import com.instagram.common.session.UserSession;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.shared.Logger;
@@ -13,6 +20,15 @@ import app.morphe.extension.shared.Logger;
  * screens send, which adds the session itself. The native stubs are rewritten at patch time.
  */
 public final class FollowScanRequest implements PageSource {
+
+    static final long FETCH_TIMEOUT_MS = 30_000L;
+    static final String FETCH_THREAD_NAME = "piko-analyzer-fetch";
+    // Cached, so a request that ignores the cancel cannot hold back the next page.
+    private static final ExecutorService FETCHER = Executors.newCachedThreadPool(task -> {
+        Thread thread = new Thread(task, FETCH_THREAD_NAME);
+        thread.setDaemon(true);
+        return thread;
+    });
 
     private interface Getter<T> {
         T get() throws Exception;
@@ -24,9 +40,10 @@ public final class FollowScanRequest implements PageSource {
         try {
             UserSession session = ProfileAnalyzer.session(accountId);
             if (session == null || !accountId.equals(session.getUserId())) return null;
-            Object page = list == PikoFollowDb.LIST_FOLLOWERS
+            boolean followers = list == PikoFollowDb.LIST_FOLLOWERS;
+            Object page = withTimeout(() -> followers
                     ? fetchFollowersNative(session, accountId, maxId, rankToken)
-                    : fetchFollowingNative(session, accountId, maxId, rankToken);
+                    : fetchFollowingNative(session, accountId, maxId, rankToken), FETCH_TIMEOUT_MS);
             List<?> users = page == null ? null : pageUsersNative(page);
             if (users == null) {
                 Logger.printInfo(() -> "FollowScanRequest: no page");
@@ -44,6 +61,28 @@ public final class FollowScanRequest implements PageSource {
             Logger.printInfo(() -> "FollowScanRequest failed: " + error);
             return null;
         }
+    }
+
+    /**
+     * Scan worker thread. Runs {@code fetch} on a helper thread, since the app's request waits for its
+     * callback without a time limit, and returns its result, or null after {@code timeoutMs} or a failure.
+     */
+    static <T> T withTimeout(Callable<T> fetch, long timeoutMs) {
+        Future<T> future = FETCHER.submit(fetch);
+        try {
+            return future.get(timeoutMs, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            Logger.printInfo(() -> "FollowScanRequest: TimeoutException");
+        } catch (InterruptedException e) {
+            future.cancel(true);
+            Thread.currentThread().interrupt();
+            Logger.printInfo(() -> "FollowScanRequest: InterruptedException");
+        } catch (ExecutionException e) {
+            String error = e.getCause() == null ? "ExecutionException" : e.getCause().getClass().getSimpleName();
+            Logger.printInfo(() -> "FollowScanRequest failed: " + error);
+        }
+        return null;
     }
 
     private static FollowUser toFollowUser(Object user) {
