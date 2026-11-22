@@ -132,9 +132,14 @@ public final class ProfileAnalyzer {
         Utils.runOnMainThread(ProfileAnalyzer::refreshRow);
     }
 
-    /** Main thread, from the open results screen: runs refresh whenever the row refreshes. */
+    /** Main thread, from the resumed results screen: runs refresh whenever the row refreshes. */
     static void onScreenShown(Runnable refresh) {
         screenRefresh = new WeakReference<>(refresh);
+    }
+
+    /** Main thread, from a paused or destroyed results screen: frees the slot if that screen owns it. */
+    static void onScreenHidden(Runnable refresh) {
+        if (screenRefresh.get() == refresh) screenRefresh = new WeakReference<>(null);
     }
 
     /** Any thread. True from a start until the scan reported how it ended. */

@@ -4,12 +4,14 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Application;
 import android.content.res.ColorStateList;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
+import android.os.Bundle;
 import android.text.format.DateFormat;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -25,8 +27,11 @@ import android.widget.TextView;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -62,7 +67,24 @@ public final class ProfileAnalyzerActivity {
 
     /** Main thread, once the Inbox lock allowed it. */
     public static void setupOnActivity(Activity activity) {
-        new Controller(activity).setup();
+        Controller controller = new Controller(activity);
+        controller.setup();
+        if (activity.getApplication() == null) return;
+        activity.getApplication().registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
+            @Override public void onActivityCreated(Activity a, Bundle b) {}
+            @Override public void onActivityStarted(Activity a) {}
+            @Override public void onActivityResumed(Activity a) { if (a == activity) controller.onResumed(); }
+            @Override public void onActivityPaused(Activity a) { if (a == activity) controller.onPaused(); }
+            @Override public void onActivityStopped(Activity a) {}
+            @Override public void onActivitySaveInstanceState(Activity a, Bundle b) {}
+            @Override
+            public void onActivityDestroyed(Activity a) {
+                if (a == activity) {
+                    controller.onPaused();
+                    a.getApplication().unregisterActivityLifecycleCallbacks(this);
+                }
+            }
+        });
     }
 
     /** Section titles in screen order, each followed by its rows or by its empty text. */
@@ -132,23 +154,38 @@ public final class ProfileAnalyzerActivity {
         }
     }
 
-    /** The latest known username of a history row, or null when none is known. */
-    static String historyUsername(PikoFollowDb.Change change) {
-        if (change.user != null && change.user.username != null) return change.user.username;
-        // For name and picture changes the new value is not a username.
-        boolean identity = PikoFollowDb.FULL_NAME.equals(change.kind)
-                || PikoFollowDb.PICTURE.equals(change.kind);
-        return identity ? null : change.newValue;
+    /**
+     * One latest known username per user of a newest-first history: the stored identity, else the
+     * newest event that carries a username.
+     */
+    static Map<String, String> latestUsernames(List<PikoFollowDb.Change> history) {
+        Map<String, String> out = new HashMap<>();
+        for (PikoFollowDb.Change change : history) {
+            if (out.containsKey(change.userId)) continue;
+            String username = change.user != null ? change.user.username : null;
+            // For name and picture changes the new value is not a username.
+            if (username == null && !PikoFollowDb.FULL_NAME.equals(change.kind)
+                    && !PikoFollowDb.PICTURE.equals(change.kind)) {
+                username = change.newValue;
+            }
+            if (username != null && !username.isEmpty()) out.put(change.userId, username);
+        }
+        return out;
     }
 
     private static final class Loaded {
+        final String accountId;
         final PikoFollowDb.Scan scan;
         final List<Object> rows;
+        final Map<String, String> usernames;
         final boolean hasHistory;
 
-        Loaded(PikoFollowDb.Scan scan, List<Object> rows, boolean hasHistory) {
+        Loaded(String accountId, PikoFollowDb.Scan scan, List<Object> rows,
+               Map<String, String> usernames, boolean hasHistory) {
+            this.accountId = accountId;
             this.scan = scan;
             this.rows = rows;
+            this.usernames = usernames;
             this.hasHistory = hasHistory;
         }
     }
@@ -163,11 +200,12 @@ public final class ProfileAnalyzerActivity {
         private final Runnable refresh = this::refreshScanState;
         private String accountId;
         private List<Object> rows = new ArrayList<>();
+        private Map<String, String> usernames = new HashMap<>();
         private SimpleDateFormat dateFormat;
         private TextView summary;
         private Button startAction, clearAction, deleteAction;
         private RowsAdapter adapter;
-        private boolean hasScan, hasHistory, wasScanning;
+        private boolean hasScan, hasHistory, wasScanning, paused;
 
         Controller(Activity activity) {
             this.activity = activity;
@@ -206,7 +244,9 @@ public final class ProfileAnalyzerActivity {
             header.addView(summary);
             startAction = actionButton(header, str(ProfileAnalyzer.ROW_START),
                     InstagramPreferenceStyle.primaryTextColor());
-            startAction.setOnClickListener(v -> ProfileAnalyzer.startScan(activity));
+            startAction.setOnClickListener(v -> {
+                if (sameAccount()) ProfileAnalyzer.startScan(activity);
+            });
             clearAction = actionButton(header, str("piko_profile_analyzer_clear_history"),
                     InstagramPreferenceStyle.primaryTextColor());
             clearAction.setOnClickListener(v -> confirm("piko_profile_analyzer_clear_history_confirm",
@@ -248,17 +288,46 @@ public final class ProfileAnalyzerActivity {
             }
             activity.setContentView(root);
 
-            accountId = ProfileAnalyzer.currentAccountId();
-            if (accountId == null) {
-                summary.setText(str(ProfileAnalyzer.ROW_OPEN_PROFILE));
-                startAction.setVisibility(View.GONE);
-                clearAction.setVisibility(View.GONE);
-                deleteAction.setVisibility(View.GONE);
-                return;
-            }
             ProfileAnalyzer.onScreenShown(refresh);
+            show(ProfileAnalyzer.currentAccountId());
+        }
+
+        void onResumed() {
+            ProfileAnalyzer.onScreenShown(refresh);
+            // A reload recovers a scan end that came while another screen held the refresh.
+            if (paused && sameAccount() && accountId != null) load(LOAD, accountId);
+            paused = false;
+        }
+
+        void onPaused() {
+            paused = true;
+            ProfileAnalyzer.onScreenHidden(refresh);
+        }
+
+        /** Shows this account's data, or the 'Open your profile once' state without an account. */
+        private void show(String account) {
+            accountId = account;
+            rows = new ArrayList<>();
+            usernames = new HashMap<>();
+            hasScan = false;
+            hasHistory = false;
+            adapter.notifyDataSetChanged();
+            int actions = account == null ? View.GONE : View.VISIBLE;
+            startAction.setVisibility(actions);
+            clearAction.setVisibility(actions);
+            deleteAction.setVisibility(actions);
+            summary.setText(account == null ? str(ProfileAnalyzer.ROW_OPEN_PROFILE) : "");
+            if (account == null) return;
             refreshScanState();
-            load(LOAD);
+            load(LOAD, account);
+        }
+
+        /** Main thread. False, after switching the screen over, when the current account changed. */
+        private boolean sameAccount() {
+            String current = ProfileAnalyzer.currentAccountId();
+            if (Objects.equals(current, accountId)) return true;
+            show(current);
+            return false;
         }
 
         private Button actionButton(LinearLayout parent, String text, int textColor) {
@@ -292,6 +361,7 @@ public final class ProfileAnalyzerActivity {
         /** Main thread: the scan action shows the row's state; a scan that just ended reloads the lists. */
         private void refreshScanState() {
             if (activity.isFinishing() || activity.isDestroyed()) return;
+            if (!sameAccount() || accountId == null) return;
             String state = ProfileAnalyzer.rowSummary(activity);
             boolean scanning = ProfileAnalyzer.isScanning();
             startAction.setText(state);
@@ -301,23 +371,25 @@ public final class ProfileAnalyzerActivity {
             setActionEnabled(deleteAction, (hasScan || hasHistory) && !scanning);
             boolean ended = wasScanning && !scanning;
             wasScanning = scanning;
-            if (ended) load(LOAD);
+            if (ended) load(LOAD, accountId);
         }
 
         private void confirm(String messageKey, String actionKey, int job) {
+            if (!sameAccount() || accountId == null) return;
+            String account = accountId;
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                     .setMessage(str(messageKey))
                     .setPositiveButton(str(actionKey), (dialog, which) -> {
+                        if (!sameAccount() || !account.equals(accountId)) return;
                         if (job == DELETE_DATA && ProfileAnalyzer.isScanning()) return;
-                        load(job);
+                        load(job, account);
                     })
                     .setNegativeButton(str("piko_cancel"), null)
                     .show();
         }
 
         /** Runs the job and the queries on the DB thread, then binds on the main thread. */
-        private void load(int job) {
-            String account = accountId;
+        private void load(int job, String account) {
             DB_JOBS.execute(() -> {
                 Loaded loaded = null;
                 try {
@@ -329,7 +401,8 @@ public final class ProfileAnalyzerActivity {
                     List<Object> found = scan == null ? new ArrayList<>() : rows(
                             db.notFollowingBack(account), db.followersNotFollowedBack(account),
                             db.mutuals(account), history);
-                    loaded = new Loaded(scan, found, !history.isEmpty());
+                    loaded = new Loaded(account, scan, found, latestUsernames(history),
+                            !history.isEmpty());
                 } catch (Exception e) {
                     String error = e.getClass().getSimpleName();
                     Logger.printException(() -> "ProfileAnalyzerActivity: load failed: " + error);
@@ -337,6 +410,8 @@ public final class ProfileAnalyzerActivity {
                 Loaded result = loaded;
                 Utils.runOnMainThread(() -> {
                     if (result == null || activity.isFinishing() || activity.isDestroyed()) return;
+                    // A result for an account the screen no longer shows is dropped.
+                    if (!sameAccount() || !result.accountId.equals(accountId)) return;
                     bind(result);
                 });
             });
@@ -351,6 +426,7 @@ public final class ProfileAnalyzerActivity {
                     ProfileAnalyzer.count(loaded.scan.followerCount),
                     ProfileAnalyzer.count(loaded.scan.followingCount)));
             rows = loaded.rows;
+            usernames = loaded.usernames;
             adapter.notifyDataSetChanged();
             refreshScanState();
         }
@@ -358,7 +434,7 @@ public final class ProfileAnalyzerActivity {
         private void openProfile(Object item) {
             String username = item instanceof FollowUser ? ((FollowUser) item).username
                     : item instanceof PikoFollowDb.Change
-                    ? historyUsername((PikoFollowDb.Change) item) : null;
+                    ? usernames.get(((PikoFollowDb.Change) item).userId) : null;
             if (username == null || username.isEmpty()) return;
             PikoUtils.openUrl("instagram://user?username=" + Uri.encode(username), true);
         }
@@ -385,7 +461,7 @@ public final class ProfileAnalyzerActivity {
                     views.date.setVisibility(View.GONE);
                 } else {
                     PikoFollowDb.Change change = (PikoFollowDb.Change) item;
-                    bindUser(views, change.user, historyUsername(change));
+                    bindUser(views, change.user, usernames.get(change.userId));
                     String key = historyKey(change.kind, change.oldValue, change.newValue);
                     views.change.setText(key == null ? change.kind
                             : str(key, change.oldValue, change.newValue));

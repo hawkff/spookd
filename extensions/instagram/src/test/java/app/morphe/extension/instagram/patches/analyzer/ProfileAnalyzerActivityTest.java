@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public final class ProfileAnalyzerActivityTest {
 
@@ -64,24 +65,42 @@ public final class ProfileAnalyzerActivityTest {
     }
 
     @Test
-    public void historyRowsOpenTheLatestKnownUsername() {
-        FollowUser renamed = new FollowUser("1", "latest", null, false, null);
-        assertEquals("latest", ProfileAnalyzerActivity.historyUsername(
-                change(PikoFollowDb.NEW_FOLLOWER, null, "then", renamed)));
-        assertEquals("then", ProfileAnalyzerActivity.historyUsername(
-                change(PikoFollowDb.LOST_FOLLOWER, null, "then", null)));
-        assertEquals("new", ProfileAnalyzerActivity.historyUsername(
-                change(PikoFollowDb.USERNAME, "old", "new", null)));
-        // The new value of a name or picture change is not a username.
-        assertNull(ProfileAnalyzerActivity.historyUsername(
-                change(PikoFollowDb.FULL_NAME, "Bob", "Robert", null)));
-        assertNull(ProfileAnalyzerActivity.historyUsername(
-                change(PikoFollowDb.PICTURE, "p1", "p2", null)));
+    public void aRenamedUserWhoLeftAndWasPrunedOpensTheNewestUsername() {
+        // Newest first: renamed a to b, then b to c, then stopped following; the identity is pruned.
+        PikoFollowDb.Change aToB = change("1", PikoFollowDb.USERNAME, "a", "b", null);
+        List<PikoFollowDb.Change> history = Arrays.asList(
+                change("1", PikoFollowDb.LOST_FOLLOWER, null, "c", null),
+                change("1", PikoFollowDb.USERNAME, "b", "c", null),
+                aToB);
+
+        assertEquals("c", ProfileAnalyzerActivity.latestUsernames(history).get(aToB.userId));
+    }
+
+    @Test
+    public void latestUsernamesPreferTheStoredIdentityThenTheNewestUsernameEvent() {
+        FollowUser stored = new FollowUser("3", "z", null, false, null);
+        Map<String, String> usernames = ProfileAnalyzerActivity.latestUsernames(Arrays.asList(
+                // The new value of a name or picture change is not a username.
+                change("2", PikoFollowDb.PICTURE, "p1", "p2", null),
+                change("2", PikoFollowDb.USERNAME, "x", "y", null),
+                change("3", PikoFollowDb.NEW_FOLLOWER, null, "then", stored),
+                change("4", PikoFollowDb.FULL_NAME, "Bob", "Robert", null),
+                change("5", PikoFollowDb.LOST_FOLLOWER, null, null, null)));
+
+        assertEquals("y", usernames.get("2"));
+        assertEquals("z", usernames.get("3"));
+        assertNull(usernames.get("4"));
+        assertNull(usernames.get("5"));
     }
 
     private static PikoFollowDb.Change change(String kind, String oldValue, String newValue,
                                               FollowUser user) {
-        return new PikoFollowDb.Change("1", kind, oldValue, newValue, 1000, user);
+        return change("1", kind, oldValue, newValue, user);
+    }
+
+    private static PikoFollowDb.Change change(String userId, String kind, String oldValue,
+                                              String newValue, FollowUser user) {
+        return new PikoFollowDb.Change(userId, kind, oldValue, newValue, 1000, user);
     }
 
     private static List<String> describe(List<Object> rows) {
