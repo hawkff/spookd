@@ -107,6 +107,7 @@ public class HookFlags {
             BOOL_FLAGS.put("62485::0", false);
             BOOL_FLAGS.put("62485::4", false);
             BOOL_FLAGS.put("62485::5", false);
+            BOOL_FLAGS.put("62485::6", false); //igd_android_gen_ai_search_xstack::enable_search_bar_ui_improvements (DM search hint and Meta AI ring)
             BOOL_FLAGS.put("62485::11", false);
             BOOL_FLAGS.put("70108::0", false);
             BOOL_FLAGS.put("71155::6", false);
