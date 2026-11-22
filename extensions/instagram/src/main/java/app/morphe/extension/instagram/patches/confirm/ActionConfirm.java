@@ -87,11 +87,14 @@ public final class ActionConfirm {
         }
     }
 
-    /** From the Reels like handler; {@code refs} holds the handler and its first nine arguments. */
+    /**
+     * From the Reels like handler; {@code refs} holds the handler and its first nine arguments. The
+     * eighth argument is a reaction its caller has already stored, so those calls are not asked.
+     */
     public static boolean allowReelLike(Object[] refs, boolean enabled, boolean liked, Class<?> owner, String name) {
         try {
             View view = (View) refs[1];
-            if (view == null || isBypassed(view) || !enabled || liked || !Pref.confirmLike()) return true;
+            if (view == null || isBypassed(view) || isReaction(refs) || !enabled || liked || !Pref.confirmLike()) return true;
             Object[] args = Arrays.copyOfRange(refs, 1, refs.length + 2);
             args[args.length - 2] = enabled;
             args[args.length - 1] = liked;
@@ -138,6 +141,10 @@ public final class ActionConfirm {
         if ("row_feed_button_like".equals(idName)) return LIKE;
         if ("reposts_ufi_icon".equals(idName)) return REPOST;
         return null;
+    }
+
+    static boolean isReaction(Object[] reelLikeRefs) {
+        return reelLikeRefs[8] != null;
     }
 
     static boolean isBlank(CharSequence text) {

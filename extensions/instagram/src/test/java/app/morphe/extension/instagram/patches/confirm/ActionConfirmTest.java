@@ -32,6 +32,15 @@ public class ActionConfirmTest {
     }
 
     @Test
+    public void reelLikesWithAStoredReactionAreNotAsked() {
+        Object[] plainTap = new Object[10];
+        Object[] reaction = new Object[10];
+        reaction[8] = "reaction_asset";
+        assertFalse(ActionConfirm.isReaction(plainTap));
+        assertTrue(ActionConfirm.isReaction(reaction));
+    }
+
+    @Test
     public void blankCommentsAreNotAsked() {
         assertTrue(ActionConfirm.isBlank(null));
         assertTrue(ActionConfirm.isBlank(" \n "));
