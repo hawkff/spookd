@@ -164,7 +164,14 @@ public final class SpookdMigration {
         for (String base : prefs) {
             String from = "shared_prefs/" + base;
             String to = "shared_prefs/" + newPrefsName(base);
-            if (existing.contains(to + ".xml") || existing.contains(to + ".xml.bak")) {
+            boolean newXml = existing.contains(to + ".xml");
+            boolean newBak = existing.contains(to + ".xml.bak");
+            if (newBak && !newXml && !existing.contains(from + ".xml.bak")) {
+                // A move stopped after the .bak: finish it, and Android drops this .xml for the .bak on load.
+                groups.add(Collections.singletonList(new Move(Op.RENAME, from + ".xml", to + ".xml")));
+                continue;
+            }
+            if (newXml || newBak) {
                 groups.add(Collections.singletonList(new Move(Op.MERGE_PREFS, from, to)));
                 continue;
             }

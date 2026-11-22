@@ -131,12 +131,16 @@ public final class SpookdMigrationTest {
                 "databases/spookd_dm_vault.db-wal",
                 "no_backup/spookd_vault"));
         assertEquals(Arrays.asList(
+                "[RENAME shared_prefs/piko_dm.xml -> shared_prefs/spookd_dm.xml]",
                 "[RENAME shared_prefs/piko_hidden_chats.xml -> shared_prefs/spookd_hidden_chats.xml]",
                 "[RENAME databases/piko_dm_vault.db -> databases/spookd_dm_vault.db]",
                 "[MERGE_DIRECTORY no_backup/piko_gallery -> no_backup/spookd_gallery]"
         ), plan(
                 "shared_prefs/spookd_settings.xml",
                 "shared_prefs/piko_hidden_chats.xml",
+                // The .bak moved, the .xml did not: the move resumes instead of merging.
+                "shared_prefs/spookd_dm.xml.bak",
+                "shared_prefs/piko_dm.xml",
                 // The media and sidecars moved, the database did not.
                 "databases/piko_dm_vault.db",
                 "databases/spookd_dm_vault.db-wal",
@@ -236,6 +240,22 @@ public final class SpookdMigrationTest {
         assertFalse(prefsFile("piko_dm.xml").exists());
         assertEquals("bak only", prefs("spookd_hidden_chats").getString("k", null));
         assertEquals("bak", prefs("spookd_dm").getString("k", null));
+    }
+
+    @Test
+    public void aMoveStoppedAfterTheBackupKeepsTheBackupAuthoritative() throws Exception {
+        writePrefs("piko_settings.xml", "<string name=\"k\">stale</string>"
+                + "<boolean name=\"enable_developer_options\" value=\"true\" />");
+        writePrefs("spookd_settings.xml.bak", "<string name=\"k\">bak</string>");
+
+        SpookdMigration.run(app);
+
+        assertFalse(prefsFile("piko_settings.xml").exists());
+        SharedPreferences live = prefs("spookd_settings");
+        assertEquals("bak", live.getString("k", null));
+        assertFalse(live.contains("enable_developer_options"));
+        assertEquals(1, live.getAll().size());
+        assertTrue(marker().exists());
     }
 
     @Test
