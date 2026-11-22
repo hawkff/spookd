@@ -77,6 +77,8 @@ public final class AccountSettings {
     // Account whose swap failed to reach the disk, so its next event swaps again.
     private static String retryId;
     private static boolean callbacksRegistered;
+    // Set once an import replaced the live file; the cached preferences would overwrite it before the restart.
+    static boolean liveFileReplaced;
     private static volatile boolean restartPending;
 
     private AccountSettings() {
@@ -120,14 +122,17 @@ public final class AccountSettings {
                 AccountSettings::clearAdoptMarker);
     }
 
-    /** Replaces only once the marker is on disk, and takes the marker back if the replacement fails. */
+    /** Replaces only once the marker is on disk, and takes the marker back if either step fails. */
     static boolean replaceUnderMarker(BooleanSupplier setMarker, BooleanSupplier replace, Runnable clearMarker) {
-        if (!setMarker.getAsBoolean()) return false;
         boolean replaced = false;
         try {
-            replaced = replace.getAsBoolean();
+            replaced = setMarker.getAsBoolean() && replace.getAsBoolean();
         } finally {
-            if (!replaced) clearMarker.run();
+            if (replaced) {
+                liveFileReplaced = true;
+            } else {
+                clearMarker.run();
+            }
         }
         return replaced;
     }
@@ -160,6 +165,7 @@ public final class AccountSettings {
 
         switch (action(owner, id, adopt, id.equals(retryId))) {
             case NONE:
+                if (liveFileReplaced) logFailure("Account change ignored until the restart after an import", null);
                 return;
             case ADOPT:
                 if (live.edit().putString(OWNER_KEY, id).commit() && adopt) {
@@ -192,6 +198,7 @@ public final class AccountSettings {
     }
 
     static Action action(String owner, String id, boolean adoptLiveFile, boolean retry) {
+        if (liveFileReplaced) return Action.NONE;
         if (owner == null || adoptLiveFile) return Action.ADOPT;
         return id.equals(owner) && !retry ? Action.NONE : Action.SWAP;
     }

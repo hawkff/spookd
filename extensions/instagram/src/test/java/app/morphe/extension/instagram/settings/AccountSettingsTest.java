@@ -12,11 +12,17 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class AccountSettingsTest {
     private static final String OWNER = AccountSettings.OWNER_KEY;
+
+    @Before
+    public void resetReplacement() {
+        AccountSettings.liveFileReplaced = false;
+    }
 
     @BeforeClass
     public static void registerPolicies() {
@@ -57,10 +63,23 @@ public class AccountSettingsTest {
     }
 
     @Test
-    public void failedMarkerCommitMeansNoReplacement() {
+    public void failedMarkerCommitMeansNoReplacementAndNoMarker() {
+        Map<String, Object> accounts = new HashMap<>();
         boolean[] replaced = {false};
-        assertFalse(AccountSettings.replaceUnderMarker(() -> false, () -> replaced[0] = true, () -> {}));
+        // commit() changes memory before it reports the failed disk write.
+        assertFalse(AccountSettings.replaceUnderMarker(() -> accounts.put("adopt_live_file", true) == null && false,
+                () -> replaced[0] = true, () -> accounts.remove("adopt_live_file")));
         assertFalse(replaced[0]);
+        assertTrue(accounts.isEmpty());
+        assertFalse(AccountSettings.liveFileReplaced);
+    }
+
+    @Test
+    public void sessionEventAfterReplacementChangesNothing() {
+        assertTrue(AccountSettings.replaceUnderMarker(() -> true, () -> true, () -> {}));
+        assertEquals(AccountSettings.Action.NONE, AccountSettings.action(null, "1", true, false));
+        assertEquals(AccountSettings.Action.NONE, AccountSettings.action("1", "2", true, false));
+        assertEquals(AccountSettings.Action.NONE, AccountSettings.action("1", "2", false, true));
     }
 
     @Test
