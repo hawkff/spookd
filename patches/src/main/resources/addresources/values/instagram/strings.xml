@@ -335,6 +335,8 @@
     <string name="piko_downloaded_media">Downloaded: </string>
     <string name="piko_download_failed_media">Download failed</string>
     <string name="piko_download_failed_file">Download failed: %s</string>
+    <string name="piko_download_nothing">Nothing to download</string>
+    <string name="piko_download_message_unsupported">This message can\'t be downloaded</string>
     <string name="piko_download_set_path">Choose download folder</string>
     <string name="piko_download_set_path_success">Download directory updated!</string>
     <string name="piko_download_set_path_failed">Failed to save download folder</string>
