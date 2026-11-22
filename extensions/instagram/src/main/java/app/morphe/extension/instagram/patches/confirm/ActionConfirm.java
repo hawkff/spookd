@@ -12,7 +12,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.ContextWrapper;
-import android.content.res.Resources;
 import android.view.View;
 
 import java.lang.reflect.InvocationTargetException;
@@ -43,6 +42,7 @@ public final class ActionConfirm {
     private static final WeakHashMap<View, String> followNames = new WeakHashMap<>();
     // Counts click listener changes, so a rebound button no longer matches an earlier prompt.
     private static final WeakHashMap<View, Integer> bindCounts = new WeakHashMap<>();
+    private static boolean stagedFeedLiked;
 
     private ActionConfirm() {
     }
@@ -83,24 +83,27 @@ public final class ActionConfirm {
         }
     }
 
-    /** From a feed like or repost button's click; the button is selected once liked or reposted. */
-    public static boolean allowUfiClick(View button) {
+    /** From the feed like handler, before {@link #allowFeedLike}: whether the post is liked already. */
+    public static void stageFeedLiked(boolean liked) {
+        stagedFeedLiked = liked;
+    }
+
+    /** From the feed like handler, after {@link #allowFeedLike} let it go on: the staged value, unchanged. */
+    public static boolean stagedFeedLiked() {
+        return stagedFeedLiked;
+    }
+
+    /** From the feed like handler, which every feed and post viewer heart reaches; it likes or unlikes. */
+    public static boolean allowFeedLike(Object handler, Object media, Object mediaState, String module, Object onDone, int position) {
         try {
-            List<Object> state = Arrays.asList(bindCount(button), button.isSelected());
-            Boolean replay = replayVerdict(button, state);
+            List<Object> state = Arrays.asList(stagedFeedLiked);
+            Boolean replay = replayVerdict(media, state);
             if (replay != null) return replay;
-            if (button.getId() == View.NO_ID) return true;
-            String idName;
-            try {
-                idName = button.getResources().getResourceEntryName(button.getId());
-            } catch (Resources.NotFoundException e) {
-                return true;
-            }
-            String action = ufiAction(idName, button.isSelected());
-            if (action == null || !isEnabled(action)) return true;
-            return !ask(button, action, str("piko_confirm_" + action + "_title"), button, state, button::performClick);
+            if (media == null || stagedFeedLiked || !Pref.confirmLike()) return true;
+            Object[] args = {media, mediaState, module, onDone, position};
+            return !ask(null, LIKE, str("piko_confirm_like_title"), media, state, call(feedLikeMethod(handler.getClass()), handler, args));
         } catch (Throwable t) {
-            Logger.printException(() -> "allowUfiClick failure", t);
+            Logger.printException(() -> "allowFeedLike failure", t);
             return true;
         }
     }
@@ -181,14 +184,6 @@ public final class ActionConfirm {
         return "FOLLOW".equals(textType) || "FOLLOW_BACK".equals(textType);
     }
 
-    /** The action a feed button starts, or null when it undoes one or is another button. */
-    static String ufiAction(String idName, boolean selected) {
-        if (selected) return null;
-        if ("row_feed_button_like".equals(idName)) return LIKE;
-        if ("reposts_ufi_icon".equals(idName)) return REPOST;
-        return null;
-    }
-
     static boolean isReaction(Object[] reelLikeRefs) {
         return reelLikeRefs[8] != null;
     }
@@ -238,10 +233,6 @@ public final class ActionConfirm {
         return count == null ? 0 : count;
     }
 
-    private static boolean isEnabled(String action) {
-        return LIKE.equals(action) ? Pref.confirmLike() : REPOST.equals(action) && Pref.confirmRepost();
-    }
-
     /** Shows the dialog; false when it cannot be shown, so the action goes ahead. */
     private static boolean ask(View anchor, String action, String title, Object token, List<Object> state, Runnable rerun) {
         Activity activity = activityOf(anchor == null ? null : anchor.getContext());
@@ -259,19 +250,37 @@ public final class ActionConfirm {
 
     private static Runnable invoker(Class<?> owner, String name, Object receiver, Object[] args) throws NoSuchMethodException {
         for (Method method : owner.getDeclaredMethods()) {
-            if (!method.getName().equals(name) || method.getParameterTypes().length != args.length) continue;
-            method.setAccessible(true);
-            return () -> {
-                try {
-                    method.invoke(receiver, args);
-                } catch (InvocationTargetException e) {
-                    throw new RuntimeException(e.getCause());
-                } catch (IllegalAccessException e) {
-                    throw new RuntimeException(e);
-                }
-            };
+            if (method.getName().equals(name) && method.getParameterTypes().length == args.length) {
+                return call(method, receiver, args);
+            }
         }
         throw new NoSuchMethodException(owner.getName() + "." + name);
+    }
+
+    /** The feed like handler's (Media, state, String, Function0, int) method on {@code owner}. */
+    private static Method feedLikeMethod(Class<?> owner) throws NoSuchMethodException {
+        for (Method method : owner.getDeclaredMethods()) {
+            Class<?>[] types = method.getParameterTypes();
+            if (types.length == 5 && method.getReturnType() == void.class
+                    && types[0].getName().equals("com.instagram.feed.media.Media") && types[2] == String.class
+                    && types[3].getName().equals("kotlin.jvm.functions.Function0") && types[4] == int.class) {
+                return method;
+            }
+        }
+        throw new NoSuchMethodException(owner.getName() + " feed like method");
+    }
+
+    private static Runnable call(Method method, Object receiver, Object[] args) {
+        method.setAccessible(true);
+        return () -> {
+            try {
+                method.invoke(receiver, args);
+            } catch (InvocationTargetException e) {
+                throw new RuntimeException(e.getCause());
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        };
     }
 
     private static Activity activityOf(Context context) {

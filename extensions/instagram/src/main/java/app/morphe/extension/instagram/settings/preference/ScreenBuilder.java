@@ -895,7 +895,7 @@ public class ScreenBuilder {
         }
         if (SettingsStatus.confirmationsSection()) {
             PreferenceCategory confirmations = addCategory(str("piko_category_confirmations"));
-            if (SettingsStatus.confirmFeedButtons || SettingsStatus.confirmReelLike) {
+            if (SettingsStatus.confirmFeedLike || SettingsStatus.confirmReelLike) {
                 addPreference(confirmations, helper.switchPreference(
                         str("piko_confirm_like"), str("piko_confirm_like_desc"), Settings.CONFIRM_LIKE));
             }
@@ -903,7 +903,7 @@ public class ScreenBuilder {
                 addPreference(confirmations, helper.switchPreference(
                         str("piko_confirm_follow"), str("piko_confirm_follow_desc"), Settings.CONFIRM_FOLLOW));
             }
-            if (SettingsStatus.confirmFeedButtons || SettingsStatus.confirmReelRepost) {
+            if (SettingsStatus.confirmReelRepost) {
                 addPreference(confirmations, helper.switchPreference(
                         str("piko_confirm_repost"), str("piko_confirm_repost_desc"), Settings.CONFIRM_REPOST));
             }

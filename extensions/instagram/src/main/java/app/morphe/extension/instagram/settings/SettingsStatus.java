@@ -235,8 +235,8 @@ public class SettingsStatus {
     public static void profileSavedTab() { profileSavedTab = true; }
     public static boolean confirmFollow = false;
     public static void confirmFollow() { confirmFollow = true; }
-    public static boolean confirmFeedButtons = false;
-    public static void confirmFeedButtons() { confirmFeedButtons = true; }
+    public static boolean confirmFeedLike = false;
+    public static void confirmFeedLike() { confirmFeedLike = true; }
     public static boolean confirmReelLike = false;
     public static void confirmReelLike() { confirmReelLike = true; }
     public static boolean confirmReelRepost = false;
@@ -246,7 +246,7 @@ public class SettingsStatus {
     public static boolean confirmCommentSheet = false;
     public static void confirmCommentSheet() { confirmCommentSheet = true; }
     public static boolean confirmationsSection() {
-        return confirmFollow || confirmFeedButtons || confirmReelLike || confirmReelRepost || confirmComment || confirmCommentSheet;
+        return confirmFollow || confirmFeedLike || confirmReelLike || confirmReelRepost || confirmComment || confirmCommentSheet;
     }
     public static boolean resumeReelsAfterScrolling = false;
     public static void resumeReelsAfterScrolling() { resumeReelsAfterScrolling = true; }
@@ -362,7 +362,7 @@ public class SettingsStatus {
         FLAGS.put(str("piko_square_profile_grid"), SettingsStatus.squareProfileGrid);
         FLAGS.put(str("piko_profile_saved_tab"), SettingsStatus.profileSavedTab);
         FLAGS.put(str("piko_confirm_follow"), SettingsStatus.confirmFollow);
-        FLAGS.put(str("piko_patch_confirm_feed_buttons"), SettingsStatus.confirmFeedButtons);
+        FLAGS.put(str("piko_patch_confirm_feed_like"), SettingsStatus.confirmFeedLike);
         FLAGS.put(str("piko_patch_confirm_reel_like"), SettingsStatus.confirmReelLike);
         FLAGS.put(str("piko_patch_confirm_reel_repost"), SettingsStatus.confirmReelRepost);
         FLAGS.put(str("piko_patch_confirm_comment_box"), SettingsStatus.confirmComment);

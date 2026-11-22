@@ -180,10 +180,10 @@
     <string name="piko_confirm_follow">Confirm follows</string>
     <string name="piko_confirm_follow_desc">Asks before you follow an account with a Follow button</string>
     <string name="piko_confirm_repost">Confirm reposts</string>
-    <string name="piko_confirm_repost_desc">Asks before you repost a post or Reel. Undoing a repost is not asked.</string>
+    <string name="piko_confirm_repost_desc">Asks before you repost a Reel in the Reels tab. Undoing a repost is not asked.</string>
     <string name="piko_confirm_comment">Confirm comments</string>
     <string name="piko_confirm_comment_desc">Asks before a comment you typed is posted. Comments with only a GIF or photo are not asked.</string>
-    <string name="piko_patch_confirm_feed_buttons">Confirm likes and reposts in the feed</string>
+    <string name="piko_patch_confirm_feed_like">Confirm likes in the feed</string>
     <string name="piko_patch_confirm_reel_like">Confirm likes in Reels</string>
     <string name="piko_patch_confirm_reel_repost">Confirm reposts in Reels</string>
     <string name="piko_patch_confirm_comment_box">Confirm comments in the comment box</string>

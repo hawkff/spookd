@@ -23,16 +23,6 @@ public class ActionConfirmTest {
     }
 
     @Test
-    public void feedButtonsMapToTheirActionUntilDone() {
-        assertEquals(ActionConfirm.LIKE, ActionConfirm.ufiAction("row_feed_button_like", false));
-        assertEquals(ActionConfirm.REPOST, ActionConfirm.ufiAction("reposts_ufi_icon", false));
-        assertNull(ActionConfirm.ufiAction("row_feed_button_like", true));
-        assertNull(ActionConfirm.ufiAction("reposts_ufi_icon", true));
-        assertNull(ActionConfirm.ufiAction("row_feed_button_save", false));
-        assertNull(ActionConfirm.ufiAction(null, false));
-    }
-
-    @Test
     public void reelLikesWithAStoredReactionAreNotAsked() {
         Object[] plainTap = new Object[10];
         Object[] reaction = new Object[10];
