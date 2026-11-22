@@ -23,11 +23,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -82,6 +79,7 @@ public final class HiddenChats {
     private static final long BADGE_SETTLE_MS = 1500;
     private static final ThreadLocal<String> badgeUser = new ThreadLocal<>();
     private static final Map<Class<?>, Field[]> ownerPaths = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Field[]> declaredFields = new ConcurrentHashMap<>();
     private static int taps;
     private static long lastTapAt;
     // True while the inbox shows only the hidden chats of modeUser.
@@ -186,42 +184,16 @@ public final class HiddenChats {
     private static void watchTouches(Activity activity) {
         Window window = activity.getWindow();
         Window.Callback current = window.getCallback();
-        if (current == null || (Proxy.isProxyClass(current.getClass())
-                && Proxy.getInvocationHandler(current) instanceof TouchWatcher)) return;
-        window.setCallback((Window.Callback) Proxy.newProxyInstance(Window.Callback.class.getClassLoader(),
-                new Class<?>[]{Window.Callback.class}, new TouchWatcher(activity, current)));
+        if (!Pref.hiddenChats()) {
+            Window.Callback original = HiddenChatsWindowCallback.unwrap(current);
+            if (original != current) window.setCallback(original);
+            return;
+        }
+        if (current == null || current instanceof HiddenChatsWindowCallback) return;
+        window.setCallback(new HiddenChatsWindowCallback(activity, current));
     }
 
-    private static final class TouchWatcher implements InvocationHandler {
-        private final Activity activity;
-        private final Window.Callback target;
-
-        TouchWatcher(Activity activity, Window.Callback target) {
-            this.activity = activity;
-            this.target = target;
-        }
-
-        @Override
-        public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
-            Object result;
-            try {
-                result = method.invoke(target, arguments);
-            } catch (InvocationTargetException e) {
-                throw e.getCause();
-            }
-            if (arguments != null && arguments.length == 1 && arguments[0] instanceof MotionEvent
-                    && method.getName().equals("dispatchTouchEvent")) {
-                try {
-                    onTouch(activity, (MotionEvent) arguments[0]);
-                } catch (Throwable t) {
-                    Logger.printException(() -> "HiddenChats touch failed", t);
-                }
-            }
-            return result;
-        }
-    }
-
-    private static void onTouch(Activity activity, MotionEvent event) {
+    static void onTouch(Activity activity, MotionEvent event) {
         if (event.getActionMasked() != MotionEvent.ACTION_UP || !Pref.hiddenChats()) return;
         if (event.getEventTime() - event.getDownTime() > TAP_MAX_PRESS_MS) return;
 
@@ -432,7 +404,7 @@ public final class HiddenChats {
             List kept = new ArrayList(threads.size());
             for (Object thread : threads) {
                 Object key = threadKeyOf(thread);
-                if (key == null || !hidden.contains(HiddenChatsPref.idOf(String.valueOf(key)))) kept.add(thread);
+                if (key == null || !hidden.contains(idOf(key))) kept.add(thread);
             }
             return kept.size() == threads.size() ? threads : kept;
         } catch (Throwable t) {
@@ -484,9 +456,7 @@ public final class HiddenChats {
             Field countField = null;
             int removedCounted = 0;
             int countedSize = 0;
-            for (Field field : state.getClass().getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers())) continue;
-                field.setAccessible(true);
+            for (Field field : declaredFieldsOf(state.getClass())) {
                 if (field.getType() == int.class) {
                     countField = field;
                     continue;
@@ -497,7 +467,7 @@ public final class HiddenChats {
                 List kept = new ArrayList(list.size());
                 for (Object entry : list) {
                     Object key = threadKeyOf(entry);
-                    if (key == null || !hidden.contains(HiddenChatsPref.idOf(String.valueOf(key)))) kept.add(entry);
+                    if (key == null || !hidden.contains(idOf(key))) kept.add(entry);
                 }
                 if (kept.size() == list.size()) continue;
                 if (field.getName().equals(counted)) {
@@ -532,10 +502,8 @@ public final class HiddenChats {
                 return false;
             }
             int count = -1;
-            for (Field field : badge.getClass().getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers()) || field.getType() != int.class) continue;
-                field.setAccessible(true);
-                count = field.getInt(badge);
+            for (Field field : declaredFieldsOf(badge.getClass())) {
+                if (field.getType() == int.class) count = field.getInt(badge);
             }
             int previous = account.shownCount;
             account.shownCount = count;
@@ -547,13 +515,25 @@ public final class HiddenChats {
     }
 
     private static Object fieldOfType(Object owner, Class<?> type) throws Exception {
-        for (Field field : owner.getClass().getDeclaredFields()) {
-            if (!Modifier.isStatic(field.getModifiers()) && field.getType() == type) {
-                field.setAccessible(true);
-                return field.get(owner);
-            }
+        for (Field field : declaredFieldsOf(owner.getClass())) {
+            if (field.getType() == type) return field.get(owner);
         }
         return null;
+    }
+
+    /** The instance fields a class declares, in their declared order, made accessible once per class. */
+    private static Field[] declaredFieldsOf(Class<?> type) {
+        Field[] fields = declaredFields.get(type);
+        if (fields != null) return fields;
+        List<Field> found = new ArrayList<>();
+        for (Field field : type.getDeclaredFields()) {
+            if (Modifier.isStatic(field.getModifiers())) continue;
+            field.setAccessible(true);
+            found.add(field);
+        }
+        fields = found.toArray(new Field[0]);
+        declaredFields.put(type, fields);
+        return fields;
     }
 
     /**
@@ -565,9 +545,7 @@ public final class HiddenChats {
         try {
             if (!Pref.hiddenChats() || task == null) return;
             Field listField = null;
-            for (Field field : task.getClass().getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers())) continue;
-                field.setAccessible(true);
+            for (Field field : declaredFieldsOf(task.getClass())) {
                 if (field.get(task) instanceof List) listField = field;
             }
             Field[] path = ownerPaths.get(task.getClass());
@@ -597,7 +575,7 @@ public final class HiddenChats {
             List<Object> kept = new ArrayList<>();
             for (Object thread : list) {
                 Object key = threadKeyOf(thread);
-                boolean drop = key != null && hidden.contains(HiddenChatsPref.idOf(String.valueOf(key))) != onlyHidden;
+                boolean drop = key != null && hidden.contains(idOf(key)) != onlyHidden;
                 if (!drop) kept.add(thread);
             }
             if (kept.size() == list.size()) return;
@@ -606,6 +584,15 @@ public final class HiddenChats {
         } catch (Throwable t) {
             Logger.printException(() -> "HiddenChats.filterRows failed", t);
         }
+    }
+
+    /** The id of a chat, as {@link HiddenChatsPref#idOf} reads it from the saved form of its key. */
+    private static String idOf(Object key) {
+        try {
+            String id = ((DirectThreadKey) key).A00;
+            if (id != null) return id;
+        } catch (LinkageError ignored) { }
+        return HiddenChatsPref.idOf(String.valueOf(key));
     }
 
     private static Object threadKeyOf(Object item) {
