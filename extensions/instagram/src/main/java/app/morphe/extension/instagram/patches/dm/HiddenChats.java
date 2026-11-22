@@ -79,6 +79,7 @@ public final class HiddenChats {
     private static final long BADGE_SETTLE_MS = 1500;
     private static final ThreadLocal<String> badgeUser = new ThreadLocal<>();
     private static final Map<Class<?>, Field[]> ownerPaths = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Field[]> declaredFields = new ConcurrentHashMap<>();
     private static int taps;
     private static long lastTapAt;
     // True while the inbox shows only the hidden chats of modeUser.
@@ -398,7 +399,7 @@ public final class HiddenChats {
             List kept = new ArrayList(threads.size());
             for (Object thread : threads) {
                 Object key = threadKeyOf(thread);
-                if (key == null || !hidden.contains(HiddenChatsPref.idOf(String.valueOf(key)))) kept.add(thread);
+                if (key == null || !hidden.contains(idOf(key))) kept.add(thread);
             }
             return kept.size() == threads.size() ? threads : kept;
         } catch (Throwable t) {
@@ -450,9 +451,7 @@ public final class HiddenChats {
             Field countField = null;
             int removedCounted = 0;
             int countedSize = 0;
-            for (Field field : state.getClass().getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers())) continue;
-                field.setAccessible(true);
+            for (Field field : declaredFieldsOf(state.getClass())) {
                 if (field.getType() == int.class) {
                     countField = field;
                     continue;
@@ -463,7 +462,7 @@ public final class HiddenChats {
                 List kept = new ArrayList(list.size());
                 for (Object entry : list) {
                     Object key = threadKeyOf(entry);
-                    if (key == null || !hidden.contains(HiddenChatsPref.idOf(String.valueOf(key)))) kept.add(entry);
+                    if (key == null || !hidden.contains(idOf(key))) kept.add(entry);
                 }
                 if (kept.size() == list.size()) continue;
                 if (field.getName().equals(counted)) {
@@ -498,10 +497,8 @@ public final class HiddenChats {
                 return false;
             }
             int count = -1;
-            for (Field field : badge.getClass().getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers()) || field.getType() != int.class) continue;
-                field.setAccessible(true);
-                count = field.getInt(badge);
+            for (Field field : declaredFieldsOf(badge.getClass())) {
+                if (field.getType() == int.class) count = field.getInt(badge);
             }
             int previous = account.shownCount;
             account.shownCount = count;
@@ -513,13 +510,25 @@ public final class HiddenChats {
     }
 
     private static Object fieldOfType(Object owner, Class<?> type) throws Exception {
-        for (Field field : owner.getClass().getDeclaredFields()) {
-            if (!Modifier.isStatic(field.getModifiers()) && field.getType() == type) {
-                field.setAccessible(true);
-                return field.get(owner);
-            }
+        for (Field field : declaredFieldsOf(owner.getClass())) {
+            if (field.getType() == type) return field.get(owner);
         }
         return null;
+    }
+
+    /** The instance fields a class declares, in their declared order, made accessible once per class. */
+    private static Field[] declaredFieldsOf(Class<?> type) {
+        Field[] fields = declaredFields.get(type);
+        if (fields != null) return fields;
+        List<Field> found = new ArrayList<>();
+        for (Field field : type.getDeclaredFields()) {
+            if (Modifier.isStatic(field.getModifiers())) continue;
+            field.setAccessible(true);
+            found.add(field);
+        }
+        fields = found.toArray(new Field[0]);
+        declaredFields.put(type, fields);
+        return fields;
     }
 
     /**
@@ -531,9 +540,7 @@ public final class HiddenChats {
         try {
             if (!Pref.hiddenChats() || task == null) return;
             Field listField = null;
-            for (Field field : task.getClass().getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers())) continue;
-                field.setAccessible(true);
+            for (Field field : declaredFieldsOf(task.getClass())) {
                 if (field.get(task) instanceof List) listField = field;
             }
             Field[] path = ownerPaths.get(task.getClass());
@@ -563,7 +570,7 @@ public final class HiddenChats {
             List<Object> kept = new ArrayList<>();
             for (Object thread : list) {
                 Object key = threadKeyOf(thread);
-                boolean drop = key != null && hidden.contains(HiddenChatsPref.idOf(String.valueOf(key))) != onlyHidden;
+                boolean drop = key != null && hidden.contains(idOf(key)) != onlyHidden;
                 if (!drop) kept.add(thread);
             }
             if (kept.size() == list.size()) return;
@@ -572,6 +579,15 @@ public final class HiddenChats {
         } catch (Throwable t) {
             Logger.printException(() -> "HiddenChats.filterRows failed", t);
         }
+    }
+
+    /** The id of a chat, as {@link HiddenChatsPref#idOf} reads it from the saved form of its key. */
+    private static String idOf(Object key) {
+        try {
+            String id = ((DirectThreadKey) key).A00;
+            if (id != null) return id;
+        } catch (LinkageError ignored) { }
+        return HiddenChatsPref.idOf(String.valueOf(key));
     }
 
     private static Object threadKeyOf(Object item) {
