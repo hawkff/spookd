@@ -14,7 +14,6 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.view.View;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -163,24 +162,24 @@ public final class ActionConfirm {
     }
 
     /**
-     * From the comment sheet's send action; {@code refs} holds the sheet's model and its three
-     * arguments, the second being the comment, whose text is in its field {@code textField}.
+     * From the comment sheet's static send, before it touches the composer; {@code refs} holds its
+     * reference arguments: the activity, the composer, the text at 10 and the post at 7.
      */
-    public static boolean allowCommentSend(Object[] refs, String textField, Class<?> owner, String name) {
+    public static boolean allowCommentSend(Object[] refs, boolean last, Class<?> owner, String name) {
         try {
-            Object comment = refs[2];
-            String text = null;
-            if (comment != null) {
-                Field field = comment.getClass().getDeclaredField(textField);
-                field.setAccessible(true);
-                text = (String) field.get(comment);
-            }
-            List<Object> state = Arrays.asList(text);
-            Boolean replay = replayVerdict(comment, state);
+            Object composer = refs[1];
+            Object text = refs[10];
+            List<Object> state = Arrays.asList(text, refs[7]);
+            Boolean replay = replayVerdict(composer, state);
             if (replay != null) return replay;
-            if (comment == null || isBlank(text) || !Pref.confirmComment()) return true;
-            return !ask(null, COMMENT, str("piko_confirm_comment_title"), comment, state,
-                    invoker(owner, name, refs[0], Arrays.copyOfRange(refs, 1, refs.length)));
+            if (composer == null || !(text instanceof String) || isBlank((String) text) || !Pref.confirmComment()) return true;
+            Object[] args = Arrays.copyOf(refs, refs.length + 1);
+            args[refs.length] = last;
+            Runnable send = invoker(owner, name, null, args);
+            Activity activity = refs[0] instanceof Activity ? (Activity) refs[0] : null;
+            return !ask(null, COMMENT, str("piko_confirm_comment_title"), composer, state, () -> {
+                if (activity == null || !activity.isFinishing()) send.run();
+            });
         } catch (Throwable t) {
             Logger.printException(() -> "allowCommentSend failure", t);
             return true;
