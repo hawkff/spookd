@@ -243,8 +243,10 @@ public class SettingsStatus {
     public static void confirmReelRepost() { confirmReelRepost = true; }
     public static boolean confirmComment = false;
     public static void confirmComment() { confirmComment = true; }
+    public static boolean confirmCommentSheet = false;
+    public static void confirmCommentSheet() { confirmCommentSheet = true; }
     public static boolean confirmationsSection() {
-        return confirmFollow || confirmFeedButtons || confirmReelLike || confirmReelRepost || confirmComment;
+        return confirmFollow || confirmFeedButtons || confirmReelLike || confirmReelRepost || confirmComment || confirmCommentSheet;
     }
     public static boolean resumeReelsAfterScrolling = false;
     public static void resumeReelsAfterScrolling() { resumeReelsAfterScrolling = true; }
@@ -363,7 +365,8 @@ public class SettingsStatus {
         FLAGS.put(str("piko_patch_confirm_feed_buttons"), SettingsStatus.confirmFeedButtons);
         FLAGS.put(str("piko_patch_confirm_reel_like"), SettingsStatus.confirmReelLike);
         FLAGS.put(str("piko_patch_confirm_reel_repost"), SettingsStatus.confirmReelRepost);
-        FLAGS.put(str("piko_confirm_comment"), SettingsStatus.confirmComment);
+        FLAGS.put(str("piko_patch_confirm_comment_box"), SettingsStatus.confirmComment);
+        FLAGS.put(str("piko_patch_confirm_comment_sheet"), SettingsStatus.confirmCommentSheet);
         FLAGS.put(str("piko_disable_discover_people"),SettingsStatus.disableDiscoverPeople);
         FLAGS.put(str("piko_customise_story_ring_size"),SettingsStatus.customiseStoryRingSize);
 

@@ -158,6 +158,25 @@ public final class ActionConfirm {
         }
     }
 
+    /**
+     * From the comment sheet's send action; {@code refs} holds the sheet's model and its three
+     * arguments, the second being the comment, whose text is {@code text}.
+     */
+    public static boolean allowCommentSend(Object[] refs, String text, Class<?> owner, String name) {
+        try {
+            Object comment = refs[2];
+            List<Object> state = Arrays.asList(text);
+            Boolean replay = replayVerdict(comment, state);
+            if (replay != null) return replay;
+            if (comment == null || isBlank(text) || !Pref.confirmComment()) return true;
+            return !ask(null, COMMENT, str("piko_confirm_comment_title"), comment, state,
+                    invoker(owner, name, refs[0], Arrays.copyOfRange(refs, 1, refs.length)));
+        } catch (Throwable t) {
+            Logger.printException(() -> "allowCommentSend failure", t);
+            return true;
+        }
+    }
+
     static boolean isFollow(String textType) {
         return "FOLLOW".equals(textType) || "FOLLOW_BACK".equals(textType);
     }

@@ -907,7 +907,7 @@ public class ScreenBuilder {
                 addPreference(confirmations, helper.switchPreference(
                         str("piko_confirm_repost"), str("piko_confirm_repost_desc"), Settings.CONFIRM_REPOST));
             }
-            if (SettingsStatus.confirmComment) {
+            if (SettingsStatus.confirmComment || SettingsStatus.confirmCommentSheet) {
                 addPreference(confirmations, helper.switchPreference(
                         str("piko_confirm_comment"), str("piko_confirm_comment_desc"), Settings.CONFIRM_COMMENT));
             }

@@ -31,8 +31,8 @@ private object CommentPostFingerprint : Fingerprint(
 @Suppress("unused")
 val confirmCommentPatch =
     patch(
-        name = "Confirm comments",
-        description = "Adds an option to ask before a comment is posted.",
+        name = "Confirm comments in the comment box",
+        description = "Adds an option to ask before a comment written in the classic comment box is posted.",
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(settingsPatch)
