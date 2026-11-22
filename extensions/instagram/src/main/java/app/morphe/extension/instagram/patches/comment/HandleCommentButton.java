@@ -86,7 +86,7 @@ public class HandleCommentButton {
                     Utils.setClipboard(username);
                     PikoUtils.toast(str("piko_copied"));
                 } else {
-                    PikoUtils.toast(str("piko_comment_copied_failed"));
+                    PikoUtils.toast(str("piko_comment_copy_username_failed"));
                 }
                 return true;
 
@@ -123,7 +123,7 @@ public class HandleCommentButton {
 
         } catch (Exception e) {
             PikoUtils.logger(e);
-            PikoUtils.toast(e.getMessage());
+            PikoUtils.toast(str("piko_comment_action_failed"));
             // If exception happens, we need not check Instagram's button.
             return true;
         }

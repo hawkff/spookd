@@ -207,6 +207,8 @@
     <string name="piko_copy_comment_desc">Adds buttons to copy comments and their authors’ usernames on posts and reels</string>
     <string name="piko_comment_copied_success">Comment copied</string>
     <string name="piko_comment_copied_failed">No text found to copy</string>
+    <string name="piko_comment_copy_username_failed">No username to copy</string>
+    <string name="piko_comment_action_failed">Something went wrong. Try again.</string>
     <string name="piko_copy_username">Copy username</string>
     <string name="piko_copy_full_name">Copy full name</string>
     <string name="piko_copy_user_id">Copy user id</string>
