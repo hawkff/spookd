@@ -127,7 +127,7 @@ public class InstaUtils {
 
                 new Handler(Looper.getMainLooper()).post(() -> {
                     if (!fileWritten) {
-                        PikoUtils.toast(str("piko_download_failed_file", outputFile.getName()));
+                        PikoUtils.toast(downloadFailed(outputFile.getName()));
                         return;
                     }
                     PikoUtils.toast(str("piko_downloaded_media") + outputFile.getName());
@@ -139,8 +139,13 @@ public class InstaUtils {
 
             } catch (Exception e) {
                 PikoUtils.logger(e);
-                PikoUtils.toast(str("piko_download_failed_file", outputFile.getName()));
+                PikoUtils.toast(downloadFailed(outputFile.getName()));
             }
         });
+    }
+
+    // Reuses the translated prefix; strips its trailing colon so every locale reads "<prefix>: <name>".
+    private static String downloadFailed(String name) {
+        return str("piko_download_failed_media").replaceAll("[\\s:\uFF1A]+$", "") + ": " + name;
     }
 }
