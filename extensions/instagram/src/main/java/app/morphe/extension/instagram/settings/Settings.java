@@ -52,6 +52,10 @@ public class Settings {
     public static final BooleanSetting EXACT_PROFILE_COUNTS = new BooleanSetting("exact_profile_counts", true, NOT_REQUIRED);
     public static final BooleanSetting SQUARE_PROFILE_GRID = new BooleanSetting("square_profile_grid", true, NOT_REQUIRED);
     public static final BooleanSetting PROFILE_SAVED_TAB = new BooleanSetting("profile_saved_tab", true, REQUIRED);
+    public static final BooleanSetting CONFIRM_LIKE = new BooleanSetting("confirm_like", false, NOT_REQUIRED);
+    public static final BooleanSetting CONFIRM_FOLLOW = new BooleanSetting("confirm_follow", false, NOT_REQUIRED);
+    public static final BooleanSetting CONFIRM_REPOST = new BooleanSetting("confirm_repost", false, NOT_REQUIRED);
+    public static final BooleanSetting CONFIRM_COMMENT = new BooleanSetting("confirm_comment", false, NOT_REQUIRED);
     public static final BooleanSetting VIEW_STORY_MENTIONS = new BooleanSetting("view_story_mentions", true, REQUIRED);
     public static final BooleanSetting DISABLE_STORY_FLIPPING = new BooleanSetting("disable_story_flipping", false, NOT_REQUIRED);
     public static final BooleanSetting LOOP_STORY = new BooleanSetting("loop_story", false, NOT_REQUIRED);

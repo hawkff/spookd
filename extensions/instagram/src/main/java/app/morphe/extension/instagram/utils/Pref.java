@@ -384,6 +384,22 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.PROFILE_SAVED_TAB) && SettingsStatus.profileSavedTab;
     }
 
+    public static boolean confirmLike() {
+        return SharedPref.getBooleanPref(Settings.CONFIRM_LIKE);
+    }
+
+    public static boolean confirmFollow() {
+        return SharedPref.getBooleanPref(Settings.CONFIRM_FOLLOW);
+    }
+
+    public static boolean confirmRepost() {
+        return SharedPref.getBooleanPref(Settings.CONFIRM_REPOST);
+    }
+
+    public static boolean confirmComment() {
+        return SharedPref.getBooleanPref(Settings.CONFIRM_COMMENT);
+    }
+
     public static boolean disableStoryFlipping() {
         return SharedPref.getBooleanPref(Settings.DISABLE_STORY_FLIPPING);
     }
