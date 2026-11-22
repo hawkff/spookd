@@ -66,6 +66,8 @@ public final class AccountSettings {
             "focus_lock_block_reels",
             "focus_lock_block_explore",
             "custom_download_path",
+            // The folder grant behind custom_download_path; the two must switch together.
+            "custom_download_tree_uri",
             "external_downloader_package_name",
             "download_with_external_downloader",
             "marked_story_keys_v2",
