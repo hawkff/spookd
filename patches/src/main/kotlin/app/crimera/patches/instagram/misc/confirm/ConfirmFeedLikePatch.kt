@@ -11,10 +11,12 @@ import app.crimera.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.crimera.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.string
+import app.morphe.patcher.util.smali.ExternalLabel
 import app.morphe.patcher.util.writeRegister
 import app.morphe.util.indexOfFirstInstructionReversedOrThrow
 import com.android.tools.smali.dexlib2.AccessFlags
@@ -69,7 +71,17 @@ val confirmFeedLikePatch =
             if ((0 until likedRead).any { (method.getInstruction(it).writeRegister ?: -1) >= firstParameter }) {
                 return@execute
             }
+            // Inserted first so the gate below can branch to it: puts the liked state back.
             method.addInstructions(
+                likedRead + 1,
+                """
+                invoke-static {}, $ACTION_CONFIRM->stagedFeedLiked()Z
+                move-result v$liked
+                """.trimIndent(),
+            )
+            // Branches only to existing instructions: a label inside plain addInstructions
+            // keeps the address it had in the snippet and lands elsewhere in the method.
+            method.addInstructionsWithLabels(
                 likedRead + 1,
                 """
                 invoke-static/range {v$liked .. v$liked}, $ACTION_CONFIRM->stageFeedLiked(Z)V
@@ -77,10 +89,8 @@ val confirmFeedLikePatch =
                 move-result v$liked
                 if-nez v$liked, :confirm_allowed
                 return-void
-                :confirm_allowed
-                invoke-static {}, $ACTION_CONFIRM->stagedFeedLiked()Z
-                move-result v$liked
                 """.trimIndent(),
+                ExternalLabel("confirm_allowed", method.getInstruction(likedRead + 1)),
             )
             enableSettings("confirmFeedLike")
         }

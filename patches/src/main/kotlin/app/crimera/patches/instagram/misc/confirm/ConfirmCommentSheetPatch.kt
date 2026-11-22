@@ -50,10 +50,7 @@ val confirmCommentSheetPatch =
                 """
                 filled-new-array/range {p0 .. p3}, [Ljava/lang/Object;
                 move-result-object v0
-                move-object/from16 v1, p2
-                if-eqz v1, :confirm_no_comment
-                iget-object v1, v1, $text
-                :confirm_no_comment
+                const-string v1, "${text.name}"
                 const-class v2, ${method.definingClass}
                 const-string v3, "${method.name}"
                 invoke-static {v0, v1, v2, v3}, $ACTION_CONFIRM->allowCommentSend([Ljava/lang/Object;${STRING}Ljava/lang/Class;$STRING)Z
