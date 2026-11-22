@@ -23,11 +23,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -186,42 +183,11 @@ public final class HiddenChats {
     private static void watchTouches(Activity activity) {
         Window window = activity.getWindow();
         Window.Callback current = window.getCallback();
-        if (current == null || (Proxy.isProxyClass(current.getClass())
-                && Proxy.getInvocationHandler(current) instanceof TouchWatcher)) return;
-        window.setCallback((Window.Callback) Proxy.newProxyInstance(Window.Callback.class.getClassLoader(),
-                new Class<?>[]{Window.Callback.class}, new TouchWatcher(activity, current)));
+        if (current == null || current instanceof HiddenChatsWindowCallback) return;
+        window.setCallback(new HiddenChatsWindowCallback(activity, current));
     }
 
-    private static final class TouchWatcher implements InvocationHandler {
-        private final Activity activity;
-        private final Window.Callback target;
-
-        TouchWatcher(Activity activity, Window.Callback target) {
-            this.activity = activity;
-            this.target = target;
-        }
-
-        @Override
-        public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
-            Object result;
-            try {
-                result = method.invoke(target, arguments);
-            } catch (InvocationTargetException e) {
-                throw e.getCause();
-            }
-            if (arguments != null && arguments.length == 1 && arguments[0] instanceof MotionEvent
-                    && method.getName().equals("dispatchTouchEvent")) {
-                try {
-                    onTouch(activity, (MotionEvent) arguments[0]);
-                } catch (Throwable t) {
-                    Logger.printException(() -> "HiddenChats touch failed", t);
-                }
-            }
-            return result;
-        }
-    }
-
-    private static void onTouch(Activity activity, MotionEvent event) {
+    static void onTouch(Activity activity, MotionEvent event) {
         if (event.getActionMasked() != MotionEvent.ACTION_UP || !Pref.hiddenChats()) return;
         if (event.getEventTime() - event.getDownTime() > TAP_MAX_PRESS_MS) return;
 
