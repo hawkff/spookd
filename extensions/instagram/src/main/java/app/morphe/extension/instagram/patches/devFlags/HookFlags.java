@@ -26,7 +26,8 @@ public class HookFlags {
     // Overrides indexed by numeric id; null until load() publishes them, so earlier checks still read the maps.
     private static volatile FlagOverrides<Boolean> boolOverrides = null;
     private static volatile FlagOverrides<Long> longOverrides = null;
-    private static final FlagOverrides.UniversalIdCache universalIdCache = new FlagOverrides.UniversalIdCache(12);
+    // 16384 slots (128 KB) for about 6,000 configs in this app version, so hot configs rarely share a slot.
+    private static final FlagOverrides.UniversalIdCache universalIdCache = new FlagOverrides.UniversalIdCache(14);
     private static final LongToIntFunction universalIdLookup = DeveloperOptionsItem::getUniversalIdValue;
 
     private static void simpleOverflowMenuFlags() {
