@@ -42,10 +42,10 @@ public class HandleCommentButton {
             if (Pref.pikoDebug()) {
                 list.add(DebugButton.A00);
             }
-            if (commentData.hasText() && Pref.commentCopyButton()) {
+            if (Pref.commentCopyButton() && commentData.hasText()) {
                 list.add(CopyTextButton.A00);
             }
-            if(commentData.hasMedia() && Pref.commentSaveMediaButton()){
+            if(Pref.commentSaveMediaButton() && commentData.hasMedia()){
                 list.add(SaveMediaButton.A00);
             }
             if (Pref.commentCopyButton()) {
