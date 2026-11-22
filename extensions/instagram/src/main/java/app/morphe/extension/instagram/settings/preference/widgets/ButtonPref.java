@@ -101,7 +101,7 @@ public class ButtonPref extends Preference {
                         SavedMessagesHook.openDeletedMessages(context);
 
                     } else if (key.equals("profile_analyzer")) {
-                        ProfileAnalyzer.onRowClicked((Activity) context);
+                        ActivityHook.startProfileAnalyzerActivity(context);
 
                     } else if (isFragmentNavigation(key)) {
                         FragmentHook.startFragment(key);
@@ -173,7 +173,8 @@ public class ButtonPref extends Preference {
                 || key.equals("piko_view_saved_instants")
                 || key.equals("piko_pref_add_font")
                 || key.equals("piko_pref_delete_font")
-                || key.equals("view_deleted_messages")));
+                || key.equals("view_deleted_messages")
+                || key.equals("profile_analyzer")));
     }
 
     private static boolean hasPressedHighlight(String key) {
