@@ -49,6 +49,12 @@ public class AccountSettingsTest {
     }
 
     @Test
+    public void downloadFolderAndItsGrantStayGlobal() {
+        assertTrue(AccountSettings.isGlobal("custom_download_path"));
+        assertTrue(AccountSettings.isGlobal("custom_download_tree_uri"));
+    }
+
+    @Test
     public void failedReplacementLeavesNoMarker() {
         Map<String, Object> accounts = new HashMap<>();
         assertFalse(AccountSettings.replaceUnderMarker(() -> accounts.put("adopt_live_file", true) == null,
