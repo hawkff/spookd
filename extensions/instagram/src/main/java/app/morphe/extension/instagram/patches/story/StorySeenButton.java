@@ -37,6 +37,7 @@ public final class StorySeenButton {
     private static final Map<ImageView, BindingState> BINDINGS = new WeakHashMap<>();
     private static final StorySeenBindingUpdates BINDING_UPDATES =
             new StorySeenBindingUpdates();
+    private static volatile boolean buttonPrepared;
 
     static final class CapturedStory {
         final Object session;
@@ -73,6 +74,7 @@ public final class StorySeenButton {
             Object reel,
             Object source,
             Object root) {
+        if (nothingToShowOrClear()) return;
         captureCurrentStory(
                 new CapturedStory(session, item, reel, source),
                 root instanceof View ? (View) root : null,
@@ -86,6 +88,7 @@ public final class StorySeenButton {
             Object reel,
             Object source,
             Object root) {
+        if (nothingToShowOrClear()) return;
         captureCurrentStory(
                 new CapturedStory(session, item, reel, source),
                 root instanceof View ? (View) root : null,
@@ -93,7 +96,18 @@ public final class StorySeenButton {
         );
     }
 
+    // With the setting off, binding only ever hides an eye button, and none exists before one is shown.
+    private static boolean nothingToShowOrClear() {
+        try {
+            return !buttonPrepared && !Pref.viewStoriesAnonymously();
+        } catch (Throwable throwable) {
+            Logger.printException(() -> "Failed to read the story seen setting", throwable);
+            return false;
+        }
+    }
+
     public static void invalidateCurrentStory() {
+        if (nothingToShowOrClear() && nothingTracked()) return;
         final long generation;
         final View anchor;
         synchronized (StorySeenButton.class) {
@@ -118,6 +132,10 @@ public final class StorySeenButton {
         } else {
             Utils.runOnMainThread(invalidation);
         }
+    }
+
+    private static synchronized boolean nothingTracked() {
+        return boundItem == null && queuedItem == null;
     }
 
     private static void captureCurrentStory(
@@ -368,6 +386,7 @@ public final class StorySeenButton {
             }
 
             StorySeenKey storyKey = StorySeenBridge.storyKey(story.session, story.item);
+            buttonPrepared = true;
             ImageView button = StorySeenButtonView.prepare((ViewGroup) toolbar);
             if (button == null) {
                 return null;
