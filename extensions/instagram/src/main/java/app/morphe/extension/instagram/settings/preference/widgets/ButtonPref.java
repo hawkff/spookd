@@ -27,6 +27,7 @@ import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.utils.InstaUtils;
 import app.morphe.extension.instagram.patches.focusLock.FocusLockDialogs;
 import app.morphe.extension.instagram.patches.dm.SavedMessagesHook;
+import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzer;
 
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
@@ -99,6 +100,9 @@ public class ButtonPref extends Preference {
                     } else if (key.equals("view_deleted_messages")) {
                         SavedMessagesHook.openDeletedMessages(context);
 
+                    } else if (key.equals("profile_analyzer")) {
+                        ProfileAnalyzer.onRowClicked((Activity) context);
+
                     } else if (isFragmentNavigation(key)) {
                         FragmentHook.startFragment(key);
 
@@ -137,6 +141,7 @@ public class ButtonPref extends Preference {
     @Override
     protected void onBindView(View view) {
         String key = getKey();
+        if ("profile_analyzer".equals(key)) ProfileAnalyzer.onRowDisplayed(this);
         InstagramPreferenceStyle.bindText(this, view);
         InstagramPreferenceStyle.bindIcon(view, iconResourceNameForKey(key));
         InstagramPreferenceStyle.setTrailingVisible(view, hasVisibleTrail(key));

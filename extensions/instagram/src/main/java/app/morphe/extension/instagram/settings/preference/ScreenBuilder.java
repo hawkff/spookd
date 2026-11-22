@@ -23,6 +23,7 @@ import app.morphe.extension.instagram.patches.devFlags.RecommendedFlags;
 import app.morphe.extension.crimera.legacydownloader.StorageUtils;
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.patches.Links;
+import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzer;
 import app.morphe.extension.instagram.patches.customise.font.FontStorage;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
 import app.morphe.extension.instagram.patches.focusLock.FocusLockTargets;
@@ -821,6 +822,10 @@ public class ScreenBuilder {
                             Settings.FOLLOW_LIST_NON_FOLLOWER_BADGE
                     )
             );
+        }
+        if (SettingsStatus.profileAnalyzer) {
+            addPreference(helper.buttonPreference(str("piko_profile_analyzer"),
+                    ProfileAnalyzer.rowSummary(context), "profile_analyzer"));
         }
         if (SettingsStatus.exactProfileCounts) {
             addPreference(helper.switchPreference(

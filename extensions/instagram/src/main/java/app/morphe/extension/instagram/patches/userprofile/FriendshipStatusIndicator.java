@@ -37,6 +37,7 @@ import app.morphe.extension.instagram.entity.Entity;
 import app.morphe.extension.instagram.entity.ProfileInfo;
 import app.morphe.extension.instagram.entity.InstagramDialogBox;
 import app.morphe.extension.instagram.constants.UI;
+import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzer;
 
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.ResourceUtils;
@@ -206,6 +207,7 @@ public class FriendshipStatusIndicator {
     }
 
     public static void addFriendshipIndicator(Object profileInfoObject, Object badgeObject){
+        ProfileAnalyzer.onProfileHeaderBound(profileInfoObject);
         try {
             Entity entity = new Entity(badgeObject);
             TextView badgeView = (TextView) entity.getMethod("getView");

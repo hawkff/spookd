@@ -72,6 +72,26 @@ internal object IsVerifiedExtensionFingerprint : Fingerprint(
     definingClass = EXTENSION_CLASS_DESCRIPTOR,
 )
 
+internal object GetRawFullNameExtensionFingerprint : Fingerprint(
+    name = "getRawFullName",
+    definingClass = EXTENSION_CLASS_DESCRIPTOR,
+)
+
+internal object GetFollowerCountExtensionFingerprint : Fingerprint(
+    name = "getFollowerCount",
+    definingClass = EXTENSION_CLASS_DESCRIPTOR,
+)
+
+internal object GetFollowingCountExtensionFingerprint : Fingerprint(
+    name = "getFollowingCount",
+    definingClass = EXTENSION_CLASS_DESCRIPTOR,
+)
+
+internal object GetProfilePicIdExtensionFingerprint : Fingerprint(
+    name = "getProfilePicId",
+    definingClass = EXTENSION_CLASS_DESCRIPTOR,
+)
+
 // -----------------------------------
 
 internal object FullNameLiveTreeUserDictFingerprint : Fingerprint(
@@ -142,4 +162,26 @@ internal object IsVerifiedUserTreeDictFingerprint : Fingerprint(
     returnType = "Ljava/lang/Boolean;",
     strings = listOf("is_verified"),
     filters = listOf(literal(1565553213)),
+)
+
+// The setters with the same keys take a parameter, so they do not match.
+internal object FollowerCountUserTreeDictFingerprint : Fingerprint(
+    definingClass = USER_MODEL_CLASS_NAME,
+    parameters = listOf(),
+    returnType = "Ljava/lang/Integer;",
+    strings = listOf("follower_count"),
+)
+
+internal object FollowingCountUserTreeDictFingerprint : Fingerprint(
+    definingClass = USER_MODEL_CLASS_NAME,
+    parameters = listOf(),
+    returnType = "Ljava/lang/Integer;",
+    strings = listOf("following_count"),
+)
+
+internal object ProfilePicIdUserTreeDictFingerprint : Fingerprint(
+    definingClass = USER_MODEL_CLASS_NAME,
+    parameters = listOf(),
+    returnType = "Ljava/lang/String;",
+    strings = listOf("profile_pic_id"),
 )

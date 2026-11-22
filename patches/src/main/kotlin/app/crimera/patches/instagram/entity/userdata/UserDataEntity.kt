@@ -27,6 +27,7 @@ val userDataEntity =
                 UserIdLiveTreeUserDictFingerprint.instructionMatches.last().methodReference.name,
             )
             GetFullNameExtensionFingerprint.changeFirstString(FullNameLiveTreeUserDictFingerprint.originalMethod.name)
+            GetRawFullNameExtensionFingerprint.changeFirstString(FullNameLiveTreeUserDictFingerprint.originalMethod.name)
             GetUserFriendshipStatusExtensionFingerprint.changeFirstString(
                 FriendshipStatusLiveTreeUserDictFingerprint.originalMethod.name,
             )
@@ -36,6 +37,16 @@ val userDataEntity =
                 LowResProfilePictureUserTreeDictFingerprint.originalMethod.name,
             )
             IsVerifiedExtensionFingerprint.changeFirstString(IsVerifiedUserTreeDictFingerprint.originalMethod.name)
+            // Only the profile analyzer needs these and checks them itself, so a miss here fails nothing else.
+            FollowerCountUserTreeDictFingerprint.matchOrNull()?.let {
+                GetFollowerCountExtensionFingerprint.changeFirstString(it.originalMethod.name)
+            }
+            FollowingCountUserTreeDictFingerprint.matchOrNull()?.let {
+                GetFollowingCountExtensionFingerprint.changeFirstString(it.originalMethod.name)
+            }
+            ProfilePicIdUserTreeDictFingerprint.matchOrNull()?.let {
+                GetProfilePicIdExtensionFingerprint.changeFirstString(it.originalMethod.name)
+            }
 
             val request = ProfileUserRequestFingerprint.originalMethod
             val repository = ProfileUserRequestFingerprint.originalClassDef.staticFields.single {
