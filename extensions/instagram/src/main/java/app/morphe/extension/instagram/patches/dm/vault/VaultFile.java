@@ -1,9 +1,7 @@
 package app.morphe.extension.instagram.patches.dm.vault;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.security.GeneralSecurityException;
@@ -18,7 +16,7 @@ import javax.crypto.spec.SecretKeySpec;
  * Reader and writer of the chunked AES-256-GCM vault file format (PKV v1).
  * Nothing here touches Instagram objects; callers run it on background threads.
  */
-public final class VaultFile implements Closeable {
+public final class VaultFile implements ViewerMedia {
     /** Supplies the key-encryption key that wraps each file's data key. */
     public interface Kek {
         SecretKey get() throws GeneralSecurityException;
@@ -152,27 +150,6 @@ public final class VaultFile implements Closeable {
             pos += count;
         }
         return done;
-    }
-
-    /** Sequential plaintext reader over {@link #readAt}. */
-    public InputStream openStream() {
-        return new InputStream() {
-            private final byte[] one = new byte[1];
-            private long pos;
-
-            @Override
-            public int read() throws IOException {
-                return read(one, 0, 1) == 1 ? one[0] & 0xFF : -1;
-            }
-
-            @Override
-            public int read(byte[] b, int off, int len) throws IOException {
-                if (len == 0) return 0;
-                int count = readAt(pos, b, off, len);
-                if (count > 0) pos += count;
-                return count;
-            }
-        };
     }
 
     /** Authenticates every chunk. */
