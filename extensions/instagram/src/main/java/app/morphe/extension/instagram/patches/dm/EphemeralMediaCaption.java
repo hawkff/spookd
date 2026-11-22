@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.utils.Pref;
@@ -47,6 +48,8 @@ public final class EphemeralMediaCaption {
     private static final long MICROS = 1_000_000L;
     private static final int SEARCH_DEPTH = 3;
     private static final int SEARCH_LIMIT = 1500;
+    private static final Map<Class<?>, Field> BUBBLE_FIELDS = new ConcurrentHashMap<>();
+    private static boolean captionCreated;
 
     private EphemeralMediaCaption() { }
 
@@ -77,13 +80,15 @@ public final class EphemeralMediaCaption {
     /** Called when a photo or video message is bound to its views. */
     public static void onBind(Object holder, Object model) {
         try {
+            boolean captions = Pref.ephemeralMediaCaption() && Pref.makeEphemeralMediaPermanent();
+            // Without a caption made in this process there is none to show or hide.
+            if (!captions && !captionCreated) return;
             View bubble = bubbleOf(holder);
             if (bubble == null) return;
             ViewGroup placeholder = placeholderOf(bubble);
             if (placeholder == null) return;
 
-            Long expireAt = Pref.ephemeralMediaCaption() && Pref.makeEphemeralMediaPermanent()
-                    ? expireAtOf(model) : null;
+            Long expireAt = captions ? expireAtOf(model) : null;
             String text = expireAt == null ? null : textFor(expireAt, bubble);
             // Rows are reused, so a row without a caption must hide the one left by its previous message.
             View existing = placeholder.findViewWithTag(CAPTION_TAG);
@@ -119,11 +124,19 @@ public final class EphemeralMediaCaption {
 
     private static View bubbleOf(Object holder) throws Exception {
         int bubbleId = ResourceUtils.getIdentifier(ResourceType.ID, BUBBLE_ID);
+        Field cached = BUBBLE_FIELDS.get(holder.getClass());
+        if (cached != null) {
+            View view = (View) cached.get(holder);
+            if (view != null && view.getId() == bubbleId) return view;
+        }
         for (Field field : holder.getClass().getDeclaredFields()) {
             if (!View.class.isAssignableFrom(field.getType())) continue;
             field.setAccessible(true);
             View view = (View) field.get(holder);
-            if (view != null && view.getId() == bubbleId) return view;
+            if (view != null && view.getId() == bubbleId) {
+                BUBBLE_FIELDS.put(holder.getClass(), field);
+                return view;
+            }
         }
         return null;
     }
@@ -137,6 +150,7 @@ public final class EphemeralMediaCaption {
 
     /** A new caption view under the photo. */
     private static View newCaption(ViewGroup placeholder, View bubble) {
+        captionCreated = true;
         TextView caption = new TextView(placeholder.getContext());
         caption.setTag(CAPTION_TAG);
         caption.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
