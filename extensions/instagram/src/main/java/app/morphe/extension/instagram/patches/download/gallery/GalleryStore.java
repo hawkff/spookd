@@ -108,8 +108,8 @@ public final class GalleryStore {
 
     /**
      * Makes a finished part a gallery item and returns its id. With {@code overwrite} the part
-     * replaces the newest item of the same subfolder and name, if any; otherwise it is a new item.
-     * On throw the part is deleted.
+     * and its metadata replace the newest item of the same subfolder and name, if any, keeping its
+     * id; otherwise it is a new item. On throw the part is deleted and existing items are intact.
      */
     public long publish(File part, GalleryItem item, String subFolder, String fileName,
                         boolean overwrite) throws IOException {
@@ -118,21 +118,8 @@ public final class GalleryStore {
             Long durationMs = GalleryItem.PHOTO.equals(item.kind) ? null : durationMs(part);
             long size = part.length();
             synchronized (this) {
-                long now = clock.getAsLong();
-                Object[] existing = overwrite ? newest(subFolder, fileName) : null;
-                if (existing != null) {
-                    long id = (Long) existing[0];
-                    File target = new File(dir, (String) existing[1]);
-                    if (!part.renameTo(target)) throw new IOException("Cannot replace " + target);
-                    ContentValues values = new ContentValues();
-                    values.put("saved_at", now);
-                    values.put("size_bytes", size);
-                    values.put("duration_ms", durationMs);
-                    db.update("gallery_items", values, "id = ?", new String[]{String.valueOf(id)});
-                    thumb(id).delete();
-                    return id;
-                }
                 String file = baseName(part) + extension(fileName);
+                File target = new File(dir, file);
                 ContentValues values = new ContentValues();
                 values.put("file", file);
                 values.put("tab", item.tab.name().toLowerCase(Locale.ROOT));
@@ -144,13 +131,31 @@ public final class GalleryStore {
                 values.put("media_id", item.mediaId);
                 values.put("link", item.link);
                 values.put("account_id", item.accountId);
-                values.put("saved_at", now);
+                values.put("saved_at", clock.getAsLong());
                 values.put("taken_at", item.takenAt);
                 values.put("size_bytes", size);
                 values.put("duration_ms", durationMs);
+                Object[] existing = overwrite ? newest(subFolder, fileName) : null;
+                if (existing != null) {
+                    long id = (Long) existing[0];
+                    // The old file stays until the row points at the replacement; a crash leaves an orphan.
+                    if (!part.renameTo(target)) throw new IOException("Cannot publish " + file);
+                    try {
+                        if (db.update("gallery_items", values, "id = ?",
+                                new String[]{String.valueOf(id)}) != 1) {
+                            throw new IOException("Item " + id + " is gone");
+                        }
+                    } catch (IOException | RuntimeException e) {
+                        target.delete();
+                        throw e;
+                    }
+                    new File(dir, (String) existing[1]).delete();
+                    thumb(id).delete();
+                    return id;
+                }
                 // The row goes first, so a file never exists without one.
                 long id = db.insertOrThrow("gallery_items", null, values);
-                if (!part.renameTo(new File(dir, file))) {
+                if (!part.renameTo(target)) {
                     db.delete("gallery_items", "id = ?", new String[]{String.valueOf(id)});
                     throw new IOException("Cannot publish " + file);
                 }

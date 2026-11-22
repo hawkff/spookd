@@ -212,16 +212,66 @@ public final class GalleryStoreTest {
         clock[0] = NOW + 1000;
 
         File part = part("newer");
+        String base = part.getName().substring(0, part.getName().length() - 5);
         assertEquals(id, store.publish(part, POST, "alice", "a.jpg", true));
 
         List<GalleryStore.Entry> entries = store.list(GalleryTab.POSTS);
         assertEquals(1, entries.size());
-        assertEquals(original, entries.get(0).file);
-        assertEquals("newer", read(original));
+        assertEquals(new File(dir, base + ".jpg"), entries.get(0).file);
+        assertEquals("newer", read(entries.get(0).file));
         assertEquals(5, entries.get(0).sizeBytes);
         assertEquals(NOW + 1000, entries.get(0).savedAt);
         assertFalse(part.exists());
+        assertFalse(original.exists());
         assertFalse(thumb.exists());
+    }
+
+    @Test
+    public void overwriteReplacesAllMetadataWithTheIncomingItem() throws Exception {
+        long id = publish("alice", "a.jpg", false);
+        GalleryItem story = new GalleryItem(GalleryTab.STORIES, GalleryItem.PHOTO, "alice", null,
+                "99", "https://www.instagram.com/stories/alice/99/", "44", null);
+
+        assertEquals(id, store.publish(part("story"), story, "alice", "a.jpg", true));
+
+        assertTrue(store.list(GalleryTab.POSTS).isEmpty());
+        List<GalleryStore.Entry> entries = store.list(GalleryTab.STORIES);
+        assertEquals(1, entries.size());
+        GalleryItem saved = entries.get(0).item;
+        assertEquals(id, entries.get(0).id);
+        assertEquals(GalleryTab.STORIES, saved.tab);
+        assertEquals("alice", saved.ownerUsername);
+        assertNull(saved.ownerId);
+        assertEquals("99", saved.mediaId);
+        assertEquals("https://www.instagram.com/stories/alice/99/", saved.link);
+        assertEquals("44", saved.accountId);
+        assertNull(saved.takenAt);
+    }
+
+    @Test
+    public void failedOverwriteKeepsTheOriginalItem() throws Exception {
+        long id = publish("alice", "a.jpg", false);
+        File original = file(id);
+        db.execSQL("CREATE TRIGGER fail_update BEFORE UPDATE ON gallery_items"
+                + " BEGIN SELECT RAISE(ABORT, 'disk full'); END");
+        clock[0] = NOW + 1000;
+        File part = part("newer");
+        String base = part.getName().substring(0, part.getName().length() - 5);
+
+        try {
+            store.publish(part, POST, "alice", "a.jpg", true);
+            fail();
+        } catch (RuntimeException expected) {
+        }
+
+        assertFalse(part.exists());
+        assertFalse(new File(dir, base + ".jpg").exists());
+        List<GalleryStore.Entry> entries = store.list(GalleryTab.POSTS);
+        assertEquals(1, entries.size());
+        assertEquals(original, entries.get(0).file);
+        assertEquals("content", read(original));
+        assertEquals(7, entries.get(0).sizeBytes);
+        assertEquals(NOW, entries.get(0).savedAt);
     }
 
     @Test
