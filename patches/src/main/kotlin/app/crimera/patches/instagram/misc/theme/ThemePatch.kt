@@ -20,7 +20,7 @@ val themePatch =
     patch(
         name = "Theme",
         description =
-            "Adds Material You and AMOLED controls to Piko settings " +
+            "Adds Material You and AMOLED controls to spookd settings " +
                 "on Android 12 and later. On Android 8–11, it applies a fixed " +
                 "Material You-style theme or an optional AMOLED theme.",
         default = true,
@@ -34,7 +34,7 @@ val themePatch =
             description =
                 "Use a fixed pure-black AMOLED theme instead of the fixed Material " +
                     "You-style theme on Android 8–11. On Android 12 and later, use " +
-                    "the AMOLED control in Piko settings.",
+                    "the AMOLED control in spookd settings.",
         )
 
         dependsOn(
