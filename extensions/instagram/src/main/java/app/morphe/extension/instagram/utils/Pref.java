@@ -372,6 +372,18 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.FOLLOW_LIST_NON_FOLLOWER_BADGE);
     }
 
+    public static boolean exactProfileCounts() {
+        return SharedPref.getBooleanPref(Settings.EXACT_PROFILE_COUNTS) && SettingsStatus.exactProfileCounts;
+    }
+
+    public static boolean squareProfileGrid() {
+        return SharedPref.getBooleanPref(Settings.SQUARE_PROFILE_GRID) && SettingsStatus.squareProfileGrid;
+    }
+
+    public static boolean profileSavedTab() {
+        return SharedPref.getBooleanPref(Settings.PROFILE_SAVED_TAB) && SettingsStatus.profileSavedTab;
+    }
+
     public static boolean disableStoryFlipping() {
         return SharedPref.getBooleanPref(Settings.DISABLE_STORY_FLIPPING);
     }

@@ -225,6 +225,12 @@ public class SettingsStatus {
     public static void followBackIndicator() { followBackIndicator = true; }
     public static boolean followListNonFollowerBadge = false;
     public static void followListNonFollowerBadge() { followListNonFollowerBadge = true; }
+    public static boolean exactProfileCounts = false;
+    public static void exactProfileCounts() { exactProfileCounts = true; }
+    public static boolean squareProfileGrid = false;
+    public static void squareProfileGrid() { squareProfileGrid = true; }
+    public static boolean profileSavedTab = false;
+    public static void profileSavedTab() { profileSavedTab = true; }
     public static boolean resumeReelsAfterScrolling = false;
     public static void resumeReelsAfterScrolling() { resumeReelsAfterScrolling = true; }
     public static boolean playbackSpeedControls = false;
@@ -245,7 +251,7 @@ public class SettingsStatus {
     public static void moreOptionsOnPost() { moreOptionsOnPost = true; }
     public static boolean moreOptionsOnProfile = false;
     public static void moreOptionsOnProfile() { moreOptionsOnProfile = true; }
-    public static boolean miscSection() {return ( moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || followBackIndicator || followListNonFollowerBadge || customFont);}
+    public static boolean miscSection() {return ( moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || followBackIndicator || followListNonFollowerBadge || exactProfileCounts || squareProfileGrid || profileSavedTab || customFont);}
 
     //Font section.
     public static boolean customFont = false;
@@ -334,6 +340,9 @@ public class SettingsStatus {
         FLAGS.put(str("piko_hide_story_follow_button"),SettingsStatus.hideStoryFollowButton);
         FLAGS.put(str("piko_view_story_mentions"),SettingsStatus.viewStoryMentions);
         FLAGS.put(str("piko_follow_back_indicator"),SettingsStatus.followBackIndicator);
+        FLAGS.put(str("piko_exact_profile_counts"), SettingsStatus.exactProfileCounts);
+        FLAGS.put(str("piko_square_profile_grid"), SettingsStatus.squareProfileGrid);
+        FLAGS.put(str("piko_profile_saved_tab"), SettingsStatus.profileSavedTab);
         FLAGS.put(str("piko_disable_discover_people"),SettingsStatus.disableDiscoverPeople);
         FLAGS.put(str("piko_customise_story_ring_size"),SettingsStatus.customiseStoryRingSize);
 

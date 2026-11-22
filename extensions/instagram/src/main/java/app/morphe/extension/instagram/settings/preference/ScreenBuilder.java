@@ -822,6 +822,27 @@ public class ScreenBuilder {
                     )
             );
         }
+        if (SettingsStatus.exactProfileCounts) {
+            addPreference(helper.switchPreference(
+                    str("piko_exact_profile_counts"),
+                    str("piko_exact_profile_counts_desc"),
+                    Settings.EXACT_PROFILE_COUNTS
+            ));
+        }
+        if (SettingsStatus.squareProfileGrid) {
+            addPreference(helper.switchPreference(
+                    str("piko_square_profile_grid"),
+                    str("piko_square_profile_grid_desc"),
+                    Settings.SQUARE_PROFILE_GRID
+            ));
+        }
+        if (SettingsStatus.profileSavedTab) {
+            addPreference(helper.switchPreference(
+                    str("piko_profile_saved_tab"),
+                    str("piko_profile_saved_tab_desc"),
+                    Settings.PROFILE_SAVED_TAB
+            ));
+        }
         if (SettingsStatus.resumeReelsAfterScrolling) {
             addPreference(helper.switchPreference(
                     str("piko_resume_reels_after_scrolling"),
