@@ -6,12 +6,15 @@
 
 package app.morphe.extension.instagram.entity;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.HashMap;
 import app.morphe.extension.crimera.PikoUtils;
 
 public class UserFriendshipStatus extends Entity {
     private final Object obj;
+    private static Class<?> helperClass;
+    private static Class<?> friendshipStatusClass;
 
     public UserFriendshipStatus(Object obj) {
         super(obj);
@@ -19,10 +22,13 @@ public class UserFriendshipStatus extends Entity {
     }
 
     public Map<String, Boolean> getMappings(){
+        // Users decoded without friendship_status have none yet; the mapper would throw on them.
+        if (this.obj == null) return Collections.emptyMap();
         try {
-            Class<?> helperClass = Class.forName("classname");
+            if (helperClass == null) helperClass = Class.forName("classname");
+            if (friendshipStatusClass == null) friendshipStatusClass = Class.forName("friendshipstatusclass");
             return (Map) super.getMethod(helperClass, "methodname",
-                    new Class[]{Class.forName("friendshipstatusclass")}, this.obj);
+                    new Class[]{friendshipStatusClass}, this.obj);
         } catch (Exception e) {
             PikoUtils.logger(e);
         }
