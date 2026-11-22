@@ -178,6 +178,7 @@ public final class FollowScanTest {
         scan.stop();
         gate.countDown();
         assertTrue(first.done.await(10, TimeUnit.SECONDS));
+        awaitIdle();
         assertEquals(State.STOPPED, first.end);
         assertEquals(0, count("SELECT COUNT(*) FROM follow_scans"));
         assertEquals(0, scan.nextAllowedStart("2002"));
@@ -304,11 +305,40 @@ public final class FollowScanTest {
         assertEquals(State.STOPPED, recorder.end);
     }
 
+    @Test
+    public void aStartFromTheLastReportIsRefusedAsRunning() throws Exception {
+        script.add(page(null, "1"), page(null, "2"));
+        FollowScan.Refusal[] refusal = new FollowScan.Refusal[1];
+        Recorder recorder = new Recorder() {
+            @Override
+            public void onProgress(int list, int received, int expected, State state) {
+                if (state == State.FINISHED) refusal[0] = scan.start("2002", 1, 1, null);
+                super.onProgress(list, received, expected, state);
+            }
+        };
+
+        assertNull(scan.start(ACCOUNT, 1, 1, recorder));
+        assertTrue(recorder.done.await(10, TimeUnit.SECONDS));
+        awaitIdle();
+
+        assertEquals(FollowScan.Refusal.ALREADY_RUNNING, refusal[0]);
+        assertEquals("1 1/1 FINISHED", recorder.last());
+        assertEquals(0, scan.nextAllowedStart("2002"));
+    }
+
     private Recorder run(int followers, int following) throws Exception {
         Recorder recorder = new Recorder();
         assertNull(scan.start(ACCOUNT, followers, following, recorder));
         assertTrue(recorder.done.await(10, TimeUnit.SECONDS));
+        awaitIdle();
         return recorder;
+    }
+
+    /** The scan counts as running until its last report returned. */
+    private void awaitIdle() throws InterruptedException {
+        long until = System.currentTimeMillis() + 10_000;
+        while (scan.isRunning() && System.currentTimeMillis() < until) Thread.sleep(5);
+        assertFalse(scan.isRunning());
     }
 
     private static PageSource.Page page(String next, String... ids) {
@@ -361,7 +391,7 @@ public final class FollowScanTest {
         }
     }
 
-    private final class Recorder implements FollowScan.Listener {
+    private class Recorder implements FollowScan.Listener {
         final List<State> states = Collections.synchronizedList(new ArrayList<>());
         final List<String> events = Collections.synchronizedList(new ArrayList<>());
         final CountDownLatch paused = new CountDownLatch(1);

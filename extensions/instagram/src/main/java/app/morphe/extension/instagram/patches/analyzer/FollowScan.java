@@ -129,19 +129,22 @@ public final class FollowScan {
         } catch (Throwable t) {
             String error = t.getClass().getSimpleName();
             Logger.printException(() -> "FollowScan failed: " + error);
+        }
+        // Still running until the last report returned, so no other scan's reports come in between.
+        try {
+            State end = outcome;
+            int followerRows = followers.size();
+            int followingRows = following.size();
+            Logger.printInfo(() -> "FollowScan " + end + ": followers " + followerRows
+                    + ", following " + followingRows);
+            boolean onFollowers = list == PikoFollowDb.LIST_FOLLOWERS;
+            report(listener, list, onFollowers ? followerRows : followingRows,
+                    onFollowers ? followerCount : followingCount, end);
         } finally {
             synchronized (this) {
                 worker = null;
             }
         }
-        State end = outcome;
-        int followerRows = followers.size();
-        int followingRows = following.size();
-        Logger.printInfo(() -> "FollowScan " + end + ": followers " + followerRows
-                + ", following " + followingRows);
-        boolean onFollowers = list == PikoFollowDb.LIST_FOLLOWERS;
-        report(listener, list, onFollowers ? followerRows : followingRows,
-                onFollowers ? followerCount : followingCount, end);
     }
 
     /** Returns true when the list finished, false after the fourth throttle in a row. */

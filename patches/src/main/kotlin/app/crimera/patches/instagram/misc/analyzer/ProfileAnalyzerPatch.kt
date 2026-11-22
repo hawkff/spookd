@@ -106,9 +106,14 @@ val profileAnalyzerPatch =
             if (!converterReadsSession) {
                 throw PatchException("The follow list converter does not read the request holder session")
             }
-            val holderInit = holder.methods.firstOrNull { it.name == "<init>" && it.parameterTypes.isEmpty() }
-                ?.let { "$holderType-><init>()V" }
-                ?: "${holder.superclass ?: throw PatchException("No follow list request holder constructor")}-><init>()V"
+            val holderConstructors = holder.methods.filter { it.name == "<init>" }
+            val holderInit = when {
+                holderConstructors.any { it.parameterTypes.isEmpty() } -> "$holderType-><init>()V"
+                // The app allocates a holder without constructors this way (0C6Z.smali:7935-7937).
+                holderConstructors.isEmpty() && holder.superclass == "Ljava/lang/Object;" ->
+                    "Ljava/lang/Object;-><init>()V"
+                else -> throw PatchException("The follow list request holder has no constructor without arguments")
+            }
 
             val executorType = followers.operationFactory.parameterTypes.first().toString()
             val executor = graphQLExecutorFingerprint(executorType).originalMethod

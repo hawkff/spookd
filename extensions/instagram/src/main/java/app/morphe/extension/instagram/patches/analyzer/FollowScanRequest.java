@@ -11,6 +11,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.shared.Logger;
@@ -23,6 +25,9 @@ public final class FollowScanRequest implements PageSource {
 
     static final long FETCH_TIMEOUT_MS = 30_000L;
     static final String FETCH_THREAD_NAME = "piko-analyzer-fetch";
+    /** Fetches that ignore their cancel keep a thread each; beyond this many, pages count as throttled. */
+    static final int MAX_OUTSTANDING_FETCHES = 2;
+    private static final AtomicInteger OUTSTANDING_FETCHES = new AtomicInteger();
     // Cached, so a request that ignores the cancel cannot hold back the next page.
     private static final ExecutorService FETCHER = Executors.newCachedThreadPool(task -> {
         Thread thread = new Thread(task, FETCH_THREAD_NAME);
@@ -68,14 +73,36 @@ public final class FollowScanRequest implements PageSource {
      * callback without a time limit, and returns its result, or null after {@code timeoutMs} or a failure.
      */
     static <T> T withTimeout(Callable<T> fetch, long timeoutMs) {
-        Future<T> future = FETCHER.submit(fetch);
+        if (OUTSTANDING_FETCHES.incrementAndGet() > MAX_OUTSTANDING_FETCHES) {
+            OUTSTANDING_FETCHES.decrementAndGet();
+            Logger.printInfo(() -> "FollowScanRequest: too many fetches outstanding");
+            return null;
+        }
+        // Whoever claims it first releases the slot: the task when it starts, or a cancel before that.
+        AtomicBoolean claimed = new AtomicBoolean();
+        Future<T> future;
+        try {
+            future = FETCHER.submit(() -> {
+                if (!claimed.compareAndSet(false, true)) return null;
+                try {
+                    return fetch.call();
+                } finally {
+                    OUTSTANDING_FETCHES.decrementAndGet();
+                }
+            });
+        } catch (RuntimeException e) {
+            OUTSTANDING_FETCHES.decrementAndGet();
+            String error = e.getClass().getSimpleName();
+            Logger.printInfo(() -> "FollowScanRequest: " + error);
+            return null;
+        }
         try {
             return future.get(timeoutMs, TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
-            future.cancel(true);
+            cancel(future, claimed);
             Logger.printInfo(() -> "FollowScanRequest: TimeoutException");
         } catch (InterruptedException e) {
-            future.cancel(true);
+            cancel(future, claimed);
             Thread.currentThread().interrupt();
             Logger.printInfo(() -> "FollowScanRequest: InterruptedException");
         } catch (ExecutionException e) {
@@ -83,6 +110,15 @@ public final class FollowScanRequest implements PageSource {
             Logger.printInfo(() -> "FollowScanRequest failed: " + error);
         }
         return null;
+    }
+
+    private static void cancel(Future<?> future, AtomicBoolean claimed) {
+        future.cancel(true);
+        if (claimed.compareAndSet(false, true)) OUTSTANDING_FETCHES.decrementAndGet();
+    }
+
+    static int outstandingFetches() {
+        return OUTSTANDING_FETCHES.get();
     }
 
     private static FollowUser toFollowUser(Object user) {

@@ -6,8 +6,10 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class FollowScanRequestTest {
 
@@ -31,6 +33,48 @@ public final class FollowScanRequestTest {
         assertTrue("waited " + elapsedMs + " ms", elapsedMs < 5_000);
         assertTrue(interrupted.await(5, TimeUnit.SECONDS));
         assertEquals(FollowScanRequest.FETCH_THREAD_NAME, thread[0]);
+    }
+
+    @Test
+    public void aThirdFetchIsRefusedWhileTwoIgnoreTheirCancel() throws Exception {
+        awaitNoOutstandingFetch();
+        AtomicInteger started = new AtomicInteger();
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch finished = new CountDownLatch(2);
+        Callable<Object> stubborn = () -> {
+            started.incrementAndGet();
+            try {
+                while (true) {
+                    try {
+                        if (release.await(10, TimeUnit.SECONDS)) return "late";
+                    } catch (InterruptedException ignored) {
+                        // Ignores the cancel on purpose.
+                    }
+                }
+            } finally {
+                finished.countDown();
+            }
+        };
+        try {
+            assertNull(FollowScanRequest.withTimeout(stubborn, 100));
+            assertNull(FollowScanRequest.withTimeout(stubborn, 100));
+            long start = System.nanoTime();
+            assertNull(FollowScanRequest.withTimeout(stubborn, 5_000));
+            assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) < 1_000);
+            assertEquals(2, started.get());
+        } finally {
+            release.countDown();
+        }
+        assertTrue(finished.await(10, TimeUnit.SECONDS));
+        awaitNoOutstandingFetch();
+    }
+
+    private static void awaitNoOutstandingFetch() throws InterruptedException {
+        long until = System.currentTimeMillis() + 10_000;
+        while (FollowScanRequest.outstandingFetches() != 0 && System.currentTimeMillis() < until) {
+            Thread.sleep(5);
+        }
+        assertEquals(0, FollowScanRequest.outstandingFetches());
     }
 
     @Test
