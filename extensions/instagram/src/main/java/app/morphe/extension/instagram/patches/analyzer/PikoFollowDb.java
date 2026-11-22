@@ -157,15 +157,14 @@ public final class PikoFollowDb extends SQLiteOpenHelper {
                          + " (account_id, user_id, username, full_name, verified, pic_id)"
                          + " VALUES (?, ?, ?, ?, ?, ?)")) {
                 Changes changes = new Changes(change, accountId, scanId, finishedAt);
+                Map<String, FollowUser> everyone = merge(followerById, followingById);
                 if (previous != -1) {
-                    listChanges(db, changes, previous, LIST_FOLLOWERS, followerById, known,
-                            NEW_FOLLOWER, LOST_FOLLOWER);
-                    listChanges(db, changes, previous, LIST_FOLLOWING, followingById, known,
-                            STARTED_FOLLOWING, STOPPED_FOLLOWING);
+                    listChanges(db, changes, previous, LIST_FOLLOWERS, followerById, everyone,
+                            known, NEW_FOLLOWER, LOST_FOLLOWER);
+                    listChanges(db, changes, previous, LIST_FOLLOWING, followingById, everyone,
+                            known, STARTED_FOLLOWING, STOPPED_FOLLOWING);
                 }
 
-                Map<String, FollowUser> everyone = new LinkedHashMap<>(followerById);
-                everyone.putAll(followingById);
                 for (FollowUser user : everyone.values()) {
                     String[] old = known.get(user.id);
                     String username = user.username;
@@ -304,8 +303,26 @@ public final class PikoFollowDb extends SQLiteOpenHelper {
         return out;
     }
 
+    /** One identity per user; for a mutual, a non-null field wins, and the followers list first. */
+    private static Map<String, FollowUser> merge(Map<String, FollowUser> followers,
+                                                 Map<String, FollowUser> following) {
+        Map<String, FollowUser> out = new LinkedHashMap<>(followers);
+        for (FollowUser user : following.values()) {
+            FollowUser seen = out.get(user.id);
+            out.put(user.id, seen == null ? user : new FollowUser(user.id,
+                    either(seen.username, user.username), either(seen.fullName, user.fullName),
+                    seen.verified, either(seen.picId, user.picId)));
+        }
+        return out;
+    }
+
+    private static String either(String preferred, String fallback) {
+        return preferred != null ? preferred : fallback;
+    }
+
     private static void listChanges(SQLiteDatabase db, Changes changes, long previous, int list,
-                                    Map<String, FollowUser> current, Map<String, String[]> known,
+                                    Map<String, FollowUser> current,
+                                    Map<String, FollowUser> everyone, Map<String, String[]> known,
                                     String gained, String lost) {
         Set<String> before = new HashSet<>();
         try (Cursor c = db.rawQuery("SELECT user_id FROM follow_scan_members"
@@ -314,7 +331,9 @@ public final class PikoFollowDb extends SQLiteOpenHelper {
             while (c.moveToNext()) before.add(c.getString(0));
         }
         for (FollowUser user : current.values()) {
-            if (!before.contains(user.id)) changes.add(user.id, gained, null, user.username);
+            if (!before.contains(user.id)) {
+                changes.add(user.id, gained, null, everyone.get(user.id).username);
+            }
         }
         for (String userId : before) {
             if (current.containsKey(userId)) continue;

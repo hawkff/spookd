@@ -90,6 +90,26 @@ public final class PikoFollowDbTest {
     }
 
     @Test
+    public void mutualUserFieldsMergeAcrossBothLists() {
+        // Baseline: the following list lacks the fields the followers list has.
+        db.commitScan(A, 1000, Collections.singletonList(new FollowUser("2", "old", null, false, "p1")),
+                Collections.singletonList(new FollowUser("2", null, "Name", false, null)));
+        FollowUser baseline = db.mutuals(A).get(0);
+        assertEquals("old", baseline.username);
+        assertEquals("Name", baseline.fullName);
+        assertEquals("p1", baseline.picId);
+
+        db.commitScan(A, 2000, Collections.singletonList(new FollowUser("2", "new", null, false, "p2")),
+                Collections.singletonList(new FollowUser("2", null, null, false, null)));
+
+        assertEquals(Arrays.asList("picture 2 p1 p2 2000", "username 2 old new 2000"), changes(A));
+        FollowUser stored = db.mutuals(A).get(0);
+        assertEquals("new", stored.username);
+        assertEquals("Name", stored.fullName);
+        assertEquals("p2", stored.picId);
+    }
+
+    @Test
     public void eleventhScanPrunesOldestAndHistorySurvives() {
         db.commitScan(A, 1, users("1", "9"), users());
         db.commitScan(A, 2, users("1", "2"), users());
