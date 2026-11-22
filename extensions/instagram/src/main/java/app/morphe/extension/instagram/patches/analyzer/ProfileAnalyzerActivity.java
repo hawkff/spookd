@@ -295,7 +295,11 @@ public final class ProfileAnalyzerActivity {
         void onResumed() {
             ProfileAnalyzer.onScreenShown(refresh);
             // A reload recovers a scan end that came while another screen held the refresh.
-            if (paused && sameAccount() && accountId != null) load(LOAD, accountId);
+            if (paused && sameAccount() && accountId != null) {
+                // Sampled first, so a scan that ends during this reload still triggers another one.
+                refreshScanState();
+                load(LOAD, accountId);
+            }
             paused = false;
         }
 
@@ -432,6 +436,7 @@ public final class ProfileAnalyzerActivity {
         }
 
         private void openProfile(Object item) {
+            if (!sameAccount() || accountId == null) return;
             String username = item instanceof FollowUser ? ((FollowUser) item).username
                     : item instanceof PikoFollowDb.Change
                     ? usernames.get(((PikoFollowDb.Change) item).userId) : null;
