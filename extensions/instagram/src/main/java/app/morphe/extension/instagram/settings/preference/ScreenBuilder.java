@@ -1003,6 +1003,14 @@ public class ScreenBuilder {
 
         addPreference(
                 helper.buttonPreference(
+                        str("piko_private_gallery"),
+                        str("piko_private_gallery_desc"),
+                        "piko_private_gallery"
+                )
+        );
+
+        addPreference(
+                helper.buttonPreference(
                         str("piko_download_set_path"),
                         StorageUtils.getCustomPathForDisplay(),
                         "piko_download_set_path"

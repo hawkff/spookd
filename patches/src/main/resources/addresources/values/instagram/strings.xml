@@ -316,6 +316,16 @@
     <string name="piko_download_set_path_failed">Failed to save download folder</string>
     <string name="piko_download_choose_folder">Choose a download folder to continue</string>
     <string name="piko_download_choose_folder_failed">Could not open folder picker</string>
+    <string name="piko_private_gallery">Private gallery</string>
+    <string name="piko_private_gallery_desc">Your downloads, shown after you confirm your screen lock</string>
+    <string name="piko_gallery_tab_posts">Posts</string>
+    <string name="piko_gallery_tab_reels">Reels</string>
+    <string name="piko_gallery_tab_stories">Stories</string>
+    <string name="piko_gallery_tab_dms">DMs</string>
+    <string name="piko_gallery_summary">%1$d saved · %2$s used</string>
+    <string name="piko_gallery_empty">Nothing saved in this tab yet.</string>
+    <string name="piko_gallery_audio">audio</string>
+    <string name="piko_gallery_delete_confirm">Delete this item from the private gallery?</string>
     <string name="piko_download_with_external_downloader">Download with external downloader</string>
     <string name="piko_external_downloader_package_name">External downloader package name</string>
     <string name="piko_external_downloader_package_name_not_found">External downloader package name not found</string>
