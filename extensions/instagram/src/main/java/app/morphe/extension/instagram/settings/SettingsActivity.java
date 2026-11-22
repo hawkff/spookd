@@ -185,7 +185,7 @@ public final class SettingsActivity {
                 displayTitle = str(requestedTitle);
             }
             if (displayTitle == null || displayTitle.isEmpty()) {
-                displayTitle = str("piko_title_settings");
+                displayTitle = str("spookd_title_settings");
             }
 
             rootSettings = requestedFragmentName == null

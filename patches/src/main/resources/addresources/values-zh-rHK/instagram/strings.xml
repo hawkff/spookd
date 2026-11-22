@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="spookd_title_settings">spookd 設定</string>
     <!-- Ads Section -->
     <string name="piko_category_ads">廣告</string>
     <string name="piko_disable_ads">停用廣告</string>
@@ -137,7 +138,7 @@
     <string name="piko_restart_app">需要重新啟動應用程式以套用變更</string>
     <string name="piko_ok">確定</string>
     <string name="piko_cancel">取消</string>
-    <string name="piko_debug">Piko 調試</string>
+    <string name="piko_debug">spookd 調試</string>
     <string name="piko_debug_desc">為部分組件添加調試選項以進行測試</string>
     <string name="piko_export_experiment_list">匯出實驗列表</string>
     <string name="piko_export_experiment_mappings">匯出實驗映射</string>
@@ -155,9 +156,9 @@
     <string name="piko_array_post_time">發佈時間 (小時/分鐘/秒)</string>
     <string name="piko_array_time_left">剩餘時間 (小時/分鐘/秒)</string>
     <!-- Welcome Message -->
-    <string name="piko_welcome_title">歡迎來到 Piko</string>
-    <string name="piko_welcome_message">為了提升您使用 Piko 的體驗，請前往 Piko 設定調整您的偏好設定</string>
-    <string name="piko_goto_piko_settings">前往 Piko 設定</string>
+    <string name="piko_welcome_title">歡迎來到 spookd</string>
+    <string name="piko_welcome_message">為了提升您使用 spookd 的體驗，請前往 spookd 設定調整您的偏好設定</string>
+    <string name="piko_goto_piko_settings">前往 spookd 設定</string>
     <string name="piko_no_internet">請連接到互聯網</string>
     <string name="piko_tap_here">點這裡！！</string>
     <!-- Action Bar Section -->

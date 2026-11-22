@@ -56,8 +56,8 @@ val settingsResourcePatch =
                         setAttribute("android:icon", "@drawable/piko_settings_shortcut_icon")
                         setAttribute("android:enabled", "true")
                         setAttribute("android:shortcutId", "piko_settings")
-                        setAttribute("android:shortcutShortLabel", "@string/piko_title_settings")
-                        setAttribute("android:shortcutLongLabel", "@string/piko_title_settings")
+                        setAttribute("android:shortcutShortLabel", "@string/spookd_title_settings")
+                        setAttribute("android:shortcutLongLabel", "@string/spookd_title_settings")
                         appendChild(intentElement)
                     }
                 it.documentElement.insertBefore(shortcutElement, it.documentElement.firstChild)

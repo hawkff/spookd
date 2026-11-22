@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="spookd_title_settings">Ustawienia spookd</string>
     <!-- Ads Section -->
     <string name="piko_category_ads">Reklamy</string>
     <string name="piko_disable_ads">Wyłącz reklamy</string>
@@ -283,16 +284,16 @@
     <string name="piko_navigation_tab_profile">Profil</string>
     <string name="piko_navigation_tab_notifications">Powiadomienia</string>
     <string name="piko_navigation_tab_create">Utwórz</string>
-    <string name="piko_navigation_settings_lockout_title">Brak przycisku ustawień Piko</string>
-    <string name="piko_navigation_settings_lockout_message">Ta konfiguracja usuwa wszystkie odnośniki do ustawień Piko z widocznych kart. Ustawienia Piko nadal możesz otworzyć, przytrzymując ikonę aplikacji i wybierając ustawienia Piko.</string>
+    <string name="piko_navigation_settings_lockout_title">Brak przycisku ustawień spookd</string>
+    <string name="piko_navigation_settings_lockout_message">Ta konfiguracja usuwa wszystkie odnośniki do ustawień spookd z widocznych kart. Ustawienia spookd nadal możesz otworzyć, przytrzymując ikonę aplikacji i wybierając ustawienia spookd.</string>
     <!-- Information Section -->
     <string name="piko_category_about">Informacje</string>
-    <string name="piko_export_pref">Eksportuj ustawienia Piko</string>
-    <string name="piko_import_pref">Importuj ustawienia Piko</string>
-    <string name="piko_reset_pref">Zresetuj ustawienia Piko</string>
-    <string name="piko_reset_pref_confirm">Zresetować ustawienia Piko?</string>
-    <string name="piko_reset_pref_success">Zresetowano ustawienia Piko</string>
-    <string name="piko_reset_pref_failed">Nie udało się zresetować ustawień Piko</string>
+    <string name="piko_export_pref">Eksportuj ustawienia spookd</string>
+    <string name="piko_import_pref">Importuj ustawienia spookd</string>
+    <string name="piko_reset_pref">Zresetuj ustawienia spookd</string>
+    <string name="piko_reset_pref_confirm">Zresetować ustawienia spookd?</string>
+    <string name="piko_reset_pref_success">Zresetowano ustawienia spookd</string>
+    <string name="piko_reset_pref_failed">Nie udało się zresetować ustawień spookd</string>
     <string name="piko_app_version">Wersja aplikacji: %s</string>
     <string name="piko_patch_version">Wersja modyfikacji: %s</string>
     <string name="piko_patch_info_title">Informacje o modyfikacjach</string>
@@ -311,7 +312,7 @@
     <string name="piko_ok">OK</string>
     <string name="piko_reset">Zresetuj</string>
     <string name="piko_cancel">Anuluj</string>
-    <string name="piko_debug">Debugowanie Piko</string>
+    <string name="piko_debug">Debugowanie spookd</string>
     <string name="piko_debug_desc">Dodaje opcje debugowania dla niektórych komponentów do testów</string>
     <string name="piko_export_experiment_list">Eksportuj listę eksperymentów</string>
     <string name="piko_export_experiment_mappings">Eksportuj mapowania eksperymentów</string>
@@ -334,9 +335,9 @@
     <string name="piko_array_recmd_flag_state_enable">Włącz</string>
     <string name="piko_array_recmd_flag_state_disable">Wyłącz</string>
     <!-- Welcome Message -->
-    <string name="piko_welcome_title">Witaj w Piko</string>
-    <string name="piko_welcome_message">Aby wyciągnąć z Piko jak najwięcej, zajrzyj do ustawień i dostosuj je pod siebie</string>
-    <string name="piko_goto_piko_settings">Przejdź do ustawień Piko</string>
+    <string name="piko_welcome_title">Witaj w spookd</string>
+    <string name="piko_welcome_message">Aby wyciągnąć z spookd jak najwięcej, zajrzyj do ustawień i dostosuj je pod siebie</string>
+    <string name="piko_goto_piko_settings">Przejdź do ustawień spookd</string>
     <string name="piko_no_internet">Połącz się z internetem</string>
     <string name="piko_tap_here">Dotknij tutaj</string>
     <!-- Action Bar Section -->

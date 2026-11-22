@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="spookd_title_settings">Configuraciones de spookd</string>
     <!-- Ads Section -->
     <string name="piko_category_ads">Anuncios</string>
     <string name="piko_disable_ads">Desactivar anuncios</string>
@@ -283,16 +284,16 @@
     <string name="piko_navigation_tab_profile">Perfil</string>
     <string name="piko_navigation_tab_notifications">Notificaciones</string>
     <string name="piko_navigation_tab_create">Crear</string>
-    <string name="piko_navigation_settings_lockout_title">No hay botón de configuración de Piko</string>
-    <string name="piko_navigation_settings_lockout_message">Esta configuración elimina todas las entradas de configuración de Piko de las pestañas visibles. Aún puedes abrir la configuración de Piko presionando prolongadamente el ícono de la aplicación y seleccionando la configuración de Piko.</string>
+    <string name="piko_navigation_settings_lockout_title">No hay botón de configuración de spookd</string>
+    <string name="piko_navigation_settings_lockout_message">Esta configuración elimina todas las entradas de configuración de spookd de las pestañas visibles. Aún puedes abrir la configuración de spookd presionando prolongadamente el ícono de la aplicación y seleccionando la configuración de spookd.</string>
     <!-- Information Section -->
     <string name="piko_category_about">Acerca de</string>
-    <string name="piko_export_pref">Exportar configuración de Piko</string>
-    <string name="piko_import_pref">Importar configuración de Piko</string>
-    <string name="piko_reset_pref">Restablecer la configuración de Piko</string>
-    <string name="piko_reset_pref_confirm">¿Restablecer la configuración de Piko?</string>
-    <string name="piko_reset_pref_success">Restablecimiento de la configuración de Piko</string>
-    <string name="piko_reset_pref_failed">No se pudo restablecer la configuración de Piko</string>
+    <string name="piko_export_pref">Exportar configuración de spookd</string>
+    <string name="piko_import_pref">Importar configuración de spookd</string>
+    <string name="piko_reset_pref">Restablecer la configuración de spookd</string>
+    <string name="piko_reset_pref_confirm">¿Restablecer la configuración de spookd?</string>
+    <string name="piko_reset_pref_success">Restablecimiento de la configuración de spookd</string>
+    <string name="piko_reset_pref_failed">No se pudo restablecer la configuración de spookd</string>
     <string name="piko_app_version">Versión de la aplicación: %s</string>
     <string name="piko_patch_version">Versión del parche: %s</string>
     <string name="piko_patch_info_title">Información del parche</string>
@@ -311,7 +312,7 @@
     <string name="piko_ok">Aceptar</string>
     <string name="piko_reset">Restablecer</string>
     <string name="piko_cancel">Cancelar</string>
-    <string name="piko_debug">Depuración de Piko</string>
+    <string name="piko_debug">Depuración de spookd</string>
     <string name="piko_debug_desc">Agrega opciones de depuración en algunos componentes para pruebas</string>
     <string name="piko_export_experiment_list">Exportar lista de experimentos</string>
     <string name="piko_export_experiment_mappings">Exportar mapeos de experimentos</string>
@@ -334,9 +335,9 @@
     <string name="piko_array_recmd_flag_state_enable">Activar</string>
     <string name="piko_array_recmd_flag_state_disable">Desactivar</string>
     <!-- Welcome Message -->
-    <string name="piko_welcome_title">Bienvenido a Piko</string>
-    <string name="piko_welcome_message">Para mejorar tu experiencia con Piko, visita los ajustes de Piko y ajusta tus configuracio</string>
-    <string name="piko_goto_piko_settings">Ir a ajustes de Piko</string>
+    <string name="piko_welcome_title">Bienvenido a spookd</string>
+    <string name="piko_welcome_message">Para mejorar tu experiencia con spookd, visita los ajustes de spookd y ajusta tus configuracio</string>
+    <string name="piko_goto_piko_settings">Ir a ajustes de spookd</string>
     <string name="piko_no_internet">Conéctate a Internet</string>
     <string name="piko_tap_here">¡¡Toca aquí!!</string>
     <!-- Action Bar Section -->
