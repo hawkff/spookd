@@ -3,25 +3,21 @@ package app.morphe.extension.instagram.patches.filter.story;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Collections;
-import java.util.Set;
-
 import org.junit.Test;
 
 public class FilterStoryTest {
-    private static final Set<String> NONE = Collections.emptySet();
+    private static final int DEFAULT_MIN = 1;
+    private static final int DEFAULT_MAX = 9999;
 
     @Test
-    public void defaultsAndWiderRangesFilterNothing() {
-        assertTrue(FilterStory.atDefaults(NONE, NONE, 1, 9999));
-        assertTrue(FilterStory.atDefaults(NONE, NONE, 0, 100000));
+    public void zeroCountItemsAreDroppedUnderDefaults() {
+        assertTrue(FilterStory.outsideCountRange(0, DEFAULT_MIN, DEFAULT_MAX));
     }
 
     @Test
-    public void anySetFilterNeedsTheItems() {
-        assertFalse(FilterStory.atDefaults(Collections.singleton("archive_day_media_reel"), NONE, 1, 9999));
-        assertFalse(FilterStory.atDefaults(NONE, Collections.singleton("verified"), 1, 9999));
-        assertFalse(FilterStory.atDefaults(NONE, NONE, 2, 9999));
-        assertFalse(FilterStory.atDefaults(NONE, NONE, 1, 9998));
+    public void countsInsideTheDefaultRangeAreKept() {
+        assertFalse(FilterStory.outsideCountRange(1, DEFAULT_MIN, DEFAULT_MAX));
+        assertFalse(FilterStory.outsideCountRange(DEFAULT_MAX, DEFAULT_MIN, DEFAULT_MAX));
+        assertTrue(FilterStory.outsideCountRange(DEFAULT_MAX + 1, DEFAULT_MIN, DEFAULT_MAX));
     }
 }

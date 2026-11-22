@@ -27,19 +27,20 @@ public class FilterStory {
         Set<String> userTypes = Pref.filterStoryByUserType();
         int minStoryItems = Pref.filterStoryByMinStoryItems();
         int maxStoryItems = Pref.filterStoryByMaxStoryItems();
-        if (atDefaults(reelTypes, userTypes, minStoryItems, maxStoryItems)) return items;
         List<Object> filtered = new ArrayList<>(items.size());
         for (Object item : items) {
             try {
                 ReelResponseItem reelResponseItem = new ReelResponseItem(item);
-                if (reelTypes.contains(reelResponseItem.getReelType())) continue;
+                if (!reelTypes.isEmpty() && reelTypes.contains(reelResponseItem.getReelType())) continue;
 
-                UserData userData = reelResponseItem.getUserData();
-                if (userTypes.contains("verified") && userData.isVerified()) continue;
-                if (userTypes.contains("unverified") && !userData.isVerified()) continue;
+                if (!userTypes.isEmpty()) {
+                    UserData userData = reelResponseItem.getUserData();
+                    if (userTypes.contains("verified") && userData.isVerified()) continue;
+                    if (userTypes.contains("unverified") && !userData.isVerified()) continue;
+                }
 
                 int mediaCount = reelResponseItem.getMediaCount();
-                if (mediaCount < minStoryItems || mediaCount > maxStoryItems) continue;
+                if (outsideCountRange(mediaCount, minStoryItems, maxStoryItems)) continue;
             } catch (Exception e) {
                 PikoUtils.logger(e.toString());
             }
@@ -48,7 +49,7 @@ public class FilterStory {
         return filtered;
     }
 
-    static boolean atDefaults(Set<String> reelTypes, Set<String> userTypes, int minStoryItems, int maxStoryItems) {
-        return reelTypes.isEmpty() && userTypes.isEmpty() && minStoryItems <= 1 && maxStoryItems >= 9999;
+    static boolean outsideCountRange(int mediaCount, int minStoryItems, int maxStoryItems) {
+        return mediaCount < minStoryItems || mediaCount > maxStoryItems;
     }
 }
