@@ -558,7 +558,7 @@ public final class DeletedMessagesActivity {
                     .setItems(options, (d, which) -> {
                         try {
                             if (which == 0) {
-                                String fileName = "piko_" + messageId + guessExtension(url, type);
+                                String fileName = "spookd_" + messageId + guessExtension(url, type);
                                 DownloadUtils.downloadMediaUrl(activity, url, Constants.DEFAULT_DM_FOLDER, fileName);
                             } else if (which == 2) {
                                 Utils.setClipboard(MediaUrls.forViewing(url));

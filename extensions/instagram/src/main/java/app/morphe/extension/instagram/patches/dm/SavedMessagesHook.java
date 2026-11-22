@@ -31,7 +31,8 @@ import app.morphe.extension.instagram.utils.Pref;
 @SuppressWarnings("unused")
 public class SavedMessagesHook {
 
-    static final String NOTIFICATION_CHANNEL_ID = "piko_deleted_messages";
+    static final String NOTIFICATION_CHANNEL_ID = "spookd_deleted_messages";
+    private static final String PREFS_NAME = "spookd_dm";
 
     private static volatile String sMyUserId;
     private static android.os.HandlerThread sWorkerThread;
@@ -84,7 +85,7 @@ public class SavedMessagesHook {
             try {
                 Context context = PikoUtils.getContext();
                 if (context != null) {
-                    String value = context.getSharedPreferences("piko_dm", Context.MODE_PRIVATE)
+                    String value = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                             .getString("my_user_id", null);
                     if (value != null && !value.isEmpty()) sMyUserId = value;
                 }
@@ -100,7 +101,7 @@ public class SavedMessagesHook {
         try {
             Context context = PikoUtils.getContext();
             if (context != null) {
-                context.getSharedPreferences("piko_dm", Context.MODE_PRIVATE)
+                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                         .edit().putString("my_user_id", id).apply();
             }
         } catch (Exception ignored) {

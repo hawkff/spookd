@@ -76,7 +76,7 @@ public final class MediaVaultLifecycleTest {
         constructor.setAccessible(true);
         messages = constructor.newInstance(RuntimeEnvironment.getApplication());
         db = messages.getWritableDatabase();
-        dir = tmp.newFolder("piko_vault");
+        dir = tmp.newFolder("spookd_vault");
         network = new FakeNetwork();
         restart();
     }

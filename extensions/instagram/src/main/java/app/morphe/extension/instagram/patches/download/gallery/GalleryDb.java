@@ -7,7 +7,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 /** The private gallery's rows, one per downloaded file; separate from the DM vault's database. */
 public final class GalleryDb extends SQLiteOpenHelper {
 
-    static final String DB_NAME = "piko_gallery.db";
+    static final String DB_NAME = "spookd_gallery.db";
     private static final int DB_VERSION = 1;
 
     private static GalleryDb instance;

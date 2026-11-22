@@ -92,8 +92,8 @@ public final class GalleryStore {
                 if (instance == null) {
                     Context context = PikoUtils.getContext();
                     instance = new GalleryStore(GalleryDb.getInstance(context).getWritableDatabase(),
-                            new File(context.getNoBackupFilesDir(), "piko_gallery"),
-                            new File(context.getCacheDir(), "piko_gallery_thumbs"),
+                            new File(context.getNoBackupFilesDir(), "spookd_gallery"),
+                            new File(context.getCacheDir(), "spookd_gallery_thumbs"),
                             System::currentTimeMillis);
                 }
                 store = instance;

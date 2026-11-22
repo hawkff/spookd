@@ -20,7 +20,7 @@ import java.util.function.BooleanSupplier;
 /** Follower and following snapshots per account, and the history of changes between them. */
 public final class PikoFollowDb extends SQLiteOpenHelper {
 
-    static final String DB_NAME = "piko_follow_snapshots.db";
+    static final String DB_NAME = "spookd_follow_snapshots.db";
     private static final int DB_VERSION = 1;
     static final int KEPT_SCANS = 10;
 

@@ -22,7 +22,7 @@ public final class FollowScan {
 
     public static final int MAX_ACCOUNTS = 13_000;
     public static final long MIN_START_INTERVAL_MS = 60 * 60 * 1000L;
-    static final String PREFS_NAME = "piko_profile_analyzer";
+    static final String PREFS_NAME = "spookd_profile_analyzer";
     static final long[] BACKOFF_MS = {10_000L, 20_000L, 40_000L};
     static final int MIN_PAGE_WAIT_MS = 2_000;
     static final int MAX_PAGE_WAIT_MS = 4_000;

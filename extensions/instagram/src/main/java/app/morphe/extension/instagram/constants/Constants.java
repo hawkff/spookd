@@ -15,9 +15,9 @@ import app.morphe.extension.instagram.settings.ActivityHook;
 
 public class Constants {
     public static final String PIKO = "piko";
-    public static final String PIKO_SETTINGS = PIKO + "_settings";
+    public static final String PIKO_SETTINGS = ExtensionStrings.PIKO_SETTINGS;
     public static final String SHARED_PREF_NAME = PIKO_SETTINGS;
-    public static final String DEFAULT_PIKO_FOLDER = "Piko-Instagram";
+    public static final String DEFAULT_PIKO_FOLDER = "spookd-Instagram";
     public static final String DEFAULT_AUDIO_FOLDER = "Audio";
     public static final String DEFAULT_DM_FOLDER = "DM";
     public static final String DEFAULT_GIF_FOLDER = "Gif";
@@ -25,7 +25,7 @@ public class Constants {
     // https://www.instagram.com/p/<short code>/
     // https://www.instagram.com/reel/<short code>/
     // https://www.instagram.com/stories/<user name>/<post id>
-    public static final String REC_FLAGS = PIKO + "_recommended_flags_v3";
+    public static final String REC_FLAGS = "spookd_recommended_flags_v3";
     public static final String PIKO_MAPPINGS_PATH = "https://github.com/crimera/piko/raw/refs/heads/dev/docs/mappings/";
 
     public static final String AB_SETTINGS_ICON = "SETTINGS_ICON";

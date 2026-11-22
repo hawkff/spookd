@@ -54,8 +54,8 @@ public final class GalleryStoreTest {
         // A fresh helper per test; the singleton would keep an earlier test's context.
         helper = new GalleryDb(RuntimeEnvironment.getApplication());
         db = helper.getWritableDatabase();
-        dir = tmp.newFolder("piko_gallery");
-        thumbs = tmp.newFolder("piko_gallery_thumbs");
+        dir = tmp.newFolder("spookd_gallery");
+        thumbs = tmp.newFolder("spookd_gallery_thumbs");
         restart();
     }
 

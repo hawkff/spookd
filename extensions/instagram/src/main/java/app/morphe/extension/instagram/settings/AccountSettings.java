@@ -44,20 +44,20 @@ import app.morphe.extension.shared.Utils;
  */
 public final class AccountSettings {
 
-    public static final String OWNER_KEY = "piko_account_owner";
+    public static final String OWNER_KEY = "spookd_account_owner";
     private static final String ACCOUNTS_PREF_NAME = Constants.SHARED_PREF_NAME + "_accounts";
     private static final String ADOPT_LIVE_FILE_KEY = "adopt_live_file";
 
     /** Device-level keys the swap leaves alone. Every other key travels with its account. */
     private static final Set<String> GLOBAL_KEYS = new HashSet<>(Arrays.asList(
             OWNER_KEY,
-            "piko_debug",
+            "spookd_debug",
             "material_you_theme",
             "amoled_theme",
             "instagram_theme_mode",
             "instagram_theme_mode_synchronized",
             "use_system_font",
-            "first_time_piko",
+            "first_time_spookd",
             "enable_developer_options",
             "directly_open_metaconfig",
             "focus_lock_duration_minutes",

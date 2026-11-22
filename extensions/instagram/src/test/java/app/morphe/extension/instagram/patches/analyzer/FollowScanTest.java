@@ -186,7 +186,7 @@ public final class FollowScanTest {
         clock[0] = NOW + 59 * 60_000L;
         assertEquals(FollowScan.Refusal.TOO_SOON, scan.start(ACCOUNT, 1, 1, null));
         assertEquals(NOW + FollowScan.MIN_START_INTERVAL_MS, scan.nextAllowedStart(ACCOUNT));
-        assertEquals(NOW, context.getSharedPreferences("piko_profile_analyzer", Context.MODE_PRIVATE)
+        assertEquals(NOW, context.getSharedPreferences("spookd_profile_analyzer", Context.MODE_PRIVATE)
                 .getLong("last_scan_start_" + ACCOUNT, 0));
 
         clock[0] = NOW + FollowScan.MIN_START_INTERVAL_MS;

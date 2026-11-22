@@ -32,7 +32,7 @@ import app.morphe.extension.shared.Utils;
  */
 public final class ProfileAnalyzer {
 
-    static final String NOTIFICATION_CHANNEL_ID = "piko_profile_analyzer";
+    static final String NOTIFICATION_CHANNEL_ID = "spookd_profile_analyzer";
     private static final int NOTIFICATION_ID = 0x70f11e;
 
     static final String ROW_START = "piko_profile_analyzer_start";

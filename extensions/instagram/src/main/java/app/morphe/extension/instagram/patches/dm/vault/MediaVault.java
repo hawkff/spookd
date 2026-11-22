@@ -119,7 +119,7 @@ public final class MediaVault {
         };
         return new MediaVault(new VaultStore(PikoMessageDb.getInstance(context).getWritableDatabase()),
                 network, System::currentTimeMillis, VaultKeys.INSTANCE,
-                new File(context.getNoBackupFilesDir(), "piko_vault"), executor);
+                new File(context.getNoBackupFilesDir(), "spookd_vault"), executor);
     }
 
     /**

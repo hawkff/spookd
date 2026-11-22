@@ -57,7 +57,7 @@ public class EphemeralMediaPatch {
     private static SharedPreferences localReadPreferences() {
         Context context = PikoUtils.getContext();
         // Suppressing the receipt preserves the image, but refresh resets the server's seen count.
-        return context == null ? null : context.getSharedPreferences("piko_ephemeral_media_viewed", Context.MODE_PRIVATE);
+        return context == null ? null : context.getSharedPreferences("spookd_ephemeral_media_viewed", Context.MODE_PRIVATE);
     }
 
     public static String makeEphemeralMediaPermanent(Long expireAt, String viewMode, Object parser) {

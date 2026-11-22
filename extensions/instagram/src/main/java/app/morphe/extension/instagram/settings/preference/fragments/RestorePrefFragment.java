@@ -27,6 +27,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -41,6 +42,7 @@ import app.morphe.extension.instagram.patches.customise.font.FontStorage;
 import app.morphe.extension.instagram.patches.dm.InboxLock;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
 import app.morphe.extension.instagram.settings.AccountSettings;
+import app.morphe.extension.instagram.settings.SpookdMigration;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 
@@ -168,6 +170,11 @@ public class RestorePrefFragment extends Fragment {
                     if (total > MAX_RESTORE_BYTES) throw new IOException("File is too large to restore");
                     out.write(buffer, 0, read);
                 }
+            }
+            if (destinationFile.getName().equals(Constants.PIKO_SETTINGS + ".xml")) {
+                String xml = new String(Files.readAllBytes(tempFile.toPath()), StandardCharsets.UTF_8);
+                String renamed = SpookdMigration.renameLegacyKeys(xml);
+                if (!renamed.equals(xml)) Files.write(tempFile.toPath(), renamed.getBytes(StandardCharsets.UTF_8));
             }
 
             // Don't touch the current file unless the whole picked file is what we restore.

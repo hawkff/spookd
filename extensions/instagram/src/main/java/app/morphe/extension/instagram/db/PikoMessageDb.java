@@ -17,7 +17,7 @@ import java.util.List;
 
 public class PikoMessageDb extends SQLiteOpenHelper {
 
-    private static final String DB_NAME = "piko_dm_vault.db";
+    private static final String DB_NAME = "spookd_dm_vault.db";
     static final int DB_VERSION = 5;
     private static final String TABLE = "saved_messages";
     // sender_id → username directory. MQTT-delivered items carry only a numeric sender_id;

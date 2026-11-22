@@ -25,7 +25,7 @@ import java.util.List;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 29, manifest = Config.NONE)
 public final class PikoMessageDbMigrationTest {
-    private static final String DB_NAME = "piko_dm_vault.db";
+    private static final String DB_NAME = "spookd_dm_vault.db";
 
     @Test
     public void upgradesV4WithRowsIntact() throws Exception {

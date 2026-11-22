@@ -154,9 +154,9 @@ public class AccountSettingsTest {
     public void globalKeysAreLeftAlone() {
         Set<String> storyKeys = new HashSet<>(Collections.singleton("x"));
         Map<String, Object> live = map(OWNER, "1", "inbox_lock", true, "hidden_chats", true,
-                "focus_lock_until", "99", "focus_lock_sel_disable_explore", true, "piko_debug", true,
+                "focus_lock_until", "99", "focus_lock_sel_disable_explore", true, "spookd_debug", true,
                 "marked_story_keys_v2", storyKeys, "save_deleted_messages", true);
-        Map<String, Object> incoming = map(OWNER, "2", "inbox_lock", false, "piko_debug", false);
+        Map<String, Object> incoming = map(OWNER, "2", "inbox_lock", false, "spookd_debug", false);
 
         Map<String, Object> outgoing = AccountSettings.snapshot(live, "1");
         assertEquals(map(OWNER, "1", "save_deleted_messages", true), outgoing);

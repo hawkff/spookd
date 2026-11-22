@@ -16,9 +16,9 @@ import java.util.Arrays;
 public final class GalleryActionsTest {
     @Test
     public void dmExportsAreNamedByTheirItemIdOrElseTheirRowId() {
-        assertEquals("piko_abc.mp4", GalleryActions.dmFileName("abc", 7, null, "video"));
-        assertEquals("piko_7.jpg", GalleryActions.dmFileName(null, 7, null, "photo"));
-        assertEquals("piko_7.m4a", GalleryActions.dmFileName("", 7, "", "voice"));
+        assertEquals("spookd_abc.mp4", GalleryActions.dmFileName("abc", 7, null, "video"));
+        assertEquals("spookd_7.jpg", GalleryActions.dmFileName(null, 7, null, "photo"));
+        assertEquals("spookd_7.m4a", GalleryActions.dmFileName("", 7, "", "voice"));
     }
 
     @Test
@@ -27,8 +27,8 @@ public final class GalleryActionsTest {
 
         assertEquals("content", uri.getScheme());
         assertEquals("com.example.fileprovider", uri.getAuthority());
-        assertEquals("/cache/piko_share/f00/a%20b%23c.jpg", uri.getEncodedPath());
-        assertEquals(Arrays.asList("cache", "piko_share", "f00", "a b#c.jpg"), uri.getPathSegments());
+        assertEquals("/cache/spookd_share/f00/a%20b%23c.jpg", uri.getEncodedPath());
+        assertEquals(Arrays.asList("cache", "spookd_share", "f00", "a b#c.jpg"), uri.getPathSegments());
     }
 
     @Test

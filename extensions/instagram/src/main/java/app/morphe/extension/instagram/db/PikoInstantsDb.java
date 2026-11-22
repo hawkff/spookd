@@ -24,7 +24,7 @@ import app.morphe.extension.shared.Logger;
  */
 public class PikoInstantsDb extends SQLiteOpenHelper {
 
-    private static final String DB_NAME = "piko_instants_vault.db";
+    private static final String DB_NAME = "spookd_instants_vault.db";
     private static final int DB_VERSION = 4;
     private static final String TABLE = "saved_instants";
 

@@ -81,7 +81,8 @@ public class RecommendedFlags {
     }
 
     public static void downloadRecommendedFlagsFile(Runnable onComplete) {
-        String filename = Constants.REC_FLAGS+".json";
+        // The remote catalog keeps its upstream name.
+        String filename = "piko_recommended_flags_v3.json";
         String host = Constants.PIKO_MAPPINGS_PATH;
         InstaUtils.downloadFile(host, filename, getRecommendedFlagsFile(), () -> {
             for (Runnable listener : changeListeners) {

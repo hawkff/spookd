@@ -33,7 +33,7 @@ import app.morphe.extension.shared.Utils;
 
 /** Export, share and open actions of the private gallery. */
 final class GalleryActions {
-    static final String SHARE_DIR = "piko_share";
+    static final String SHARE_DIR = "spookd_share";
     // The manifest keeps this class name even when the code is minified; clones rename only the authority.
     private static final String FILE_PROVIDER = "androidx.core.content.FileProvider";
 
@@ -164,6 +164,6 @@ final class GalleryActions {
         if (extension == null) {
             extension = GalleryItem.PHOTO.equals(kind) ? "jpg" : GalleryItem.VIDEO.equals(kind) ? "mp4" : "m4a";
         }
-        return "piko_" + (itemId == null || itemId.isEmpty() ? String.valueOf(rowId) : itemId) + "." + extension;
+        return "spookd_" + (itemId == null || itemId.isEmpty() ? String.valueOf(rowId) : itemId) + "." + extension;
     }
 }
