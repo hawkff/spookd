@@ -10,8 +10,10 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Application;
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.os.Bundle;
 import android.view.View;
 
 import java.lang.reflect.InvocationTargetException;
@@ -243,15 +245,60 @@ public final class ActionConfirm {
     private static boolean ask(View anchor, String action, String title, Object token, List<Object> state, Runnable rerun) {
         Activity activity = activityOf(anchor == null ? null : anchor.getContext());
         if (activity == null || activity.isFinishing()) return false;
-        new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
+        AlertDialog dialog = new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                 .setTitle(title)
                 .setNegativeButton(str("piko_cancel"), null)
-                .setPositiveButton(str("piko_confirm_" + action + "_action"), (dialog, which) -> {
+                .setPositiveButton(str("piko_confirm_" + action + "_action"), (shown, which) -> {
                     // A recycled or closed screen means the prompt no longer matches what is shown.
                     if (anchor == null || anchor.isAttachedToWindow()) runConfirmed(token, state, rerun);
                 })
-                .show();
+                .create();
+        // Leaving the screen, where Reels and the comment sheet may move on, withdraws the question.
+        Application application = activity.getApplication();
+        CloseOnPause closeOnPause = new CloseOnPause(activity, dialog);
+        application.registerActivityLifecycleCallbacks(closeOnPause);
+        dialog.setOnDismissListener(shown -> application.unregisterActivityLifecycleCallbacks(closeOnPause));
+        dialog.show();
         return true;
+    }
+
+    private static final class CloseOnPause implements Application.ActivityLifecycleCallbacks {
+        private final Activity activity;
+        private final AlertDialog dialog;
+
+        CloseOnPause(Activity activity, AlertDialog dialog) {
+            this.activity = activity;
+            this.dialog = dialog;
+        }
+
+        @Override
+        public void onActivityPaused(Activity paused) {
+            if (paused == activity) dialog.dismiss();
+        }
+
+        @Override
+        public void onActivityCreated(Activity created, Bundle state) {
+        }
+
+        @Override
+        public void onActivityStarted(Activity started) {
+        }
+
+        @Override
+        public void onActivityResumed(Activity resumed) {
+        }
+
+        @Override
+        public void onActivityStopped(Activity stopped) {
+        }
+
+        @Override
+        public void onActivitySaveInstanceState(Activity saved, Bundle state) {
+        }
+
+        @Override
+        public void onActivityDestroyed(Activity destroyed) {
+        }
     }
 
     private static Runnable invoker(Class<?> owner, String name, Object receiver, Object[] args) throws NoSuchMethodException {
