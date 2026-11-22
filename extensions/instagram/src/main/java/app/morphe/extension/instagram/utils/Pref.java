@@ -696,11 +696,19 @@ public class Pref {
     }
 
     public static Integer filterStoryByMinStoryItems() {
-        return Integer.valueOf(SharedPref.getStringPref(Settings.FILTER_STORY_MIN_STORY_ITEMS));
+        try {
+            return Integer.valueOf(SharedPref.getStringPref(Settings.FILTER_STORY_MIN_STORY_ITEMS));
+        } catch (NumberFormatException e) {
+            return 1;
+        }
     }
 
     public static Integer filterStoryByMaxStoryItems() {
-        return Integer.valueOf(SharedPref.getStringPref(Settings.FILTER_STORY_MAX_STORY_ITEMS));
+        try {
+            return Integer.valueOf(SharedPref.getStringPref(Settings.FILTER_STORY_MAX_STORY_ITEMS));
+        } catch (NumberFormatException e) {
+            return 9999;
+        }
     }
 
     public static boolean inboxLock() {

@@ -27,6 +27,7 @@ public class FilterStory {
         Set<String> userTypes = Pref.filterStoryByUserType();
         int minStoryItems = Pref.filterStoryByMinStoryItems();
         int maxStoryItems = Pref.filterStoryByMaxStoryItems();
+        if (atDefaults(reelTypes, userTypes, minStoryItems, maxStoryItems)) return items;
         List<Object> filtered = new ArrayList<>(items.size());
         for (Object item : items) {
             try {
@@ -45,5 +46,9 @@ public class FilterStory {
             filtered.add(item);
         }
         return filtered;
+    }
+
+    static boolean atDefaults(Set<String> reelTypes, Set<String> userTypes, int minStoryItems, int maxStoryItems) {
+        return reelTypes.isEmpty() && userTypes.isEmpty() && minStoryItems <= 1 && maxStoryItems >= 9999;
     }
 }
