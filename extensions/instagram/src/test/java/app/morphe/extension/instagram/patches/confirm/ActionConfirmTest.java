@@ -32,6 +32,13 @@ public class ActionConfirmTest {
     }
 
     @Test
+    public void blankCommentsAreNotAsked() {
+        assertTrue(ActionConfirm.isBlank(null));
+        assertTrue(ActionConfirm.isBlank(" \n "));
+        assertFalse(ActionConfirm.isBlank(" nice "));
+    }
+
+    @Test
     public void bypassLastsForTheOneRerunOfItsOwnTarget() {
         Object target = new Object();
         Object other = new Object();

@@ -116,10 +116,10 @@ public final class ActionConfirm {
         }
     }
 
-    /** From the comment composer's static post method, which reads the text from {@code composer}. */
-    public static boolean allowComment(Object composer, Class<?> owner, String name) {
+    /** From the comment composer's static post method; {@code text} is what the composer holds. */
+    public static boolean allowComment(Object composer, CharSequence text, Class<?> owner, String name) {
         try {
-            if (composer == null || isBypassed(composer) || !Pref.confirmComment()) return true;
+            if (composer == null || isBypassed(composer) || isBlank(text) || !Pref.confirmComment()) return true;
             return !ask(null, COMMENT, str("piko_confirm_comment_title"), composer,
                     invoker(owner, name, null, new Object[]{composer}));
         } catch (Throwable t) {
@@ -138,6 +138,10 @@ public final class ActionConfirm {
         if ("row_feed_button_like".equals(idName)) return LIKE;
         if ("reposts_ufi_icon".equals(idName)) return REPOST;
         return null;
+    }
+
+    static boolean isBlank(CharSequence text) {
+        return text == null || text.toString().trim().isEmpty();
     }
 
     static boolean isBypassed(Object token) {
