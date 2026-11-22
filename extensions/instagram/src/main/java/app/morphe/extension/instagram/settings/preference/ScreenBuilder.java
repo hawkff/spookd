@@ -408,13 +408,13 @@ public class ScreenBuilder {
 
         // PreferenceCategory category= addCategory(str("piko_category_ghost"));
 
-        Preference allGhostModes = helper.switchPreference(
-                str("piko_turn_on_all_ghost_modes"),
-                "",
-                Settings.TURN_ON_ALL_GHOST_MODES
+        addPreference(
+                helper.switchPreference(
+                        str("piko_turn_on_all_ghost_modes"),
+                        str("piko_turn_on_all_ghost_modes_desc"),
+                        Settings.TURN_ON_ALL_GHOST_MODES
+                )
         );
-        addPreference(allGhostModes);
-        int firstGhostMode = screen.getPreferenceCount();
 
         if (SettingsStatus.viewStoriesAnonymously) {
             addPreference(
@@ -460,15 +460,6 @@ public class ScreenBuilder {
                             Settings.VIEW_DM_ANONYMOUSLY
                     )
             );
-        }
-        // The rows added since the switch are the modes it forces on, so the summary follows them.
-        StringBuilder ghostModes = new StringBuilder();
-        for (int i = firstGhostMode; i < screen.getPreferenceCount(); i++) {
-            if (ghostModes.length() > 0) ghostModes.append(", ");
-            ghostModes.append(screen.getPreference(i).getTitle());
-        }
-        if (ghostModes.length() > 0) {
-            allGhostModes.setSummary(str("piko_turn_on_all_ghost_modes_desc", ghostModes));
         }
         if (SettingsStatus.markAsReadAfterReply) {
             addPreference(
