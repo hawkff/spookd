@@ -175,20 +175,11 @@ public class ScreenBuilder {
                 "piko_pref_add_font"
         ));
 
-        if (FontStorage.hasFile()) {
-            ButtonPref deleteFont = helper.buttonPreference(
-                    str("piko_pref_delete_font"),
-                    str("piko_custom_font"),
-                    "piko_pref_delete_font"
-            );
-            Preference.OnPreferenceClickListener delete = deleteFont.getOnPreferenceClickListener();
-            deleteFont.setOnPreferenceClickListener(preference -> {
-                delete.onPreferenceClick(preference);
-                if (!FontStorage.hasFile()) screen.removePreference(preference);
-                return true;
-            });
-            addPreference(deleteFont);
-        }
+        addPreference(helper.buttonPreference(
+                str("piko_pref_delete_font"),
+                str("piko_pref_delete_font_desc"),
+                "piko_pref_delete_font"
+        ));
     }
 
     public void buildDeveloperSection() {
