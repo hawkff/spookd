@@ -197,8 +197,11 @@ public final class FollowScan {
 
     private static boolean isThrottle(PageSource.Page page, String cursor, int received, int expected) {
         if (page == null || page.users == null) return true;
-        if (page.nextMaxId != null) return page.nextMaxId.equals(cursor);
-        return page.users.isEmpty() && received * 100L < (long) expected * COMPLETE_PERCENT;
+        // An empty page only ends a list, with no cursor, once nearly everything expected has arrived.
+        if (page.users.isEmpty()) {
+            return page.nextMaxId != null || received * 100L < (long) expected * COMPLETE_PERCENT;
+        }
+        return page.nextMaxId != null && page.nextMaxId.equals(cursor);
     }
 
     private PageSource.Page fetch(String accountId, int list, String cursor, String rankToken)

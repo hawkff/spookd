@@ -139,6 +139,19 @@ public final class FollowScanTest {
     }
 
     @Test
+    public void emptyPageWithNewCursorIsThrottle() throws Exception {
+        script.add(page("c1", "1"), page("c2"), page(null, "2"), page(null));
+
+        Recorder recorder = run(2, 0);
+
+        assertEquals(State.FINISHED, recorder.end);
+        assertTrue(sleeps.contains(10_000L));
+        assertEquals(Arrays.asList("0:null", "0:c1", "0:c1", "1:null"), script.requests);
+        assertEquals(1, count("SELECT COUNT(*) FROM follow_scans"
+                + " WHERE follower_count = 2 AND following_count = 0"));
+    }
+
+    @Test
     public void emptyLastPageEndsListAtNinetyPercent() throws Exception {
         List<String> ids = new ArrayList<>();
         for (int i = 1; i <= 19; i++) ids.add(String.valueOf(i));
