@@ -26,11 +26,16 @@ import app.morphe.extension.shared.Logger;
 /** Passes every window event on to the window's own callback, and shows each touch to Hidden Chats afterwards. */
 final class HiddenChatsWindowCallback implements Window.Callback {
     private final Activity activity;
-    private final Window.Callback target;
+    final Window.Callback target;
 
     HiddenChatsWindowCallback(Activity activity, Window.Callback target) {
         this.activity = activity;
         this.target = target;
+    }
+
+    /** The callback this one wraps, or the given one when it is not ours. */
+    static Window.Callback unwrap(Window.Callback current) {
+        return current instanceof HiddenChatsWindowCallback ? ((HiddenChatsWindowCallback) current).target : current;
     }
 
     @Override

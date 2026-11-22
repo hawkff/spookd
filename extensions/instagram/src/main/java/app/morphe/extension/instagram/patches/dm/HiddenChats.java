@@ -184,6 +184,11 @@ public final class HiddenChats {
     private static void watchTouches(Activity activity) {
         Window window = activity.getWindow();
         Window.Callback current = window.getCallback();
+        if (!Pref.hiddenChats()) {
+            Window.Callback original = HiddenChatsWindowCallback.unwrap(current);
+            if (original != current) window.setCallback(original);
+            return;
+        }
         if (current == null || current instanceof HiddenChatsWindowCallback) return;
         window.setCallback(new HiddenChatsWindowCallback(activity, current));
     }

@@ -1,6 +1,8 @@
 package app.morphe.extension.instagram.patches.dm;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 
 import android.view.Window;
 
@@ -14,6 +16,17 @@ import java.util.List;
 import org.junit.Test;
 
 public class HiddenChatsWindowCallbackTest {
+
+    @Test
+    public void unwrapRestoresOnlyItsOwnTarget() {
+        Window.Callback other = (Window.Callback) Proxy.newProxyInstance(
+                Window.Callback.class.getClassLoader(), new Class<?>[]{Window.Callback.class},
+                (proxy, method, args) -> null);
+
+        assertSame(other, HiddenChatsWindowCallback.unwrap(new HiddenChatsWindowCallback(null, other)));
+        assertSame(other, HiddenChatsWindowCallback.unwrap(other));
+        assertNull(HiddenChatsWindowCallback.unwrap(null));
+    }
 
     @Test
     public void forwardsEveryWindowCallbackMethodWithItsArgumentsAndResult() throws Exception {
