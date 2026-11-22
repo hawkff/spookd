@@ -28,7 +28,7 @@ public final class GalleryActionsTest {
         assertEquals("content", uri.getScheme());
         assertEquals("com.example.fileprovider", uri.getAuthority());
         assertEquals("/cache/piko_share/f00/a%20b%23c.jpg", uri.getEncodedPath());
-        assertEquals(Arrays.asList("cache", "piko_share", "a b#c.jpg"), uri.getPathSegments());
+        assertEquals(Arrays.asList("cache", "piko_share", "f00", "a b#c.jpg"), uri.getPathSegments());
     }
 
     @Test
