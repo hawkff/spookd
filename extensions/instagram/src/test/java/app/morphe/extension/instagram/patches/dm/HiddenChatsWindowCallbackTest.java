@@ -35,7 +35,9 @@ public class HiddenChatsWindowCallbackTest {
                 Window.Callback.class.getClassLoader(), new Class<?>[]{Window.Callback.class},
                 (proxy, method, args) -> {
                     calls.add(method.getName() + Arrays.toString(args == null ? new Object[0] : args));
-                    return method.getReturnType() == boolean.class ? Boolean.TRUE : null;
+                    Class<?> returned = method.getReturnType();
+                    if (returned == boolean.class) return Boolean.TRUE;
+                    return returned.isInterface() ? stub(returned) : null;
                 });
         HiddenChatsWindowCallback callback = new HiddenChatsWindowCallback(null, target);
 
@@ -45,6 +47,8 @@ public class HiddenChatsWindowCallbackTest {
             for (int i = 0; i < types.length; i++) {
                 if (types[i] == int.class) args[i] = 7;
                 else if (types[i] == boolean.class) args[i] = true;
+                // Interface arguments get a distinct object, so a dropped or swapped argument shows in the call log.
+                else if (types[i].isInterface()) args[i] = stub(types[i]);
             }
             // Declared here, so default methods of the interface are forwarded too.
             Method own = HiddenChatsWindowCallback.class.getDeclaredMethod(method.getName(), types);
@@ -55,6 +59,20 @@ public class HiddenChatsWindowCallbackTest {
             assertEquals(method.toString(),
                     Collections.singletonList(method.getName() + Arrays.toString(args)), calls);
             if (method.getReturnType() == boolean.class) assertEquals(method.toString(), Boolean.TRUE, result);
+            if (method.getReturnType().isInterface()) assertEquals(method.toString(), stub(method.getReturnType()), result);
         }
+    }
+
+    // One shared object per interface type, compared by identity through equals.
+    private static final java.util.Map<Class<?>, Object> STUBS = new java.util.HashMap<>();
+
+    private static Object stub(Class<?> type) {
+        return STUBS.computeIfAbsent(type, t -> Proxy.newProxyInstance(t.getClassLoader(), new Class<?>[]{t},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("equals")) return proxy == args[0];
+                    if (method.getName().equals("hashCode")) return System.identityHashCode(proxy);
+                    if (method.getName().equals("toString")) return t.getSimpleName() + "@stub";
+                    return null;
+                }));
     }
 }
