@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -52,7 +53,7 @@ public final class VaultViewer extends Dialog {
     private final Activity activity;
     private final FrameLayout root;
     private volatile boolean released;
-    private VaultFile file;
+    private ViewerMedia file;
     private MediaPlayer player;
     private MediaController controller;
     private boolean prepared;
@@ -64,7 +65,10 @@ public final class VaultViewer extends Dialog {
     public static void open(Activity activity, String messageId) {
         try {
             if (confirmed.contains(activity)) {
-                showFor(activity, messageId);
+                showFor(activity, () -> {
+                    MediaVault.Stored stored = MediaVault.get().openForMessage(messageId);
+                    return stored == null ? null : new Opened(stored.file, stored.kind);
+                });
                 return;
             }
             KeyguardManager keyguard = (KeyguardManager) activity.getSystemService(Context.KEYGUARD_SERVICE);
@@ -108,16 +112,36 @@ public final class VaultViewer extends Dialog {
         }
     }
 
-    private static void showFor(Activity activity, String messageId) {
-        VaultViewer previous = shown.remove(activity);
-        if (previous != null) previous.dismiss();
-        VaultViewer viewer = new VaultViewer(activity);
-        shown.put(activity, viewer);
-        viewer.show();
-        if (messageId == null) {
-            viewer.showText(str("piko_vault_needs_screen_lock"));
-        } else {
-            LOADER.execute(() -> viewer.load(messageId));
+    /** Open media and its kind: photo, video or voice. The viewer closes the media. */
+    public static final class Opened {
+        final ViewerMedia file;
+        final String kind;
+
+        public Opened(ViewerMedia file, String kind) {
+            this.file = file;
+            this.kind = kind;
+        }
+    }
+
+    /**
+     * Shows what {@code source} opens on the loader thread, or the unreadable notice when it returns
+     * null, without asking for the credential: the caller has confirmed it. A null {@code source}
+     * shows the screen-lock notice. Runs on the main thread and never throws; {@link #close} dismisses it.
+     */
+    public static void showFor(Activity activity, Callable<Opened> source) {
+        try {
+            VaultViewer previous = shown.remove(activity);
+            if (previous != null) previous.dismiss();
+            VaultViewer viewer = new VaultViewer(activity);
+            shown.put(activity, viewer);
+            viewer.show();
+            if (source == null) {
+                viewer.showText(str("piko_vault_needs_screen_lock"));
+            } else {
+                LOADER.execute(() -> viewer.load(source));
+            }
+        } catch (Exception e) {
+            Logger.printException(() -> "VaultViewer.showFor failed", e);
         }
     }
 
@@ -148,9 +172,9 @@ public final class VaultViewer extends Dialog {
     }
 
     /** Runs on the loader thread. */
-    private void load(String messageId) {
+    private void load(Callable<Opened> source) {
         try {
-            MediaVault.Stored stored = MediaVault.get().openForMessage(messageId);
+            Opened stored = source.call();
             if (stored == null) {
                 Utils.runOnMainThread(() -> showText(str("piko_media_unreadable")));
                 return;
@@ -170,19 +194,19 @@ public final class VaultViewer extends Dialog {
                 Utils.runOnMainThread(() -> play(stored.file, video));
             }
         } catch (Exception | OutOfMemoryError e) {
-            Logger.printException(() -> "VaultViewer: cannot open media of " + messageId, e);
+            Logger.printException(() -> "VaultViewer: cannot open media", e);
             Utils.runOnMainThread(() -> showText(str("piko_media_unreadable")));
         }
     }
 
     /** Hands the open file to this viewer; false when it was already dismissed. */
-    private synchronized boolean adopt(VaultFile opened) {
+    private synchronized boolean adopt(ViewerMedia opened) {
         if (released) return false;
         file = opened;
         return true;
     }
 
-    private Bitmap decode(VaultFile vault) {
+    private Bitmap decode(ViewerMedia vault) {
         BitmapFactory.Options bounds = new BitmapFactory.Options();
         bounds.inJustDecodeBounds = true;
         BitmapFactory.decodeStream(vault.openStream(), null, bounds);
@@ -227,7 +251,7 @@ public final class VaultViewer extends Dialog {
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
     }
 
-    private void play(VaultFile vault, boolean video) {
+    private void play(ViewerMedia vault, boolean video) {
         if (released) return;
         root.removeAllViews();
         MediaPlayer media = new MediaPlayer();
@@ -302,7 +326,7 @@ public final class VaultViewer extends Dialog {
     /** Stops playback and closes the file; safe to call more than once. */
     private void release() {
         MediaPlayer media;
-        VaultFile vault;
+        ViewerMedia vault;
         synchronized (this) {
             released = true;
             media = player;
@@ -317,7 +341,7 @@ public final class VaultViewer extends Dialog {
         closeQuietly(vault);
     }
 
-    private static void closeQuietly(VaultFile vault) {
+    private static void closeQuietly(ViewerMedia vault) {
         if (vault == null) return;
         try {
             vault.close();
@@ -325,11 +349,11 @@ public final class VaultViewer extends Dialog {
         }
     }
 
-    /** Feeds the player decrypted bytes straight from the vault file. Called on the player's threads. */
+    /** Feeds the player bytes straight from the media. Called on the player's threads. */
     private static final class Source extends MediaDataSource {
-        private final VaultFile vault;
+        private final ViewerMedia vault;
 
-        Source(VaultFile vault) {
+        Source(ViewerMedia vault) {
             this.vault = vault;
         }
 
