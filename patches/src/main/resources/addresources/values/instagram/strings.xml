@@ -12,14 +12,14 @@
     <string name="piko_category_dev_options">Developer options</string>
     <string name="piko_enable_dev_options">Enable developer options</string>
     <string name="piko_enable_dev_options_desc">Long-press the Home tab to open developer options. If a menu appears, choose Developer options.</string>
-    <string name="piko_directly_open_metaconfig">Directly opens MetaConfig overrides</string>
+    <string name="piko_directly_open_metaconfig">Open MetaConfig overrides directly</string>
     <string name="piko_directly_open_metaconfig_desc">Long-press the Home tab to open MetaConfig overrides directly. If a menu appears, choose Developer options.</string>
     <string name="piko_export_dev_overrides">Export overrides</string>
     <string name="piko_import_dev_overrides">Import overrides</string>
     <string name="piko_import_id_mapping">Import mapping files</string>
     <string name="piko_download_id_mapping">Download mapping file</string>
     <string name="piko_missing_mapping_file">Missing mapping file</string>
-    <string name="piko_missing_mapping_file_desc">Without mapping file, developer options will not have proper names. Do you want to download it ?</string>
+    <string name="piko_missing_mapping_file_desc">Without mapping file, developer options will not have proper names. Do you want to download it?</string>
 
     <!-- Links Section -->
     <string name="piko_category_links">Links</string>
@@ -40,6 +40,7 @@
     <string name="piko_mark_as_read_after_reply_desc">Mark a chat as read after you send a reply, even when viewing direct messages anonymously or using all ghost modes</string>
     <string name="piko_view_dm_anonymously_desc">When enabled, others can\'t see when you\'ve read their messages. When both this setting and Turn on all ghost modes are disabled, Instagram\'s Show read receipts setting is used</string>
     <string name="piko_turn_on_all_ghost_modes">Turn on all ghost modes</string>
+    <string name="piko_turn_on_all_ghost_modes_desc">Views stories, live videos and messages anonymously and hides your typing and screenshots</string>
     <string name="piko_ghost_modes_on">Ghost mode: ON</string>
     <string name="piko_ghost_modes_default">Ghost mode: DEFAULT</string>
 
@@ -207,6 +208,8 @@
     <string name="piko_copy_comment_desc">Adds buttons to copy comments and their authors’ usernames on posts and reels</string>
     <string name="piko_comment_copied_success">Comment copied</string>
     <string name="piko_comment_copied_failed">No text found to copy</string>
+    <string name="piko_comment_copy_username_failed">No username to copy</string>
+    <string name="piko_comment_action_failed">Something went wrong. Try again.</string>
     <string name="piko_copy_username">Copy username</string>
     <string name="piko_copy_full_name">Copy full name</string>
     <string name="piko_copy_user_id">Copy user id</string>
@@ -333,7 +336,9 @@
     <string name="piko_download_all">Download all</string>
     <string name="piko_downloading_media">Downloading: </string>
     <string name="piko_downloaded_media">Downloaded: </string>
-    <string name="piko_download_failed_media">Download failed : </string>
+    <string name="piko_download_failed_media">Download failed</string>
+    <string name="piko_download_nothing">Nothing to download</string>
+    <string name="piko_download_message_unsupported">This message can\'t be downloaded</string>
     <string name="piko_download_set_path">Choose download folder</string>
     <string name="piko_download_set_path_success">Download directory updated!</string>
     <string name="piko_download_set_path_failed">Failed to save download folder</string>
@@ -464,7 +469,7 @@
     <string name="piko_goto_piko_settings">Goto Piko settings</string>
     <string name="piko_welcome_message_home_long_press">To open Piko settings at any time, long-press the Home tab</string>
     <string name="piko_no_internet">Please connect to internet</string>
-    <string name="piko_tap_here">Tap here !!</string>
+    <string name="piko_tap_here">Tap here for Piko settings</string>
 
     <!-- Action Bar Section -->
     <string name="piko_category_action_bar">Action bar</string>
@@ -500,6 +505,7 @@
     <string name="piko_pref_add_font_invalid">The selected file is not a valid font</string>
     <string name="piko_pref_add_font_too_large">The selected font is too large</string>
     <string name="piko_pref_delete_font">Delete font</string>
+    <string name="piko_pref_delete_font_desc">Removes the custom font</string>
     <string name="piko_pref_delete_font_success">Font deleted successfully</string>
     <string name="piko_pref_delete_font_fail">Failed to delete the font</string>
     <string name="piko_pref_delete_font_warn">No custom font found to be deleted</string>

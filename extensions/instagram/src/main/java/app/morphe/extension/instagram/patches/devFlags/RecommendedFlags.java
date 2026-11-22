@@ -75,7 +75,7 @@ public class RecommendedFlags {
             }
         } catch (Exception e) {
             PikoUtils.logger(e);
-            if (notifyErrors) PikoUtils.toast("getFlags failed");
+            if (notifyErrors) PikoUtils.toast(str("piko_rec_flags_read_error"));
         }
         return flags;
     }

@@ -177,7 +177,7 @@ public class ScreenBuilder {
 
         addPreference(helper.buttonPreference(
                 str("piko_pref_delete_font"),
-                "",
+                str("piko_pref_delete_font_desc"),
                 "piko_pref_delete_font"
         ));
     }
@@ -402,7 +402,7 @@ public class ScreenBuilder {
         addPreference(
                 helper.switchPreference(
                         str("piko_turn_on_all_ghost_modes"),
-                        "",
+                        str("piko_turn_on_all_ghost_modes_desc"),
                         Settings.TURN_ON_ALL_GHOST_MODES
                 )
         );

@@ -7,6 +7,7 @@
 
 package app.morphe.extension.instagram.patches.download;
 
+import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.content.Context;
 
@@ -36,10 +37,10 @@ public class MessageUtils {
                 return false;
             }
 
-            if(messageType == "media" || messageType == "raven_media"){
+            if("media".equals(messageType) || "raven_media".equals(messageType)){
                 return true;
 
-            } else if (messageType == "voice_media" && SettingsStatus.downloadVoiceMessage) {
+            } else if ("voice_media".equals(messageType) && SettingsStatus.downloadVoiceMessage) {
                 MediaData audioData = messageInfo.getAudioMedia();
                 String audioUrl = audioData.getMessageAudioUrl();
                 String fileName = audioData.getDownloadFilename(MediaType.AUDIO);
@@ -49,7 +50,7 @@ public class MessageUtils {
                 return false;
 
             } else {
-                Utils.showToastShort(messageType+" doesnt support downloading");
+                Utils.showToastShort(str("piko_download_message_unsupported"));
             }
 
         } catch (Exception e) {

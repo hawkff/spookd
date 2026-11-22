@@ -7,6 +7,8 @@
 
 package app.morphe.extension.instagram.entity;
 
+import static app.morphe.extension.instagram.utils.IgStr.str;
+
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
@@ -82,7 +84,7 @@ public class DeveloperOptions extends Entity {
             }
         } catch (Exception e) {
             PikoUtils.logger(e);
-            PikoUtils.toast("Developer options toJSONObject failed");
+            PikoUtils.toast(str("piko_export_fail"));
         }
         return mappings;
     }
@@ -116,7 +118,7 @@ public class DeveloperOptions extends Entity {
             }
         } catch (Exception e) {
             PikoUtils.logger(e);
-            PikoUtils.toast("Developer options extraction failed");
+            PikoUtils.toast(str("piko_export_fail"));
             sb.append(e.toString() + "\n");
         }
         return sb.toString();

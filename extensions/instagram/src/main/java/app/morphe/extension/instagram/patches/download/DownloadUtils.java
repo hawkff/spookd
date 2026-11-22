@@ -456,7 +456,7 @@ public class DownloadUtils {
         } else if (position == -1) {
             downloadAllMedia(context, DownloadMediaGroup.carousel(mediaInfo));
         } else {
-            Utils.showToastShort("There is nothing to download");
+            Utils.showToastShort(str("piko_download_nothing"));
         }
 
     }
