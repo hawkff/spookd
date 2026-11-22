@@ -54,6 +54,7 @@ public final class FollowScan {
     // Guarded by this.
     private Thread worker;
     private boolean fetching;
+    private boolean committed;
     private volatile boolean stopped;
 
     public FollowScan(Context context, PikoFollowDb db, PageSource source, Foreground foreground,
@@ -88,6 +89,7 @@ public final class FollowScan {
         if (nextAllowedStart(accountId) != 0) return Refusal.TOO_SOON;
         prefs.edit().putLong(lastStartKey(accountId), clock.getAsLong()).apply();
         stopped = false;
+        committed = false;
         worker = new Thread(() -> run(accountId, followerCount, followingCount, listener),
                 "piko-follow-scan");
         worker.start();
@@ -100,7 +102,7 @@ public final class FollowScan {
 
     /** Any thread. The scan ends after the page in flight and stores nothing. */
     public synchronized void stop() {
-        if (worker == null) return;
+        if (worker == null || committed) return;
         stopped = true;
         // Never interrupt the app's own request code; the worker checks the flag after it.
         if (!fetching) worker.interrupt();
@@ -117,8 +119,9 @@ public final class FollowScan {
                 list = PikoFollowDb.LIST_FOLLOWING;
                 if (scanList(accountId, list, followingCount, rankToken, following, listener)) {
                     checkStopped();
-                    db.commitScan(accountId, clock.getAsLong(), followers.values(), following.values());
-                    outcome = State.FINISHED;
+                    long scanId = db.commitScan(accountId, clock.getAsLong(), followers.values(),
+                            following.values(), this::mayCommit);
+                    outcome = scanId == -1 ? State.STOPPED : State.FINISHED;
                 }
             }
         } catch (InterruptedException e) {
@@ -149,12 +152,10 @@ public final class FollowScan {
         int throttles = 0;
         report(listener, list, 0, expected, State.RUNNING);
         while (true) {
-            if (!foreground.isResumed()) {
-                report(listener, list, staged.size(), expected, State.PAUSED);
-                foreground.awaitResumed();
-                report(listener, list, staged.size(), expected, State.RUNNING);
-            }
+            // Before each request, since a wait may have ended in the background.
+            pauseInBackground(listener, list, staged.size(), expected);
             PageSource.Page page = fetch(accountId, list, cursor, rankToken);
+            pauseInBackground(listener, list, staged.size(), expected);
             if (isThrottle(page, cursor, staged.size(), expected)) {
                 if (throttles == BACKOFF_MS.length) {
                     Logger.printInfo(() -> "FollowScan: throttled " + (BACKOFF_MS.length + 1)
@@ -179,6 +180,21 @@ public final class FollowScan {
         }
     }
 
+    private void pauseInBackground(Listener listener, int list, int received, int expected)
+            throws InterruptedException {
+        if (foreground.isResumed()) return;
+        report(listener, list, received, expected, State.PAUSED);
+        foreground.awaitResumed();
+        report(listener, list, received, expected, State.RUNNING);
+    }
+
+    /** Inside the commit transaction: a stop that came first rolls it back, a later one does nothing. */
+    private synchronized boolean mayCommit() {
+        if (stopped) return false;
+        committed = true;
+        return true;
+    }
+
     private static boolean isThrottle(PageSource.Page page, String cursor, int received, int expected) {
         if (page == null || page.users == null) return true;
         if (page.nextMaxId != null) return page.nextMaxId.equals(cursor);
@@ -198,9 +214,10 @@ public final class FollowScan {
             String error = e.getClass().getSimpleName();
             Logger.printInfo(() -> "FollowScan page failed: " + error);
             page = null;
-        }
-        synchronized (this) {
-            fetching = false;
+        } finally {
+            synchronized (this) {
+                fetching = false;
+            }
         }
         checkStopped();
         return page;

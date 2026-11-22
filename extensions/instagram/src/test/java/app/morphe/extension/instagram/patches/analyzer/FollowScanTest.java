@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.database.DatabaseUtils;
+import android.database.sqlite.SQLiteDatabase;
 
 import org.junit.After;
 import org.junit.Before;
@@ -37,6 +38,8 @@ public final class FollowScanTest {
     private final long[] clock = {NOW};
     private final List<Long> sleeps = Collections.synchronizedList(new ArrayList<>());
     private final List<Integer> bounds = Collections.synchronizedList(new ArrayList<>());
+    /** Sleeps and reported states in the order they happened. */
+    private final List<String> order = Collections.synchronizedList(new ArrayList<>());
     private Context context;
     private PikoFollowDb db;
     private FollowScan.Foreground foreground;
@@ -62,6 +65,7 @@ public final class FollowScanTest {
         };
         FollowScan.Sleeper sleeper = millis -> {
             sleeps.add(millis);
+            order.add("sleep " + millis);
             clock[0] += millis;
         };
         scan = new FollowScan(context, db, script, foreground, () -> clock[0], sleeper, extremes);
@@ -224,6 +228,72 @@ public final class FollowScanTest {
         assertEquals(0, count("SELECT COUNT(*) FROM follow_scans"));
     }
 
+    @Test
+    public void requestBackgroundedInFlightPausesBeforeAnyWait() throws Exception {
+        script.add(null, page(null, "1"), page(null, "2"));
+        script.pauseAt = 0;
+
+        Recorder recorder = run(1, 1);
+
+        assertEquals(State.FINISHED, recorder.end);
+        int paused = order.indexOf("PAUSED");
+        assertTrue(paused >= 0);
+        assertTrue(paused < order.indexOf("BACKING_OFF"));
+        assertTrue(paused < order.indexOf("sleep 10000"));
+        assertEquals(Arrays.asList(10_000L, 2_000L), sleeps);
+        assertEquals(Arrays.asList("0:null", "0:null", "1:null"), script.requests);
+    }
+
+    @Test
+    public void stopDuringCommitRollsBackAndReportsStopped() throws Exception {
+        script.add(page(null, "1"), page(null, "2"));
+        Recorder recorder = new Recorder();
+        // Holding the only write connection blocks the scan inside commitScan.
+        SQLiteDatabase held = db.getWritableDatabase();
+        held.beginTransaction();
+        try {
+            assertNull(scan.start(ACCOUNT, 1, 1, recorder));
+            long deadline = System.currentTimeMillis() + 10_000;
+            while (!blockedAfterLastPage(recorder)) {
+                assertTrue(System.currentTimeMillis() < deadline);
+                Thread.sleep(10);
+            }
+            scan.stop();
+        } finally {
+            held.endTransaction();
+        }
+
+        assertTrue(recorder.done.await(10, TimeUnit.SECONDS));
+        assertEquals(State.STOPPED, recorder.end);
+        assertEquals(0, count("SELECT COUNT(*) FROM follow_scans"));
+        assertEquals(0, count("SELECT COUNT(*) FROM follow_scan_members"));
+        assertEquals(0, count("SELECT COUNT(*) FROM follow_users"));
+        assertEquals(0, count("SELECT COUNT(*) FROM follow_changes"));
+    }
+
+    @Test
+    public void stopStillWakesAPausedScanAfterAFetchError() throws Exception {
+        script.failNext = new AssertionError("fetch");
+        assertEquals(State.FAILED, run(1, 1).end);
+
+        foreground.onPaused();
+        Recorder recorder = new Recorder();
+        recorder.resumeOnPause = false;
+        assertNull(scan.start("2002", 1, 1, recorder));
+        assertTrue(recorder.paused.await(10, TimeUnit.SECONDS));
+        scan.stop();
+
+        assertTrue(recorder.done.await(10, TimeUnit.SECONDS));
+        assertEquals(State.STOPPED, recorder.end);
+    }
+
+    private static boolean blockedAfterLastPage(Recorder recorder) {
+        Thread worker = recorder.thread;
+        if (worker == null || !recorder.events.contains("1 1/1 RUNNING")) return false;
+        Thread.State state = worker.getState();
+        return state == Thread.State.WAITING || state == Thread.State.TIMED_WAITING;
+    }
+
     private Recorder run(int followers, int following) throws Exception {
         Recorder recorder = new Recorder();
         assertNull(scan.start(ACCOUNT, followers, following, recorder));
@@ -249,6 +319,7 @@ public final class FollowScanTest {
         final CountDownLatch entered = new CountDownLatch(1);
         volatile CountDownLatch gate;
         volatile int pauseAt = -1;
+        volatile Error failNext;
         private int next;
 
         void add(Page... added) {
@@ -270,6 +341,11 @@ public final class FollowScanTest {
                 }
                 return page(null, "1");
             }
+            Error fail = failNext;
+            if (fail != null) {
+                failNext = null;
+                throw fail;
+            }
             if (next == pauseAt) foreground.onPaused();
             return pages.get(next++);
         }
@@ -281,11 +357,14 @@ public final class FollowScanTest {
         final CountDownLatch paused = new CountDownLatch(1);
         final CountDownLatch done = new CountDownLatch(1);
         volatile boolean resumeOnPause = true;
+        volatile Thread thread;
         volatile State end;
 
         @Override
         public void onProgress(int list, int received, int expected, State state) {
             states.add(state);
+            order.add(state.name());
+            thread = Thread.currentThread();
             events.add(list + " " + received + "/" + expected + " " + state);
             if (state == State.PAUSED) {
                 paused.countDown();

@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 
 /** Follower and following snapshots per account, and the history of changes between them. */
 public final class PikoFollowDb extends SQLiteOpenHelper {
@@ -127,9 +128,10 @@ public final class PikoFollowDb extends SQLiteOpenHelper {
     /**
      * Stores a finished scan, the changes since the previous scan of this account and the latest
      * identities, then prunes to the newest {@link #KEPT_SCANS} scans, all in one transaction.
+     * Returns the scan id, or -1 when {@code mayCommit} said no and everything was rolled back.
      */
-    public long commitScan(String accountId, long finishedAt,
-                           Collection<FollowUser> followers, Collection<FollowUser> following) {
+    public long commitScan(String accountId, long finishedAt, Collection<FollowUser> followers,
+                           Collection<FollowUser> following, BooleanSupplier mayCommit) {
         Map<String, FollowUser> followerById = byId(followers);
         Map<String, FollowUser> followingById = byId(following);
         SQLiteDatabase db = getWritableDatabase();
@@ -187,6 +189,7 @@ public final class PikoFollowDb extends SQLiteOpenHelper {
             }
 
             prune(db, accountId);
+            if (!mayCommit.getAsBoolean()) return -1;
             db.setTransactionSuccessful();
             return scanId;
         } finally {

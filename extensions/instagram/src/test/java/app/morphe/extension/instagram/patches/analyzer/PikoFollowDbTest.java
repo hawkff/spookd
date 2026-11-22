@@ -43,7 +43,7 @@ public final class PikoFollowDbTest {
 
     @Test
     public void baselineScanWritesNoChanges() {
-        db.commitScan(A, 1000, users("1", "2"), users("2", "3"));
+        commit(A, 1000, users("1", "2"), users("2", "3"));
 
         assertTrue(db.history(A).isEmpty());
         assertEquals(Arrays.asList("3"), ids(db.notFollowingBack(A)));
@@ -55,8 +55,8 @@ public final class PikoFollowDbTest {
 
     @Test
     public void listChangesBetweenScans() {
-        db.commitScan(A, 1000, users("1", "2"), users("2", "3"));
-        db.commitScan(A, 2000, users("2", "4"), users("3", "5"));
+        commit(A, 1000, users("1", "2"), users("2", "3"));
+        commit(A, 2000, users("2", "4"), users("3", "5"));
 
         assertEquals(Arrays.asList(
                 "lost_follower 1 null user1 2000",
@@ -70,12 +70,12 @@ public final class PikoFollowDbTest {
 
     @Test
     public void identityChangesAreRecordedAndStored() {
-        db.commitScan(A, 1000, Collections.singletonList(
+        commit(A, 1000, Collections.singletonList(
                 new FollowUser("2", "bob", "Bob", false, "p1")), Collections.emptyList());
-        db.commitScan(A, 2000, Collections.singletonList(
+        commit(A, 2000, Collections.singletonList(
                 new FollowUser("2", "bobby", "Robert", true, "p2")), Collections.emptyList());
         // A missing picture id keeps the stored one and is not a change.
-        db.commitScan(A, 3000, Collections.singletonList(
+        commit(A, 3000, Collections.singletonList(
                 new FollowUser("2", "bobby", "Robert", true, null)), Collections.emptyList());
 
         assertEquals(Arrays.asList(
@@ -92,14 +92,14 @@ public final class PikoFollowDbTest {
     @Test
     public void mutualUserFieldsMergeAcrossBothLists() {
         // Baseline: the following list lacks the fields the followers list has.
-        db.commitScan(A, 1000, Collections.singletonList(new FollowUser("2", "old", null, false, "p1")),
+        commit(A, 1000, Collections.singletonList(new FollowUser("2", "old", null, false, "p1")),
                 Collections.singletonList(new FollowUser("2", null, "Name", false, null)));
         FollowUser baseline = db.mutuals(A).get(0);
         assertEquals("old", baseline.username);
         assertEquals("Name", baseline.fullName);
         assertEquals("p1", baseline.picId);
 
-        db.commitScan(A, 2000, Collections.singletonList(new FollowUser("2", "new", null, false, "p2")),
+        commit(A, 2000, Collections.singletonList(new FollowUser("2", "new", null, false, "p2")),
                 Collections.singletonList(new FollowUser("2", null, null, false, null)));
 
         assertEquals(Arrays.asList("picture 2 p1 p2 2000", "username 2 old new 2000"), changes(A));
@@ -111,16 +111,16 @@ public final class PikoFollowDbTest {
 
     @Test
     public void eleventhScanPrunesOldestAndHistorySurvives() {
-        db.commitScan(A, 1, users("1", "9"), users());
-        db.commitScan(A, 2, users("1", "2"), users());
-        for (int i = 3; i <= 11; i++) db.commitScan(A, i, users("1", "2"), users());
+        commit(A, 1, users("1", "9"), users());
+        commit(A, 2, users("1", "2"), users());
+        for (int i = 3; i <= 11; i++) commit(A, i, users("1", "2"), users());
 
         assertEquals(10, count("SELECT COUNT(*) FROM follow_scans WHERE account_id = ?", A));
         assertEquals(2, count("SELECT MIN(id) FROM follow_scans WHERE account_id = ?", A));
         assertEquals(0, count("SELECT COUNT(*) FROM follow_scan_members WHERE scan_id = 1"));
         assertEquals(0, count("SELECT COUNT(*) FROM follow_users WHERE user_id = '9'"));
 
-        db.commitScan(A, 12, users("1", "2"), users());
+        commit(A, 12, users("1", "2"), users());
         assertEquals(3, count("SELECT MIN(id) FROM follow_scans WHERE account_id = ?", A));
         // Both rows came from scan 2, which is pruned now.
         assertEquals(Arrays.asList("lost_follower 9 null user9 2", "new_follower 2 null user2 2"),
@@ -168,9 +168,26 @@ public final class PikoFollowDbTest {
         assertFalse(context.getDatabasePath(PikoFollowDb.DB_NAME).exists());
     }
 
+    @Test
+    public void refusedCommitRollsBackEverything() {
+        commit(A, 1000, users("1"), users("2"));
+
+        assertEquals(-1, db.commitScan(A, 2000, users("3"), users("4"), () -> false));
+
+        assertEquals(1, count("SELECT COUNT(*) FROM follow_scans"));
+        assertEquals(2, count("SELECT COUNT(*) FROM follow_scan_members"));
+        assertEquals(2, count("SELECT COUNT(*) FROM follow_users"));
+        assertTrue(db.history(A).isEmpty());
+    }
+
+    private long commit(String account, long at, List<FollowUser> followers,
+                        List<FollowUser> following) {
+        return db.commitScan(account, at, followers, following, () -> true);
+    }
+
     private void twoScans(String account) {
-        db.commitScan(account, 1000, users("1", "2"), users("2", "3"));
-        db.commitScan(account, 2000, users("2", "4"), users("3", "5"));
+        commit(account, 1000, users("1", "2"), users("2", "3"));
+        commit(account, 2000, users("2", "4"), users("3", "5"));
     }
 
     private static List<FollowUser> users(String... ids) {
