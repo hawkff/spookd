@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -18,6 +19,8 @@ import org.junit.Test;
 
 public class AccountSettingsTest {
     private static final String OWNER = AccountSettings.OWNER_KEY;
+    private static final Function<String, Object> NO_DEFAULTS = key -> null;
+    private static final Function<String, Object> ADS_DEFAULT_ON = key -> "disable_ads".equals(key) ? true : null;
 
     @Before
     public void resetReplacement() {
@@ -126,7 +129,7 @@ public class AccountSettingsTest {
 
         assertTrue(AccountSettings.keysToRemove(outgoing, incoming).isEmpty());
         assertEquals(map(OWNER, "3"), AccountSettings.keysToPut(incoming, "3"));
-        assertFalse(AccountSettings.restartRequired(outgoing, incoming));
+        assertFalse(AccountSettings.restartRequired(outgoing, incoming, NO_DEFAULTS));
     }
 
     @Test
@@ -165,9 +168,18 @@ public class AccountSettingsTest {
                 "unregistered_marker", true);
 
         assertFalse(AccountSettings.restartRequired(outgoing,
-                map(OWNER, "2", "disable_ads", false, "unregistered_marker", false)));
+                map(OWNER, "2", "disable_ads", false, "unregistered_marker", false), NO_DEFAULTS));
         assertTrue(AccountSettings.restartRequired(outgoing,
-                map(OWNER, "2", "disable_ads", true, "disable_typing_status", true)));
-        assertTrue(AccountSettings.restartRequired(outgoing, map(OWNER, "2")));
+                map(OWNER, "2", "disable_ads", true, "disable_typing_status", true), NO_DEFAULTS));
+        assertTrue(AccountSettings.restartRequired(outgoing, map(OWNER, "2"), NO_DEFAULTS));
+    }
+
+    @Test
+    public void missingEntryCountsAsTheDefault() {
+        Map<String, Object> missing = map(OWNER, "1");
+
+        assertFalse(AccountSettings.restartRequired(missing, map(OWNER, "2", "disable_ads", true), ADS_DEFAULT_ON));
+        assertFalse(AccountSettings.restartRequired(map(OWNER, "2", "disable_ads", true), missing, ADS_DEFAULT_ON));
+        assertTrue(AccountSettings.restartRequired(missing, map(OWNER, "2", "disable_ads", false), ADS_DEFAULT_ON));
     }
 }

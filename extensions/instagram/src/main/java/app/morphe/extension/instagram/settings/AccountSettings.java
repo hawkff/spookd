@@ -18,6 +18,8 @@ import android.os.Bundle;
 import com.instagram.common.session.UserSession;
 
 import java.io.File;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,7 +27,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 
+import app.morphe.extension.crimera.settings.Setting;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
@@ -63,6 +67,7 @@ public final class AccountSettings {
             "focus_lock_block_explore",
             "custom_download_path",
             "external_downloader_package_name",
+            "download_with_external_downloader",
             "marked_story_keys_v2",
             "inbox_lock",
             "inbox_lock_notifications",
@@ -80,6 +85,7 @@ public final class AccountSettings {
     // Set once an import replaced the live file; the cached preferences would overwrite it before the restart.
     static boolean liveFileReplaced;
     private static volatile boolean restartPending;
+    private static Map<String, Object> settingDefaults;
 
     private AccountSettings() {
     }
@@ -182,7 +188,7 @@ public final class AccountSettings {
                 }
 
                 Map<String, ?> incoming = prefs(context, snapshotName(id)).getAll();
-                boolean restart = restartRequired(outgoing, incoming);
+                boolean restart = restartRequired(outgoing, incoming, AccountSettings::settingDefault);
                 if (commit(live, keysToRemove(outgoing, incoming), keysToPut(incoming, id))) {
                     retryId = null;
                     if (restart) restartPending = true;
@@ -238,17 +244,42 @@ public final class AccountSettings {
         return result;
     }
 
-    static boolean restartRequired(Map<String, ?> outgoing, Map<String, ?> incoming) {
+    /** Compares effective values: a missing entry counts as {@code defaults}' value, null if unknown. */
+    static boolean restartRequired(Map<String, ?> outgoing, Map<String, ?> incoming,
+                                   Function<String, Object> defaults) {
         if (incoming.isEmpty()) return false;
         Set<String> keys = new HashSet<>(outgoing.keySet());
         keys.addAll(incoming.keySet());
         for (String key : keys) {
-            if (!isGlobal(key) && !Objects.equals(outgoing.get(key), incoming.get(key))
-                    && isRestartRequired(key)) {
+            if (!isGlobal(key) && isRestartRequired(key)
+                    && !Objects.equals(effective(outgoing, key, defaults), effective(incoming, key, defaults))) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static Object effective(Map<String, ?> values, String key, Function<String, Object> defaults) {
+        return values.containsKey(key) ? values.get(key) : defaults.apply(key);
+    }
+
+    // Only reached for registered keys, so Settings is already loaded.
+    private static Object settingDefault(String key) {
+        if (settingDefaults == null) {
+            Map<String, Object> defaults = new HashMap<>();
+            try {
+                for (Field field : Settings.class.getFields()) {
+                    if (Modifier.isStatic(field.getModifiers()) && Setting.class.isAssignableFrom(field.getType())) {
+                        Setting<?> setting = (Setting<?>) field.get(null);
+                        defaults.put(setting.key, setting.defaultValue);
+                    }
+                }
+            } catch (Throwable t) {
+                logFailure("Failed to read setting defaults", t);
+            }
+            settingDefaults = defaults;
+        }
+        return settingDefaults.get(key);
     }
 
     // Keys register when Settings loads; before that nothing has cached a value, so no restart is needed.
