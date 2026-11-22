@@ -103,6 +103,8 @@ public class Entity {
     }
 
     private static String methodCacheKey(String methodName, Class<?>[] paramTypes) {
+        // Keys with parameters contain '|', which compiled method names do not, so the bare name stays unique.
+        if (paramTypes.length == 0) return methodName;
         StringBuilder key = new StringBuilder(methodName);
         for (Class<?> type : paramTypes) {
             key.append('|').append(type.getName());

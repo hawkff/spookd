@@ -36,6 +36,10 @@ public class FocusLock {
      */
     private static final String FORMAT = "2";
 
+    // Read on every lockable setting check, so the stored end is parsed again only after it changes.
+    private static final Pref.Cached<Long> LOCKED_UNTIL =
+            new Pref.Cached<>(() -> parseLong(Pref.focusLockUntil()), Settings.FOCUS_LOCK_UNTIL.key);
+
     private static long parseLong(String value) {
         try {
             return Long.parseLong(value);
@@ -45,7 +49,7 @@ public class FocusLock {
     }
 
     public static long lockedUntil() {
-        return parseLong(Pref.focusLockUntil());
+        return LOCKED_UNTIL.get();
     }
 
     public static long unlockRequestedAt() {

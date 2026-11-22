@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Arrays;
+import java.util.WeakHashMap;
+import android.text.TextUtils;
 import android.widget.TextView;
 import android.view.View;
 import android.content.Context;
@@ -48,6 +50,7 @@ import com.instagram.common.session.UserSession;
 public class FriendshipStatusIndicator {
 
     private static final String STATUS_TAG = "piko_friendship_status_textview";
+    private static final Map<TextView, Integer> INDICATOR_COLORS = new WeakHashMap<>();
 
     private static void friendshipStatusDialogBox(Context context, UserFriendshipStatus userFriendshipStatus) {
         InstagramDialogBox dialog = new InstagramDialogBox(context);
@@ -101,6 +104,20 @@ public class FriendshipStatusIndicator {
             String indicatorIconDrawable
     ) {
         Context context = friendshipStatusTextView.getContext();
+        int primaryTextColor = UI.getThemedColour("igds_color_primary_text");
+        int indicatorColor = indicatorColorHex == null
+                ? primaryTextColor
+                : Color.parseColor(indicatorColorHex);
+        Integer boundColor = INDICATOR_COLORS.get(friendshipStatusTextView);
+        // The icon goes with the text, so a rebind with the same text and colors keeps its drawables.
+        if (boundColor != null && boundColor == indicatorColor
+                && friendshipStatusTextView.getCurrentTextColor() == primaryTextColor
+                && TextUtils.equals(text, friendshipStatusTextView.getText())) {
+            setStatusClickListener(friendshipStatusTextView, userFriendshipStatus);
+            friendshipStatusTextView.setVisibility(View.VISIBLE);
+            return;
+        }
+        INDICATOR_COLORS.put(friendshipStatusTextView, indicatorColor);
         friendshipStatusTextView.setText(text);
 
         float indicatorTextSizeSp = 12;
@@ -109,12 +126,8 @@ public class FriendshipStatusIndicator {
                 indicatorTextSizeSp,
                 context.getResources().getDisplayMetrics()
         ));
-        int primaryTextColor = UI.getThemedColour("igds_color_primary_text");
         friendshipStatusTextView.setTextColor(primaryTextColor);
 
-        int indicatorColor = indicatorColorHex == null
-                ? primaryTextColor
-                : Color.parseColor(indicatorColorHex);
         Drawable statusIcon = ResourceUtils
                 .getDrawable(indicatorIconDrawable)
                 .mutate();

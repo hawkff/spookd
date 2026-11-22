@@ -31,19 +31,25 @@ public class FilterStory {
         for (Object item : items) {
             try {
                 ReelResponseItem reelResponseItem = new ReelResponseItem(item);
-                if (reelTypes.contains(reelResponseItem.getReelType())) continue;
+                if (!reelTypes.isEmpty() && reelTypes.contains(reelResponseItem.getReelType())) continue;
 
-                UserData userData = reelResponseItem.getUserData();
-                if (userTypes.contains("verified") && userData.isVerified()) continue;
-                if (userTypes.contains("unverified") && !userData.isVerified()) continue;
+                if (!userTypes.isEmpty()) {
+                    UserData userData = reelResponseItem.getUserData();
+                    if (userTypes.contains("verified") && userData.isVerified()) continue;
+                    if (userTypes.contains("unverified") && !userData.isVerified()) continue;
+                }
 
                 int mediaCount = reelResponseItem.getMediaCount();
-                if (mediaCount < minStoryItems || mediaCount > maxStoryItems) continue;
+                if (outsideCountRange(mediaCount, minStoryItems, maxStoryItems)) continue;
             } catch (Exception e) {
                 PikoUtils.logger(e.toString());
             }
             filtered.add(item);
         }
         return filtered;
+    }
+
+    static boolean outsideCountRange(int mediaCount, int minStoryItems, int maxStoryItems) {
+        return mediaCount < minStoryItems || mediaCount > maxStoryItems;
     }
 }

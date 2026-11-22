@@ -753,6 +753,7 @@ public class DownloadUtils {
     }
 
     private static final Object FEED_DOWNLOAD_BUTTON_TAG = new Object();
+    private static int saveButtonId;
     private static final String MEDIA_CLASS_NAME = "com.instagram.feed.media.Media";
 
     /** Shared by the injected Litho component and the view holder hook. */
@@ -780,7 +781,7 @@ public class DownloadUtils {
             }
 
             Context context = rootView.getContext();
-            int saveButtonId = ResourceUtils.getIdentifier(context, ResourceType.ID, "row_feed_button_save");
+            if (saveButtonId == 0) saveButtonId = ResourceUtils.getIdentifier(context, ResourceType.ID, "row_feed_button_save");
             View saveButton = saveButtonId == 0 ? null : rootView.findViewById(saveButtonId);
             if (saveButton == null || !(saveButton.getParent() instanceof ViewGroup)) return;
 

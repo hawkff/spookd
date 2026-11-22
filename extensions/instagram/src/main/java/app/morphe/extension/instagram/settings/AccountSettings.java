@@ -34,6 +34,7 @@ import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.instagram.utils.InstaUtils;
+import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 
@@ -129,8 +130,10 @@ public final class AccountSettings {
 
     /** Replaces the live file with an imported one, which the account active after the restart takes over. */
     public static synchronized boolean replaceLiveFile(File source, File destination) {
-        return replaceUnderMarker(AccountSettings::adoptLiveFile, () -> source.renameTo(destination),
+        boolean replaced = replaceUnderMarker(AccountSettings::adoptLiveFile, () -> source.renameTo(destination),
                 AccountSettings::clearAdoptMarker);
+        if (replaced) Pref.invalidateCaches();
+        return replaced;
     }
 
     /** Replaces only once the marker is on disk, and takes the marker back if either step fails. */
@@ -179,7 +182,9 @@ public final class AccountSettings {
                 if (liveFileReplaced) logFailure("Account change ignored until the restart after an import", null);
                 return;
             case ADOPT:
-                if (live.edit().putString(OWNER_KEY, id).commit() && adopt) {
+                boolean adopted = live.edit().putString(OWNER_KEY, id).commit();
+                if (adopted) Pref.invalidateCaches();
+                if (adopted && adopt) {
                     accounts.edit().remove(ADOPT_LIVE_FILE_KEY).commit();
                 }
                 return;
@@ -194,7 +199,9 @@ public final class AccountSettings {
 
                 Map<String, ?> incoming = prefs(context, snapshotName(id)).getAll();
                 boolean restart = restartRequired(outgoing, incoming, AccountSettings::settingDefault);
+                // Caches are dropped here because change callbacks for writes off the main thread arrive later.
                 if (commit(live, keysToRemove(outgoing, incoming), keysToPut(incoming, id))) {
+                    Pref.invalidateCaches();
                     retryId = null;
                     if (restart) restartPending = true;
                     return;
@@ -205,6 +212,8 @@ public final class AccountSettings {
                 if (!commit(live, keysToRemove(incoming, outgoing), keysToPut(outgoing, owner))) {
                     restartPending = true;
                 }
+                // Both commits changed memory whether or not they reached the disk.
+                Pref.invalidateCaches();
         }
     }
 

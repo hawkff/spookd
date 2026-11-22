@@ -9,10 +9,17 @@ package app.morphe.extension.instagram.utils;
 
 import java.util.Set;
 import java.util.HashSet;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.view.View;
+import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.instagram.settings.BooleanSetting;
 import app.morphe.extension.instagram.settings.StringSetting;
@@ -224,8 +231,13 @@ public class Pref {
         return SharedPref.getBooleanPref(focusLockSelection(key));
     }
 
+    private static final ConcurrentHashMap<String, BooleanSetting> FOCUS_LOCK_SELECTIONS = new ConcurrentHashMap<>();
+
     public static BooleanSetting focusLockSelection(String key) {
-        return new BooleanSetting(FocusLock.SELECTION_PREFIX + key, false, NOT_REQUIRED);
+        BooleanSetting setting = FOCUS_LOCK_SELECTIONS.get(key);
+        if (setting != null) return setting;
+        return FOCUS_LOCK_SELECTIONS.computeIfAbsent(key,
+                k -> new BooleanSetting(FocusLock.SELECTION_PREFIX + k, false, NOT_REQUIRED));
     }
 
     public static String focusLockDurationMinutes() {
@@ -301,8 +313,16 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.HIDE_SHARE_BUTTON) && SettingsStatus.hideShareButton;
     }
 
+    private static final Cached<Set<String>> HIDE_SAVE_BUTTON_SURFACES = new Cached<>(
+            Pref::loadHideSaveButtonSurfaces,
+            Settings.HIDE_SAVE_BUTTON_SURFACES.key, Settings.HIDE_SAVE_BUTTONS_LEGACY.key);
+
     /** The surfaces the save button is hidden on; "posts" / "reels" (hide_save_button_surfaces). */
     public static Set<String> hideSaveButtonSurfaces() {
+        return HIDE_SAVE_BUTTON_SURFACES.get();
+    }
+
+    private static Set<String> loadHideSaveButtonSurfaces() {
         Set<String> surfaces = SharedPref.getSetPref(Settings.HIDE_SAVE_BUTTON_SURFACES);
         Context context = Utils.getContext();
         var preferences = context == null ? null
@@ -557,7 +577,14 @@ public class Pref {
         return SharedPref.getStringPref(Settings.CHANGE_LIKE_ANIMATION);
     }
 
+    private static final Cached<Float> STORY_RING_SIZE =
+            new Cached<>(Pref::loadStoryRingSize, Settings.CUSTOMISE_STORY_RING_SIZE.key);
+
     public static float customiseStoryRingSize() {
+        return STORY_RING_SIZE.get();
+    }
+
+    private static float loadStoryRingSize() {
         try {
             return Float.parseFloat(SharedPref.getStringPref(Settings.CUSTOMISE_STORY_RING_SIZE));
         } catch (Exception ex) {
@@ -588,12 +615,20 @@ public class Pref {
         return removeLineBreaks(SharedPref.getStringPref(Settings.EXTERNAL_DOWNLOADER_PACKAGE_NAME));
     }
 
+    private static final String ACTION_BAR_MIGRATED_SUFFIX = "_visibility_migrated";
+    private static final Cached<Set<String>> MAIN_FEED_ACTION_BAR_BUTTONS = new Cached<>(
+            () -> loadAndMigrateActionBarButtons(Settings.ACTION_BAR_MAIN_FEED, true),
+            Settings.ACTION_BAR_MAIN_FEED.key, Settings.ACTION_BAR_MAIN_FEED.key + ACTION_BAR_MIGRATED_SUFFIX);
+    private static final Cached<Set<String>> USER_PROFILE_ACTION_BAR_BUTTONS = new Cached<>(
+            () -> loadAndMigrateActionBarButtons(Settings.ACTION_BAR_USER_PROFILE, false),
+            Settings.ACTION_BAR_USER_PROFILE.key, Settings.ACTION_BAR_USER_PROFILE.key + ACTION_BAR_MIGRATED_SUFFIX);
+
     public static Set<String> mainFeedActionBarButtons() {
-        return loadAndMigrateActionBarButtons(Settings.ACTION_BAR_MAIN_FEED, true);
+        return MAIN_FEED_ACTION_BAR_BUTTONS.get();
     }
 
     public static Set<String> userProfileActionBarButtons() {
-        return loadAndMigrateActionBarButtons(Settings.ACTION_BAR_USER_PROFILE, false);
+        return USER_PROFILE_ACTION_BAR_BUTTONS.get();
     }
 
     private static Set<String> loadAndMigrateActionBarButtons(StringSetting setting, boolean home) {
@@ -601,7 +636,7 @@ public class Pref {
         Context context = Utils.getContext();
         var preferences = context == null ? null
                 : context.getSharedPreferences(Constants.SHARED_PREF_NAME, Context.MODE_PRIVATE);
-        String migratedKey = setting.key + "_visibility_migrated";
+        String migratedKey = setting.key + ACTION_BAR_MIGRATED_SUFFIX;
         if (preferences != null && preferences.getBoolean(migratedKey, false)) return buttons;
 
         String createKey = Settings.HIDE_HOME_CREATE_BUTTON.key;
@@ -627,12 +662,21 @@ public class Pref {
         return SharedPref.getSetPref(Settings.ACTION_BAR_CHAT);
     }
 
-    public static synchronized Set<String> chatActionsWithCallDefaults() {
+    private static final String CHAT_CALL_ICONS_INITIALIZED_KEY = "action_bar_chat_call_icons_initialized";
+    private static final Cached<Set<String>> CHAT_ACTIONS_WITH_CALL_DEFAULTS = new Cached<>(
+            Pref::loadChatActionsWithCallDefaults,
+            Settings.ACTION_BAR_CHAT.key, CHAT_CALL_ICONS_INITIALIZED_KEY);
+
+    public static Set<String> chatActionsWithCallDefaults() {
+        return CHAT_ACTIONS_WITH_CALL_DEFAULTS.get();
+    }
+
+    private static synchronized Set<String> loadChatActionsWithCallDefaults() {
         Set<String> actions = chatActionBarButtons();
         Context context = Utils.getContext();
         var preferences = context == null ? null
                 : context.getSharedPreferences(Constants.SHARED_PREF_NAME, Context.MODE_PRIVATE);
-        String initializedKey = "action_bar_chat_call_icons_initialized";
+        String initializedKey = CHAT_CALL_ICONS_INITIALIZED_KEY;
         if (preferences != null && preferences.getBoolean(initializedKey, false)) return actions;
 
         // Without this marker, an empty call selection could mean either first use or both icons hidden.
@@ -667,11 +711,19 @@ public class Pref {
     }
 
     public static Integer filterStoryByMinStoryItems() {
-        return Integer.valueOf(SharedPref.getStringPref(Settings.FILTER_STORY_MIN_STORY_ITEMS));
+        try {
+            return Integer.valueOf(SharedPref.getStringPref(Settings.FILTER_STORY_MIN_STORY_ITEMS));
+        } catch (NumberFormatException e) {
+            return 1;
+        }
     }
 
     public static Integer filterStoryByMaxStoryItems() {
-        return Integer.valueOf(SharedPref.getStringPref(Settings.FILTER_STORY_MAX_STORY_ITEMS));
+        try {
+            return Integer.valueOf(SharedPref.getStringPref(Settings.FILTER_STORY_MAX_STORY_ITEMS));
+        } catch (NumberFormatException e) {
+            return 9999;
+        }
     }
 
     public static boolean inboxLock() {
@@ -695,6 +747,87 @@ public class Pref {
             return Integer.parseInt(SharedPref.getStringPref(Settings.HIDDEN_CHATS_TAPS));
         } catch (NumberFormatException e) {
             return 3;
+        }
+    }
+
+    /** Drops every cached setting; for writes off the main thread, whose change callbacks arrive later. */
+    public static void invalidateCaches() {
+        Cached.invalidateAll();
+        FOCUS_LOCK_SELECTIONS.clear();
+    }
+
+    /**
+     * A value computed from piko_settings and kept until one of {@code keys} changes, so hooks that
+     * run on every render skip the reads. Until the change listener is registered it reads each time.
+     */
+    public static final class Cached<T> {
+        private static final List<Cached<?>> ALL = new CopyOnWriteArrayList<>();
+        private final Supplier<T> loader;
+        private final Predicate<SharedPreferences.OnSharedPreferenceChangeListener> registrar;
+        private final String[] keys;
+        // SharedPreferences holds listeners weakly, so the cache keeps its own alive.
+        private final SharedPreferences.OnSharedPreferenceChangeListener listener =
+                (preferences, key) -> onChanged(key);
+        private volatile T value;
+        private boolean listening;
+
+        public Cached(Supplier<T> loader, String... keys) {
+            this(loader, Cached::listenToSettings, keys);
+        }
+
+        Cached(Supplier<T> loader,
+               Predicate<SharedPreferences.OnSharedPreferenceChangeListener> registrar,
+               String... keys) {
+            this.loader = loader;
+            this.registrar = registrar;
+            this.keys = keys;
+            ALL.add(this);
+        }
+
+        static void invalidateAll() {
+            for (Cached<?> cached : ALL) {
+                cached.onChanged(null);
+            }
+        }
+
+        public T get() {
+            T current = value;
+            if (current != null) return current;
+            synchronized (this) {
+                if (value != null) return value;
+                // Listening before the read, so a change made during it still clears the result.
+                if (!listening) listening = register();
+                T loaded = loader.get();
+                if (listening) value = loaded;
+                return loaded;
+            }
+        }
+
+        synchronized void onChanged(String key) {
+            // A null key means the whole file was cleared.
+            if (key == null) {
+                value = null;
+                return;
+            }
+            for (String watched : keys) {
+                if (watched.equals(key)) {
+                    value = null;
+                    return;
+                }
+            }
+        }
+
+        private boolean register() {
+            try {
+                return registrar.test(listener);
+            } catch (RuntimeException e) {
+                Logger.printException(() -> "Failed to listen for settings changes", e);
+                return false;
+            }
+        }
+
+        private static boolean listenToSettings(SharedPreferences.OnSharedPreferenceChangeListener listener) {
+            return SharedPref.registerOnSharedPreferenceChangeListener(listener);
         }
     }
 }

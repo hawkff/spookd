@@ -36,13 +36,14 @@ public final class ProfileHighlights {
                 }
             };
     private static boolean listenerRegistered;
+    private static int highlightsTrayId;
 
     private ProfileHighlights() {
     }
 
     private static boolean isHighlightsTray(View view) {
-        int id = ResourceUtils.getIdentifier(ResourceType.ID, "highlights_tray");
-        return view != null && id != 0 && view.getId() == id;
+        if (highlightsTrayId == 0) highlightsTrayId = ResourceUtils.getIdentifier(ResourceType.ID, "highlights_tray");
+        return view != null && highlightsTrayId != 0 && view.getId() == highlightsTrayId;
     }
 
     public static void beforeBind(View view) {
