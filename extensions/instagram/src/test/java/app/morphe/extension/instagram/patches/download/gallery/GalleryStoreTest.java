@@ -164,7 +164,7 @@ public final class GalleryStoreTest {
         values.put("saved_at", NOW);
         values.put("size_bytes", 1);
         long lost = db.insertOrThrow("gallery_items", null, values);
-        File thumb = new File(thumbs, lost + ".jpg");
+        File thumb = new File(thumbs, "lost.jpg.jpg");
         write(thumb, "t");
         restart();
 
@@ -208,7 +208,7 @@ public final class GalleryStoreTest {
     public void overwritePolicyReplacesFileRowAndThumbnail() throws Exception {
         long id = publish("alice", "a.jpg", false);
         File original = file(id);
-        File thumb = new File(thumbs, id + ".jpg");
+        File thumb = thumb(original);
         write(thumb, "t");
         clock[0] = NOW + 1000;
 
@@ -287,7 +287,7 @@ public final class GalleryStoreTest {
     public void deleteRemovesRowFileAndThumbnail() throws Exception {
         long id = publish("alice", "a.jpg", false);
         File file = file(id);
-        File thumb = new File(thumbs, id + ".jpg");
+        File thumb = thumb(file);
         write(thumb, "t");
 
         assertTrue(store.delete(id));
@@ -301,7 +301,7 @@ public final class GalleryStoreTest {
     public void deleteDuringThumbnailDecodeLeavesNoThumbnail() throws Exception {
         long id = publish("alice", "a.jpg", false);
         File file = file(id);
-        File thumb = new File(thumbs, id + ".jpg");
+        File thumb = thumb(file);
         CountDownLatch decoding = new CountDownLatch(1);
         CountDownLatch deleted = new CountDownLatch(1);
         Object[] result = new Object[1];
@@ -336,7 +336,7 @@ public final class GalleryStoreTest {
     public void thumbnailOfTheCurrentFileIsWrittenAndAReplacedOneIsNot() throws Exception {
         long id = publish("alice", "a.jpg", false);
         File old = file(id);
-        File thumb = new File(thumbs, id + ".jpg");
+        File thumb = thumb(old);
         assertTrue(store.writeThumb(id, old, out -> true));
         assertTrue(thumb.exists());
 
@@ -349,8 +349,9 @@ public final class GalleryStoreTest {
     @Test
     public void recoveryDropsThumbnailsWithoutARow() throws Exception {
         long id = publish("alice", "a.jpg", false);
-        File kept = new File(thumbs, id + ".jpg");
-        File orphan = new File(thumbs, (id + 1) + ".jpg");
+        File kept = thumb(file(id));
+        // Named as before thumbnails were keyed by file.
+        File orphan = new File(thumbs, id + ".jpg");
         write(kept, "t");
         write(orphan, "t");
 
@@ -438,6 +439,39 @@ public final class GalleryStoreTest {
         assertFalse(oldFile.exists());
         assertEquals(1, store.prune(0, 1, NOW));
         assertEquals(0, rows());
+    }
+
+    @Test
+    public void deleteOfTheSeenFileRemovesTheItem() throws Exception {
+        long id = publish("alice", "a.jpg", false);
+        File seen = file(id);
+        File thumb = thumb(seen);
+        write(thumb, "t");
+
+        assertTrue(store.delete(id, seen));
+        assertEquals(0, rows());
+        assertFalse(seen.exists());
+        assertFalse(thumb.exists());
+        assertFalse(store.delete(id, seen));
+    }
+
+    @Test
+    public void deleteOfAnOverwrittenFileKeepsTheNewItem() throws Exception {
+        long id = publish("alice", "a.jpg", false);
+        File seen = file(id);
+        assertEquals(id, store.publish(part("newer"), POST, "alice", "a.jpg", true));
+        File current = file(id);
+        File thumb = thumb(current);
+        write(thumb, "t");
+
+        assertFalse(store.delete(id, seen));
+        assertEquals(Collections.singletonList(id), ids(store.list(GalleryTab.POSTS)));
+        assertEquals("newer", read(current));
+        assertTrue(thumb.exists());
+    }
+
+    private File thumb(File file) {
+        return new File(thumbs, file.getName() + ".jpg");
     }
 
     private File part(String content) throws IOException {
