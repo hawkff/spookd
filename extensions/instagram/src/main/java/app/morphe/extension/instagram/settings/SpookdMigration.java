@@ -476,7 +476,7 @@ public final class SpookdMigration {
         }
         String[] left = from.list();
         if (left != null && left.length == 0) {
-            from.delete();
+            return from.delete() || !from.exists();
         } else if (moved) {
             log("Kept " + from + ": its remaining files also exist in " + to, null);
         }

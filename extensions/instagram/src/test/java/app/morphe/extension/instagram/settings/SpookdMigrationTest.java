@@ -460,6 +460,28 @@ public final class SpookdMigrationTest {
     }
 
     @Test
+    public void aFailedEmptyDirectoryRemovalIsRetriedAtTheNextStart() throws Exception {
+        File cache = app.getCacheDir();
+        writeFile(new File(cache, "piko_gallery_thumbs/c.jpg"), "C");
+        assertTrue(new File(cache, "spookd_gallery_thumbs").mkdirs());
+        // A read-only cache folder lets the children move but keeps their emptied folder.
+        assertTrue(cache.setWritable(false));
+        try {
+            SpookdMigration.run(app);
+        } finally {
+            cache.setWritable(true);
+        }
+        assertEquals("C", readFile(new File(cache, "spookd_gallery_thumbs/c.jpg")));
+        assertTrue(new File(cache, "piko_gallery_thumbs").exists());
+        assertFalse(marker().exists());
+
+        SpookdMigration.run(app);
+
+        assertFalse(new File(cache, "piko_gallery_thumbs").exists());
+        assertTrue(marker().exists());
+    }
+
+    @Test
     public void notificationChannelsKeepTheirImportance() {
         NotificationManager manager = app.getSystemService(NotificationManager.class);
         manager.createNotificationChannel(new NotificationChannel("piko_profile_analyzer", "Profile analyzer",
