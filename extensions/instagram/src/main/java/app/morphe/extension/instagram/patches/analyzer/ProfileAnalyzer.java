@@ -224,8 +224,10 @@ public final class ProfileAnalyzer {
         if (row.get() == null || refreshScheduledFor == at) return;
         refreshScheduledFor = at;
         // The refresh holds no row; it reads the weak reference when it runs.
-        Utils.runOnMainThreadDelayed(ProfileAnalyzer::refreshRow,
-                Math.max(0, at - System.currentTimeMillis()) + 500);
+        Utils.runOnMainThreadDelayed(() -> {
+            refreshScheduledFor = 0;
+            refreshRow();
+        }, Math.max(0, at - System.currentTimeMillis()) + 500);
     }
 
     private static void refreshRow() {
