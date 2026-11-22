@@ -36,6 +36,8 @@ public final class PikoFollowDb extends SQLiteOpenHelper {
     public static final String PICTURE = "picture";
 
     private static PikoFollowDb instance;
+    /** Test seam run inside the commit transaction just before the commit decision; null in the app. */
+    static volatile Runnable beforeCommitDecision;
 
     /** One row of the history, newest first. */
     public static final class Change {
@@ -189,6 +191,8 @@ public final class PikoFollowDb extends SQLiteOpenHelper {
             }
 
             prune(db, accountId);
+            Runnable hook = beforeCommitDecision;
+            if (hook != null) hook.run();
             if (!mayCommit.getAsBoolean()) return -1;
             db.setTransactionSuccessful();
             return scanId;

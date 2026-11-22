@@ -7,7 +7,6 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.database.DatabaseUtils;
-import android.database.sqlite.SQLiteDatabase;
 
 import org.junit.After;
 import org.junit.Before;
@@ -73,6 +72,7 @@ public final class FollowScanTest {
 
     @After
     public void tearDown() {
+        PikoFollowDb.beforeCommitDecision = null;
         db.close();
     }
 
@@ -247,21 +247,25 @@ public final class FollowScanTest {
     @Test
     public void stopDuringCommitRollsBackAndReportsStopped() throws Exception {
         script.add(page(null, "1"), page(null, "2"));
-        Recorder recorder = new Recorder();
-        // Holding the only write connection blocks the scan inside commitScan.
-        SQLiteDatabase held = db.getWritableDatabase();
-        held.beginTransaction();
-        try {
-            assertNull(scan.start(ACCOUNT, 1, 1, recorder));
-            long deadline = System.currentTimeMillis() + 10_000;
-            while (!blockedAfterLastPage(recorder)) {
-                assertTrue(System.currentTimeMillis() < deadline);
-                Thread.sleep(10);
+        CountDownLatch inCommit = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        PikoFollowDb.beforeCommitDecision = () -> {
+            inCommit.countDown();
+            // Waits through the stop's interrupt, as a database write would.
+            while (true) {
+                try {
+                    release.await(10, TimeUnit.SECONDS);
+                    return;
+                } catch (InterruptedException ignored) {
+                }
             }
-            scan.stop();
-        } finally {
-            held.endTransaction();
-        }
+        };
+        Recorder recorder = new Recorder();
+
+        assertNull(scan.start(ACCOUNT, 1, 1, recorder));
+        assertTrue(inCommit.await(10, TimeUnit.SECONDS));
+        scan.stop();
+        release.countDown();
 
         assertTrue(recorder.done.await(10, TimeUnit.SECONDS));
         assertEquals(State.STOPPED, recorder.end);
@@ -285,13 +289,6 @@ public final class FollowScanTest {
 
         assertTrue(recorder.done.await(10, TimeUnit.SECONDS));
         assertEquals(State.STOPPED, recorder.end);
-    }
-
-    private static boolean blockedAfterLastPage(Recorder recorder) {
-        Thread worker = recorder.thread;
-        if (worker == null || !recorder.events.contains("1 1/1 RUNNING")) return false;
-        Thread.State state = worker.getState();
-        return state == Thread.State.WAITING || state == Thread.State.TIMED_WAITING;
     }
 
     private Recorder run(int followers, int following) throws Exception {
@@ -357,14 +354,12 @@ public final class FollowScanTest {
         final CountDownLatch paused = new CountDownLatch(1);
         final CountDownLatch done = new CountDownLatch(1);
         volatile boolean resumeOnPause = true;
-        volatile Thread thread;
         volatile State end;
 
         @Override
         public void onProgress(int list, int received, int expected, State state) {
             states.add(state);
             order.add(state.name());
-            thread = Thread.currentThread();
             events.add(list + " " + received + "/" + expected + " " + state);
             if (state == State.PAUSED) {
                 paused.countDown();
