@@ -22,6 +22,7 @@ import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.crimera.legacydownloader.FolderPickerFragment;
 import app.morphe.extension.crimera.legacydownloader.StorageUtils;
 import app.morphe.extension.instagram.constants.Constants;
+import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzerActivity;
 import app.morphe.extension.instagram.patches.dm.DeletedMessagesActivity;
 import app.morphe.extension.instagram.patches.dm.InboxLock;
 import app.morphe.extension.instagram.patches.instants.InstantsVaultActivity;
@@ -43,6 +44,7 @@ public class ActivityHook {
     static final String LAUNCH_TYPE_FOLDER_PICKER = "folder_picker";
     static final String LAUNCH_TYPE_DELETED_MESSAGES = "deleted_messages";
     static final String LAUNCH_TYPE_INSTANTS_VAULT = "instants_vault";
+    static final String LAUNCH_TYPE_PROFILE_ANALYZER = "profile_analyzer";
 
 
     public static void launchActivity(Context context, Class<?> activityClass) {
@@ -168,6 +170,9 @@ public class ActivityHook {
             case LAUNCH_TYPE_INSTANTS_VAULT:
                 InboxLock.confirmViewer(activity, () -> InstantsVaultActivity.setupOnActivity(activity));
                 break;
+            case LAUNCH_TYPE_PROFILE_ANALYZER:
+                InboxLock.confirmViewer(activity, () -> ProfileAnalyzerActivity.setupOnActivity(activity));
+                break;
             case LAUNCH_TYPE_BACKUP:
             case LAUNCH_TYPE_RESTORE:
             case LAUNCH_TYPE_FOLDER_PICKER:
@@ -233,6 +238,12 @@ public class ActivityHook {
 
     public static void startDeletedMessagesActivity(Context context) {
         launchActivity(context, createDeletedMessagesIntent(context));
+    }
+
+    public static void startProfileAnalyzerActivity(Context context) {
+        Intent intent = createProxyIntent(context);
+        intent.putExtra(EXTRA_PIKO_LAUNCH_TYPE, LAUNCH_TYPE_PROFILE_ANALYZER);
+        launchActivity(context, intent);
     }
 
     public static void startInstantsVaultActivity(Context context) {

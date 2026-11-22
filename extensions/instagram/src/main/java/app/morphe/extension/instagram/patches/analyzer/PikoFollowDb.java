@@ -47,13 +47,30 @@ public final class PikoFollowDb extends SQLiteOpenHelper {
         /** The username at that time for list changes, the new value for identity changes. */
         public final String newValue;
         public final long seenAt;
+        /** The latest stored identity, or null once no kept scan has this account. */
+        public final FollowUser user;
 
-        Change(String userId, String kind, String oldValue, String newValue, long seenAt) {
+        Change(String userId, String kind, String oldValue, String newValue, long seenAt,
+               FollowUser user) {
             this.userId = userId;
             this.kind = kind;
             this.oldValue = oldValue;
             this.newValue = newValue;
             this.seenAt = seenAt;
+            this.user = user;
+        }
+    }
+
+    /** When the latest scan finished and how many rows each list received. */
+    public static final class Scan {
+        public final long finishedAt;
+        public final int followerCount;
+        public final int followingCount;
+
+        Scan(long finishedAt, int followerCount, int followingCount) {
+            this.finishedAt = finishedAt;
+            this.followerCount = followerCount;
+            this.followingCount = followingCount;
         }
     }
 
@@ -215,14 +232,35 @@ public final class PikoFollowDb extends SQLiteOpenHelper {
         return latestMembers(accountId, LIST_FOLLOWING, LIST_FOLLOWERS, true);
     }
 
+    /** The latest scan of this account, or null before its first scan. */
+    public Scan latestScan(String accountId) {
+        try (Cursor c = getReadableDatabase().rawQuery("SELECT finished_at, follower_count,"
+                + " following_count FROM follow_scans WHERE account_id = ?"
+                + " ORDER BY id DESC LIMIT 1", new String[]{accountId})) {
+            return c.moveToFirst() ? new Scan(c.getLong(0), c.getInt(1), c.getInt(2)) : null;
+        }
+    }
+
+    /** The history, newest first, with each account's latest stored identity. */
     public List<Change> history(String accountId) {
+        return history(accountId, 0);
+    }
+
+    /** The newest {@code limit} changes, or all of them when {@code limit} is 0. */
+    public List<Change> history(String accountId, int limit) {
         List<Change> out = new ArrayList<>();
         try (Cursor c = getReadableDatabase().rawQuery(
-                "SELECT user_id, kind, old_value, new_value, seen_at FROM follow_changes"
-                        + " WHERE account_id = ? ORDER BY id DESC", new String[]{accountId})) {
+                "SELECT c.user_id, c.kind, c.old_value, c.new_value, c.seen_at,"
+                        + " u.user_id, u.username, u.full_name, u.verified, u.pic_id"
+                        + " FROM follow_changes c LEFT JOIN follow_users u"
+                        + " ON u.account_id = c.account_id AND u.user_id = c.user_id"
+                        + " WHERE c.account_id = ? ORDER BY c.id DESC"
+                        + (limit > 0 ? " LIMIT " + limit : ""), new String[]{accountId})) {
             while (c.moveToNext()) {
+                FollowUser user = c.isNull(5) ? null : new FollowUser(c.getString(5),
+                        c.getString(6), c.getString(7), c.getInt(8) != 0, c.getString(9));
                 out.add(new Change(c.getString(0), c.getString(1), c.getString(2),
-                        c.getString(3), c.getLong(4)));
+                        c.getString(3), c.getLong(4), user));
             }
         }
         return out;

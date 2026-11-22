@@ -27,7 +27,8 @@ import app.morphe.extension.shared.Utils;
 
 /**
  * Follows the current session, remembers each own account's counts from its profile header,
- * starts a scan from the settings row, and shows its progress in the row, a notification and toasts.
+ * starts a scan from the results screen, and shows its progress in the settings row, the results
+ * screen, a notification and toasts.
  */
 public final class ProfileAnalyzer {
 
@@ -57,6 +58,7 @@ public final class ProfileAnalyzer {
     // Main thread.
     private static FollowScan scan;
     private static WeakReference<Preference> row = new WeakReference<>(null);
+    private static WeakReference<Runnable> screenRefresh = new WeakReference<>(null);
     private static long refreshScheduledFor;
     // Guarded by ProfileAnalyzer.class; written on the scan worker.
     private static FollowScan.State state;
@@ -109,7 +111,7 @@ public final class ProfileAnalyzer {
         return accountId == null ? null : COUNTS.get(accountId);
     }
 
-    private static String currentAccountId() {
+    static String currentAccountId() {
         UserSession session = currentSession.get();
         String accountId = session == null ? null : session.getUserId();
         return accountId == null || accountId.isEmpty() ? null : accountId;
@@ -130,8 +132,26 @@ public final class ProfileAnalyzer {
         Utils.runOnMainThread(ProfileAnalyzer::refreshRow);
     }
 
-    /** Main thread, from a tap on the settings row in a resumed activity. */
-    public static void onRowClicked(Activity activity) {
+    /** Main thread, from the resumed results screen: runs refresh whenever the row refreshes. */
+    static void onScreenShown(Runnable refresh) {
+        screenRefresh = new WeakReference<>(refresh);
+    }
+
+    /** Main thread, from a paused or destroyed results screen: frees the slot if that screen owns it. */
+    static void onScreenHidden(Runnable refresh) {
+        if (screenRefresh.get() == refresh) screenRefresh = new WeakReference<>(null);
+    }
+
+    /** Any thread. True from a start until the scan reported how it ended. */
+    static boolean isScanning() {
+        synchronized (ProfileAnalyzer.class) {
+            return state == FollowScan.State.RUNNING || state == FollowScan.State.PAUSED
+                    || state == FollowScan.State.BACKING_OFF;
+        }
+    }
+
+    /** Main thread, from the 'Start scan' action of the results screen in a resumed activity. */
+    static void startScan(Activity activity) {
         try {
             String accountId = currentAccountId();
             Counts counts = countsFor(accountId);
@@ -140,8 +160,18 @@ public final class ProfileAnalyzer {
                 return;
             }
             FollowScan engine = scan(activity);
-            FollowScan.Refusal refusal = engine.start(accountId, counts.followers, counts.following,
-                    ProfileAnalyzer::onProgress);
+            FollowScan.Refusal refusal;
+            // Held across the start, so the worker's first report comes after this state.
+            synchronized (ProfileAnalyzer.class) {
+                refusal = engine.start(accountId, counts.followers, counts.following,
+                        ProfileAnalyzer::onProgress);
+                if (refusal == null) {
+                    state = FollowScan.State.RUNNING;
+                    list = PikoFollowDb.LIST_FOLLOWERS;
+                    received = 0;
+                    expected = counts.followers;
+                }
+            }
             if (refusal == FollowScan.Refusal.TOO_MANY_ACCOUNTS) {
                 Utils.showToastLong(str(ROW_TOO_MANY));
             } else if (refusal == FollowScan.Refusal.ALREADY_RUNNING) {
@@ -221,7 +251,7 @@ public final class ProfileAnalyzer {
 
     /** Main thread: refreshes the displayed row once the cooldown has passed. */
     private static void scheduleRefresh(long at) {
-        if (row.get() == null || refreshScheduledFor == at) return;
+        if ((row.get() == null && screenRefresh.get() == null) || refreshScheduledFor == at) return;
         refreshScheduledFor = at;
         // The refresh holds no row; it reads the weak reference when it runs.
         Utils.runOnMainThreadDelayed(() -> {
@@ -233,6 +263,8 @@ public final class ProfileAnalyzer {
     private static void refreshRow() {
         Preference preference = row.get();
         if (preference != null) preference.setSummary(rowSummary(preference.getContext()));
+        Runnable screen = screenRefresh.get();
+        if (screen != null) screen.run();
     }
 
     /** Scan worker thread. */
@@ -300,7 +332,7 @@ public final class ProfileAnalyzer {
                 : "piko_profile_analyzer_following_progress", count(received), count(expected));
     }
 
-    private static String count(int value) {
+    static String count(int value) {
         return NumberFormat.getIntegerInstance().format(value);
     }
 
