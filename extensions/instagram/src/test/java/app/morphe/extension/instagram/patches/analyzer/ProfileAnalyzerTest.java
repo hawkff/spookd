@@ -1,6 +1,7 @@
 package app.morphe.extension.instagram.patches.analyzer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
@@ -8,6 +9,16 @@ import app.morphe.extension.instagram.patches.analyzer.FollowScan.State;
 
 public final class ProfileAnalyzerTest {
     private static final long NEXT = 1_700_000_000_000L;
+
+    @Test
+    public void onlyTheCurrentAccountsOwnCountsAreUsed() {
+        ProfileAnalyzer.recordCounts("1001", 10, 20);
+        // Switched to 2002, whose own profile has not been shown yet.
+        assertNull(ProfileAnalyzer.countsFor("2002"));
+        assertNull(ProfileAnalyzer.countsFor(null));
+        assertEquals(10, ProfileAnalyzer.countsFor("1001").followers);
+        assertEquals(20, ProfileAnalyzer.countsFor("1001").following);
+    }
 
     @Test
     public void aRunningScanShowsItsProgressBeforeAnyRefusal() {

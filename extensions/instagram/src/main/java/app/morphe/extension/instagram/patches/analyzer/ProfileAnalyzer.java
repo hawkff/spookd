@@ -26,15 +26,13 @@ import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 
 /**
- * Remembers the own session and counts from the own profile header, starts a scan from the
- * settings row, and shows its progress in the row, a notification and toasts.
+ * Follows the current session, remembers each own account's counts from its profile header,
+ * starts a scan from the settings row, and shows its progress in the row, a notification and toasts.
  */
 public final class ProfileAnalyzer {
 
     static final String NOTIFICATION_CHANNEL_ID = "piko_profile_analyzer";
     private static final int NOTIFICATION_ID = 0x70f11e;
-    // An ongoing notification outlives a killed process; this removes it within minutes.
-    private static final long NOTIFICATION_TIMEOUT_MS = 5 * 60 * 1000L;
 
     static final String ROW_START = "piko_profile_analyzer_start";
     static final String ROW_SCANNING = "piko_profile_analyzer_scanning";
@@ -43,24 +41,23 @@ public final class ProfileAnalyzer {
     static final String ROW_OPEN_PROFILE = "piko_profile_analyzer_open_profile";
     static final String ROW_TOO_MANY = "piko_profile_analyzer_too_many";
 
-    private static final class Account {
-        final WeakReference<UserSession> session;
+    /** Follower and following counts from an own profile header. */
+    static final class Counts {
         final int followers;
         final int following;
 
-        Account(UserSession session, int followers, int following) {
-            this.session = new WeakReference<>(session);
+        Counts(int followers, int following) {
             this.followers = followers;
             this.following = following;
         }
     }
 
-    private static final Map<String, Account> ACCOUNTS = new ConcurrentHashMap<>();
-    /** The account whose own profile header bound last. */
-    private static volatile String lastAccountId;
+    private static final Map<String, Counts> COUNTS = new ConcurrentHashMap<>();
+    private static volatile WeakReference<UserSession> currentSession = new WeakReference<>(null);
     // Main thread.
     private static FollowScan scan;
     private static WeakReference<Preference> row = new WeakReference<>(null);
+    private static long refreshScheduledFor;
     // Guarded by ProfileAnalyzer.class; written on the scan worker.
     private static FollowScan.State state;
     private static int list;
@@ -73,7 +70,17 @@ public final class ProfileAnalyzer {
     private ProfileAnalyzer() {
     }
 
-    /** Main thread, inside Instagram's profile header bind: records the own session and counts. */
+    /** Called just before Instagram's session manager returns the session it made current. */
+    public static void onCurrentSession(UserSession session) {
+        currentSession = new WeakReference<>(session);
+    }
+
+    /** App start, from SettingsStatus.load(): removes a progress notification a killed process left. */
+    public static void onAppStart() {
+        updateNotification(null, 0, 0);
+    }
+
+    /** Main thread, inside Instagram's profile header bind: records the own account's counts. */
     public static void onProfileHeaderBound(Object profileInfoObject) {
         if (!SettingsStatus.profileAnalyzer) return;
         try {
@@ -86,39 +93,55 @@ public final class ProfileAnalyzer {
             Integer followers = user.getFollowerCount();
             Integer following = user.getFollowingCount();
             if (followers == null || following == null) return;
-            ACCOUNTS.put(accountId, new Account(session, followers, following));
-            lastAccountId = accountId;
+            recordCounts(accountId, followers, following);
         } catch (Exception e) {
             String error = e.getClass().getSimpleName();
             Logger.printException(() -> "ProfileAnalyzer: profile header failed: " + error);
         }
     }
 
-    /** Any thread. The own session of this account, if its profile header bound in this process. */
-    static UserSession session(String accountId) {
-        Account account = accountId == null ? null : ACCOUNTS.get(accountId);
-        return account == null ? null : account.session.get();
+    static void recordCounts(String accountId, int followers, int following) {
+        COUNTS.put(accountId, new Counts(followers, following));
     }
 
-    /** Main thread, from the settings screen: shows the summary and keeps it current. */
-    public static Preference bindRow(Preference preference) {
+    /** The counts of this account only, or null until its own profile header bound in this process. */
+    static Counts countsFor(String accountId) {
+        return accountId == null ? null : COUNTS.get(accountId);
+    }
+
+    private static String currentAccountId() {
+        UserSession session = currentSession.get();
+        String accountId = session == null ? null : session.getUserId();
+        return accountId == null || accountId.isEmpty() ? null : accountId;
+    }
+
+    /** Any thread. The current session, if it belongs to this account. */
+    static UserSession session(String accountId) {
+        UserSession session = currentSession.get();
+        return session != null && accountId != null && accountId.equals(session.getUserId())
+                ? session : null;
+    }
+
+    /** Main thread, from the row's view binding: keeps the displayed row current. */
+    public static void onRowDisplayed(Preference preference) {
+        if (row.get() == preference) return;
         row = new WeakReference<>(preference);
-        refreshRow();
-        return preference;
+        // Posted, since a summary change inside the bind would rebind the list.
+        Utils.runOnMainThread(ProfileAnalyzer::refreshRow);
     }
 
     /** Main thread, from a tap on the settings row in a resumed activity. */
     public static void onRowClicked(Activity activity) {
         try {
-            String accountId = lastAccountId;
-            Account account = accountId == null ? null : ACCOUNTS.get(accountId);
-            if (account == null || account.session.get() == null) {
+            String accountId = currentAccountId();
+            Counts counts = countsFor(accountId);
+            if (counts == null) {
                 Utils.showToastShort(str(ROW_OPEN_PROFILE));
                 return;
             }
             FollowScan engine = scan(activity);
-            FollowScan.Refusal refusal = engine.start(accountId, account.followers,
-                    account.following, ProfileAnalyzer::onProgress);
+            FollowScan.Refusal refusal = engine.start(accountId, counts.followers, counts.following,
+                    ProfileAnalyzer::onProgress);
             if (refusal == FollowScan.Refusal.TOO_MANY_ACCOUNTS) {
                 Utils.showToastLong(str(ROW_TOO_MANY));
             } else if (refusal == FollowScan.Refusal.ALREADY_RUNNING) {
@@ -144,6 +167,14 @@ public final class ProfileAnalyzer {
         return scan;
     }
 
+    /** Main thread. When this account may start its next scan, or 0. */
+    private static long nextAllowedStart(Context context, String accountId) {
+        // Before the first start only the last start time is read, so no tracking is set up yet.
+        FollowScan reader = scan != null ? scan
+                : new FollowScan(context, null, null, null, System::currentTimeMillis, null, null);
+        return reader.nextAllowedStart(accountId);
+    }
+
     /** The key of the row summary; a running scan shows first, then why a start would be refused. */
     static String rowSummaryKey(FollowScan.State state, boolean knowsAccount, boolean tooMany,
                                 long nextAllowedStart) {
@@ -156,20 +187,14 @@ public final class ProfileAnalyzer {
         return nextAllowedStart != 0 ? ROW_NEXT_SCAN : ROW_START;
     }
 
-    private static void refreshRow() {
+    /** Main thread: the row summary for the current account. */
+    public static String rowSummary(Context context) {
         try {
-            Preference preference = row.get();
-            if (preference == null) return;
-            Context context = preference.getContext();
-            String accountId = lastAccountId;
-            Account account = accountId == null ? null : ACCOUNTS.get(accountId);
-            boolean knowsAccount = account != null && account.session.get() != null;
-            boolean tooMany = knowsAccount
-                    && (long) account.followers + account.following > FollowScan.MAX_ACCOUNTS;
-            // Before the first start only the last start time is read, so no tracking is set up yet.
-            FollowScan reader = scan != null ? scan
-                    : new FollowScan(context, null, null, null, System::currentTimeMillis, null, null);
-            long next = knowsAccount ? reader.nextAllowedStart(accountId) : 0;
+            String accountId = currentAccountId();
+            Counts counts = countsFor(accountId);
+            boolean tooMany = counts != null
+                    && (long) counts.followers + counts.following > FollowScan.MAX_ACCOUNTS;
+            long next = counts == null ? 0 : nextAllowedStart(context, accountId);
             FollowScan.State current;
             int currentList, currentReceived, currentExpected;
             synchronized (ProfileAnalyzer.class) {
@@ -178,20 +203,34 @@ public final class ProfileAnalyzer {
                 currentReceived = received;
                 currentExpected = expected;
             }
-            String key = rowSummaryKey(current, knowsAccount, tooMany, next);
-            String summary;
+            String key = rowSummaryKey(current, counts != null, tooMany, next);
             if (ROW_SCANNING.equals(key)) {
-                summary = str(key, progress(currentList, currentReceived, currentExpected));
-            } else if (ROW_NEXT_SCAN.equals(key)) {
-                summary = str(key, time(context, next));
-            } else {
-                summary = str(key);
+                return str(key, progress(currentList, currentReceived, currentExpected));
             }
-            preference.setSummary(summary);
+            if (ROW_NEXT_SCAN.equals(key)) {
+                scheduleRefresh(next);
+                return str(key, time(context, next));
+            }
+            return str(key);
         } catch (Exception e) {
             String error = e.getClass().getSimpleName();
             Logger.printException(() -> "ProfileAnalyzer: row failed: " + error);
+            return "";
         }
+    }
+
+    /** Main thread: refreshes the displayed row once the cooldown has passed. */
+    private static void scheduleRefresh(long at) {
+        if (row.get() == null || refreshScheduledFor == at) return;
+        refreshScheduledFor = at;
+        // The refresh holds no row; it reads the weak reference when it runs.
+        Utils.runOnMainThreadDelayed(ProfileAnalyzer::refreshRow,
+                Math.max(0, at - System.currentTimeMillis()) + 500);
+    }
+
+    private static void refreshRow() {
+        Preference preference = row.get();
+        if (preference != null) preference.setSummary(rowSummary(preference.getContext()));
     }
 
     /** Scan worker thread. */
@@ -246,7 +285,6 @@ public final class ProfileAnalyzer {
                     .setProgress(max, received, max == 0)
                     .setOngoing(true)
                     .setOnlyAlertOnce(true)
-                    .setTimeoutAfter(NOTIFICATION_TIMEOUT_MS)
                     .build();
             manager.notify(NOTIFICATION_ID, notification);
         } catch (Exception e) {

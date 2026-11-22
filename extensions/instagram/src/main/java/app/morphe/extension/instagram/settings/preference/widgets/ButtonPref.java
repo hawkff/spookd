@@ -141,6 +141,7 @@ public class ButtonPref extends Preference {
     @Override
     protected void onBindView(View view) {
         String key = getKey();
+        if ("profile_analyzer".equals(key)) ProfileAnalyzer.onRowDisplayed(this);
         InstagramPreferenceStyle.bindText(this, view);
         InstagramPreferenceStyle.bindIcon(view, iconResourceNameForKey(key));
         InstagramPreferenceStyle.setTrailingVisible(view, hasVisibleTrail(key));

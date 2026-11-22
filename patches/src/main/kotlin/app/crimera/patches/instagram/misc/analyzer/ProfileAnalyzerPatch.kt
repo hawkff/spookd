@@ -4,13 +4,18 @@ import app.crimera.patches.instagram.entity.userdata.FollowerCountUserTreeDictFi
 import app.crimera.patches.instagram.entity.userdata.FollowingCountUserTreeDictFingerprint
 import app.crimera.patches.instagram.entity.userdata.ProfilePicIdUserTreeDictFingerprint
 import app.crimera.patches.instagram.entity.userdata.userDataEntity
+import app.crimera.patches.instagram.misc.settings.SetCurrentUserSessionFingerprint
+import app.crimera.patches.instagram.misc.settings.SettingsStatusLoadFingerprint
 import app.crimera.patches.instagram.misc.settings.settingsPatch
 import app.crimera.patches.instagram.misc.userProfile.friendshipStatusIndicatorPatch
 import app.crimera.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
+import app.crimera.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
 import app.crimera.patches.instagram.utils.Constants.USER_SESSION_CLASS
 import app.crimera.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.classDefByOrNull
@@ -18,6 +23,7 @@ import app.morphe.patcher.patch.mutableClassDefBy
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.util.getReference
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
+import app.morphe.util.findInstructionIndicesReversedOrThrow
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
@@ -31,6 +37,8 @@ import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.util.MethodUtil
+
+private const val PROFILE_ANALYZER_CLASS = "$PATCHES_DESCRIPTOR/analyzer/ProfileAnalyzer;"
 
 private val MOVE_OBJECT_OPCODES = setOf(Opcode.MOVE_OBJECT, Opcode.MOVE_OBJECT_FROM16, Opcode.MOVE_OBJECT_16)
 
@@ -49,6 +57,13 @@ val profileAnalyzerPatch =
             FollowerCountUserTreeDictFingerprint.match()
             FollowingCountUserTreeDictFingerprint.match()
             ProfilePicIdUserTreeDictFingerprint.match()
+
+            // The session manager method that makes a session current; the per-account patch may hook it too.
+            val currentSession = SetCurrentUserSessionFingerprint.method
+            val currentSessionReturn = currentSession.findInstructionIndicesReversedOrThrow(Opcode.RETURN_OBJECT)
+                .singleOrNull() ?: throw PatchException("Expected a single return in the current session method")
+            val currentSessionRegister =
+                currentSession.getInstruction<OneRegisterInstruction>(currentSessionReturn).registerA
 
             val builder = FollowListRequestFingerprint.originalMethod
             val runner = InlineSchedulerFingerprint.originalMethod
@@ -163,6 +178,16 @@ val profileAnalyzerPatch =
                         """.trimIndent(),
                     )
                 }
+
+            currentSession.addInstruction(
+                currentSessionReturn,
+                "invoke-static/range { v$currentSessionRegister .. v$currentSessionRegister }, " +
+                    "$PROFILE_ANALYZER_CLASS->onCurrentSession($USER_SESSION_CLASS)V",
+            )
+            SettingsStatusLoadFingerprint.method.addInstruction(
+                0,
+                "invoke-static {}, $PROFILE_ANALYZER_CLASS->onAppStart()V",
+            )
 
             enableSettings("profileAnalyzer")
         }

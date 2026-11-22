@@ -824,8 +824,8 @@ public class ScreenBuilder {
             );
         }
         if (SettingsStatus.profileAnalyzer) {
-            addPreference(ProfileAnalyzer.bindRow(helper.buttonPreference(
-                    str("piko_profile_analyzer"), "", "profile_analyzer")));
+            addPreference(helper.buttonPreference(str("piko_profile_analyzer"),
+                    ProfileAnalyzer.rowSummary(context), "profile_analyzer"));
         }
         if (SettingsStatus.exactProfileCounts) {
             addPreference(helper.switchPreference(
