@@ -79,6 +79,8 @@ public final class ActionConfirm {
     /** From a confirmed button's setOnClickListener, which Instagram calls on every bind. */
     public static void onClickListenerSet(View button) {
         try {
+            // Counts only tell a prompt from a later bind, so none are needed while nothing can ask.
+            if (bindCounts.isEmpty() && !Pref.confirmFollow()) return;
             bindCounts.put(button, bindCount(button) + 1);
         } catch (Throwable t) {
             Logger.printException(() -> "onClickListenerSet failure", t);

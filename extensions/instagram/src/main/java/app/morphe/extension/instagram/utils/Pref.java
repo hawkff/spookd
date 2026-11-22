@@ -9,6 +9,7 @@ package app.morphe.extension.instagram.utils;
 
 import java.util.Set;
 import java.util.HashSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import android.app.Activity;
@@ -228,8 +229,13 @@ public class Pref {
         return SharedPref.getBooleanPref(focusLockSelection(key));
     }
 
+    private static final ConcurrentHashMap<String, BooleanSetting> FOCUS_LOCK_SELECTIONS = new ConcurrentHashMap<>();
+
     public static BooleanSetting focusLockSelection(String key) {
-        return new BooleanSetting(FocusLock.SELECTION_PREFIX + key, false, NOT_REQUIRED);
+        BooleanSetting setting = FOCUS_LOCK_SELECTIONS.get(key);
+        if (setting != null) return setting;
+        return FOCUS_LOCK_SELECTIONS.computeIfAbsent(key,
+                k -> new BooleanSetting(FocusLock.SELECTION_PREFIX + k, false, NOT_REQUIRED));
     }
 
     public static String focusLockDurationMinutes() {
@@ -569,7 +575,14 @@ public class Pref {
         return SharedPref.getStringPref(Settings.CHANGE_LIKE_ANIMATION);
     }
 
+    private static final Cached<Float> STORY_RING_SIZE =
+            new Cached<>(Pref::loadStoryRingSize, Settings.CUSTOMISE_STORY_RING_SIZE.key);
+
     public static float customiseStoryRingSize() {
+        return STORY_RING_SIZE.get();
+    }
+
+    private static float loadStoryRingSize() {
         try {
             return Float.parseFloat(SharedPref.getStringPref(Settings.CUSTOMISE_STORY_RING_SIZE));
         } catch (Exception ex) {
