@@ -312,8 +312,7 @@ public final class SpookdMigration {
             case MERGE_DIRECTORY:
                 return mergeDirectory(file(app, move.from), file(app, move.to));
             case DELETE:
-                if (!deleteRecursively(file(app, move.from))) log("Could not delete " + move.from, null);
-                return true;
+                return deleteRecursively(file(app, move.from));
             default:
                 log("Kept both " + move.from + " and " + move.to, null);
                 return true;

@@ -396,6 +396,26 @@ public final class SpookdMigrationTest {
     }
 
     @Test
+    public void aFailedDeleteIsRetriedAtTheNextStart() throws Exception {
+        File share = new File(app.getCacheDir(), "piko_share");
+        writeFile(new File(share, "d.jpg"), "D");
+        // A read-only folder keeps its files, so the delete fails.
+        assertTrue(share.setWritable(false));
+        try {
+            SpookdMigration.run(app);
+        } finally {
+            share.setWritable(true);
+        }
+        assertTrue(share.exists());
+        assertFalse(marker().exists());
+
+        SpookdMigration.run(app);
+
+        assertFalse(share.exists());
+        assertTrue(marker().exists());
+    }
+
+    @Test
     public void notificationChannelsKeepTheirImportance() {
         NotificationManager manager = app.getSystemService(NotificationManager.class);
         manager.createNotificationChannel(new NotificationChannel("piko_profile_analyzer", "Profile analyzer",
