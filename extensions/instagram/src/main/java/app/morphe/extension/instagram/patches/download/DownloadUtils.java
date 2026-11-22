@@ -44,6 +44,7 @@ import app.morphe.extension.instagram.constants.PostType;
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.patches.download.gallery.Gallery;
 import app.morphe.extension.instagram.patches.download.gallery.GalleryItem;
+import app.morphe.extension.instagram.patches.download.gallery.GalleryKind;
 import app.morphe.extension.instagram.patches.download.gallery.GalleryTab;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.utils.Pref;
@@ -747,7 +748,7 @@ public class DownloadUtils {
     public static void downloadMediaUrl(Context context, String mediaUrl, String subFolder, String fileName,
                                         String ownerUsername) throws Exception {
         GalleryItem item = Gallery.enabled() ? new GalleryItem(GalleryTab.of(null, null, subFolder),
-                Gallery.kindOf(fileName), ownerUsername, null, null, null, Gallery.accountId(), null) : null;
+                GalleryKind.of(fileName), ownerUsername, null, null, null, Gallery.accountId(), null) : null;
         enqueueDownload(context, createDownloadRequest(mediaUrl, subFolder, fileName, item));
     }
 
@@ -997,8 +998,7 @@ public class DownloadUtils {
             request.conflictPolicy = DownloadRequest.ConflictPolicy.OVERWRITE;
         }
         if (item != null) {
-            request.privateTarget = Gallery.target(item, subFolder, fileName,
-                    request.conflictPolicy == DownloadRequest.ConflictPolicy.OVERWRITE);
+            request.privateTarget = Gallery.target(item, subFolder, fileName, request.conflictPolicy);
         }
         return request;
     }

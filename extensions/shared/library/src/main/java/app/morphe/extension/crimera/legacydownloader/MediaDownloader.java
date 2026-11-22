@@ -225,12 +225,18 @@ public class MediaDownloader {
         notificationManager.notify(notificationId, builder.build());
         showToast(downloadStartString);
         File part = target.partFile();
+        boolean published;
         try {
             downloadSources(request, Uri.fromFile(part), builder, notificationId);
-            target.publish(part);
+            published = target.publish(part);
         } finally {
             // Published parts were already renamed away.
             part.delete();
+        }
+        if (!published) {
+            notificationManager.cancel(notificationId);
+            showToast(ExtensionStrings.DOWNLOAD_MEDIA_EXISTS);
+            return;
         }
         String downloadCompletedString = ExtensionStrings.DOWNLOAD_COMPLETED + request.fileName;
         // No tap action: a private file cannot be handed to another app's viewer.

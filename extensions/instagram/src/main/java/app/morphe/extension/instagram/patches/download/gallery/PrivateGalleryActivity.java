@@ -27,7 +27,6 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -633,19 +632,16 @@ public final class PrivateGalleryActivity {
                 } finally {
                     media.close();
                 }
-                if (bitmap != null && cached != null) writeJpeg(cached, bitmap);
-                return bitmap;
-            }
-
-            private void writeJpeg(File file, Bitmap bitmap) {
-                try {
-                    if (!dir.isDirectory() && !dir.mkdirs()) return;
-                    try (FileOutputStream out = new FileOutputStream(file)) {
-                        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out);
+                // The store writes it only while the item still exists, so a delete meanwhile leaves none.
+                if (bitmap != null && cached != null) {
+                    try {
+                        GalleryStore.get().writeThumb(item.id, item.file,
+                                out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out));
+                    } catch (Exception e) {
+                        Logger.printInfo(() -> "Private gallery: thumbnail not cached for " + item.key(), e);
                     }
-                } catch (Exception e) {
-                    file.delete();
                 }
+                return bitmap;
             }
         }
 

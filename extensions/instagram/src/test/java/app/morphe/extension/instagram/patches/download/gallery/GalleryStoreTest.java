@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(RobolectricTestRunner.class)
@@ -294,6 +295,100 @@ public final class GalleryStoreTest {
         assertEquals(0, rows());
         assertFalse(file.exists());
         assertFalse(thumb.exists());
+    }
+
+    @Test
+    public void deleteDuringThumbnailDecodeLeavesNoThumbnail() throws Exception {
+        long id = publish("alice", "a.jpg", false);
+        File file = file(id);
+        File thumb = new File(thumbs, id + ".jpg");
+        CountDownLatch decoding = new CountDownLatch(1);
+        CountDownLatch deleted = new CountDownLatch(1);
+        Object[] result = new Object[1];
+        Thread worker = new Thread(() -> {
+            try {
+                decoding.countDown();
+                // The decode is still running when the delete lands.
+                assertTrue(deleted.await(10, TimeUnit.SECONDS));
+                result[0] = store.writeThumb(id, file, out -> {
+                    try {
+                        out.write(1);
+                        return true;
+                    } catch (IOException e) {
+                        return false;
+                    }
+                });
+            } catch (Throwable t) {
+                result[0] = t;
+            }
+        });
+        worker.start();
+        assertTrue(decoding.await(10, TimeUnit.SECONDS));
+        assertTrue(store.delete(id));
+        deleted.countDown();
+        worker.join(10_000);
+
+        assertEquals(Boolean.FALSE, result[0]);
+        assertFalse(thumb.exists());
+    }
+
+    @Test
+    public void thumbnailOfTheCurrentFileIsWrittenAndAReplacedOneIsNot() throws Exception {
+        long id = publish("alice", "a.jpg", false);
+        File old = file(id);
+        File thumb = new File(thumbs, id + ".jpg");
+        assertTrue(store.writeThumb(id, old, out -> true));
+        assertTrue(thumb.exists());
+
+        assertEquals(id, store.publish(part("new"), POST, "alice", "a.jpg", true));
+        assertFalse(thumb.exists());
+        assertFalse(store.writeThumb(id, old, out -> true));
+        assertFalse(thumb.exists());
+    }
+
+    @Test
+    public void recoveryDropsThumbnailsWithoutARow() throws Exception {
+        long id = publish("alice", "a.jpg", false);
+        File kept = new File(thumbs, id + ".jpg");
+        File orphan = new File(thumbs, (id + 1) + ".jpg");
+        write(kept, "t");
+        write(orphan, "t");
+
+        restart();
+        store.list(GalleryTab.POSTS);
+
+        assertTrue(kept.exists());
+        assertFalse(orphan.exists());
+    }
+
+    @Test
+    public void simultaneousSkipRequestsOfOneNameSaveOneItem() throws Exception {
+        File[] parts = {part("one"), part("two")};
+        long[] ids = new long[2];
+        Throwable[] failures = new Throwable[2];
+        CountDownLatch start = new CountDownLatch(1);
+        Thread[] threads = new Thread[2];
+        for (int i = 0; i < 2; i++) {
+            int index = i;
+            threads[i] = new Thread(() -> {
+                try {
+                    assertTrue(start.await(10, TimeUnit.SECONDS));
+                    ids[index] = store.publish(parts[index], POST, "alice", "a.jpg", GalleryStore.Conflict.SKIP);
+                } catch (Throwable t) {
+                    failures[index] = t;
+                }
+            });
+            threads[i].start();
+        }
+        start.countDown();
+        for (Thread thread : threads) thread.join(10_000);
+
+        assertNull(failures[0]);
+        assertNull(failures[1]);
+        assertEquals(1, rows());
+        assertTrue((ids[0] == -1) != (ids[1] == -1));
+        assertFalse(parts[0].exists());
+        assertFalse(parts[1].exists());
     }
 
     @Test

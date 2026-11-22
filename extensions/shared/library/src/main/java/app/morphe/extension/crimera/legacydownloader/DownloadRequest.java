@@ -52,8 +52,11 @@ public class DownloadRequest {
         /** Whether an item with this request's name is already saved, for the skip policy. */
         boolean exists();
 
-        /** Makes the finished part a saved item; on throw the part is deleted. */
-        void publish(File part) throws IOException;
+        /**
+         * Makes the finished part a saved item; false when the skip policy found the name taken
+         * meanwhile, checked atomically with saving. On throw or false the part is deleted.
+         */
+        boolean publish(File part) throws IOException;
     }
 
     public DownloadRequest(String url, String subFolder, String fileName) {

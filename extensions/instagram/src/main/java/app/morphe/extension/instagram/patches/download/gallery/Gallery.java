@@ -6,7 +6,6 @@ import android.os.Build;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Locale;
 
 import app.morphe.extension.crimera.legacydownloader.DownloadRequest;
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
@@ -49,7 +48,10 @@ public final class Gallery {
 
     /** Saves a download as a gallery item; its calls run on the download thread. */
     public static DownloadRequest.PrivateTarget target(GalleryItem item, String subFolder, String fileName,
-                                                       boolean overwrite) {
+                                                       DownloadRequest.ConflictPolicy policy) {
+        GalleryStore.Conflict conflict = policy == DownloadRequest.ConflictPolicy.SKIP ? GalleryStore.Conflict.SKIP
+                : policy == DownloadRequest.ConflictPolicy.OVERWRITE ? GalleryStore.Conflict.OVERWRITE
+                : GalleryStore.Conflict.RENAME;
         return new DownloadRequest.PrivateTarget() {
             @Override
             public File partFile() {
@@ -62,9 +64,10 @@ public final class Gallery {
             }
 
             @Override
-            public void publish(File part) throws IOException {
-                GalleryStore.get().publish(part, item, subFolder, fileName, overwrite);
+            public boolean publish(File part) throws IOException {
+                if (GalleryStore.get().publish(part, item, subFolder, fileName, conflict) == -1) return false;
                 prune();
+                return true;
             }
         };
     }
@@ -76,13 +79,5 @@ public final class Gallery {
         } catch (Exception e) {
             Logger.printException(() -> "Gallery cleanup failed", e);
         }
-    }
-
-    /** The kind of a download that carries no media type, from its file name's extension. */
-    public static String kindOf(String fileName) {
-        String name = fileName == null ? "" : fileName.toLowerCase(Locale.ROOT);
-        if (name.matches(".*\\.(mp4|mov|webm|mkv|3gp)")) return GalleryItem.VIDEO;
-        if (name.matches(".*\\.(m4a|mp3|aac|ogg|opus|wav|amr)")) return GalleryItem.AUDIO;
-        return GalleryItem.PHOTO;
     }
 }
