@@ -54,17 +54,18 @@ public final class SpookdMigration {
             {"first_time_piko", "first_time_spookd"},
     };
 
+    // Old and new database, then the media directory its rows point into, which must move with it.
     private static final String[][] DATABASES = {
-            {"databases/piko_dm_vault.db", "databases/spookd_dm_vault.db"},
-            {"databases/piko_instants_vault.db", "databases/spookd_instants_vault.db"},
-            {"databases/piko_follow_snapshots.db", "databases/spookd_follow_snapshots.db"},
-            {"databases/piko_gallery.db", "databases/spookd_gallery.db"},
+            {"databases/piko_dm_vault.db", "databases/spookd_dm_vault.db",
+                    "no_backup/piko_vault", "no_backup/spookd_vault"},
+            {"databases/piko_instants_vault.db", "databases/spookd_instants_vault.db", null, null},
+            {"databases/piko_follow_snapshots.db", "databases/spookd_follow_snapshots.db", null, null},
+            {"databases/piko_gallery.db", "databases/spookd_gallery.db",
+                    "no_backup/piko_gallery", "no_backup/spookd_gallery"},
     };
     private static final String[] DATABASE_SIDECARS = {"-journal", "-wal", "-shm"};
 
     private static final String[][] DIRECTORIES = {
-            {"no_backup/piko_vault", "no_backup/spookd_vault"},
-            {"no_backup/piko_gallery", "no_backup/spookd_gallery"},
             {"cache/piko_gallery_thumbs", "cache/spookd_gallery_thumbs"},
     };
     private static final String SHARE_DIRECTORY = "cache/piko_share";
@@ -150,7 +151,7 @@ public final class SpookdMigration {
 
     /**
      * Groups of moves in the order they run. A group moves completely or is renamed back, so a
-     * preference file never loses its .bak and a database never loses its sidecars.
+     * preference file never loses its .bak and a database never loses its sidecars or media.
      */
     static List<List<Move>> plan(Set<String> existing) {
         List<List<Move>> groups = new ArrayList<>();
@@ -175,16 +176,29 @@ public final class SpookdMigration {
         }
 
         for (String[] db : DATABASES) {
-            if (!existing.contains(db[0])) continue;
-            boolean conflict = existing.contains(db[1]);
+            boolean oldMedia = db[2] != null && existing.contains(db[2]);
+            if (!existing.contains(db[0])) {
+                // The database already moved: its media follows it.
+                if (oldMedia) {
+                    Op op = existing.contains(db[3]) ? Op.MERGE_DIRECTORY : Op.RENAME;
+                    groups.add(Collections.singletonList(new Move(op, db[2], db[3])));
+                }
+                continue;
+            }
+            boolean conflict = existing.contains(db[1]) || (oldMedia && existing.contains(db[3]));
             for (String sidecar : DATABASE_SIDECARS) {
                 conflict |= existing.contains(db[0] + sidecar) && existing.contains(db[1] + sidecar);
             }
+            List<Move> group = new ArrayList<>();
             if (conflict) {
-                groups.add(Collections.singletonList(new Move(Op.KEEP_BOTH, db[0], db[1])));
+                // The old media stays with the old database, so no recovery reconciles it against other rows.
+                group.add(new Move(Op.KEEP_BOTH, db[0], db[1]));
+                if (oldMedia) group.add(new Move(Op.KEEP_BOTH, db[2], db[3]));
+                groups.add(group);
                 continue;
             }
-            List<Move> group = new ArrayList<>();
+            // Media first and the database last: a failed move renames the whole pair back.
+            if (oldMedia) group.add(new Move(Op.RENAME, db[2], db[3]));
             for (String sidecar : DATABASE_SIDECARS) {
                 renameIfExists(group, existing, db[0] + sidecar, db[1] + sidecar);
             }

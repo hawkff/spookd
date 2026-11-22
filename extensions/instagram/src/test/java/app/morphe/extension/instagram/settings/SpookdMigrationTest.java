@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -21,6 +22,8 @@ import org.robolectric.annotation.Config;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -30,10 +33,20 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.LongSupplier;
+import javax.crypto.spec.SecretKeySpec;
+
+import app.morphe.extension.instagram.patches.dm.vault.MediaVault;
+import app.morphe.extension.instagram.patches.dm.vault.VaultFile;
+import app.morphe.extension.instagram.patches.download.gallery.GalleryDb;
+import app.morphe.extension.instagram.patches.download.gallery.GalleryStore;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 29, manifest = Config.NONE)
 public final class SpookdMigrationTest {
+    private static final long NOW = 1_700_000_000_000L;
+
     private Context app;
 
     @Before
@@ -51,11 +64,11 @@ public final class SpookdMigrationTest {
                         + " RENAME shared_prefs/piko_settings.xml -> shared_prefs/spookd_settings.xml]",
                 "[RENAME shared_prefs/piko_settings_42.xml -> shared_prefs/spookd_settings_42.xml]",
                 "[RENAME shared_prefs/piko_settings_accounts.xml -> shared_prefs/spookd_settings_accounts.xml]",
-                "[RENAME databases/piko_dm_vault.db-wal -> databases/spookd_dm_vault.db-wal,"
+                "[RENAME no_backup/piko_vault -> no_backup/spookd_vault,"
+                        + " RENAME databases/piko_dm_vault.db-wal -> databases/spookd_dm_vault.db-wal,"
                         + " RENAME databases/piko_dm_vault.db-shm -> databases/spookd_dm_vault.db-shm,"
                         + " RENAME databases/piko_dm_vault.db -> databases/spookd_dm_vault.db]",
                 "[RENAME databases/piko_gallery.db -> databases/spookd_gallery.db]",
-                "[RENAME no_backup/piko_vault -> no_backup/spookd_vault]",
                 "[RENAME cache/piko_gallery_thumbs -> cache/spookd_gallery_thumbs]",
                 "[DELETE cache/piko_share]",
                 "[RENAME files/piko_recommended_flags_v3.json -> files/spookd_recommended_flags_v3.json]"
@@ -83,22 +96,28 @@ public final class SpookdMigrationTest {
         assertEquals(Arrays.asList(
                 "[MERGE_PREFS shared_prefs/piko_hidden_chats -> shared_prefs/spookd_hidden_chats]",
                 "[MERGE_PREFS shared_prefs/piko_settings -> shared_prefs/spookd_settings]",
-                "[KEEP_BOTH databases/piko_dm_vault.db -> databases/spookd_dm_vault.db]",
-                "[KEEP_BOTH databases/piko_gallery.db -> databases/spookd_gallery.db]",
-                "[MERGE_DIRECTORY no_backup/piko_gallery -> no_backup/spookd_gallery]",
+                "[KEEP_BOTH databases/piko_dm_vault.db -> databases/spookd_dm_vault.db,"
+                        + " KEEP_BOTH no_backup/piko_vault -> no_backup/spookd_vault]",
+                "[KEEP_BOTH databases/piko_gallery.db -> databases/spookd_gallery.db,"
+                        + " KEEP_BOTH no_backup/piko_gallery -> no_backup/spookd_gallery]",
+                "[MERGE_DIRECTORY cache/piko_gallery_thumbs -> cache/spookd_gallery_thumbs]",
                 "[DELETE files/piko_recommended_flags_v3.json]"
         ), plan(
                 "shared_prefs/piko_settings.xml",
                 "shared_prefs/spookd_settings.xml",
                 "shared_prefs/piko_hidden_chats.xml",
-                "shared_prefs/spookd_hidden_chats.xml.bak",
+                "shared_prefs/spookd_hidden_chats.xml",
+                // Both vault databases: the old media stays even though the new directory is missing.
                 "databases/piko_dm_vault.db",
                 "databases/spookd_dm_vault.db",
+                "no_backup/piko_vault",
                 "databases/piko_gallery.db",
                 "databases/piko_gallery.db-wal",
                 "databases/spookd_gallery.db-wal",
                 "no_backup/piko_gallery",
                 "no_backup/spookd_gallery",
+                "cache/piko_gallery_thumbs",
+                "cache/spookd_gallery_thumbs",
                 "files/piko_recommended_flags_v3.json",
                 "files/spookd_recommended_flags_v3.json"));
     }
@@ -113,15 +132,20 @@ public final class SpookdMigrationTest {
                 "no_backup/spookd_vault"));
         assertEquals(Arrays.asList(
                 "[RENAME shared_prefs/piko_hidden_chats.xml -> shared_prefs/spookd_hidden_chats.xml]",
-                "[RENAME databases/piko_dm_vault.db -> databases/spookd_dm_vault.db]"
+                "[RENAME databases/piko_dm_vault.db -> databases/spookd_dm_vault.db]",
+                "[MERGE_DIRECTORY no_backup/piko_gallery -> no_backup/spookd_gallery]"
         ), plan(
                 "shared_prefs/spookd_settings.xml",
                 "shared_prefs/piko_hidden_chats.xml",
-                // The sidecars moved, the database did not.
+                // The media and sidecars moved, the database did not.
                 "databases/piko_dm_vault.db",
                 "databases/spookd_dm_vault.db-wal",
                 "databases/spookd_dm_vault.db-shm",
-                "no_backup/spookd_vault"));
+                "no_backup/spookd_vault",
+                // The database moved, part of its media did not.
+                "databases/spookd_gallery.db",
+                "no_backup/piko_gallery",
+                "no_backup/spookd_gallery"));
     }
 
     // Import of old exports.
@@ -371,6 +395,173 @@ public final class SpookdMigrationTest {
         assertNull(manager.getNotificationChannel("piko_profile_analyzer"));
         assertNull(manager.getNotificationChannel("piko_deleted_messages"));
         assertTrue(marker().exists());
+    }
+
+    // Databases with their media, followed by each consumer's own recovery.
+
+    @Test
+    public void galleryPairMovesAndRecoveryKeepsItsMedia() throws Exception {
+        galleryDb("piko_gallery.db", "a.jpg");
+        writeFile(new File(app.getNoBackupFilesDir(), "piko_gallery/a.jpg"), "A");
+
+        SpookdMigration.run(app);
+        recoverGallery();
+
+        assertEquals("A", readFile(new File(app.getNoBackupFilesDir(), "spookd_gallery/a.jpg")));
+        assertEquals(Arrays.asList("a.jpg"), column("spookd_gallery.db", "SELECT file FROM gallery_items"));
+    }
+
+    @Test
+    public void galleryConflictKeepsTheOldMediaWithTheOldDatabase() throws Exception {
+        galleryDb("piko_gallery.db", "a.jpg");
+        writeFile(new File(app.getNoBackupFilesDir(), "piko_gallery/a.jpg"), "A");
+        galleryDb("spookd_gallery.db", "b.jpg");
+        writeFile(new File(app.getNoBackupFilesDir(), "spookd_gallery/b.jpg"), "B");
+
+        SpookdMigration.run(app);
+        recoverGallery();
+
+        assertEquals("A", readFile(new File(app.getNoBackupFilesDir(), "piko_gallery/a.jpg")));
+        assertEquals("B", readFile(new File(app.getNoBackupFilesDir(), "spookd_gallery/b.jpg")));
+        assertFalse(new File(app.getNoBackupFilesDir(), "spookd_gallery/a.jpg").exists());
+        assertEquals(Arrays.asList("a.jpg"), column("piko_gallery.db", "SELECT file FROM gallery_items"));
+        assertTrue(marker().exists());
+    }
+
+    @Test
+    public void vaultPairMovesAndRecoveryKeepsItsMedia() throws Exception {
+        vaultDb("piko_dm_vault.db", 1);
+        writeFile(new File(app.getNoBackupFilesDir(), "piko_vault/1.pkv"), "one");
+
+        SpookdMigration.run(app);
+        recoverVault();
+
+        assertEquals("one", readFile(new File(app.getNoBackupFilesDir(), "spookd_vault/1.pkv")));
+        assertEquals(Arrays.asList("stored"), column("spookd_dm_vault.db", "SELECT state FROM saved_media"));
+    }
+
+    @Test
+    public void vaultConflictKeepsTheOldMediaWithTheOldDatabase() throws Exception {
+        vaultDb("piko_dm_vault.db", 1);
+        writeFile(new File(app.getNoBackupFilesDir(), "piko_vault/1.pkv"), "one");
+        vaultDb("spookd_dm_vault.db", 2);
+        writeFile(new File(app.getNoBackupFilesDir(), "spookd_vault/2.pkv"), "two");
+
+        SpookdMigration.run(app);
+        recoverVault();
+
+        assertEquals("one", readFile(new File(app.getNoBackupFilesDir(), "piko_vault/1.pkv")));
+        assertEquals("two", readFile(new File(app.getNoBackupFilesDir(), "spookd_vault/2.pkv")));
+        assertFalse(new File(app.getNoBackupFilesDir(), "spookd_vault/1.pkv").exists());
+        assertEquals(Arrays.asList("stored"), column("piko_dm_vault.db", "SELECT state FROM saved_media"));
+    }
+
+    @Test
+    public void aDatabaseThatCannotMoveTakesItsMediaBack() throws Exception {
+        vaultDb("piko_dm_vault.db", 1);
+        writeFile(new File(app.getNoBackupFilesDir(), "piko_vault/1.pkv"), "one");
+        File databases = app.getDatabasePath("piko_dm_vault.db").getParentFile();
+        // A read-only databases directory makes the database rename fail after the media moved.
+        assertTrue(databases.setWritable(false));
+        try {
+            SpookdMigration.run(app);
+        } finally {
+            databases.setWritable(true);
+        }
+
+        assertEquals("one", readFile(new File(app.getNoBackupFilesDir(), "piko_vault/1.pkv")));
+        assertFalse(new File(app.getNoBackupFilesDir(), "spookd_vault").exists());
+        assertTrue(app.getDatabasePath("piko_dm_vault.db").exists());
+        assertFalse(marker().exists());
+
+        SpookdMigration.run(app);
+        recoverVault();
+
+        assertEquals("one", readFile(new File(app.getNoBackupFilesDir(), "spookd_vault/1.pkv")));
+        assertEquals(Arrays.asList("stored"), column("spookd_dm_vault.db", "SELECT state FROM saved_media"));
+    }
+
+    /** A gallery database with the real schema and one row for {@code file}. */
+    private void galleryDb(String name, String file) throws Exception {
+        Constructor<GalleryDb> constructor = GalleryDb.class.getDeclaredConstructor(Context.class);
+        constructor.setAccessible(true);
+        try (SQLiteDatabase db = openDb(name)) {
+            constructor.newInstance(app).onCreate(db);
+            db.setVersion(1);
+            ContentValues values = new ContentValues();
+            values.put("file", file);
+            values.put("tab", "posts");
+            values.put("kind", "photo");
+            values.put("file_name", file);
+            values.put("saved_at", NOW);
+            values.put("size_bytes", 1);
+            db.insertOrThrow("gallery_items", null, values);
+        }
+    }
+
+    /** A vault database with the saved_media columns and one stored row with {@code id}. */
+    private void vaultDb(String name, long id) {
+        try (SQLiteDatabase db = openDb(name)) {
+            db.execSQL("CREATE TABLE saved_media (id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                    + " item_id TEXT NOT NULL UNIQUE, account_id TEXT, kind TEXT NOT NULL, url TEXT,"
+                    + " url_expires_at INTEGER NOT NULL, msg_timestamp INTEGER NOT NULL, state TEXT NOT NULL,"
+                    + " attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at INTEGER NOT NULL DEFAULT 0,"
+                    + " size_bytes INTEGER NOT NULL DEFAULT 0, mime TEXT)");
+            ContentValues values = new ContentValues();
+            values.put("id", id);
+            values.put("item_id", "item" + id);
+            values.put("kind", "photo");
+            values.put("url_expires_at", NOW);
+            values.put("msg_timestamp", NOW);
+            values.put("state", "stored");
+            values.put("size_bytes", 3);
+            db.insertOrThrow("saved_media", null, values);
+        }
+    }
+
+    private SQLiteDatabase openDb(String name) {
+        File file = app.getDatabasePath(name);
+        file.getParentFile().mkdirs();
+        return SQLiteDatabase.openOrCreateDatabase(file, null);
+    }
+
+    private List<String> column(String dbName, String sql) {
+        List<String> values = new ArrayList<>();
+        try (SQLiteDatabase db = openDb(dbName); Cursor cursor = db.rawQuery(sql, null)) {
+            while (cursor.moveToNext()) values.add(cursor.getString(0));
+        }
+        return values;
+    }
+
+    /** The gallery's startup recovery on the new database and directory, as {@code GalleryStore.get()} opens them. */
+    private void recoverGallery() throws Exception {
+        Constructor<GalleryStore> constructor = GalleryStore.class.getDeclaredConstructor(
+                SQLiteDatabase.class, File.class, File.class, LongSupplier.class);
+        constructor.setAccessible(true);
+        try (SQLiteDatabase db = openDb("spookd_gallery.db")) {
+            GalleryStore store = constructor.newInstance(db, new File(app.getNoBackupFilesDir(), "spookd_gallery"),
+                    new File(app.getCacheDir(), "spookd_gallery_thumbs"), (LongSupplier) () -> NOW);
+            store.exists("none", "none");
+        }
+    }
+
+    /** The vault's startup recovery on the new database and directory, as {@code MediaVault.get()} opens them. */
+    private void recoverVault() throws Exception {
+        Class<?> storeClass = Class.forName("app.morphe.extension.instagram.patches.dm.vault.VaultStore");
+        Constructor<?> storeConstructor = storeClass.getDeclaredConstructor(SQLiteDatabase.class);
+        storeConstructor.setAccessible(true);
+        Constructor<MediaVault> constructor = MediaVault.class.getDeclaredConstructor(storeClass,
+                Class.forName("app.morphe.extension.instagram.patches.dm.vault.MediaVault$ConnectionOpener"),
+                LongSupplier.class, VaultFile.Kek.class, File.class, ScheduledExecutorService.class);
+        constructor.setAccessible(true);
+        Method recover = MediaVault.class.getDeclaredMethod("recover");
+        recover.setAccessible(true);
+        try (SQLiteDatabase db = openDb("spookd_dm_vault.db")) {
+            VaultFile.Kek kek = () -> new SecretKeySpec(new byte[32], "AES");
+            MediaVault vault = constructor.newInstance(storeConstructor.newInstance(db), null,
+                    (LongSupplier) () -> NOW, kek, new File(app.getNoBackupFilesDir(), "spookd_vault"), null);
+            recover.invoke(vault);
+        }
     }
 
     private static List<String> plan(String... existing) {
