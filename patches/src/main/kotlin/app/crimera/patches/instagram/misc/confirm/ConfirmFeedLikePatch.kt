@@ -68,7 +68,7 @@ val confirmFeedLikePatch =
             if (method.getInstruction(likedRead).opcode != Opcode.MOVE_RESULT || liked > 255) return@execute
             // The replay passes the original arguments, so they must still be in place here.
             val firstParameter = method.implementation!!.registerCount - 6
-            if ((0 until likedRead).any { (method.getInstruction(it).writeRegister ?: -1) >= firstParameter }) {
+            if ((0..likedRead).any { (method.getInstruction(it).writeRegister ?: -1) >= firstParameter }) {
                 return@execute
             }
             // Inserted first so the gate below can branch to it: puts the liked state back.
