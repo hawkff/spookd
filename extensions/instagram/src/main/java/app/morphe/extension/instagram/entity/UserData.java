@@ -86,6 +86,18 @@ public class UserData extends Entity {
         return (String) super.getMethod(this.obj, "getId");
     }
 
+    public Integer getFollowerCount() throws Exception {
+        return (Integer) super.getMethod(getAdditionalUserInfo(), "methodName");
+    }
+
+    public Integer getFollowingCount() throws Exception {
+        return (Integer) super.getMethod(getAdditionalUserInfo(), "methodName");
+    }
+
+    public String getProfilePicId() throws Exception {
+        return (String) super.getMethod(getAdditionalUserInfo(), "methodName");
+    }
+
     public UserFriendshipStatus getUserFriendshipStatus() throws Exception {
         Object additionalUserInfo = getAdditionalUserInfo();
         Object friendshipStatusObject = super.getMethod(additionalUserInfo, "methodname");
