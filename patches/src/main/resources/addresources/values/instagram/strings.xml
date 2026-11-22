@@ -12,14 +12,14 @@
     <string name="piko_category_dev_options">Developer options</string>
     <string name="piko_enable_dev_options">Enable developer options</string>
     <string name="piko_enable_dev_options_desc">Long-press the Home tab to open developer options. If a menu appears, choose Developer options.</string>
-    <string name="piko_directly_open_metaconfig">Directly opens MetaConfig overrides</string>
+    <string name="piko_directly_open_metaconfig">Open MetaConfig overrides directly</string>
     <string name="piko_directly_open_metaconfig_desc">Long-press the Home tab to open MetaConfig overrides directly. If a menu appears, choose Developer options.</string>
     <string name="piko_export_dev_overrides">Export overrides</string>
     <string name="piko_import_dev_overrides">Import overrides</string>
     <string name="piko_import_id_mapping">Import mapping files</string>
     <string name="piko_download_id_mapping">Download mapping file</string>
     <string name="piko_missing_mapping_file">Missing mapping file</string>
-    <string name="piko_missing_mapping_file_desc">Without mapping file, developer options will not have proper names. Do you want to download it ?</string>
+    <string name="piko_missing_mapping_file_desc">Without mapping file, developer options will not have proper names. Do you want to download it?</string>
 
     <!-- Links Section -->
     <string name="piko_category_links">Links</string>
@@ -470,7 +470,7 @@
     <string name="piko_goto_piko_settings">Goto Piko settings</string>
     <string name="piko_welcome_message_home_long_press">To open Piko settings at any time, long-press the Home tab</string>
     <string name="piko_no_internet">Please connect to internet</string>
-    <string name="piko_tap_here">Tap here !!</string>
+    <string name="piko_tap_here">Tap here for Piko settings</string>
 
     <!-- Action Bar Section -->
     <string name="piko_category_action_bar">Action bar</string>
