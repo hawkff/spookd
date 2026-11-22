@@ -48,6 +48,8 @@ public final class ProfileAnalyzerActivity {
     private static final int LOAD = 0;
     private static final int CLEAR_HISTORY = 1;
     private static final int DELETE_DATA = 2;
+    // History survives scan pruning; older changes stay stored but are not listed.
+    private static final int HISTORY_LIMIT = 500;
     // Serial, so a clear or delete runs before the reload that follows it.
     private static final Executor DB_JOBS = Executors.newSingleThreadExecutor();
 
@@ -401,7 +403,7 @@ public final class ProfileAnalyzerActivity {
                     if (job == CLEAR_HISTORY) db.clearHistory(account);
                     else if (job == DELETE_DATA) db.deleteAccount(account);
                     PikoFollowDb.Scan scan = db.latestScan(account);
-                    List<PikoFollowDb.Change> history = db.history(account);
+                    List<PikoFollowDb.Change> history = db.history(account, HISTORY_LIMIT);
                     List<Object> found = scan == null ? new ArrayList<>() : rows(
                             db.notFollowingBack(account), db.followersNotFollowedBack(account),
                             db.mutuals(account), history);
@@ -413,7 +415,11 @@ public final class ProfileAnalyzerActivity {
                 }
                 Loaded result = loaded;
                 Utils.runOnMainThread(() -> {
-                    if (result == null || activity.isFinishing() || activity.isDestroyed()) return;
+                    if (activity.isFinishing() || activity.isDestroyed()) return;
+                    if (result == null) {
+                        PikoUtils.toast(str("piko_profile_analyzer_load_failed"));
+                        return;
+                    }
                     // A result for an account the screen no longer shows is dropped.
                     if (!sameAccount() || !result.accountId.equals(accountId)) return;
                     bind(result);

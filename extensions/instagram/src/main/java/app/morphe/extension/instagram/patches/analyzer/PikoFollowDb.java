@@ -243,13 +243,19 @@ public final class PikoFollowDb extends SQLiteOpenHelper {
 
     /** The history, newest first, with each account's latest stored identity. */
     public List<Change> history(String accountId) {
+        return history(accountId, 0);
+    }
+
+    /** The newest {@code limit} changes, or all of them when {@code limit} is 0. */
+    public List<Change> history(String accountId, int limit) {
         List<Change> out = new ArrayList<>();
         try (Cursor c = getReadableDatabase().rawQuery(
                 "SELECT c.user_id, c.kind, c.old_value, c.new_value, c.seen_at,"
                         + " u.user_id, u.username, u.full_name, u.verified, u.pic_id"
                         + " FROM follow_changes c LEFT JOIN follow_users u"
                         + " ON u.account_id = c.account_id AND u.user_id = c.user_id"
-                        + " WHERE c.account_id = ? ORDER BY c.id DESC", new String[]{accountId})) {
+                        + " WHERE c.account_id = ? ORDER BY c.id DESC"
+                        + (limit > 0 ? " LIMIT " + limit : ""), new String[]{accountId})) {
             while (c.moveToNext()) {
                 FollowUser user = c.isNull(5) ? null : new FollowUser(c.getString(5),
                         c.getString(6), c.getString(7), c.getInt(8) != 0, c.getString(9));
