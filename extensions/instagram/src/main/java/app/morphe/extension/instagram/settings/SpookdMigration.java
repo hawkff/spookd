@@ -128,6 +128,11 @@ public final class SpookdMigration {
         }
     }
 
+    /** Whether the migration finished; until then stores must not delete files or rows they cannot match. */
+    public static boolean isComplete(File noBackupDir) {
+        return new File(noBackupDir, MARKER).exists();
+    }
+
     /** Settings exports from older builds carry the v1 key names; values cannot contain {@code name="}. */
     public static String renameLegacyKeys(String xml) {
         for (String[] key : LEGACY_KEYS) {

@@ -77,6 +77,8 @@ public final class MediaVaultLifecycleTest {
         messages = constructor.newInstance(RuntimeEnvironment.getApplication());
         db = messages.getWritableDatabase();
         dir = tmp.newFolder("spookd_vault");
+        // Recovery deletes unmatched files only once the stored-data migration finished.
+        assertTrue(tmp.newFile("spookd_migration_v1").exists());
         network = new FakeNetwork();
         restart();
     }

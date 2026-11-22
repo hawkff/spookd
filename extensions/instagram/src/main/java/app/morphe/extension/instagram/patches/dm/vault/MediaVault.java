@@ -31,6 +31,7 @@ import javax.crypto.SecretKey;
 
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.db.PikoMessageDb;
+import app.morphe.extension.instagram.settings.SpookdMigration;
 import app.morphe.extension.instagram.utils.MediaUrls;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
@@ -489,17 +490,19 @@ public final class MediaVault {
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IllegalStateException("Cannot create " + dir);
         File[] files = dir.listFiles();
         if (files == null) throw new IllegalStateException("Cannot list " + dir);
+        // Files and rows may still sit under different names; the marker is in no_backup next to the folder.
+        boolean reconcile = SpookdMigration.isComplete(dir.getParentFile());
         // Files that cannot be deleted stay counted, so admission never ignores their space.
         long leftover = 0;
         for (File file : files) {
             String name = file.getName();
             if ((name.endsWith(PART) || (name.endsWith(PKV) && !keepFound(file, name, key)))
-                    && !unlink(file)) {
+                    && (!reconcile || !unlink(file))) {
                 leftover += file.length();
             }
         }
         for (long[] row : store.stored()) {
-            if (!file(row[0], PKV).exists()) store.markLost(row[0]);
+            if (reconcile && !file(row[0], PKV).exists()) store.markLost(row[0]);
         }
         synchronized (storageLock) {
             storedBytes = store.storedBytes() + leftover;

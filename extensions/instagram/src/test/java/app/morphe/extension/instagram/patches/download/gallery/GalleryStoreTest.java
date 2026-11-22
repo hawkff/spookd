@@ -56,6 +56,8 @@ public final class GalleryStoreTest {
         db = helper.getWritableDatabase();
         dir = tmp.newFolder("spookd_gallery");
         thumbs = tmp.newFolder("spookd_gallery_thumbs");
+        // Recovery deletes unmatched files only once the stored-data migration finished.
+        assertTrue(tmp.newFile("spookd_migration_v1").exists());
         restart();
     }
 

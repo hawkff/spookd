@@ -25,6 +25,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import app.morphe.extension.crimera.PikoUtils;
+import app.morphe.extension.instagram.settings.SpookdMigration;
 
 /**
  * Downloads saved as plain files in {@code no_backup/piko_gallery/}, one row each in
@@ -279,6 +280,11 @@ public final class GalleryStore {
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IllegalStateException("Cannot create " + dir);
         File[] files = dir.listFiles();
         if (files == null) throw new IllegalStateException("Cannot list " + dir);
+        // Files and rows may still sit under different names; the marker is in no_backup next to the folder.
+        if (!SpookdMigration.isComplete(dir.getParentFile())) {
+            recovered = true;
+            return;
+        }
         Map<String, Long> rows = new HashMap<>();
         try (Cursor c = db.rawQuery("SELECT file, id FROM gallery_items", null)) {
             while (c.moveToNext()) rows.put(c.getString(0), c.getLong(1));

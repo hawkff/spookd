@@ -565,41 +565,114 @@ public final class SpookdMigrationTest {
         assertEquals(Arrays.asList("stored"), column("spookd_dm_vault.db", "SELECT state FROM saved_media"));
     }
 
-    /** A gallery database with the real schema and one row for {@code file}. */
-    private void galleryDb(String name, String file) throws Exception {
+    @Test
+    public void aFailedRetryOfAnInterruptedGalleryMoveDeletesNoMedia() throws Exception {
+        galleryDb("piko_gallery.db", "a.jpg");
+        writeFile(new File(app.getNoBackupFilesDir(), "piko_gallery/a.jpg"), "A");
+        interruptAfterMediaMove("gallery", "gallery.db");
+
+        runWithReadOnlyStorage();
+        assertTrue(journalFile().exists());
+        assertFalse(marker().exists());
+        // The store opens its new, still empty database and recovers before any migration finished.
+        galleryDb("spookd_gallery.db");
+        recoverGallery();
+        assertEquals("A", readFile(new File(app.getNoBackupFilesDir(), "spookd_gallery/a.jpg")));
+
+        SpookdMigration.run(app);
+        recoverGallery();
+
+        assertEquals("A", readFile(new File(app.getNoBackupFilesDir(), "piko_gallery/a.jpg")));
+        assertEquals(Arrays.asList("a.jpg"), column("piko_gallery.db", "SELECT file FROM gallery_items"));
+        assertFalse(journalFile().exists());
+        assertTrue(marker().exists());
+    }
+
+    @Test
+    public void aFailedRetryOfAnInterruptedVaultMoveDeletesNoMedia() throws Exception {
+        vaultDb("piko_dm_vault.db", 1);
+        writeFile(new File(app.getNoBackupFilesDir(), "piko_vault/1.pkv"), "one");
+        interruptAfterMediaMove("vault", "dm_vault.db");
+
+        runWithReadOnlyStorage();
+        assertTrue(journalFile().exists());
+        assertFalse(marker().exists());
+        vaultDb("spookd_dm_vault.db");
+        recoverVault();
+        assertEquals("one", readFile(new File(app.getNoBackupFilesDir(), "spookd_vault/1.pkv")));
+
+        SpookdMigration.run(app);
+        recoverVault();
+
+        assertEquals("one", readFile(new File(app.getNoBackupFilesDir(), "piko_vault/1.pkv")));
+        assertEquals(Arrays.asList("stored"), column("piko_dm_vault.db", "SELECT state FROM saved_media"));
+        assertFalse(journalFile().exists());
+        assertTrue(marker().exists());
+    }
+
+    /** The first start journaled the pair and died after moving the media. */
+    private void interruptAfterMediaMove(String media, String db) throws IOException {
+        SpookdMigration.writeJournal(app, Arrays.asList(
+                rename("no_backup/piko_" + media, "no_backup/spookd_" + media),
+                rename("databases/piko_" + db, "databases/spookd_" + db)));
+        assertTrue(new File(app.getNoBackupFilesDir(), "piko_" + media)
+                .renameTo(new File(app.getNoBackupFilesDir(), "spookd_" + media)));
+    }
+
+    /** A start where neither the database nor the media can move, forward or back. */
+    private void runWithReadOnlyStorage() {
+        File noBackup = app.getNoBackupFilesDir();
+        File databases = app.getDatabasePath("spookd").getParentFile();
+        writeFile(new File(noBackup, "spookd_migration.lock"), "");
+        assertTrue(noBackup.setWritable(false));
+        assertTrue(databases.setWritable(false));
+        try {
+            SpookdMigration.run(app);
+        } finally {
+            noBackup.setWritable(true);
+            databases.setWritable(true);
+        }
+    }
+
+    /** A gallery database with the real schema and one row per file. */
+    private void galleryDb(String name, String... files) throws Exception {
         Constructor<GalleryDb> constructor = GalleryDb.class.getDeclaredConstructor(Context.class);
         constructor.setAccessible(true);
         try (SQLiteDatabase db = openDb(name)) {
             constructor.newInstance(app).onCreate(db);
             db.setVersion(1);
-            ContentValues values = new ContentValues();
-            values.put("file", file);
-            values.put("tab", "posts");
-            values.put("kind", "photo");
-            values.put("file_name", file);
-            values.put("saved_at", NOW);
-            values.put("size_bytes", 1);
-            db.insertOrThrow("gallery_items", null, values);
+            for (String file : files) {
+                ContentValues values = new ContentValues();
+                values.put("file", file);
+                values.put("tab", "posts");
+                values.put("kind", "photo");
+                values.put("file_name", file);
+                values.put("saved_at", NOW);
+                values.put("size_bytes", 1);
+                db.insertOrThrow("gallery_items", null, values);
+            }
         }
     }
 
-    /** A vault database with the saved_media columns and one stored row with {@code id}. */
-    private void vaultDb(String name, long id) {
+    /** A vault database with the saved_media columns and one stored row per id. */
+    private void vaultDb(String name, long... ids) {
         try (SQLiteDatabase db = openDb(name)) {
             db.execSQL("CREATE TABLE saved_media (id INTEGER PRIMARY KEY AUTOINCREMENT,"
                     + " item_id TEXT NOT NULL UNIQUE, account_id TEXT, kind TEXT NOT NULL, url TEXT,"
                     + " url_expires_at INTEGER NOT NULL, msg_timestamp INTEGER NOT NULL, state TEXT NOT NULL,"
                     + " attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at INTEGER NOT NULL DEFAULT 0,"
                     + " size_bytes INTEGER NOT NULL DEFAULT 0, mime TEXT)");
-            ContentValues values = new ContentValues();
-            values.put("id", id);
-            values.put("item_id", "item" + id);
-            values.put("kind", "photo");
-            values.put("url_expires_at", NOW);
-            values.put("msg_timestamp", NOW);
-            values.put("state", "stored");
-            values.put("size_bytes", 3);
-            db.insertOrThrow("saved_media", null, values);
+            for (long id : ids) {
+                ContentValues values = new ContentValues();
+                values.put("id", id);
+                values.put("item_id", "item" + id);
+                values.put("kind", "photo");
+                values.put("url_expires_at", NOW);
+                values.put("msg_timestamp", NOW);
+                values.put("state", "stored");
+                values.put("size_bytes", 3);
+                db.insertOrThrow("saved_media", null, values);
+            }
         }
     }
 
