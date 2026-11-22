@@ -50,6 +50,8 @@ public final class EphemeralMediaCaption {
     private static final int SEARCH_LIMIT = 1500;
     private static final Map<Class<?>, Field> BUBBLE_FIELDS = new ConcurrentHashMap<>();
     private static boolean captionCreated;
+    private static int bubbleId;
+    private static int placeholderId;
 
     private EphemeralMediaCaption() { }
 
@@ -123,7 +125,7 @@ public final class EphemeralMediaCaption {
     }
 
     private static View bubbleOf(Object holder) throws Exception {
-        int bubbleId = ResourceUtils.getIdentifier(ResourceType.ID, BUBBLE_ID);
+        if (bubbleId == 0) bubbleId = ResourceUtils.getIdentifier(ResourceType.ID, BUBBLE_ID);
         Field cached = BUBBLE_FIELDS.get(holder.getClass());
         if (cached != null) {
             View view = (View) cached.get(holder);
@@ -142,7 +144,7 @@ public final class EphemeralMediaCaption {
     }
 
     private static ViewGroup placeholderOf(View bubble) {
-        int placeholderId = ResourceUtils.getIdentifier(ResourceType.ID, PLACEHOLDER_ID);
+        if (placeholderId == 0) placeholderId = ResourceUtils.getIdentifier(ResourceType.ID, PLACEHOLDER_ID);
         View parent = bubble.getParent() instanceof View ? (View) bubble.getParent() : null;
         View grandParent = parent != null && parent.getParent() instanceof View ? (View) parent.getParent() : null;
         return grandParent instanceof ViewGroup && grandParent.getId() == placeholderId ? (ViewGroup) grandParent : null;

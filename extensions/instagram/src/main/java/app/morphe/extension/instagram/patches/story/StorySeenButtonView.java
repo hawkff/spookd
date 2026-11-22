@@ -25,6 +25,8 @@ final class StorySeenButtonView {
     private static final String[] ACTION_ID_NAMES = {
             "toolbar_like_container", "toolbar_reshare_button", "toolbar_menu_button"
     };
+    private static final int[] ACTION_IDS = new int[ACTION_ID_NAMES.length];
+    private static int actionRowId;
 
     private StorySeenButtonView() {
     }
@@ -37,12 +39,12 @@ final class StorySeenButtonView {
         if (root == null) {
             return null;
         }
-        View row = findView(root, "toolbar_buttons_container");
+        if (actionRowId == 0) actionRowId = ResourceUtils.getIdentifier(ResourceType.ID, "toolbar_buttons_container");
+        View row = findView(root, actionRowId);
         return row instanceof ViewGroup ? (ViewGroup) row : null;
     }
 
-    private static View findView(View root, String name) {
-        int id = ResourceUtils.getIdentifier(ResourceType.ID, name);
+    private static View findView(View root, int id) {
         return id == 0 ? null : root.findViewById(id);
     }
 
@@ -91,8 +93,9 @@ final class StorySeenButtonView {
     }
 
     private static View findActionAnchor(ViewGroup parent) {
-        for (String name : ACTION_ID_NAMES) {
-            View candidate = findView(parent, name);
+        for (int i = 0; i < ACTION_ID_NAMES.length; i++) {
+            if (ACTION_IDS[i] == 0) ACTION_IDS[i] = ResourceUtils.getIdentifier(ResourceType.ID, ACTION_ID_NAMES[i]);
+            View candidate = findView(parent, ACTION_IDS[i]);
             if (candidate != null && candidate.getParent() == parent
                     && candidate.getVisibility() == View.VISIBLE) {
                 return candidate;

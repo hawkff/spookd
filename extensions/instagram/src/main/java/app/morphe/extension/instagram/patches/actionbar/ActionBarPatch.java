@@ -62,6 +62,7 @@ public class ActionBarPatch {
                 }
             };
     private static boolean ghostModeListenerRegistered;
+    private static int addOutlineDrawableId;
 
     private static void runOnMainThread(Runnable action) {
         if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -178,9 +179,16 @@ public class ActionBarPatch {
 
     public static void hideProfileCreateButton(View view, int drawableId) {
         if (drawableId != 0 && !Pref.userProfileActionBarButtons().contains(Constants.AB_CREATE)
-                && drawableId == ResourceUtils.getIdentifier(ResourceType.DRAWABLE, "instagram_add_outline_24")) {
+                && drawableId == addOutlineDrawableId()) {
             view.setVisibility(View.GONE);
         }
+    }
+
+    private static int addOutlineDrawableId() {
+        if (addOutlineDrawableId == 0) {
+            addOutlineDrawableId = ResourceUtils.getIdentifier(ResourceType.DRAWABLE, "instagram_add_outline_24");
+        }
+        return addOutlineDrawableId;
     }
 
     public static void userProfileActionBarButton(Activity activity, ViewGroup viewGroup, UserSession userSession, Object userObject){

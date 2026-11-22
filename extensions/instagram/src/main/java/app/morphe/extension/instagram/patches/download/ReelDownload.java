@@ -52,6 +52,8 @@ public final class ReelDownload {
     /** The attribute the save icon is tinted with when its component carries no color filter of its own. */
     private static final String ICON_TINT_ATTRIBUTE = "igds_color_primary_button_on_media";
 
+    private static int downloadIconId;
+
     /** The copies the patch created. Weak, because the UFI builds fresh components on every render. */
     private static final Set<Object> COPIES = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
 
@@ -103,9 +105,12 @@ public final class ReelDownload {
         Copy copy = CURRENT.get();
         if (copy == null) return original;
         Context context = copy.context;
-        int drawableId = ResourceUtils.getIdentifier(context, ResourceType.DRAWABLE, DRAWABLE_DOWNLOAD_ICON);
-        if (drawableId == 0) throw new IllegalStateException("Missing drawable " + DRAWABLE_DOWNLOAD_ICON);
-        Drawable drawable = context.getDrawable(drawableId).mutate();
+        if (downloadIconId == 0) {
+            downloadIconId = ResourceUtils.getIdentifier(context, ResourceType.DRAWABLE, DRAWABLE_DOWNLOAD_ICON);
+        }
+        // A missing context fails the same way as a missing drawable.
+        if (downloadIconId == 0 || context == null) throw new IllegalStateException("Missing drawable " + DRAWABLE_DOWNLOAD_ICON);
+        Drawable drawable = context.getDrawable(downloadIconId).mutate();
         drawable.setColorFilter(copy.tint != null ? copy.tint : themeTint(copy.context));
         return drawable;
     }
