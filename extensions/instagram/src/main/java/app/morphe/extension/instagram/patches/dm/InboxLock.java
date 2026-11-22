@@ -241,7 +241,7 @@ public final class InboxLock {
         column.addView(lock, new LinearLayout.LayoutParams(Dim.dp48 * 2, Dim.dp48 * 2));
 
         TextView unlock = new TextView(activity);
-        unlock.setText(str("piko_inbox_lock_unlock"));
+        unlock.setText(str("spookd_inbox_lock_unlock"));
         unlock.setTextColor(UI.getThemedColour("igds_color_primary_text"));
         unlock.setTextSize(16);
         unlock.setGravity(Gravity.CENTER);
@@ -326,14 +326,14 @@ public final class InboxLock {
         KeyguardManager keyguard = (KeyguardManager) activity.getSystemService(Activity.KEYGUARD_SERVICE);
         // Without a screen lock there is nothing to check against, and locking would only trap the user.
         if (Build.VERSION.SDK_INT < 29 || keyguard == null || !keyguard.isDeviceSecure()) {
-            PikoUtils.toast(str("piko_inbox_lock_no_lock"));
+            PikoUtils.toast(str("spookd_inbox_lock_no_lock"));
             unlock();
             if (afterUnlock != null) afterUnlock.run();
             return;
         }
 
         BiometricPrompt.Builder builder = new BiometricPrompt.Builder(activity)
-                .setTitle(str("piko_inbox_lock_prompt"));
+                .setTitle(str("spookd_inbox_lock_prompt"));
         if (Build.VERSION.SDK_INT >= 30) {
             builder.setAllowedAuthenticators(
                     BiometricManager.Authenticators.BIOMETRIC_STRONG
@@ -390,8 +390,8 @@ public final class InboxLock {
                     .setColor(original.color)
                     .setContentTitle(context.getApplicationInfo().loadLabel(context.getPackageManager()))
                     .setContentText(SavedMessagesHook.NOTIFICATION_CHANNEL_ID.equals(channel)
-                            ? String.format(str("piko_deleted_a_message"), str("piko_someone"))
-                            : str("piko_inbox_lock_notification"))
+                            ? String.format(str("spookd_deleted_a_message"), str("spookd_someone"))
+                            : str("spookd_inbox_lock_notification"))
                     .setContentIntent(original.contentIntent)
                     .setDeleteIntent(original.deleteIntent)
                     .setWhen(original.when)

@@ -44,13 +44,13 @@ public class ProfileMoreOption {
             InstagramDialogBox dialog = new InstagramDialogBox(context);
 
             ArrayList<String> options = new ArrayList<>();
-            options.add(str("piko_view_profile_picture"));
-            options.add(str("piko_copy_username"));
-            options.add(str("piko_copy_full_name"));
-            options.add(str("piko_copy_user_id"));
-            options.add(str("piko_copy_bio"));
-            options.add(str("piko_copy_links_from_bio"));
-            if (DEBUG) options.add(str("piko_debug"));
+            options.add(str("spookd_view_profile_picture"));
+            options.add(str("spookd_copy_username"));
+            options.add(str("spookd_copy_full_name"));
+            options.add(str("spookd_copy_user_id"));
+            options.add(str("spookd_copy_bio"));
+            options.add(str("spookd_copy_links_from_bio"));
+            if (DEBUG) options.add(str("spookd_debug"));
 
             CharSequence[] items = options.toArray(new CharSequence[0]);
 
@@ -63,37 +63,37 @@ public class ProfileMoreOption {
                         boolean toCopy = false;
                         String text = null;
 
-                        if (selectedOption.equals(str("piko_copy_username"))) {
+                        if (selectedOption.equals(str("spookd_copy_username"))) {
                             text = userData.getUsername();
                             toCopy = true;
 
-                        } else if (selectedOption.equals(str("piko_copy_full_name"))) {
+                        } else if (selectedOption.equals(str("spookd_copy_full_name"))) {
                             text = userData.getFullName();
                             toCopy = true;
 
-                        } else if (selectedOption.equals(str("piko_copy_user_id"))) {
+                        } else if (selectedOption.equals(str("spookd_copy_user_id"))) {
                             text = userData.getUserId();
                             toCopy = true;
 
-                        } else if (selectedOption.equals(str("piko_copy_bio"))) {
+                        } else if (selectedOption.equals(str("spookd_copy_bio"))) {
                             text = userData.getBio();
                             toCopy = true;
 
-                        } else if (selectedOption.equals(str("piko_copy_links_from_bio"))) {
+                        } else if (selectedOption.equals(str("spookd_copy_links_from_bio"))) {
                             // Links live in the bio as plain text; the profile object
                             // carries no separate list of them.
                             String links = linksFrom(userData.getBio());
                             if (links == null) {
-                                Utils.showToastShort(str("piko_no_links_in_bio"));
+                                Utils.showToastShort(str("spookd_no_links_in_bio"));
                             } else {
                                 text = links;
                                 toCopy = true;
                             }
 
-                        } else if (selectedOption.equals(str("piko_view_profile_picture"))) {
+                        } else if (selectedOption.equals(str("spookd_view_profile_picture"))) {
                             ProfilePictureViewer.show(context, userData, refreshUrl);
 
-                        } else if (selectedOption.equals(str("piko_debug"))) {
+                        } else if (selectedOption.equals(str("spookd_debug"))) {
                             // Using userData as it will be easier to debug known functions.
                             ObjectBrowser.browseObject(context, userData);
 
@@ -101,7 +101,7 @@ public class ProfileMoreOption {
 
                         if (toCopy && text != null && text.length() > 0) {
                             Utils.setClipboard(text);
-                            Utils.showToastShort(str("piko_copied"));
+                            Utils.showToastShort(str("spookd_copied"));
                         }
                     } catch (Exception e) {
                         Logger.printException(() -> "Error at moreOptionsDailogueBox onclick", e);
@@ -109,8 +109,8 @@ public class ProfileMoreOption {
                     }
                 }
             });
-            dialog.setTitle(str("piko_more_profile_options"));
-            dialog.setNegativeButton(str("piko_close"), (d, which) -> d.dismiss());
+            dialog.setTitle(str("spookd_more_profile_options"));
+            dialog.setNegativeButton(str("spookd_close"), (d, which) -> d.dismiss());
             dialog.setCancelable(true);
             dialog.setCanceledOnTouchOutside(true);
 
@@ -150,7 +150,7 @@ public class ProfileMoreOption {
 
             Context context = viewGroup.getContext();
             InstagramButton button = new InstagramButton(context);
-            button.setText(str("piko_more_profile_options"));
+            button.setText(str("spookd_more_profile_options"));
             button.setStyle(InstagramButtonStyleEnum.SECONDARY);
             button.setOnClickListener(() ->
                     moreOptionsDailogueBox(context, userData, () -> userData.refreshProfilePictureUrl(profileInfo.getUserSession()))

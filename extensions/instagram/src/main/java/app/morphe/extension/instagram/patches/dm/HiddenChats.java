@@ -217,7 +217,7 @@ public final class HiddenChats {
     private static void toggleHiddenMode(Activity activity) {
         if (hiddenMode) {
             hiddenMode = false;
-            PikoUtils.toast(str("piko_hidden_chats_closed"));
+            PikoUtils.toast(str("spookd_hidden_chats_closed"));
             refresh(modeUser);
             return;
         }
@@ -225,7 +225,7 @@ public final class HiddenChats {
             if (lastUser == null) return;
             modeUser = lastUser;
             hiddenMode = true;
-            PikoUtils.toast(str("piko_hidden_chats_opened"));
+            PikoUtils.toast(str("spookd_hidden_chats_opened"));
             refresh(modeUser);
         };
         // The hidden chats are as private as the inbox, so they ask for the same lock.
@@ -338,7 +338,7 @@ public final class HiddenChats {
             String userId = ((UserSession) session).getUserId();
             if (menuButtonHides) HiddenChatsPref.add(userId, String.valueOf(threadKey));
             else HiddenChatsPref.remove(userId, String.valueOf(threadKey));
-            PikoUtils.toast(str(menuButtonHides ? "piko_hidden_chats_hidden" : "piko_hidden_chats_unhidden"));
+            PikoUtils.toast(str(menuButtonHides ? "spookd_hidden_chats_hidden" : "spookd_hidden_chats_unhidden"));
             refresh(userId);
             return true;
         } catch (Throwable t) {

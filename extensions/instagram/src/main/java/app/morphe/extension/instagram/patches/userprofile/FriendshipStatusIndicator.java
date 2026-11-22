@@ -55,8 +55,8 @@ public class FriendshipStatusIndicator {
     private static void friendshipStatusDialogBox(Context context, UserFriendshipStatus userFriendshipStatus) {
         InstagramDialogBox dialog = new InstagramDialogBox(context);
 
-        dialog.setPositiveButton(str("piko_ok"), null);
-        dialog.setTitle(str("piko_friendship_status"));
+        dialog.setPositiveButton(str("spookd_ok"), null);
+        dialog.setTitle(str("spookd_friendship_status"));
         dialog.setCancelable(false);
         dialog.setCanceledOnTouchOutside(false);
 
@@ -252,15 +252,15 @@ public class FriendshipStatusIndicator {
                 String indicatorColorHex;
                 boolean useStatusColor = Pref.followBackColorIndicator();
                 if (followed_by && following) {
-                    indicatorText = str("piko_fbi_following_each_other");
+                    indicatorText = str("spookd_fbi_following_each_other");
                     indicatorIconDrawable = "fb_ic_friend_confirm_outline_20";
                     indicatorColorHex = useStatusColor ? "#3389DF" : null;
                 } else if (followed_by) {
-                    indicatorText = str("piko_fbi_follows_you");
+                    indicatorText = str("spookd_fbi_follows_you");
                     indicatorIconDrawable = "fb_ic_friend_add_outline_20";
                     indicatorColorHex = useStatusColor ? "#3CC176" : null;
                 } else {
-                    indicatorText = str("piko_fbi_doesnt_follows_you");
+                    indicatorText = str("spookd_fbi_doesnt_follows_you");
                     indicatorIconDrawable = "fb_ic_friend_remove_outline_20";
                     indicatorColorHex = useStatusColor ? "#EB4941" : null;
                 }

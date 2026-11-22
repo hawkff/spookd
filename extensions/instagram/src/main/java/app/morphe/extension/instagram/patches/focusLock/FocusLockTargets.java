@@ -52,40 +52,40 @@ public final class FocusLockTargets {
         List<Target> targets = new ArrayList<>();
 
         add(targets, SettingsStatus.hideNavigationButtons,
-                REELS_TAB_KEY, "piko_focus_lock_reels_tab", "piko_focus_lock_reels_tab_desc");
+                REELS_TAB_KEY, "spookd_focus_lock_reels_tab", "spookd_focus_lock_reels_tab_desc");
         add(targets, SettingsStatus.disableReelsScrolling,
-                Settings.DISABLE_REELS_SCROLLING, "piko_disable_reels_scrolling", null);
+                Settings.DISABLE_REELS_SCROLLING, "spookd_disable_reels_scrolling", null);
         add(targets, SettingsStatus.hideReelsFollowButton,
-                Settings.HIDE_REELS_FOLLOW_BUTTON, "piko_hide_reels_follow_button", null);
+                Settings.HIDE_REELS_FOLLOW_BUTTON, "spookd_hide_reels_follow_button", null);
         add(targets, SettingsStatus.disableExplore,
-                Settings.DISABLE_EXPLORE, "piko_disable_explore", null);
+                Settings.DISABLE_EXPLORE, "spookd_disable_explore", null);
         add(targets, SettingsStatus.disableStories,
-                Settings.DISABLE_STORIES, "piko_disable_stories", null);
+                Settings.DISABLE_STORIES, "spookd_disable_stories", null);
         add(targets, SettingsStatus.hideStoriesTray,
-                Settings.HIDE_STORIES_TRAY, "piko_hide_stories_tray", null);
+                Settings.HIDE_STORIES_TRAY, "spookd_hide_stories_tray", null);
         add(targets, SettingsStatus.hideHiddenRequests,
-                Settings.HIDE_HIDDEN_REQUESTS, "piko_hide_hidden_requests", null);
+                Settings.HIDE_HIDDEN_REQUESTS, "spookd_hide_hidden_requests", null);
         add(targets, SettingsStatus.disableHighlights,
-                Settings.DISABLE_HIGHLIGHTS, "piko_disable_highlights", null);
+                Settings.DISABLE_HIGHLIGHTS, "spookd_disable_highlights", null);
         add(targets, SettingsStatus.hideNotesTray,
-                Settings.HIDE_NOTES_TRAY, "piko_hide_notes_tray", null);
+                Settings.HIDE_NOTES_TRAY, "spookd_hide_notes_tray", null);
         add(targets, SettingsStatus.disableComments,
-                Settings.DISABLE_COMMENTS, "piko_disable_comments", null);
+                Settings.DISABLE_COMMENTS, "spookd_disable_comments", null);
         add(targets, SettingsStatus.limitFollowingFeed,
-                Settings.LIMIT_FOLLOWING_FEED, "piko_limit_following_feed", null);
+                Settings.LIMIT_FOLLOWING_FEED, "spookd_limit_following_feed", null);
         add(targets, SettingsStatus.disableSwipeToCreate,
-                Settings.DISABLE_SWIPE_TO_CREATE, "piko_disable_swipe_to_create", null);
+                Settings.DISABLE_SWIPE_TO_CREATE, "spookd_disable_swipe_to_create", null);
         add(targets, SettingsStatus.hideGroupCreationOnSharesheet,
                 Settings.HIDE_GROUP_CREATION_BUTTON_ON_SHARESHEET,
-                "piko_hide_group_creation_button_on_sharesheet", null);
+                "spookd_hide_group_creation_button_on_sharesheet", null);
         add(targets, SettingsStatus.disableDoubleTapLike,
-                Settings.DISABLE_DOUBLE_TAP_LIKE_POST, "piko_disable_double_tap_like_post", null);
+                Settings.DISABLE_DOUBLE_TAP_LIKE_POST, "spookd_disable_double_tap_like_post", null);
         add(targets, SettingsStatus.disableDoubleTapLike,
-                Settings.DISABLE_DOUBLE_TAP_LIKE_REEL, "piko_disable_double_tap_like_reel", null);
+                Settings.DISABLE_DOUBLE_TAP_LIKE_REEL, "spookd_disable_double_tap_like_reel", null);
         add(targets, SettingsStatus.disableDoubleTapLike,
-                Settings.DISABLE_DOUBLE_TAP_LIKE_COMMENT, "piko_disable_double_tap_like_comment", null);
+                Settings.DISABLE_DOUBLE_TAP_LIKE_COMMENT, "spookd_disable_double_tap_like_comment", null);
         add(targets, SettingsStatus.disableDoubleTapLike,
-                Settings.DISABLE_DOUBLE_TAP_LIKE_MESSAGE, "piko_disable_double_tap_like_message", null);
+                Settings.DISABLE_DOUBLE_TAP_LIKE_MESSAGE, "spookd_disable_double_tap_like_message", null);
 
         return targets;
     }

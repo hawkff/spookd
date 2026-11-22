@@ -120,23 +120,23 @@ public class FeedButton {
 
 
     private static void addDownloadButton(Object buttonAdderObject, ArrayList buttonlist) throws Exception {
-        String DOWNLOAD_BUTTON_TEXT = str("piko_download_options");
+        String DOWNLOAD_BUTTON_TEXT = str("spookd_download_options");
         addButton(MediaOption$Option.PIKO_DOWNLOAD, DOWNLOAD_BUTTON_TEXT, buttonAdderObject, buttonlist);
     }
 
     public static void addFeedOverflowButton(Object buttonAdderObject, ArrayList buttonlist){
         try {
             if(Pref.pikoDebug()){
-                addButton(MediaOption$Option.PIKO_DEBUG, str("piko_debug"), buttonAdderObject, buttonlist);
+                addButton(MediaOption$Option.PIKO_DEBUG, str("spookd_debug"), buttonAdderObject, buttonlist);
             }
             if(Pref.enableDownload()) {
                 addDownloadButton(buttonAdderObject, buttonlist);
             }
             if(Pref.downloadWithExternalDownloader()) {
-                addButton(MediaOption$Option.PIKO_EXTERNAL_DOWNLOADER, str("piko_download_with_external_downloader"), buttonAdderObject, buttonlist);
+                addButton(MediaOption$Option.PIKO_EXTERNAL_DOWNLOADER, str("spookd_download_with_external_downloader"), buttonAdderObject, buttonlist);
             }
             if(Pref.moreOptionsOnPost()) {
-                addButton(MediaOption$Option.PIKO_MORE_POST_OPTION, str("piko_more_options"), buttonAdderObject, buttonlist);
+                addButton(MediaOption$Option.PIKO_MORE_POST_OPTION, str("spookd_more_options"), buttonAdderObject, buttonlist);
             }
         } catch (Exception e) {
             Logger.printException(() -> "Error at addReelButton",e);

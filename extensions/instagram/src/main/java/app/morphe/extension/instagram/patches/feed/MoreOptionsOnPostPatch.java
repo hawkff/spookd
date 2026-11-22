@@ -37,10 +37,10 @@ public class MoreOptionsOnPostPatch {
 
             ArrayList<String> options = new ArrayList<>();
 
-            options.add(str("piko_copy_post_description"));
-            options.add(str("piko_copy_post_owner_username"));
-            options.add(str("piko_copy_post_owner_fullname"));
-            options.add(str("piko_download_options"));
+            options.add(str("spookd_copy_post_description"));
+            options.add(str("spookd_copy_post_owner_username"));
+            options.add(str("spookd_copy_post_owner_fullname"));
+            options.add(str("spookd_download_options"));
             CharSequence[] items = options.toArray(new CharSequence[0]);
 
             dialog.addDialogMenuItems(items, new DialogInterface.OnClickListener() {
@@ -51,24 +51,24 @@ public class MoreOptionsOnPostPatch {
                         String selectedOption = options.get(which);
                         String stringToCopy = null;
 
-                        if (selectedOption.equals(str("piko_copy_post_description"))) {
+                        if (selectedOption.equals(str("spookd_copy_post_description"))) {
                             stringToCopy = mediaData.getDescriptionText();
 
-                        } else if (selectedOption.equals(str("piko_copy_post_owner_username"))) {
+                        } else if (selectedOption.equals(str("spookd_copy_post_owner_username"))) {
                             UserData userData = mediaData.getUserData();
                             stringToCopy = userData.getUsername();
 
-                        } else if (selectedOption.equals(str("piko_copy_post_owner_fullname"))) {
+                        } else if (selectedOption.equals(str("spookd_copy_post_owner_fullname"))) {
                             UserData userData = mediaData.getUserData();
                             stringToCopy = userData.getFullName();
 
-                        } else if (selectedOption.equals(str("piko_download_options"))) {
+                        } else if (selectedOption.equals(str("spookd_download_options"))) {
                             DownloadUtils.showDownloadOptions(context, userSession, mediaObject, currentMediaIndex);
 
                         }
                         if (stringToCopy != null && stringToCopy.length() > 0) {
                             Utils.setClipboard(stringToCopy);
-                            Utils.showToastShort(str("piko_copied"));
+                            Utils.showToastShort(str("spookd_copied"));
                         }
                     } catch (Exception e) {
                         Logger.printException(() -> "Error at postMoreOptions addDialogMenuItems", e);
@@ -77,8 +77,8 @@ public class MoreOptionsOnPostPatch {
                 }
             });
 
-            dialog.setTitle(str("piko_post_options"));
-            dialog.setNegativeButton(str("piko_close"), (d, which) -> d.dismiss());
+            dialog.setTitle(str("spookd_post_options"));
+            dialog.setNegativeButton(str("spookd_close"), (d, which) -> d.dismiss());
             dialog.setCancelable(true);
             dialog.setCanceledOnTouchOutside(true);
 

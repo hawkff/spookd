@@ -84,7 +84,7 @@ public class DeveloperOptions extends Entity {
             }
         } catch (Exception e) {
             PikoUtils.logger(e);
-            PikoUtils.toast(str("piko_export_fail"));
+            PikoUtils.toast(str("spookd_export_fail"));
         }
         return mappings;
     }
@@ -118,7 +118,7 @@ public class DeveloperOptions extends Entity {
             }
         } catch (Exception e) {
             PikoUtils.logger(e);
-            PikoUtils.toast(str("piko_export_fail"));
+            PikoUtils.toast(str("spookd_export_fail"));
             sb.append(e.toString() + "\n");
         }
         return sb.toString();

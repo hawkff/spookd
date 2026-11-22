@@ -50,7 +50,7 @@ public class MessageUtils {
                 return false;
 
             } else {
-                Utils.showToastShort(str("piko_download_message_unsupported"));
+                Utils.showToastShort(str("spookd_download_message_unsupported"));
             }
 
         } catch (Exception e) {

@@ -195,7 +195,7 @@ public class UI {
             Context context = viewGroup.getContext();
             boolean isFirstTime = Pref.firstTimePiko();
             if(isFirstTime) {
-                TooltipHelper.showPersistentTooltip(context, imageView, str("piko_tap_here"));
+                TooltipHelper.showPersistentTooltip(context, imageView, str("spookd_tap_here"));
                 Pref.setFirstTimePiko(false);
             }
         } catch (Exception e) {
@@ -207,7 +207,7 @@ public class UI {
         InstagramDialogBox dialog = new InstagramDialogBox(context);
 
         ArrayList<String> options = new ArrayList<>();
-        options.add(str("piko_ok"));
+        options.add(str("spookd_ok"));
         CharSequence[] items = options.toArray(new CharSequence[0]);
 
         dialog.addDialogMenuItems(items, new DialogInterface.OnClickListener() {
@@ -217,7 +217,7 @@ public class UI {
                     // Doing like this because options are dynamic.
                     String selectedOption = options.get(which);
 
-                    if (selectedOption.equals(str("piko_ok"))) {
+                    if (selectedOption.equals(str("spookd_ok"))) {
                         InstaUtils.restartApp(context);
 
                     }
@@ -229,7 +229,7 @@ public class UI {
         });
 
 
-        dialog.setTitle(str("piko_restart_app"));
+        dialog.setTitle(str("spookd_restart_app"));
         dialog.setCancelable(false);
         dialog.setCanceledOnTouchOutside(false);
 
@@ -242,7 +242,7 @@ public class UI {
         InstagramDialogBox dialog = new InstagramDialogBox(context);
 
         ArrayList<String> options = new ArrayList<>();
-        options.add(str("piko_goto_piko_settings"));
+        options.add(str("spookd_goto_spookd_settings"));
         CharSequence[] items = options.toArray(new CharSequence[0]);
 
         dialog.addDialogMenuItems(items, new DialogInterface.OnClickListener() {
@@ -252,7 +252,7 @@ public class UI {
                     // Doing like this because options are dynamic.
                     String selectedOption = options.get(which);
 
-                    if (selectedOption.equals(str("piko_goto_piko_settings"))) {
+                    if (selectedOption.equals(str("spookd_goto_spookd_settings"))) {
                         if (homeLongPress) {
                             Pref.setFirstTimePiko(false);
                             FragmentHook.startSettings();
@@ -268,8 +268,8 @@ public class UI {
             }
         });
 
-        dialog.setTitle(str("piko_welcome_title"));
-        dialog.setMessage(str(homeLongPress ? "piko_welcome_message_home_long_press" : "piko_welcome_message"));
+        dialog.setTitle(str("spookd_welcome_title"));
+        dialog.setMessage(str(homeLongPress ? "spookd_welcome_message_home_long_press" : "spookd_welcome_message"));
         dialog.setCancelable(false);
         dialog.setCanceledOnTouchOutside(false);
 

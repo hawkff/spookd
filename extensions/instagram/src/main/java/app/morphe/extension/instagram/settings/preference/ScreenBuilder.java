@@ -127,7 +127,7 @@ public class ScreenBuilder {
         if (SettingsStatus.disableAds) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_disable_ads"),
+                            str("spookd_disable_ads"),
                             "",
                             Settings.DISABLE_ADS
                     )
@@ -136,16 +136,16 @@ public class ScreenBuilder {
         if (SettingsStatus.hideSuggestedContent) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_hide_suggested_content"),
-                            str("piko_hide_suggested_content_desc"),
+                            str("spookd_hide_suggested_content"),
+                            str("spookd_hide_suggested_content_desc"),
                             Settings.HIDE_SUGGESTED_CONTENT
                     )
             );
         }
         if (SettingsStatus.hideMetaAi) {
             addPreference(helper.switchPreference(
-                    str("piko_hide_meta_ai"),
-                    str("piko_hide_meta_ai_desc"),
+                    str("spookd_hide_meta_ai"),
+                    str("spookd_hide_meta_ai_desc"),
                     Settings.HIDE_META_AI
             ));
         }
@@ -158,8 +158,8 @@ public class ScreenBuilder {
         // this listener has run - FontStorage.useSystemFont() has to read the new value straight
         // away, from load() on the next start up.
         SwitchPref useSystemFont = new SwitchPref(context);
-        useSystemFont.setTitle(str("piko_use_system_font"));
-        useSystemFont.setSummary(str("piko_use_system_font_desc"));
+        useSystemFont.setTitle(str("spookd_use_system_font"));
+        useSystemFont.setSummary(str("spookd_use_system_font_desc"));
         useSystemFont.setKey(Settings.USE_SYSTEM_FONT.key);
         useSystemFont.setPersistent(false);
         useSystemFont.setChecked(FontStorage.useSystemFont());
@@ -170,27 +170,27 @@ public class ScreenBuilder {
         addPreference(useSystemFont);
 
         addPreference(helper.buttonPreference(
-                str("piko_pref_add_font"),
-                str("piko_pref_add_font_desc"),
-                "piko_pref_add_font"
+                str("spookd_pref_add_font"),
+                str("spookd_pref_add_font_desc"),
+                "spookd_pref_add_font"
         ));
 
         addPreference(helper.buttonPreference(
-                str("piko_pref_delete_font"),
-                str("piko_pref_delete_font_desc"),
-                "piko_pref_delete_font"
+                str("spookd_pref_delete_font"),
+                str("spookd_pref_delete_font_desc"),
+                "spookd_pref_delete_font"
         ));
     }
 
     public void buildDeveloperSection() {
         if (!(SettingsStatus.developerOptionsSection())) return;
 
-        // PreferenceCategory category= addCategory(str("piko_category_dev_options"));
+        // PreferenceCategory category= addCategory(str("spookd_category_dev_options"));
         if (SettingsStatus.recommendedFlags) {
             addPreference(
                     helper.buttonPreference(
-                            str("piko_category_rec_flags"),
-                            str("piko_category_rec_flags_desc"),
+                            str("spookd_category_rec_flags"),
+                            str("spookd_category_rec_flags_desc"),
                             Constants.PIKO_FRAGMENT_REC_FLAGS
                     )
             );
@@ -199,16 +199,16 @@ public class ScreenBuilder {
         if (SettingsStatus.enableDeveloperOptions) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_enable_dev_options"),
-                            str("piko_enable_dev_options_desc"),
+                            str("spookd_enable_dev_options"),
+                            str("spookd_enable_dev_options_desc"),
                             Settings.DEVELOPER_OPTIONS
                     )
             );
             addPreference(
                     helper.availableWhen(
                             helper.switchPreference(
-                                    str("piko_directly_open_metaconfig"),
-                                    str("piko_directly_open_metaconfig_desc"),
+                                    str("spookd_directly_open_metaconfig"),
+                                    str("spookd_directly_open_metaconfig_desc"),
                                     Settings.DIRECTLY_OPEN_METACONFIG
                             ),
                             () -> SharedPref.getBooleanPref(Settings.DEVELOPER_OPTIONS)
@@ -216,47 +216,47 @@ public class ScreenBuilder {
             );
             addPreference(
                     helper.buttonPreference(
-                            str("piko_export_dev_overrides"),
+                            str("spookd_export_dev_overrides"),
                             "",
-                            "piko_export_dev_overrides"
+                            "spookd_export_dev_overrides"
                     )
             );
             addPreference(
                     helper.buttonPreference(
-                            str("piko_import_dev_overrides"),
+                            str("spookd_import_dev_overrides"),
                             "",
-                            "piko_import_dev_overrides"
+                            "spookd_import_dev_overrides"
                     )
             );
             addPreference(
                     helper.buttonPreference(
-                            str("piko_import_id_mapping"),
+                            str("spookd_import_id_mapping"),
                             "",
-                            "piko_import_id_mapping"
+                            "spookd_import_id_mapping"
                     )
             );
             addPreference(
                     helper.buttonPreference(
-                            str("piko_download_id_mapping"),
+                            str("spookd_download_id_mapping"),
                             "",
-                            "piko_download_id_mapping"
+                            "spookd_download_id_mapping"
                     )
             );
 
             if(Pref.pikoDebug()) {
                 addPreference(
                         helper.buttonPreference(
-                                str("piko_export_experiment_list"),
+                                str("spookd_export_experiment_list"),
                                 "",
-                                "piko_export_experiment_list"
+                                "spookd_export_experiment_list"
                         )
                 );
 
                 addPreference(
                         helper.buttonPreference(
-                                str("piko_export_experiment_mappings"),
+                                str("spookd_export_experiment_mappings"),
                                 "",
-                                "piko_export_experiment_mappings"
+                                "spookd_export_experiment_mappings"
                         )
                 );
             }
@@ -269,8 +269,8 @@ public class ScreenBuilder {
         if (SettingsStatus.disableDisappearingMessagesGesture) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_disable_disappearing_messages_gesture"),
-                            str("piko_disable_disappearing_messages_gesture_desc"),
+                            str("spookd_disable_disappearing_messages_gesture"),
+                            str("spookd_disable_disappearing_messages_gesture_desc"),
                             Settings.DISABLE_DISAPPEARING_MESSAGES_GESTURE
                     )
             );
@@ -279,8 +279,8 @@ public class ScreenBuilder {
         if (SettingsStatus.sendKeyboardGifs) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_send_keyboard_gifs"),
-                            str("piko_send_keyboard_gifs_desc"),
+                            str("spookd_send_keyboard_gifs"),
+                            str("spookd_send_keyboard_gifs_desc"),
                             Settings.SEND_KEYBOARD_GIFS
                     )
             );
@@ -289,15 +289,15 @@ public class ScreenBuilder {
         if (SettingsStatus.unlimitedReplaysOnEphemeralMedia) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_unlimited_replays"),
-                            str("piko_unlimited_replays_desc"),
+                            str("spookd_unlimited_replays"),
+                            str("spookd_unlimited_replays_desc"),
                             Settings.UNLIMITED_REPLAYS
                     )
             );
             addPreference(
                     helper.switchPreference(
-                            str("piko_ephemeral_caption"),
-                            str("piko_ephemeral_caption_desc"),
+                            str("spookd_ephemeral_caption"),
+                            str("spookd_ephemeral_caption_desc"),
                             Settings.EPHEMERAL_MEDIA_CAPTION
                     )
             );
@@ -306,8 +306,8 @@ public class ScreenBuilder {
         if (SettingsStatus.markChatAsRead) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_enable_mark_chat_as_read"),
-                            str("piko_enable_mark_chat_as_read_desc"),
+                            str("spookd_enable_mark_chat_as_read"),
+                            str("spookd_enable_mark_chat_as_read_desc"),
                             Settings.ENABLE_MARK_CHAT_AS_READ
                     )
             );
@@ -316,16 +316,16 @@ public class ScreenBuilder {
         if (SettingsStatus.inboxLock) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_inbox_lock"),
-                            str("piko_inbox_lock_desc"),
+                            str("spookd_inbox_lock"),
+                            str("spookd_inbox_lock_desc"),
                             Settings.INBOX_LOCK
                     )
             );
             addPreference(
                     helper.availableWhen(
                             helper.switchPreference(
-                                    str("piko_inbox_lock_notifications"),
-                                    str("piko_inbox_lock_notifications_desc"),
+                                    str("spookd_inbox_lock_notifications"),
+                                    str("spookd_inbox_lock_notifications_desc"),
                                     Settings.INBOX_LOCK_NOTIFICATIONS
                             ),
                             () -> SharedPref.getBooleanPref(Settings.INBOX_LOCK)
@@ -336,16 +336,16 @@ public class ScreenBuilder {
         if (SettingsStatus.hiddenChats) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_hidden_chats"),
-                            str("piko_hidden_chats_desc"),
+                            str("spookd_hidden_chats"),
+                            str("spookd_hidden_chats_desc"),
                             Settings.HIDDEN_CHATS
                     )
             );
             addPreference(
                     helper.availableWhen(
                             helper.listPreference(
-                                    str("piko_hidden_chats_taps"),
-                                    str("piko_hidden_chats_taps_desc"),
+                                    str("spookd_hidden_chats_taps"),
+                                    str("spookd_hidden_chats_taps_desc"),
                                     Settings.HIDDEN_CHATS_TAPS
                             ),
                             () -> SharedPref.getBooleanPref(Settings.HIDDEN_CHATS)
@@ -354,8 +354,8 @@ public class ScreenBuilder {
             addPreference(
                     helper.availableWhen(
                             helper.switchPreference(
-                                    str("piko_hidden_chats_mute"),
-                                    str("piko_hidden_chats_mute_desc"),
+                                    str("spookd_hidden_chats_mute"),
+                                    str("spookd_hidden_chats_mute_desc"),
                                     Settings.HIDDEN_CHATS_MUTE
                             ),
                             () -> SharedPref.getBooleanPref(Settings.HIDDEN_CHATS)
@@ -366,14 +366,14 @@ public class ScreenBuilder {
         if (SettingsStatus.saveDeletedMessages) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_save_deleted_messages"),
-                            str("piko_save_deleted_messages_desc"),
+                            str("spookd_save_deleted_messages"),
+                            str("spookd_save_deleted_messages_desc"),
                             Settings.SAVE_DELETED_MESSAGES
                     )
             );
             addPreference(
                     helper.buttonPreference(
-                            str("piko_view_deleted_messages"),
+                            str("spookd_view_deleted_messages"),
                             "",
                             "view_deleted_messages"
                     )
@@ -384,8 +384,8 @@ public class ScreenBuilder {
             addPreference(
                     helper.availableWhen(
                             helper.switchPreference(
-                                    str("piko_dm_media_vault"),
-                                    str("piko_dm_media_vault_desc"),
+                                    str("spookd_dm_media_vault"),
+                                    str("spookd_dm_media_vault_desc"),
                                     Settings.DM_MEDIA_VAULT
                             ),
                             () -> SharedPref.getBooleanPref(Settings.SAVE_DELETED_MESSAGES)
@@ -397,12 +397,12 @@ public class ScreenBuilder {
     public void ghostSection() {
         if (!(SettingsStatus.ghostSection())) return;
 
-        // PreferenceCategory category= addCategory(str("piko_category_ghost"));
+        // PreferenceCategory category= addCategory(str("spookd_category_ghost"));
 
         addPreference(
                 helper.switchPreference(
-                        str("piko_turn_on_all_ghost_modes"),
-                        str("piko_turn_on_all_ghost_modes_desc"),
+                        str("spookd_turn_on_all_ghost_modes"),
+                        str("spookd_turn_on_all_ghost_modes_desc"),
                         Settings.TURN_ON_ALL_GHOST_MODES
                 )
         );
@@ -410,7 +410,7 @@ public class ScreenBuilder {
         if (SettingsStatus.viewStoriesAnonymously) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_view_stories_anonymously"),
+                            str("spookd_view_stories_anonymously"),
                             "",
                             Settings.VIEW_STORIES_ANONYMOUSLY
                     )
@@ -419,7 +419,7 @@ public class ScreenBuilder {
         if (SettingsStatus.viewLiveAnonymously) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_view_live_anonymously"),
+                            str("spookd_view_live_anonymously"),
                             "",
                             Settings.VIEW_LIVE_ANONYMOUSLY
                     )
@@ -428,7 +428,7 @@ public class ScreenBuilder {
         if (SettingsStatus.disableTypingStatus) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_disable_typing_status"),
+                            str("spookd_disable_typing_status"),
                             "",
                             Settings.DISABLE_TYPING_STATUS
                     )
@@ -437,7 +437,7 @@ public class ScreenBuilder {
         if (SettingsStatus.disableScreenshotDetection) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_disable_screenshot_detection"),
+                            str("spookd_disable_screenshot_detection"),
                             "",
                             Settings.DISABLE_SCREENSHOT_DETECTION
                     )
@@ -446,8 +446,8 @@ public class ScreenBuilder {
         if (SettingsStatus.viewDmAnonymously) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_view_dm_anonymously"),
-                            str("piko_view_dm_anonymously_desc"),
+                            str("spookd_view_dm_anonymously"),
+                            str("spookd_view_dm_anonymously_desc"),
                             Settings.VIEW_DM_ANONYMOUSLY
                     )
             );
@@ -456,8 +456,8 @@ public class ScreenBuilder {
             addPreference(
                     helper.availableWhen(
                             helper.switchPreference(
-                                    str("piko_mark_as_read_after_reply"),
-                                    str("piko_mark_as_read_after_reply_desc"),
+                                    str("spookd_mark_as_read_after_reply"),
+                                    str("spookd_mark_as_read_after_reply_desc"),
                                     Settings.MARK_AS_READ_AFTER_REPLY
                             ),
                             () -> SharedPref.getBooleanPref(Settings.VIEW_DM_ANONYMOUSLY)
@@ -471,12 +471,12 @@ public class ScreenBuilder {
     public void linksSection() {
         if (!(SettingsStatus.linksSection())) return;
 
-        // PreferenceCategory category= addCategory(str("piko_category_links"));
+        // PreferenceCategory category= addCategory(str("spookd_category_links"));
         if (SettingsStatus.openLinksExternally) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_open_links_externally"),
-                            str("piko_open_links_externally_desc"),
+                            str("spookd_open_links_externally"),
+                            str("spookd_open_links_externally_desc"),
                             Settings.OPEN_LINKS_EXTERNALLY
                     )
             );
@@ -484,7 +484,7 @@ public class ScreenBuilder {
         if (SettingsStatus.sanitizeShareLinks) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_sanitize_share_links"),
+                            str("spookd_sanitize_share_links"),
                             "",
                             Settings.SANITIZE_SHARE_LINKS
                     )
@@ -493,7 +493,7 @@ public class ScreenBuilder {
         if (SettingsStatus.customSharingDomain) {
             addPreference(
                     helper.editTextPreference(
-                            str("piko_custom_sharing_domain"),
+                            str("spookd_custom_sharing_domain"),
                             Links.customSharingDomainSummary(Pref.customSharingDomain()),
                             Settings.CUSTOM_SHARING_DOMAIN
                     )
@@ -504,12 +504,12 @@ public class ScreenBuilder {
     public void distractionFreeSection() {
         if (!(SettingsStatus.distractionFreeSection())) return;
 
-        // PreferenceCategory category= addCategory(str("piko_category_distraction_free"));
+        // PreferenceCategory category= addCategory(str("spookd_category_distraction_free"));
 
         if (SettingsStatus.focusLock) {
             addPreference(
                     helper.buttonPreference(
-                            str("piko_focus_lock"),
+                            str("spookd_focus_lock"),
                             FocusLock.statusSummary(),
                             Constants.PIKO_FRAGMENT_FOCUS_LOCK
                     )
@@ -518,49 +518,49 @@ public class ScreenBuilder {
 
         if (SettingsStatus.disableStories) {
             addLockableSwitch(
-                    str("piko_disable_stories"),
+                    str("spookd_disable_stories"),
                     "",
                     Settings.DISABLE_STORIES
             );
         }
         if (SettingsStatus.hideStoriesTray) {
             addLockableSwitch(
-                    str("piko_hide_stories_tray"),
-                    str("piko_hide_stories_tray_desc"),
+                    str("spookd_hide_stories_tray"),
+                    str("spookd_hide_stories_tray_desc"),
                     Settings.HIDE_STORIES_TRAY
             );
         }
         if (SettingsStatus.hideHiddenRequests) {
             addLockableSwitch(
-                    str("piko_hide_hidden_requests"),
-                    str("piko_hide_hidden_requests_desc"),
+                    str("spookd_hide_hidden_requests"),
+                    str("spookd_hide_hidden_requests_desc"),
                     Settings.HIDE_HIDDEN_REQUESTS
             );
         }
         if (SettingsStatus.disableHighlights) {
             addLockableSwitch(
-                    str("piko_disable_highlights"),
+                    str("spookd_disable_highlights"),
                     "",
                     Settings.DISABLE_HIGHLIGHTS
             );
         }
         if (SettingsStatus.hideNotesTray) {
             addLockableSwitch(
-                    str("piko_hide_notes_tray"),
-                    str("piko_hide_notes_tray_desc"),
+                    str("spookd_hide_notes_tray"),
+                    str("spookd_hide_notes_tray_desc"),
                     Settings.HIDE_NOTES_TRAY
             );
         }
         if (SettingsStatus.disableExplore) {
             addLockableSwitch(
-                    str("piko_disable_explore"),
+                    str("spookd_disable_explore"),
                     "",
                     Settings.DISABLE_EXPLORE
             );
         }
         if (SettingsStatus.disableComments) {
             addLockableSwitch(
-                    str("piko_disable_comments"),
+                    str("spookd_disable_comments"),
                     "",
                     Settings.DISABLE_COMMENTS
             );
@@ -568,23 +568,23 @@ public class ScreenBuilder {
         if (SettingsStatus.hideFeedPosts) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_hide_feed_posts"),
-                            str("piko_hide_feed_posts_desc"),
+                            str("spookd_hide_feed_posts"),
+                            str("spookd_hide_feed_posts_desc"),
                             Settings.HIDE_FEED_POSTS
                     )
             );
         }
         if (SettingsStatus.limitFollowingFeed) {
             addLockableSwitch(
-                    str("piko_limit_following_feed"),
-                    str("piko_limit_following_feed_desc"),
+                    str("spookd_limit_following_feed"),
+                    str("spookd_limit_following_feed_desc"),
                     Settings.LIMIT_FOLLOWING_FEED
             );
         }
         if (SettingsStatus.disableDiscoverPeople) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_disable_discover_people"),
+                            str("spookd_disable_discover_people"),
                             "",
                             Settings.DISABLE_DISCOVER_PEOPLE
                     )
@@ -592,36 +592,36 @@ public class ScreenBuilder {
         }
         if (SettingsStatus.disableReelsScrolling) {
             addLockableSwitch(
-                    str("piko_disable_reels_scrolling"),
-                    str("piko_disable_reels_scrolling_desc"),
+                    str("spookd_disable_reels_scrolling"),
+                    str("spookd_disable_reels_scrolling_desc"),
                     Settings.DISABLE_REELS_SCROLLING
             );
         }
         if (SettingsStatus.disableSwipeToCreate) {
             addLockableSwitch(
-                    str("piko_disable_swipe_to_create"),
-                    str("piko_disable_swipe_to_create_desc"),
+                    str("spookd_disable_swipe_to_create"),
+                    str("spookd_disable_swipe_to_create_desc"),
                     Settings.DISABLE_SWIPE_TO_CREATE
             );
         }
         if (SettingsStatus.hideGroupCreationOnSharesheet) {
             addLockableSwitch(
-                    str("piko_hide_group_creation_button_on_sharesheet"),
+                    str("spookd_hide_group_creation_button_on_sharesheet"),
                     "",
                     Settings.HIDE_GROUP_CREATION_BUTTON_ON_SHARESHEET
             );
         }
         if (SettingsStatus.hideReelsFollowButton) {
             addLockableSwitch(
-                    str("piko_hide_reels_follow_button"),
-                    str("piko_hide_reels_follow_button_desc"),
+                    str("spookd_hide_reels_follow_button"),
+                    str("spookd_hide_reels_follow_button_desc"),
                     Settings.HIDE_REELS_FOLLOW_BUTTON
             );
         }
         if (SettingsStatus.hideLikes) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_hide_likes"),
+                            str("spookd_hide_likes"),
                             "",
                             Settings.HIDE_LIKES
                     )
@@ -630,7 +630,7 @@ public class ScreenBuilder {
         if (SettingsStatus.hideShareButton) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_hide_share_button"),
+                            str("spookd_hide_share_button"),
                             "",
                             Settings.HIDE_SHARE_BUTTON
                     )
@@ -639,7 +639,7 @@ public class ScreenBuilder {
         if (SettingsStatus.hideSaveButtons) {
             addPreference(
                     helper.multiSelectListPref(
-                            str("piko_hide_save_buttons"),
+                            str("spookd_hide_save_buttons"),
                             "",
                             Settings.HIDE_SAVE_BUTTON_SURFACES
                     )
@@ -648,7 +648,7 @@ public class ScreenBuilder {
         if (SettingsStatus.hideReshareButton) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_hide_reshare_button"),
+                            str("spookd_hide_reshare_button"),
                             "",
                             Settings.HIDE_RESHARE_BUTTON
                     )
@@ -657,7 +657,7 @@ public class ScreenBuilder {
         if (SettingsStatus.disableVideoAutoplay) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_disable_video_autoplay"),
+                            str("spookd_disable_video_autoplay"),
                             "",
                             Settings.DISABLE_VIDEO_AUTOPLAY
                     )
@@ -665,25 +665,25 @@ public class ScreenBuilder {
         }
         if (SettingsStatus.disableDoubleTapLike) {
             addLockableSwitch(
-                    str("piko_disable_double_tap_like_post"),
+                    str("spookd_disable_double_tap_like_post"),
                     "",
                     Settings.DISABLE_DOUBLE_TAP_LIKE_POST
             );
 
             addLockableSwitch(
-                    str("piko_disable_double_tap_like_reel"),
+                    str("spookd_disable_double_tap_like_reel"),
                     "",
                     Settings.DISABLE_DOUBLE_TAP_LIKE_REEL
             );
 
             addLockableSwitch(
-                    str("piko_disable_double_tap_like_comment"),
+                    str("spookd_disable_double_tap_like_comment"),
                     "",
                     Settings.DISABLE_DOUBLE_TAP_LIKE_COMMENT
             );
 
             addLockableSwitch(
-                    str("piko_disable_double_tap_like_message"),
+                    str("spookd_disable_double_tap_like_message"),
                     "",
                     Settings.DISABLE_DOUBLE_TAP_LIKE_MESSAGE
             );
@@ -698,7 +698,7 @@ public class ScreenBuilder {
                         summary,
                         setting,
                         FocusLock.isForced(setting),
-                        str("piko_focus_lock_enforced")
+                        str("spookd_focus_lock_enforced")
                 )
         );
     }
@@ -724,11 +724,11 @@ public class ScreenBuilder {
         );
 
         FocusLockDurationPreference duration = new FocusLockDurationPreference(context);
-        duration.setTitle(str("piko_focus_lock_duration"));
+        duration.setTitle(str("spookd_focus_lock_duration"));
         duration.setEnabled(!locked);
         addPreference(duration);
 
-        PreferenceCategory targets = addCategory(str("piko_focus_lock_targets"));
+        PreferenceCategory targets = addCategory(str("spookd_focus_lock_targets"));
         for (FocusLockTargets.Target target : FocusLockTargets.available()) {
             Preference pref = helper.switchPreference(
                     str(target.titleKey),
@@ -745,12 +745,12 @@ public class ScreenBuilder {
     public void buildMiscSection() {
         if (!(SettingsStatus.miscSection())) return;
 
-        // PreferenceCategory category= addCategory(str("piko_category_misc"));
+        // PreferenceCategory category= addCategory(str("spookd_category_misc"));
         if (MaterialYouTheme.isAmoledAvailable()) {
             addPreference(
                     helper.availableWhen(
                             helper.switchPreference(
-                                    str("piko_amoled_title"),
+                                    str("spookd_amoled_title"),
                                     "",
                                     Settings.AMOLED_THEME
                             ),
@@ -761,7 +761,7 @@ public class ScreenBuilder {
         if (MaterialYouTheme.isMaterialYouAvailable()) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_material_you_title"),
+                            str("spookd_material_you_title"),
                             "",
                             Settings.MATERIAL_YOU_THEME
                     )
@@ -770,7 +770,7 @@ public class ScreenBuilder {
         if (SettingsStatus.fontSection()) {
             addPreference(
                     helper.buttonPreference(
-                            str("piko_category_font"),
+                            str("spookd_category_font"),
                             "",
                             Constants.PIKO_FRAGMENT_FONT
                     )
@@ -779,8 +779,8 @@ public class ScreenBuilder {
         if (SettingsStatus.changeLikeAnimation) {
             addPreference(
                     helper.listPreference(
-                            str("piko_change_like_animation"),
-                            str("piko_change_like_animation_desc"),
+                            str("spookd_change_like_animation"),
+                            str("spookd_change_like_animation_desc"),
                             Settings.CHANGE_LIKE_ANIMATION
                     )
             );
@@ -788,8 +788,8 @@ public class ScreenBuilder {
         if (SettingsStatus.moreOptionsOnPost) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_enable_more_options_on_post"),
-                            str("piko_enable_more_options_on_post_desc"),
+                            str("spookd_enable_more_options_on_post"),
+                            str("spookd_enable_more_options_on_post_desc"),
                             Settings.ENABLE_MORE_OPTIONS_ON_POST
                     )
             );
@@ -797,8 +797,8 @@ public class ScreenBuilder {
         if (SettingsStatus.followBackIndicator) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_follow_back_indicator"),
-                            str("piko_follow_back_indicator_desc"),
+                            str("spookd_follow_back_indicator"),
+                            str("spookd_follow_back_indicator_desc"),
                             Settings.FOLLOW_BACK_INDICATOR
                     )
             );
@@ -807,7 +807,7 @@ public class ScreenBuilder {
             addPreference(
                     helper.availableWhen(
                             helper.switchPreference(
-                                    str("piko_fbi_color_indicator"),
+                                    str("spookd_fbi_color_indicator"),
                                     "",
                                     Settings.FOLLOW_BACK_COLOR_INDICATOR
                             ),
@@ -821,56 +821,56 @@ public class ScreenBuilder {
         if (SettingsStatus.followListNonFollowerBadge) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_follow_list_non_follower_badge"),
-                            str("piko_follow_list_non_follower_badge_desc"),
+                            str("spookd_follow_list_non_follower_badge"),
+                            str("spookd_follow_list_non_follower_badge_desc"),
                             Settings.FOLLOW_LIST_NON_FOLLOWER_BADGE
                     )
             );
         }
         if (SettingsStatus.profileAnalyzer) {
-            addPreference(helper.buttonPreference(str("piko_profile_analyzer"),
+            addPreference(helper.buttonPreference(str("spookd_profile_analyzer"),
                     ProfileAnalyzer.rowSummary(context), "profile_analyzer"));
         }
         if (SettingsStatus.exactProfileCounts) {
             addPreference(helper.switchPreference(
-                    str("piko_exact_profile_counts"),
-                    str("piko_exact_profile_counts_desc"),
+                    str("spookd_exact_profile_counts"),
+                    str("spookd_exact_profile_counts_desc"),
                     Settings.EXACT_PROFILE_COUNTS
             ));
         }
         if (SettingsStatus.squareProfileGrid) {
             addPreference(helper.switchPreference(
-                    str("piko_square_profile_grid"),
-                    str("piko_square_profile_grid_desc"),
+                    str("spookd_square_profile_grid"),
+                    str("spookd_square_profile_grid_desc"),
                     Settings.SQUARE_PROFILE_GRID
             ));
         }
         if (SettingsStatus.profileSavedTab) {
             addPreference(helper.switchPreference(
-                    str("piko_profile_saved_tab"),
-                    str("piko_profile_saved_tab_desc"),
+                    str("spookd_profile_saved_tab"),
+                    str("spookd_profile_saved_tab_desc"),
                     Settings.PROFILE_SAVED_TAB
             ));
         }
         if (SettingsStatus.resumeReelsAfterScrolling) {
             addPreference(helper.switchPreference(
-                    str("piko_resume_reels_after_scrolling"),
-                    str("piko_resume_reels_after_scrolling_desc"),
+                    str("spookd_resume_reels_after_scrolling"),
+                    str("spookd_resume_reels_after_scrolling_desc"),
                     Settings.RESUME_REELS_AFTER_SCROLLING
             ));
         }
         if (SettingsStatus.playbackSpeedControls) {
             addPreference(helper.switchPreference(
-                    str("piko_playback_speed_controls"),
-                    str("piko_playback_speed_controls_desc"),
+                    str("spookd_playback_speed_controls"),
+                    str("spookd_playback_speed_controls_desc"),
                     Settings.PLAYBACK_SPEED_CONTROLS
             ));
         }
         if (SettingsStatus.improveImageViewing) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_improve_image_viewing"),
-                            str("piko_improve_image_viewing_desc"),
+                            str("spookd_improve_image_viewing"),
+                            str("spookd_improve_image_viewing_desc"),
                             Settings.IMPROVE_IMAGE_VIEWING
                     )
             );
@@ -878,8 +878,8 @@ public class ScreenBuilder {
         if (SettingsStatus.copyCommentButton) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_copy_comment"),
-                            str("piko_copy_comment_desc"),
+                            str("spookd_copy_comment"),
+                            str("spookd_copy_comment_desc"),
                             Settings.COMMENT_COPY_BUTTON
                     )
             );
@@ -887,29 +887,29 @@ public class ScreenBuilder {
         if (SettingsStatus.removeEmptyBottomSpace) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_remove_empty_bottom_space"),
+                            str("spookd_remove_empty_bottom_space"),
                             "",
                             Settings.REMOVE_EMPTY_BOTTOM_SPACE
                     )
             );
         }
         if (SettingsStatus.confirmationsSection()) {
-            PreferenceCategory confirmations = addCategory(str("piko_category_confirmations"));
+            PreferenceCategory confirmations = addCategory(str("spookd_category_confirmations"));
             if (SettingsStatus.confirmFeedLike || SettingsStatus.confirmReelLike) {
                 addPreference(confirmations, helper.switchPreference(
-                        str("piko_confirm_like"), str("piko_confirm_like_desc"), Settings.CONFIRM_LIKE));
+                        str("spookd_confirm_like"), str("spookd_confirm_like_desc"), Settings.CONFIRM_LIKE));
             }
             if (SettingsStatus.confirmFollow) {
                 addPreference(confirmations, helper.switchPreference(
-                        str("piko_confirm_follow"), str("piko_confirm_follow_desc"), Settings.CONFIRM_FOLLOW));
+                        str("spookd_confirm_follow"), str("spookd_confirm_follow_desc"), Settings.CONFIRM_FOLLOW));
             }
             if (SettingsStatus.confirmReelRepost) {
                 addPreference(confirmations, helper.switchPreference(
-                        str("piko_confirm_repost"), str("piko_confirm_repost_desc"), Settings.CONFIRM_REPOST));
+                        str("spookd_confirm_repost"), str("spookd_confirm_repost_desc"), Settings.CONFIRM_REPOST));
             }
             if (SettingsStatus.confirmComment || SettingsStatus.confirmCommentSheet) {
                 addPreference(confirmations, helper.switchPreference(
-                        str("piko_confirm_comment"), str("piko_confirm_comment_desc"), Settings.CONFIRM_COMMENT));
+                        str("spookd_confirm_comment"), str("spookd_confirm_comment_desc"), Settings.CONFIRM_COMMENT));
             }
         }
     }
@@ -918,16 +918,16 @@ public class ScreenBuilder {
         if (SettingsStatus.instantsDownload) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_instants_download"),
-                            str("piko_instants_download_desc"),
+                            str("spookd_instants_download"),
+                            str("spookd_instants_download_desc"),
                             Settings.INSTANTS_DOWNLOAD
                     )
             );
             addPreference(
                     helper.buttonPreference(
-                            str("piko_view_saved_instants"),
+                            str("spookd_view_saved_instants"),
                             "",
-                            "piko_view_saved_instants"
+                            "spookd_view_saved_instants"
                     )
             );
         }
@@ -936,11 +936,11 @@ public class ScreenBuilder {
     public void buildDownloadSection() {
         if (!SettingsStatus.downloadSection()) return;
 
-        // PreferenceCategory category= addCategory(str("piko_category_download_media"));
+        // PreferenceCategory category= addCategory(str("spookd_category_download_media"));
 
         addPreference(
                 helper.switchPreference(
-                        str("piko_enable_download"),
+                        str("spookd_enable_download"),
                         "",
                         Settings.ENABLE_DOWNLOAD
                 )
@@ -958,8 +958,8 @@ public class ScreenBuilder {
         if (SettingsStatus.saveMediaCommentButton) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_save_media_comment"),
-                            str("piko_save_media_comment_desc"),
+                            str("spookd_save_media_comment"),
+                            str("spookd_save_media_comment_desc"),
                             Settings.COMMENT_SAVE_MEDIA_BUTTON
                     )
             );
@@ -967,24 +967,24 @@ public class ScreenBuilder {
 
         addPreference(
                 helper.switchPreference(
-                        str("piko_enable_direct_download"),
-                        str("piko_enable_direct_download_desc"),
+                        str("spookd_enable_direct_download"),
+                        str("spookd_enable_direct_download_desc"),
                         Settings.ENABLE_DIRECT_DOWNLOAD
                 )
         );
 
         addPreference(
                 helper.switchPreference(
-                        str("piko_download_username_folder"),
-                        str("piko_download_username_folder_desc"),
+                        str("spookd_download_username_folder"),
+                        str("spookd_download_username_folder_desc"),
                         Settings.DOWNLOAD_USERNAME_FOLDER
                 )
         );
 
         addPreference(
                 helper.switchPreference(
-                        str("piko_prefer_dash_format"),
-                        str("piko_prefer_dash_format_desc"),
+                        str("spookd_prefer_dash_format"),
+                        str("spookd_prefer_dash_format_desc"),
                         Settings.PREFER_DASH_FORMAT
                 )
         );
@@ -992,8 +992,8 @@ public class ScreenBuilder {
         addPreference(
                 helper.availableWhen(
                         helper.switchPreference(
-                                str("piko_dash_audio_aac_lc"),
-                                str("piko_dash_audio_aac_lc_desc"),
+                                str("spookd_dash_audio_aac_lc"),
+                                str("spookd_dash_audio_aac_lc_desc"),
                                 Settings.DASH_AUDIO_AAC_LC
                         ),
                         () -> SharedPref.getBooleanPref(Settings.PREFER_DASH_FORMAT)
@@ -1002,23 +1002,23 @@ public class ScreenBuilder {
 
         addPreference(
                 helper.switchPreference(
-                        str("piko_embed_download_metadata"),
-                        str("piko_embed_download_metadata_desc"),
+                        str("spookd_embed_download_metadata"),
+                        str("spookd_embed_download_metadata_desc"),
                         Settings.EMBED_DOWNLOAD_METADATA
                 )
         );
 
         addPreference(
                 helper.listPreference(
-                        str("piko_download_conflict_policy"),
-                        str("piko_download_conflict_policy_desc"),
+                        str("spookd_download_conflict_policy"),
+                        str("spookd_download_conflict_policy_desc"),
                         Settings.DOWNLOAD_CONFLICT_POLICY
                 )
         );
 
         addPreference(
                 helper.downloadFileNameTemplatePreference(
-                        str("piko_download_file_name_template"),
+                        str("spookd_download_file_name_template"),
                         Pref.downloadFileNameTemplate(),
                         Settings.DOWNLOAD_FILE_NAME_TEMPLATE
                 )
@@ -1026,44 +1026,44 @@ public class ScreenBuilder {
 
         addPreference(
                 helper.buttonPreference(
-                        str("piko_private_gallery"),
-                        str("piko_private_gallery_desc"),
-                        "piko_private_gallery"
+                        str("spookd_private_gallery"),
+                        str("spookd_private_gallery_desc"),
+                        "spookd_private_gallery"
                 )
         );
 
         String phoneStorageReason = Build.VERSION.SDK_INT < 30
-                ? str("piko_save_downloads_to_phone_storage_old_android")
-                : Gallery.canOpen(context) ? null : str("piko_save_downloads_to_phone_storage_no_lock");
+                ? str("spookd_save_downloads_to_phone_storage_old_android")
+                : Gallery.canOpen(context) ? null : str("spookd_save_downloads_to_phone_storage_no_lock");
         addPreference(
                 helper.forcedSwitchPreference(
-                        str("piko_save_downloads_to_phone_storage"),
-                        str("piko_save_downloads_to_phone_storage_desc"),
+                        str("spookd_save_downloads_to_phone_storage"),
+                        str("spookd_save_downloads_to_phone_storage_desc"),
                         Settings.SAVE_DOWNLOADS_TO_PHONE_STORAGE,
                         phoneStorageReason != null,
                         phoneStorageReason
                 )
         );
 
-        addPreference(galleryLimitPreference("piko_gallery_max_age_days", "piko_gallery_max_age_days_desc",
+        addPreference(galleryLimitPreference("spookd_gallery_max_age_days", "spookd_gallery_max_age_days_desc",
                 Settings.GALLERY_MAX_AGE_DAYS,
                 Pref::galleryMaxAgeDays));
-        addPreference(galleryLimitPreference("piko_gallery_max_size_gb", "piko_gallery_max_size_gb_desc",
+        addPreference(galleryLimitPreference("spookd_gallery_max_size_gb", "spookd_gallery_max_size_gb_desc",
                 Settings.GALLERY_MAX_SIZE_GB,
                 () -> Pref.galleryMaxBytes() / 1_000_000_000L));
 
         addPreference(
                 helper.buttonPreference(
-                        str("piko_download_set_path"),
+                        str("spookd_download_set_path"),
                         StorageUtils.getCustomPathForDisplay(),
-                        "piko_download_set_path"
+                        "spookd_download_set_path"
                 )
         );
 
         if(SettingsStatus.downloadWithExternalDownloader) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_download_with_external_downloader"),
+                            str("spookd_download_with_external_downloader"),
                             "",
                             Settings.DOWNLOAD_WITH_EXTERNAL_DOWNLOADER
                     )
@@ -1072,7 +1072,7 @@ public class ScreenBuilder {
             addPreference(
                     helper.availableWhen(
                             helper.editTextPreference(
-                                    str("piko_external_downloader_package_name"),
+                                    str("spookd_external_downloader_package_name"),
                                     Pref.externalDownloaderPackageName(),
                                     Settings.EXTERNAL_DOWNLOADER_PACKAGE_NAME
                             ),
@@ -1099,7 +1099,7 @@ public class ScreenBuilder {
 
         addPreference(
                 helper.multiSelectListPref(
-                        str("piko_action_bar_main_feed"),
+                        str("spookd_action_bar_main_feed"),
                         "",
                         Settings.ACTION_BAR_MAIN_FEED
                 )
@@ -1107,7 +1107,7 @@ public class ScreenBuilder {
 
         addPreference(
                 helper.multiSelectListPref(
-                        str("piko_action_bar_user_profile"),
+                        str("spookd_action_bar_user_profile"),
                         "",
                         Settings.ACTION_BAR_USER_PROFILE
                 )
@@ -1115,7 +1115,7 @@ public class ScreenBuilder {
 
         addPreference(
                 helper.multiSelectListPref(
-                        str("piko_action_bar_inbox"),
+                        str("spookd_action_bar_inbox"),
                         "",
                         Settings.ACTION_BAR_INBOX
                 )
@@ -1123,8 +1123,8 @@ public class ScreenBuilder {
 
         addPreference(
                 helper.multiSelectListPref(
-                        str("piko_action_bar_chat"),
-                        str("piko_action_bar_chat_desc"),
+                        str("spookd_action_bar_chat"),
+                        str("spookd_action_bar_chat_desc"),
                         Settings.ACTION_BAR_CHAT
                 )
         );
@@ -1134,12 +1134,12 @@ public class ScreenBuilder {
         if(!SettingsStatus.filterContentSection()) return;
 
         if(SettingsStatus.storyFilters) {
-            PreferenceCategory category = addCategory(str("piko_filter_story"));
+            PreferenceCategory category = addCategory(str("spookd_filter_story"));
 
             addPreference(
                     category,
                     helper.multiSelectListPref(
-                            str("piko_filter_story_types_to_hide"),
+                            str("spookd_filter_story_types_to_hide"),
                             "",
                             Settings.FILTER_STORY_BY_TYPE
                     )
@@ -1148,7 +1148,7 @@ public class ScreenBuilder {
             addPreference(
                     category,
                     helper.multiSelectListPref(
-                            str("piko_filter_story_user_types_to_hide"),
+                            str("spookd_filter_story_user_types_to_hide"),
                             "",
                             Settings.FILTER_STORY_BY_USER_TYPE
                     )
@@ -1157,8 +1157,8 @@ public class ScreenBuilder {
             addPreference(
                     category,
                     helper.editTextNumPreference(
-                            str("piko_filter_story_minimum_item_count"),
-                            str("piko_filter_story_minimum_item_count_desc"),
+                            str("spookd_filter_story_minimum_item_count"),
+                            str("spookd_filter_story_minimum_item_count_desc"),
                             Settings.FILTER_STORY_MIN_STORY_ITEMS
                     )
             );
@@ -1166,8 +1166,8 @@ public class ScreenBuilder {
             addPreference(
                     category,
                     helper.editTextNumPreference(
-                            str("piko_filter_story_maximum_item_count"),
-                            str("piko_filter_story_maximum_item_count_desc"),
+                            str("spookd_filter_story_maximum_item_count"),
+                            str("spookd_filter_story_maximum_item_count_desc"),
                             Settings.FILTER_STORY_MAX_STORY_ITEMS
                     )
             );
@@ -1177,15 +1177,15 @@ public class ScreenBuilder {
     public void buildNavigationSection() {
         if (SettingsStatus.floatingTabBar) {
             addPreference(helper.switchPreference(
-                    str("piko_floating_tab_bar"),
-                    str("piko_floating_tab_bar_desc"),
+                    str("spookd_floating_tab_bar"),
+                    str("spookd_floating_tab_bar_desc"),
                     Settings.FLOATING_TAB_BAR
             ));
             addPreference(
                     helper.availableWhen(
                             helper.switchPreference(
-                                    str("piko_floating_tab_bar_hide_on_scroll"),
-                                    str("piko_floating_tab_bar_hide_on_scroll_desc"),
+                                    str("spookd_floating_tab_bar_hide_on_scroll"),
+                                    str("spookd_floating_tab_bar_hide_on_scroll_desc"),
                                     Settings.FLOATING_TAB_BAR_HIDE_ON_SCROLL
                             ),
                             () -> SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR)
@@ -1194,8 +1194,8 @@ public class ScreenBuilder {
             addPreference(
                     helper.availableWhen(
                             helper.switchPreference(
-                                    str("piko_floating_tab_bar_glass"),
-                                    str("piko_floating_tab_bar_glass_desc"),
+                                    str("spookd_floating_tab_bar_glass"),
+                                    str("spookd_floating_tab_bar_glass_desc"),
                                     Settings.FLOATING_TAB_BAR_GLASS
                             ),
                             () -> SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR)
@@ -1206,23 +1206,23 @@ public class ScreenBuilder {
 
         addPreference(
                 helper.navigationBarPreference(
-                        str("piko_navigation_tabs_title"),
-                        str("piko_navigation_tabs_summary")
+                        str("spookd_navigation_tabs_title"),
+                        str("spookd_navigation_tabs_summary")
                 )
         );
 
         addPreference(
                 helper.navigationStartupPreference(
-                        str("piko_navigation_startup_tab"),
-                        str("piko_navigation_startup_tab_summary")
+                        str("spookd_navigation_startup_tab"),
+                        str("spookd_navigation_startup_tab_summary")
                 )
         );
     }
 
     public void aboutSection(TreeMap<String, Boolean> flags) {
 
-        String appVersionText = String.format(str("piko_app_version"), Utils.getAppVersionName());
-        String patchVersionText = String.format(str("piko_patch_version"), Utils.getPatchesReleaseVersion());
+        String appVersionText = String.format(str("spookd_app_version"), Utils.getAppVersionName());
+        String patchVersionText = String.format(str("spookd_patch_version"), Utils.getPatchesReleaseVersion());
 
         addPreference(
                 helper.buttonPreference(
@@ -1242,40 +1242,40 @@ public class ScreenBuilder {
 
         addPreference(
                 helper.buttonPreference(
-                        str("piko_export_pref"),
+                        str("spookd_export_pref"),
                         "",
-                        "piko_export_pref"
+                        "spookd_export_pref"
                 )
         );
 
         addPreference(
                 helper.buttonPreference(
-                        str("piko_import_pref"),
+                        str("spookd_import_pref"),
                         "",
-                        "piko_import_pref"
+                        "spookd_import_pref"
                 )
         );
 
         addPreference(
                 helper.buttonPreference(
-                        str("piko_reset_pref"),
+                        str("spookd_reset_pref"),
                         "",
-                        "piko_reset_pref"
+                        "spookd_reset_pref"
                 )
         );
 
         addPreference(
                 helper.switchPreference(
-                        str("piko_debug"),
-                        str("piko_debug_desc"),
+                        str("spookd_debug"),
+                        str("spookd_debug_desc"),
                         Settings.PIKO_DEBUG
                 )
         );
 
-        PreferenceCategory category = addCategory(str("piko_patch_info_title"));
+        PreferenceCategory category = addCategory(str("spookd_patch_info_title"));
         category.setKey(Constants.PIKO_PATCH_INFO_PREFERENCE_CATEGORY);
-        String enabledStr = str("piko_patch_enabled");
-        String disabledStr = str("piko_patch_disabled");
+        String enabledStr = str("spookd_patch_enabled");
+        String disabledStr = str("spookd_patch_disabled");
 
         for (Map.Entry<String, Boolean> entry : flags.entrySet()) {
             String resName = entry.getKey();
@@ -1299,8 +1299,8 @@ public class ScreenBuilder {
         if (SettingsStatus.hideStoryFollowButton) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_hide_story_follow_button"),
-                            str("piko_hide_story_follow_button_desc"),
+                            str("spookd_hide_story_follow_button"),
+                            str("spookd_hide_story_follow_button_desc"),
                             Settings.HIDE_STORY_FOLLOW_BUTTON
                     )
             );
@@ -1308,7 +1308,7 @@ public class ScreenBuilder {
         if (SettingsStatus.viewStoryMentions) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_view_story_mentions"),
+                            str("spookd_view_story_mentions"),
                             "",
                             Settings.VIEW_STORY_MENTIONS
                     )
@@ -1317,8 +1317,8 @@ public class ScreenBuilder {
         if (SettingsStatus.disableStoryFlipping) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_disable_story_flipping"),
-                            str("piko_disable_story_flipping_desc"),
+                            str("spookd_disable_story_flipping"),
+                            str("spookd_disable_story_flipping_desc"),
                             Settings.DISABLE_STORY_FLIPPING
                     )
             );
@@ -1326,8 +1326,8 @@ public class ScreenBuilder {
         if (SettingsStatus.loopStory) {
             addPreference(
                     helper.switchPreference(
-                            str("piko_loop_story"),
-                            str("piko_loop_story_desc"),
+                            str("spookd_loop_story"),
+                            str("spookd_loop_story_desc"),
                             Settings.LOOP_STORY
                     )
             );
@@ -1335,8 +1335,8 @@ public class ScreenBuilder {
         if (SettingsStatus.customiseStoryTimestamp) {
             addPreference(
                     helper.listPreference(
-                            str("piko_customise_story_timestamp"),
-                            str("piko_customise_story_timestamp_desc"),
+                            str("spookd_customise_story_timestamp"),
+                            str("spookd_customise_story_timestamp_desc"),
                             Settings.CUSTOMISE_STORY_TIMESTAMP
                     )
             );
@@ -1344,8 +1344,8 @@ public class ScreenBuilder {
         if (SettingsStatus.customiseStoryRingSize) {
             addPreference(
                     helper.editTextNumPreference(
-                            str("piko_customise_story_ring_size"),
-                            str("piko_customise_story_ring_size_desc"),
+                            str("spookd_customise_story_ring_size"),
+                            str("spookd_customise_story_ring_size_desc"),
                             Settings.CUSTOMISE_STORY_RING_SIZE
                     )
             );
@@ -1356,7 +1356,7 @@ public class ScreenBuilder {
         if (SettingsStatus.adsSection()){
             addPreference(
                     helper.categoryPreference(
-                            str("piko_category_ads"),
+                            str("spookd_category_ads"),
                             "",
                             Constants.PIKO_FRAGMENT_ADS
                     )
@@ -1366,7 +1366,7 @@ public class ScreenBuilder {
         if (SettingsStatus.filterContentSection()){
             addPreference(
                     helper.categoryPreference(
-                            str("piko_category_filter_content"),
+                            str("spookd_category_filter_content"),
                             "",
                             Constants.PIKO_FRAGMENT_FILTER_CONTENT
                     )
@@ -1376,7 +1376,7 @@ public class ScreenBuilder {
         if (SettingsStatus.ghostSection()){
             addPreference(
                     helper.categoryPreference(
-                            str("piko_category_ghost"),
+                            str("spookd_category_ghost"),
                             "",
                             Constants.PIKO_FRAGMENT_GHOST
                     )
@@ -1386,7 +1386,7 @@ public class ScreenBuilder {
         if (SettingsStatus.dmSection()){
             addPreference(
                     helper.categoryPreference(
-                            str("piko_category_dm"),
+                            str("spookd_category_dm"),
                             "",
                             Constants.PIKO_FRAGMENT_DM
                     )
@@ -1396,7 +1396,7 @@ public class ScreenBuilder {
         if (SettingsStatus.storySection()){
             addPreference(
                     helper.categoryPreference(
-                            str("piko_category_story"),
+                            str("spookd_category_story"),
                             "",
                             Constants.PIKO_FRAGMENT_STORY
                     )
@@ -1406,7 +1406,7 @@ public class ScreenBuilder {
         if (SettingsStatus.linksSection()){
             addPreference(
                     helper.categoryPreference(
-                            str("piko_category_links"),
+                            str("spookd_category_links"),
                             "",
                             Constants.PIKO_FRAGMENT_LINKS
                     )
@@ -1416,7 +1416,7 @@ public class ScreenBuilder {
         if (SettingsStatus.distractionFreeSection()){
             addPreference(
                     helper.categoryPreference(
-                            str("piko_category_distraction_free"),
+                            str("spookd_category_distraction_free"),
                             "",
                             Constants.PIKO_FRAGMENT_DISTRACTION_FREE
                     )
@@ -1426,7 +1426,7 @@ public class ScreenBuilder {
         if (SettingsStatus.miscSection()){
             addPreference(
                     helper.categoryPreference(
-                            str("piko_category_misc"),
+                            str("spookd_category_misc"),
                             "",
                             Constants.PIKO_FRAGMENT_MISC
                     )
@@ -1436,7 +1436,7 @@ public class ScreenBuilder {
         if (SettingsStatus.downloadSection()){
             addPreference(
                     helper.categoryPreference(
-                            str("piko_category_downloads"),
+                            str("spookd_category_downloads"),
                             "",
                             Constants.PIKO_FRAGMENT_DOWNLOAD_MEDIA
                     )
@@ -1446,7 +1446,7 @@ public class ScreenBuilder {
         if (SettingsStatus.instantsDownload){
             addPreference(
                     helper.categoryPreference(
-                            str("piko_instants_title"),
+                            str("spookd_instants_title"),
                             "",
                             Constants.PIKO_FRAGMENT_INSTANTS
                     )
@@ -1455,7 +1455,7 @@ public class ScreenBuilder {
 
         addPreference(
                 helper.categoryPreference(
-                        str("piko_category_action_bar"),
+                        str("spookd_category_action_bar"),
                         "",
                         Constants.PIKO_FRAGMENT_ACTION_BAR
                 )
@@ -1464,7 +1464,7 @@ public class ScreenBuilder {
         if (SettingsStatus.hideNavigationButtons || SettingsStatus.floatingTabBar){
             addPreference(
                     helper.categoryPreference(
-                            str("piko_category_navigation_tabs"),
+                            str("spookd_category_navigation_tabs"),
                             "",
                             Constants.PIKO_FRAGMENT_NAV_BTNS
                     )
@@ -1474,7 +1474,7 @@ public class ScreenBuilder {
         if (SettingsStatus.developerOptionsSection()){
             addPreference(
                     helper.categoryPreference(
-                            str("piko_category_dev_options"),
+                            str("spookd_category_dev_options"),
                             "",
                             Constants.PIKO_FRAGMENT_DEV_OPTIONS
                     )
@@ -1483,7 +1483,7 @@ public class ScreenBuilder {
 
         addPreference(
                 helper.categoryPreference(
-                        str("piko_category_about"),
+                        str("spookd_category_about"),
                         "",
                         Constants.PIKO_FRAGMENT_ABOUT
                 )

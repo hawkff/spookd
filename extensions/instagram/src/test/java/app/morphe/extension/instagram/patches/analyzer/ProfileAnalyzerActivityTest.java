@@ -25,11 +25,11 @@ public final class ProfileAnalyzerActivityTest {
                 Collections.emptyList(), Collections.singletonList(a), Arrays.asList(newer, older));
 
         assertEquals(Arrays.asList(
-                "piko_profile_analyzer_not_following_back 2", "1", "2",
-                "piko_profile_analyzer_not_followed_back 0",
-                "piko_profile_analyzer_not_followed_back_empty -1",
-                "piko_profile_analyzer_mutuals 1", "1",
-                "piko_profile_analyzer_history 2", PikoFollowDb.NEW_FOLLOWER,
+                "spookd_profile_analyzer_not_following_back 2", "1", "2",
+                "spookd_profile_analyzer_not_followed_back 0",
+                "spookd_profile_analyzer_not_followed_back_empty -1",
+                "spookd_profile_analyzer_mutuals 1", "1",
+                "spookd_profile_analyzer_history 2", PikoFollowDb.NEW_FOLLOWER,
                 PikoFollowDb.LOST_FOLLOWER), describe(rows));
         assertSame(newer, rows.get(8));
     }
@@ -46,19 +46,19 @@ public final class ProfileAnalyzerActivityTest {
 
     @Test
     public void historyTextFitsTheValuesThatExist() {
-        assertEquals("piko_profile_analyzer_username_changed",
+        assertEquals("spookd_profile_analyzer_username_changed",
                 ProfileAnalyzerActivity.historyKey(PikoFollowDb.USERNAME, "old", "new"));
-        assertEquals("piko_profile_analyzer_username_set",
+        assertEquals("spookd_profile_analyzer_username_set",
                 ProfileAnalyzerActivity.historyKey(PikoFollowDb.USERNAME, null, "new"));
-        assertEquals("piko_profile_analyzer_name_changed",
+        assertEquals("spookd_profile_analyzer_name_changed",
                 ProfileAnalyzerActivity.historyKey(PikoFollowDb.FULL_NAME, "Bob", "Robert"));
-        assertEquals("piko_profile_analyzer_name_set",
+        assertEquals("spookd_profile_analyzer_name_set",
                 ProfileAnalyzerActivity.historyKey(PikoFollowDb.FULL_NAME, "", "Robert"));
-        assertEquals("piko_profile_analyzer_name_removed",
+        assertEquals("spookd_profile_analyzer_name_removed",
                 ProfileAnalyzerActivity.historyKey(PikoFollowDb.FULL_NAME, "Bob", ""));
-        assertEquals("piko_profile_analyzer_lost_follower",
+        assertEquals("spookd_profile_analyzer_lost_follower",
                 ProfileAnalyzerActivity.historyKey(PikoFollowDb.LOST_FOLLOWER, null, "c"));
-        assertEquals("piko_profile_analyzer_picture_changed",
+        assertEquals("spookd_profile_analyzer_picture_changed",
                 ProfileAnalyzerActivity.historyKey(PikoFollowDb.PICTURE, "p1", "p2"));
         assertNull(ProfileAnalyzerActivity.historyKey("other", null, null));
         assertNull(ProfileAnalyzerActivity.historyKey(null, null, null));

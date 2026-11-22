@@ -58,21 +58,21 @@ public class ListPref extends ListPreference {
         // Flag codes doesnt have _ in them
         if(key.contains("_")){
             if (key == Settings.CUSTOMISE_STORY_TIMESTAMP.key) {
-                entries = ResourceUtils.getStringArray("piko_array_customise_story_timestamp");
-                entriesValues = ResourceUtils.getStringArray("piko_array_customise_story_timestamp_val");
+                entries = ResourceUtils.getStringArray("spookd_array_customise_story_timestamp");
+                entriesValues = ResourceUtils.getStringArray("spookd_array_customise_story_timestamp_val");
             } else if (key == Settings.HIDDEN_CHATS_TAPS.key) {
-                entries = ResourceUtils.getStringArray("piko_array_hidden_chats_taps");
+                entries = ResourceUtils.getStringArray("spookd_array_hidden_chats_taps");
                 entriesValues = entries;
             } else if (Settings.DOWNLOAD_CONFLICT_POLICY.key.equals(key)) {
-                entries = ResourceUtils.getStringArray("piko_array_download_conflict_policy");
-                entriesValues = ResourceUtils.getStringArray("piko_array_download_conflict_policy_val");
+                entries = ResourceUtils.getStringArray("spookd_array_download_conflict_policy");
+                entriesValues = ResourceUtils.getStringArray("spookd_array_download_conflict_policy_val");
             } else if (key == Settings.CHANGE_LIKE_ANIMATION.key) {
-                entries = ResourceUtils.getStringArray("piko_array_change_like_animation");
-                entriesValues = ResourceUtils.getStringArray("piko_array_change_like_animation_val");
+                entries = ResourceUtils.getStringArray("spookd_array_change_like_animation");
+                entriesValues = ResourceUtils.getStringArray("spookd_array_change_like_animation_val");
             }
         } else {
-            entries = ResourceUtils.getStringArray("piko_array_recmd_flag_states");
-            entriesValues = ResourceUtils.getStringArray("piko_array_recmd_flag_states_val");
+            entries = ResourceUtils.getStringArray("spookd_array_recmd_flag_states");
+            entriesValues = ResourceUtils.getStringArray("spookd_array_recmd_flag_states_val");
         }
 
         setEntries(entries);

@@ -358,9 +358,9 @@ public final class AccountSettings {
             if (activity.isFinishing() || ActivityHook.isPiko(activity)) return;
             restartPending = false;
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
-                    .setTitle(str("piko_restart_app"))
-                    .setPositiveButton(str("piko_ok"), (dialog, which) -> InstaUtils.restartApp(activity))
-                    .setNegativeButton(str("piko_cancel"), null)
+                    .setTitle(str("spookd_restart_app"))
+                    .setPositiveButton(str("spookd_ok"), (dialog, which) -> InstaUtils.restartApp(activity))
+                    .setNegativeButton(str("spookd_cancel"), null)
                     .show();
         } catch (Throwable t) {
             logFailure("Failed to show the account restart notice", t);

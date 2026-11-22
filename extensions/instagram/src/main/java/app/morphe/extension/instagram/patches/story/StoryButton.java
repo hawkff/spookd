@@ -37,16 +37,16 @@ public class StoryButton {
 
     public static ArrayList addButtons(ArrayList buttonList){
         if(DEBUG){
-            buttonList.add(str("piko_debug"));
+            buttonList.add(str("spookd_debug"));
         }
         if(VIEW_STORY_MENTIONS){
-            buttonList.add(str("piko_view_story_mentions"));
+            buttonList.add(str("spookd_view_story_mentions"));
         }
         if(ENABLE_DOWNLOAD){
-            buttonList.add(str("piko_download_options"));
+            buttonList.add(str("spookd_download_options"));
         }
         if(Pref.downloadWithExternalDownloader()){
-            buttonList.add(str("piko_download_with_external_downloader"));
+            buttonList.add(str("spookd_download_with_external_downloader"));
         }
 
         return buttonList;
@@ -55,10 +55,10 @@ public class StoryButton {
     public static boolean storyDialogAction(CharSequence buttonText, Context ctx, UserSession session,
                                            Object mediaObject, Object reel,
                                            DialogInterface.OnDismissListener onDismiss) {
-        if (buttonText.equals(str("piko_view_story_mentions"))) {
+        if (buttonText.equals(str("spookd_view_story_mentions"))) {
             ViewStoryMentionsPatch.viewMentions(ctx, mediaObject, onDismiss);
             return true;
-        } else if (buttonText.equals(str("piko_download_options")) || buttonText.equals(str("piko_category_download_media"))) {
+        } else if (buttonText.equals(str("spookd_download_options")) || buttonText.equals(str("spookd_category_download_media"))) {
             DownloadUtils.showStoryDownloadOptions(ctx, session, mediaObject, reel, onDismiss);
             return true;
         }
@@ -67,10 +67,10 @@ public class StoryButton {
 
     public static boolean storyButtonAction(CharSequence buttonText, Context ctx, Object mediaObject){
         try {
-            if (buttonText.equals(str("piko_debug"))) {
+            if (buttonText.equals(str("spookd_debug"))) {
                 ObjectBrowser.browseObject(ctx, new MediaData(mediaObject));
                 return true;
-            } else if (buttonText.equals(str("piko_download_with_external_downloader"))) {
+            } else if (buttonText.equals(str("spookd_download_with_external_downloader"))) {
                 DownloadUtils.externalDownloader(mediaObject,0);
 
                 return true;

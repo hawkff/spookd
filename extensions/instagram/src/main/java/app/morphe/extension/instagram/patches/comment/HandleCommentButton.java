@@ -72,9 +72,9 @@ public class HandleCommentButton {
                 if (commentData.hasText()) {
                     String commentText = (String) commentData.getText();
                     app.morphe.extension.shared.Utils.setClipboard(commentText);
-                    PikoUtils.toast(str("piko_comment_copied_success"));
+                    PikoUtils.toast(str("spookd_comment_copied_success"));
                 } else {
-                    PikoUtils.toast(str("piko_comment_copied_failed"));
+                    PikoUtils.toast(str("spookd_comment_copied_failed"));
                 }
                 return true;
 
@@ -84,9 +84,9 @@ public class HandleCommentButton {
                 String username = userData != null ? userData.getUsername() : null;
                 if (username != null && !username.isEmpty()) {
                     Utils.setClipboard(username);
-                    PikoUtils.toast(str("piko_copied"));
+                    PikoUtils.toast(str("spookd_copied"));
                 } else {
-                    PikoUtils.toast(str("piko_comment_copy_username_failed"));
+                    PikoUtils.toast(str("spookd_comment_copy_username_failed"));
                 }
                 return true;
 
@@ -123,7 +123,7 @@ public class HandleCommentButton {
 
         } catch (Exception e) {
             PikoUtils.logger(e);
-            PikoUtils.toast(str("piko_comment_action_failed"));
+            PikoUtils.toast(str("spookd_comment_action_failed"));
             // If exception happens, we need not check Instagram's button.
             return true;
         }

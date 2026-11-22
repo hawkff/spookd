@@ -133,7 +133,7 @@ public class ActionBarPatch {
                             updateGhostModeIcons(ghostModeToggle);
                         }
 
-                        String toastStr = ghostModeToggle ? str("piko_ghost_modes_on") : str("piko_ghost_modes_default");
+                        String toastStr = ghostModeToggle ? str("spookd_ghost_modes_on") : str("spookd_ghost_modes_default");
                         Utils.showToastShort(toastStr);
                     } catch (Exception ex) {
                         Logger.printException(() -> "ghost icon click failed: ", ex);

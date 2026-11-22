@@ -46,11 +46,11 @@ public class BackupPrefFragment extends Fragment {
         String ext = null;
 
         if (args != null) {
-            if (args.containsKey("piko_export_dev_overrides")) {
+            if (args.containsKey("spookd_export_dev_overrides")) {
                 filename = "mc_overrides";
                 ext = ".json";
                 sourceFile = new File(context.getFilesDir() + "/mobileconfig", filename + ext);
-            } else if (args.containsKey("piko_export_pref")) {
+            } else if (args.containsKey("spookd_export_pref")) {
                 filename = Constants.PIKO_SETTINGS;
                 ext = ".xml";
                 sourceFile = new File(context.getApplicationInfo().dataDir + "/shared_prefs", filename + ext);
@@ -62,11 +62,11 @@ public class BackupPrefFragment extends Fragment {
                 if (sourceFile.exists()) {
                     startIntent(filename, ext);
                 } else {
-                    toast(str("piko_fail_no_file"));
+                    toast(str("spookd_fail_no_file"));
                     finishHost();
                 }
             } else {
-                toast(str("piko_export_fail"));
+                toast(str("spookd_export_fail"));
                 finishHost();
             }
         }
@@ -84,8 +84,8 @@ public class BackupPrefFragment extends Fragment {
         } catch (Exception e) {
             Logger.printException(() -> "startActivityForResult failure", e);
             toast(str(e instanceof ActivityNotFoundException
-                    ? "piko_file_picker_unavailable"
-                    : "piko_export_fail"));
+                    ? "spookd_file_picker_unavailable"
+                    : "spookd_export_fail"));
             finishHost();
         }
     }
@@ -105,9 +105,9 @@ public class BackupPrefFragment extends Fragment {
                 out.write(buffer, 0, read);
             }
 
-            toast(str("piko_export_success"));
+            toast(str("spookd_export_success"));
         } catch (Exception e) {
-            toast(str("piko_export_fail"));
+            toast(str("spookd_export_fail"));
             Logger.printException(() -> "export failure", e);
         }
     }
@@ -127,7 +127,7 @@ public class BackupPrefFragment extends Fragment {
         }
 
         if (uri == null) {
-            toast(str("piko_fail_no_path"));
+            toast(str("spookd_fail_no_path"));
         } else if (res == Activity.RESULT_OK) {
             copyFile(uri);
         }

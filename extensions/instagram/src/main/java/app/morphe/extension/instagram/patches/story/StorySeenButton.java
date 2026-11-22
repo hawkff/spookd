@@ -459,7 +459,7 @@ public final class StorySeenButton {
         button.setEnabled(false);
         StorySeenRequestScope.Listener listener = resultListener(
                 () -> Utils.runOnMainThread(
-                        () -> Utils.showToastShort(str("piko_story_seen_sent"))),
+                        () -> Utils.showToastShort(str("spookd_story_seen_sent"))),
                 () -> BINDING_UPDATES.fail(bindingState.storyKey)
         );
         if (StorySeenBridge.markSeen(

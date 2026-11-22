@@ -62,7 +62,7 @@ public class InstaUtils {
 
     public static void showResetSettingsDialog(Context context) {
         if (FocusLock.isActive()) {
-            PikoUtils.toast(str("piko_focus_lock_blocked_action"));
+            PikoUtils.toast(str("spookd_focus_lock_blocked_action"));
             return;
         }
         // A reset would also turn Inbox lock off, so it has to be confirmed first while the lock is up.
@@ -71,10 +71,10 @@ public class InstaUtils {
             return;
         }
         new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(context))
-                .setTitle(str("piko_reset_pref_confirm"))
-                .setNegativeButton(str("piko_cancel"), null)
+                .setTitle(str("spookd_reset_pref_confirm"))
+                .setNegativeButton(str("spookd_cancel"), null)
                 .setPositiveButton(
-                        str("piko_ok"),
+                        str("spookd_ok"),
                         (dialogInterface, which) -> deletePref()
                 )
                 .show();
@@ -103,10 +103,10 @@ public class InstaUtils {
         // The font file lives outside the preferences, so a reset removes it separately.
         FontStorage.delete();
         if(Pref.clearAllPreferences()){
-            PikoUtils.toast(str("piko_reset_pref_success"));
+            PikoUtils.toast(str("spookd_reset_pref_success"));
             restartApp(Utils.getContext());
         }else{
-            PikoUtils.toast(str("piko_reset_pref_failed"));
+            PikoUtils.toast(str("spookd_reset_pref_failed"));
         }
     }
 
@@ -114,7 +114,7 @@ public class InstaUtils {
         Context context = Utils.getContext();
 
         if (!Utils.isNetworkConnected()) {
-            PikoUtils.toast(str("piko_no_internet"));
+            PikoUtils.toast(str("spookd_no_internet"));
             return;
         }
         Utils.runOnBackgroundThread(() -> {
@@ -130,7 +130,7 @@ public class InstaUtils {
                         PikoUtils.toast(downloadFailed(outputFile.getName()));
                         return;
                     }
-                    PikoUtils.toast(str("piko_downloaded_media") + outputFile.getName());
+                    PikoUtils.toast(str("spookd_downloaded_media") + outputFile.getName());
 
                     if (onComplete != null) {
                         onComplete.run();
@@ -146,6 +146,6 @@ public class InstaUtils {
 
     // Reuses the translated prefix; strips its trailing colon so every locale reads "<prefix>: <name>".
     private static String downloadFailed(String name) {
-        return str("piko_download_failed_media").replaceAll("[\\s:\uFF1A]+$", "") + ": " + name;
+        return str("spookd_download_failed_media").replaceAll("[\\s:\uFF1A]+$", "") + ": " + name;
     }
 }

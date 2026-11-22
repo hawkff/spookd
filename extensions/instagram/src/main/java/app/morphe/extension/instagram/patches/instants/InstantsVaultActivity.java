@@ -287,7 +287,7 @@ public final class InstantsVaultActivity {
             searchField = search;
             search.setSingleLine(true);
             search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
-            search.setHint(str("piko_search_username"));
+            search.setHint(str("spookd_search_username"));
             search.setHintTextColor(themed("igds_color_secondary_text", 0xFFB0B0B0));
             search.setTextColor(themed("igds_color_primary_text", 0xFFFFFFFF));
             search.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
@@ -346,7 +346,7 @@ public final class InstantsVaultActivity {
             if (visible.isEmpty()) {
                 scroll = null;
                 content.addView(items.isEmpty()
-                        ? centeredMessage(str("piko_instants_vault_empty"))
+                        ? centeredMessage(str("spookd_instants_vault_empty"))
                         : InstagramSearchStyle.createNoResultsView(activity));
             } else {
                 scroll = new ScrollView(activity);
@@ -506,7 +506,7 @@ public final class InstantsVaultActivity {
             int gap = dp(2);
             for (List<String[]> group : groups.values()) {
                 String label = group.get(0)[1];
-                if (label == null || label.isEmpty()) label = str("piko_someone");
+                if (label == null || label.isEmpty()) label = str("spookd_someone");
                 body.addView(buildHeader(label));
 
                 LinearLayout rowLayout = null;
@@ -626,20 +626,20 @@ public final class InstantsVaultActivity {
 
             TextView title = new TextView(activity);
             toolbarTitle = title;
-            title.setText(str("piko_view_saved_instants"));
+            title.setText(str("spookd_view_saved_instants"));
             title.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             InstagramPreferenceStyle.applyToolbarLayout(activity, bar, back, title, false);
             bar.addView(back);
             LinearLayout selectAll = new LinearLayout(activity);
             selectAll.setOrientation(LinearLayout.VERTICAL);
             selectAll.setGravity(Gravity.CENTER);
-            selectAll.setContentDescription(str("piko_all"));
+            selectAll.setContentDescription(str("spookd_all"));
             selectAllCheck = new SelectionCheck(
                     InstagramPreferenceStyle.dialogContext(activity), selectionControlDrawable());
             selectAllCheck.setImageTintList(ColorStateList.valueOf(InstagramPreferenceStyle.primaryTextColor()));
             selectAll.addView(selectAllCheck, new LinearLayout.LayoutParams(dp(48), dp(48)));
             TextView allLabel = new TextView(activity);
-            allLabel.setText(str("piko_all"));
+            allLabel.setText(str("spookd_all"));
             allLabel.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             allLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
             LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
@@ -652,7 +652,7 @@ public final class InstantsVaultActivity {
             bar.addView(selectAll);
             bar.addView(title);
             TextView cancel = new TextView(activity);
-            cancel.setText(str("piko_cancel"));
+            cancel.setText(str("spookd_cancel"));
             cancel.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             cancel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
             cancel.setGravity(Gravity.CENTER);
@@ -668,7 +668,7 @@ public final class InstantsVaultActivity {
 
         private View buildDeleteAction() {
             deleteAction = new Button(activity);
-            deleteAction.setText(str("piko_delete"));
+            deleteAction.setText(str("spookd_delete"));
             deleteAction.setAllCaps(false);
             deleteAction.setTextColor(themed("igds_color_error_or_destructive", 0xFFFF5C5C));
             deleteAction.setBackgroundTintList(null);
@@ -735,8 +735,8 @@ public final class InstantsVaultActivity {
                 selectionToolbarVisible = selectionMode;
             }
             toolbarTitle.setText(selectionMode
-                    ? String.format(Locale.getDefault(), str("piko_selected_count"), selectedIds.size())
-                    : str("piko_view_saved_instants"));
+                    ? String.format(Locale.getDefault(), str("spookd_selected_count"), selectedIds.size())
+                    : str("spookd_view_saved_instants"));
             backAction.setVisibility(selectionMode ? View.GONE : View.VISIBLE);
             selectAllAction.setVisibility(selectionMode ? View.VISIBLE : View.GONE);
             selectAllCheck.setChecked(!tiles.isEmpty() && selectedIds.size() == tiles.size());
@@ -777,8 +777,8 @@ public final class InstantsVaultActivity {
         private void confirmDeleteSelected() {
             List<String> ids = new ArrayList<>(selectedIds);
             if (ids.isEmpty()) return;
-            confirm(String.format(Locale.getDefault(), str("piko_instants_delete_selected_confirm"), ids.size()),
-                    str("piko_delete"), () -> {
+            confirm(String.format(Locale.getDefault(), str("spookd_instants_delete_selected_confirm"), ids.size()),
+                    str("spookd_delete"), () -> {
                         for (String id : ids) drop(id);
                         selectionMode = false;
                         selectedIds.clear();
@@ -793,7 +793,7 @@ public final class InstantsVaultActivity {
                 if (ts <= 0) return null;
                 Locale locale = activity.getResources().getConfiguration().getLocales().get(0);
                 String skeleton = DateFormat.is24HourFormat(activity) ? "yMMMdHm" : "yMMMdhm";
-                return str("piko_saved_on") + " " + new SimpleDateFormat(
+                return str("spookd_saved_on") + " " + new SimpleDateFormat(
                         DateFormat.getBestDateTimePattern(locale, skeleton), locale).format(new Date(ts));
             } catch (Exception e) {
                 return null;
@@ -811,15 +811,15 @@ public final class InstantsVaultActivity {
         private void showOptions(String[] row) {
             String url = urlOf(row);
             if (url == null || !url.startsWith("http")) {
-                Toast.makeText(activity, str("piko_instants_link_unavailable"), Toast.LENGTH_SHORT).show();
+                Toast.makeText(activity, str("spookd_instants_link_unavailable"), Toast.LENGTH_SHORT).show();
                 return;
             }
             boolean isVideo = "1".equals(row[4]);
             boolean opensVideo = isVideo && row[3] != null && !row[3].isEmpty();
             CharSequence[] options = new CharSequence[] {
-                    str("piko_download_current_media"),
-                    opensVideo ? str("piko_open_video_externally") : str("piko_open_image_externally"),
-                    str("piko_copy_media_link"),
+                    str("spookd_download_current_media"),
+                    opensVideo ? str("spookd_open_video_externally") : str("spookd_open_image_externally"),
+                    str("spookd_copy_media_link"),
             };
             DialogInterface.OnClickListener onPick = (d, which) -> {
                 try {
@@ -828,7 +828,7 @@ public final class InstantsVaultActivity {
                         download(row, url, opensVideo, clickedAtMillis);
                     } else if (which == 2) {
                         Utils.setClipboard(MediaUrls.forViewing(url));
-                        Utils.showToastShort(str("piko_copied_media_link"));
+                        Utils.showToastShort(str("spookd_copied_media_link"));
                     } else {
                         ActivityHook.handleUrlIntent(opensVideo, url);
                     }
@@ -839,7 +839,7 @@ public final class InstantsVaultActivity {
 
             CharSequence saved = savedOn(row);
             new android.app.AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
-                    .setTitle(saved == null ? str("piko_download_options") : saved)
+                    .setTitle(saved == null ? str("spookd_download_options") : saved)
                     .setItems(options, onPick)
                     .show();
         }
@@ -865,7 +865,7 @@ public final class InstantsVaultActivity {
             new android.app.AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                     .setMessage(message)
                     .setPositiveButton(positiveText, (d, w) -> onConfirm.run())
-                    .setNegativeButton(str("piko_cancel"), null)
+                    .setNegativeButton(str("spookd_cancel"), null)
                     .show();
         }
 

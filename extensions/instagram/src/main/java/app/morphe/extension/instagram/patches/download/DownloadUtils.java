@@ -108,14 +108,14 @@ public class DownloadUtils {
         List<MediaInterface> variantList;
         String title = "";
         if(mediaType.equals(MediaType.VIDEO)){
-            title = str("piko_video_variants");
+            title = str("spookd_video_variants");
             List<VideoVariant> videos = new ArrayList<>();
             if (Pref.preferDashFormat()) videos.addAll(currentMediaData.getDashVideos());
             List<VideoData> progressive = currentMediaData.getVideoVariants();
             if (progressive != null) videos.addAll(progressive);
             variantList = new ArrayList<>(VideoResolution.group(videos));
         }else{
-            title = str("piko_image_variants");
+            title = str("spookd_image_variants");
             variantList = new ArrayList<>(ImageResolution.group(currentMediaData.getImageVariants()));
         }
 
@@ -124,7 +124,7 @@ public class DownloadUtils {
         for (MediaInterface item : variantList) {
             String label = item.getLabel();
             if (item instanceof VideoResolution) {
-                label = item.shortSide() > 0 ? label : str("piko_unknown");
+                label = item.shortSide() > 0 ? label : str("spookd_unknown");
             }
             options.add(label);
         }
@@ -162,7 +162,7 @@ public class DownloadUtils {
 
         dialog.setOnDismissListener(onDismiss);
         dialog.setTitle(title);
-        dialog.setNegativeButton(str("piko_close"), (d, which) -> d.dismiss());
+        dialog.setNegativeButton(str("spookd_close"), (d, which) -> d.dismiss());
         dialog.setCancelable(true);
         dialog.setCanceledOnTouchOutside(true);
 
@@ -183,21 +183,21 @@ public class DownloadUtils {
         InstagramDialogBox dialog = new InstagramDialogBox(context);
 
         ArrayList<String> options = new ArrayList<>();
-        options.add(str("piko_download_current_media"));
-        options.add(str("piko_download_as_image"));
-        if (currentMediaHasAudio) options.add(str("piko_download_audio"));
-        options.add(str("piko_copy_media_link"));
-        options.add(str("piko_image_variants"));
+        options.add(str("spookd_download_current_media"));
+        options.add(str("spookd_download_as_image"));
+        if (currentMediaHasAudio) options.add(str("spookd_download_audio"));
+        options.add(str("spookd_copy_media_link"));
+        options.add(str("spookd_image_variants"));
         if (isCurrentMediaVideo) {
-            options.add(str("piko_video_variants"));
-            options.add(str("piko_open_video_externally"));
+            options.add(str("spookd_video_variants"));
+            options.add(str("spookd_open_video_externally"));
         } else {
-            options.add(str("piko_open_image_externally"));
+            options.add(str("spookd_open_image_externally"));
         }
 
         if (group.size() > 1) {
-            options.add(str("piko_select_media_download"));
-            options.add(str("piko_download_all"));
+            options.add(str("spookd_select_media_download"));
+            options.add(str("spookd_download_all"));
         }
 
         CharSequence[] items = options.toArray(new CharSequence[0]);
@@ -210,34 +210,34 @@ public class DownloadUtils {
                     // Doing like this because options are dynamic.
                     String selectedOption = options.get(which);
 
-                    if (selectedOption.equals(str("piko_download_current_media"))) {
+                    if (selectedOption.equals(str("spookd_download_current_media"))) {
                         downloadMedia(context, mediaInfo, position, filenameIndex, MediaType.ANY, hint);
 
-                    } else if (selectedOption.equals(str("piko_download_as_image"))) {
+                    } else if (selectedOption.equals(str("spookd_download_as_image"))) {
                         downloadMedia(context, mediaInfo, position, filenameIndex, MediaType.IMAGE, hint);
 
-                    } else if (selectedOption.equals(str("piko_copy_media_link"))) {
+                    } else if (selectedOption.equals(str("spookd_copy_media_link"))) {
                         Utils.setClipboard(MediaUrls.forViewing(currentMediaData.getMediaLink()));
-                        Utils.showToastShort(str("piko_copied_media_link"));
+                        Utils.showToastShort(str("spookd_copied_media_link"));
 
-                    } else if (selectedOption.equals(str("piko_open_video_externally")) || selectedOption.equals(str("piko_open_image_externally"))) {
+                    } else if (selectedOption.equals(str("spookd_open_video_externally")) || selectedOption.equals(str("spookd_open_image_externally"))) {
                         ActivityHook.handleUrlIntent(isCurrentMediaVideo, currentMediaData.getMediaLink());
 
-                    } else if (selectedOption.equals(str("piko_select_media_download"))) {
+                    } else if (selectedOption.equals(str("spookd_select_media_download"))) {
                         DownloadSelectionSheet.show(context, group, onDismiss);
                         childDialogShown[0] = true;
 
-                    } else if (selectedOption.equals(str("piko_download_all"))) {
+                    } else if (selectedOption.equals(str("spookd_download_all"))) {
                         downloadAllMedia(context, group);
 
-                    } else if (selectedOption.equals(str("piko_download_audio"))) {
+                    } else if (selectedOption.equals(str("spookd_download_audio"))) {
                         downloadMedia(context, mediaInfo, position, position, MediaType.AUDIO, hint);
 
-                    } else if (selectedOption.equals(str("piko_video_variants"))) {
+                    } else if (selectedOption.equals(str("spookd_video_variants"))) {
                         buildVariantDialogBox(context, mediaInfo, position, filenameIndex, MediaType.VIDEO, hint, onDismiss);
                         childDialogShown[0] = true;
 
-                    } else if (selectedOption.equals(str("piko_image_variants"))) {
+                    } else if (selectedOption.equals(str("spookd_image_variants"))) {
                         buildVariantDialogBox(context, mediaInfo, position, filenameIndex, MediaType.IMAGE, hint, onDismiss);
                         childDialogShown[0] = true;
 
@@ -255,8 +255,8 @@ public class DownloadUtils {
         dialog.setOnDismissListener(d -> {
             if (!childDialogShown[0] && onDismiss != null) onDismiss.onDismiss(d);
         });
-        dialog.setTitle(str("piko_download_options"));
-        dialog.setNegativeButton(str("piko_close"), (d, which) -> d.dismiss());
+        dialog.setTitle(str("spookd_download_options"));
+        dialog.setNegativeButton(str("spookd_close"), (d, which) -> d.dismiss());
         dialog.setCancelable(true);
         dialog.setCanceledOnTouchOutside(true);
 
@@ -291,7 +291,7 @@ public class DownloadUtils {
             downloadAllOrShowOptions(context, post, Math.max(0, position), DownloadMediaGroup.carousel(post));
         } catch (Exception e) {
             Logger.printException(() -> "Error on download button long press", e);
-            Utils.showToastShort(str("piko_download_failed_media"));
+            Utils.showToastShort(str("spookd_download_failed_media"));
         }
         return true;
     }
@@ -307,7 +307,7 @@ public class DownloadUtils {
             downloadDialogBox(context, media, Math.max(0, position), DownloadMediaGroup.carousel(media), onDismiss);
         } catch (Exception e) {
             Logger.printException(() -> "Could not show download options", e);
-            Utils.showToastShort(str("piko_download_failed_media"));
+            Utils.showToastShort(str("spookd_download_failed_media"));
             if (onDismiss != null) onDismiss.onDismiss(null);
         }
     }
@@ -319,7 +319,7 @@ public class DownloadUtils {
             downloadDialogBox(context, current, 0, DownloadMediaGroup.stories(current, reel, session), onDismiss);
         } catch (Exception e) {
             Logger.printException(() -> "Could not show story download options", e);
-            Utils.showToastShort(str("piko_download_failed_media"));
+            Utils.showToastShort(str("spookd_download_failed_media"));
             if (onDismiss != null) onDismiss.onDismiss(null);
         }
     }
@@ -342,7 +342,7 @@ public class DownloadUtils {
     static void downloadSelectedMedia(Context context, DownloadMediaGroup group, List<Integer> indexes) throws Exception {
         if (indexes.isEmpty()) return;
         if (!Utils.isNetworkConnected()) {
-            Utils.showToastShort(str("piko_no_internet"));
+            Utils.showToastShort(str("spookd_no_internet"));
             return;
         }
         int total = group.size();
@@ -369,7 +369,7 @@ public class DownloadUtils {
     private static void downloadMedia(Context context, MediaData mediaInfo, int position, int filenameIndex,
                                       MediaType mediaType, PostType hint) throws Exception {
         if(!Utils.isNetworkConnected()){
-            Utils.showToastShort(str("piko_no_internet"));
+            Utils.showToastShort(str("spookd_no_internet"));
             return;
         }
         MediaDownloader downloader = position == -1
@@ -456,7 +456,7 @@ public class DownloadUtils {
         } else if (position == -1) {
             downloadAllMedia(context, DownloadMediaGroup.carousel(mediaInfo));
         } else {
-            Utils.showToastShort(str("piko_download_nothing"));
+            Utils.showToastShort(str("spookd_download_nothing"));
         }
 
     }
@@ -763,7 +763,7 @@ public class DownloadUtils {
     }
 
     public static String feedDownloadButtonDescription() {
-        return str("piko_download_current_media");
+        return str("spookd_download_current_media");
     }
 
     // Placeholders the patch rewrites inside `currentMediaIndex` with the live-index field names.
@@ -943,7 +943,7 @@ public class DownloadUtils {
         button.setTag(STORY_DOWNLOAD_BUTTON_TAG);
         button.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
         button.setImageDrawable(context.getDrawable(drawableId).mutate());
-        button.setContentDescription(str("piko_download_current_media"));
+        button.setContentDescription(str("spookd_download_current_media"));
         button.setPadding(model.getPaddingLeft(), model.getPaddingTop(), model.getPaddingRight(), model.getPaddingBottom());
         row.addView(button, row.indexOfChild(model), cloneLayoutParams(model));
         return button;
@@ -969,7 +969,7 @@ public class DownloadUtils {
             }
         } catch (Exception e) {
             Logger.printException(() -> "Error at story download", e);
-            Utils.showToastShort(str("piko_download_failed_media"));
+            Utils.showToastShort(str("spookd_download_failed_media"));
         }
     }
 
@@ -1029,7 +1029,7 @@ public class DownloadUtils {
 
     private static void enqueueDownload(Context context, DownloadRequest request) {
         if(!Utils.isNetworkConnected()){
-            Utils.showToastShort(str("piko_no_internet"));
+            Utils.showToastShort(str("spookd_no_internet"));
             return;
         }
         MediaDownloader downloader = new MediaDownloader(context);
@@ -1041,11 +1041,11 @@ public class DownloadUtils {
             String packageName = Pref.externalDownloaderPackageName();
             packageName = packageName == null ? "" : packageName.trim();
             if(packageName.isEmpty()){
-                PikoUtils.toast(str("piko_external_downloader_package_name_not_set"));
+                PikoUtils.toast(str("spookd_external_downloader_package_name_not_set"));
                 return;
             }
             if(!PikoUtils.isAppInstalledAndEnabled(packageName)){
-                PikoUtils.toast(str("piko_external_downloader_package_name_not_found"));
+                PikoUtils.toast(str("spookd_external_downloader_package_name_not_found"));
                 return;
             }
             String link = Links.generatePostLink(mediaObject, currentMediaIndex);

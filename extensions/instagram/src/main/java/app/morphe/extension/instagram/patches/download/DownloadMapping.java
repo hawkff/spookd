@@ -32,17 +32,17 @@ public class DownloadMapping {
     private static void getMappingsDialogBox(Context context) {
         InstagramDialogBox dialog = new InstagramDialogBox(context);
 
-        dialog.setNegativeButton(str("piko_cancel"),null);
+        dialog.setNegativeButton(str("spookd_cancel"),null);
 
-        dialog.setPositiveButton(str("piko_download_id_mapping"), new DialogInterface.OnClickListener() {
+        dialog.setPositiveButton(str("spookd_download_id_mapping"), new DialogInterface.OnClickListener() {
             public final void onClick(DialogInterface dialogInterface, int i) {
                 DownloadMapping.downloadMapping();
             }
         });
 
 
-        dialog.setTitle(str("piko_missing_mapping_file"));
-        dialog.setMessage(str("piko_missing_mapping_file_desc"));
+        dialog.setTitle(str("spookd_missing_mapping_file"));
+        dialog.setMessage(str("spookd_missing_mapping_file_desc"));
         dialog.setCancelable(false);
         dialog.setCanceledOnTouchOutside(false);
 

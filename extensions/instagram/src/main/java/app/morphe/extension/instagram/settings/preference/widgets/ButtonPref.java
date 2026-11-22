@@ -66,38 +66,38 @@ public class ButtonPref extends Preference {
                         return true;
                     }
 
-                    if (key.equals("piko_export_dev_overrides") || key.equals("piko_import_dev_overrides") || key.equals("piko_import_id_mapping")
-                            || key.equals("piko_export_pref") || key.equals("piko_import_pref")
-                            || key.equals("piko_download_set_path") || key.equals("piko_pref_add_font")) {
+                    if (key.equals("spookd_export_dev_overrides") || key.equals("spookd_import_dev_overrides") || key.equals("spookd_import_id_mapping")
+                            || key.equals("spookd_export_pref") || key.equals("spookd_import_pref")
+                            || key.equals("spookd_download_set_path") || key.equals("spookd_pref_add_font")) {
                         ActivityHook.launchFragment((Activity) context, key);
 
-                    } else if (key.equals("piko_reset_pref")) {
+                    } else if (key.equals("spookd_reset_pref")) {
                         InstaUtils.showResetSettingsDialog(context);
 
                     } else if (key.equals("piko_focus_lock_action")) {
                         FocusLockDialogs.onActionPressed(context, ButtonPref.this);
 
-                    } else if (key.equals("piko_pref_delete_font")) {
+                    } else if (key.equals("spookd_pref_delete_font")) {
                         FontStorage.DeleteResult result = FontStorage.delete();
                         Utils.showToastShort(str(
-                                result == FontStorage.DeleteResult.DELETED ? "piko_pref_delete_font_success" :
-                                result == FontStorage.DeleteResult.NOT_FOUND ? "piko_pref_delete_font_warn" :
-                                        "piko_pref_delete_font_fail"));
+                                result == FontStorage.DeleteResult.DELETED ? "spookd_pref_delete_font_success" :
+                                result == FontStorage.DeleteResult.NOT_FOUND ? "spookd_pref_delete_font_warn" :
+                                        "spookd_pref_delete_font_fail"));
 
-                    } else if (key.equals("piko_export_experiment_list")) {
+                    } else if (key.equals("spookd_export_experiment_list")) {
                         InstaUtils.decompileExperiments(false);
 
-                    } else if (key.equals("piko_export_experiment_mappings")) {
+                    } else if (key.equals("spookd_export_experiment_mappings")) {
                         InstaUtils.decompileExperiments(true);
 
-                    } else if (key.equals("piko_download_id_mapping")) {
+                    } else if (key.equals("spookd_download_id_mapping")) {
                         DownloadMapping.downloadMapping();
 
-                    } else if (key.equals("piko_view_saved_instants")) {
+                    } else if (key.equals("spookd_view_saved_instants")) {
                         ActivityHook.launchActivity(context,
                                 app.morphe.extension.instagram.patches.instants.InstantsVaultActivity.class);
 
-                    } else if (key.equals("piko_private_gallery")) {
+                    } else if (key.equals("spookd_private_gallery")) {
                         ActivityHook.startPrivateGalleryActivity(context);
 
                     } else if (key.equals("view_deleted_messages")) {
@@ -109,7 +109,7 @@ public class ButtonPref extends Preference {
                     } else if (isFragmentNavigation(key)) {
                         FragmentHook.startFragment(key);
 
-                    } else if (key.equals("piko_rec_flags_refresh_file")) {
+                    } else if (key.equals("spookd_rec_flags_refresh_file")) {
                         RecommendedFlags.downloadRecommendedFlagsFile(
                                 recreateActivityOnComplete(context)
                         );
@@ -161,22 +161,22 @@ public class ButtonPref extends Preference {
     private static boolean hasVisibleTrail(String key) {
         return isFragmentNavigation(key)
                 || (key != null
-                && (key.equals("piko_export_dev_overrides")
-                || key.equals("piko_import_dev_overrides")
-                || key.equals("piko_import_id_mapping")
-                || key.equals("piko_export_pref")
-                || key.equals("piko_import_pref")
-                || key.equals("piko_reset_pref")
+                && (key.equals("spookd_export_dev_overrides")
+                || key.equals("spookd_import_dev_overrides")
+                || key.equals("spookd_import_id_mapping")
+                || key.equals("spookd_export_pref")
+                || key.equals("spookd_import_pref")
+                || key.equals("spookd_reset_pref")
                 || key.equals("piko_focus_lock_action")
-                || key.equals("piko_download_set_path")
-                || key.equals("piko_export_experiment_list")
-                || key.equals("piko_export_experiment_mappings")
-                || key.equals("piko_download_id_mapping")
-                || key.equals("piko_rec_flags_refresh_file")
-                || key.equals("piko_view_saved_instants")
-                || key.equals("piko_private_gallery")
-                || key.equals("piko_pref_add_font")
-                || key.equals("piko_pref_delete_font")
+                || key.equals("spookd_download_set_path")
+                || key.equals("spookd_export_experiment_list")
+                || key.equals("spookd_export_experiment_mappings")
+                || key.equals("spookd_download_id_mapping")
+                || key.equals("spookd_rec_flags_refresh_file")
+                || key.equals("spookd_view_saved_instants")
+                || key.equals("spookd_private_gallery")
+                || key.equals("spookd_pref_add_font")
+                || key.equals("spookd_pref_delete_font")
                 || key.equals("view_deleted_messages")
                 || key.equals("profile_analyzer")));
     }

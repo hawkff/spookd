@@ -163,22 +163,22 @@ public class FocusLock {
     /** Summary shown under the lock/unlock button. */
     public static String statusSummary() {
         if (!isActive()) {
-            return str("piko_focus_lock_status_unlocked");
+            return str("spookd_focus_lock_status_unlocked");
         }
         String until = formatDate(lockedUntil());
         if (canUnlockNow()) {
-            return str("piko_focus_lock_status_unlock_ready");
+            return str("spookd_focus_lock_status_unlock_ready");
         }
         if (isUnlockPending()) {
-            return String.format(str("piko_focus_lock_status_unlock_pending"), formatDate(unlockAvailableAt()), until);
+            return String.format(str("spookd_focus_lock_status_unlock_pending"), formatDate(unlockAvailableAt()), until);
         }
-        return String.format(str("piko_focus_lock_status_locked"), until);
+        return String.format(str("spookd_focus_lock_status_locked"), until);
     }
 
     public static String buttonTitle() {
-        if (!isActive()) return str("piko_focus_lock_button_lock");
-        if (canUnlockNow()) return str("piko_focus_lock_button_unlock");
-        if (isUnlockPending()) return str("piko_focus_lock_button_cancel_unlock");
-        return str("piko_focus_lock_button_request_unlock");
+        if (!isActive()) return str("spookd_focus_lock_button_lock");
+        if (canUnlockNow()) return str("spookd_focus_lock_button_unlock");
+        if (isUnlockPending()) return str("spookd_focus_lock_button_cancel_unlock");
+        return str("spookd_focus_lock_button_request_unlock");
     }
 }

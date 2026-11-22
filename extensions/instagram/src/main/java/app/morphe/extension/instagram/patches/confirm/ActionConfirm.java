@@ -59,7 +59,7 @@ public final class ActionConfirm {
             if (replay != null) return replay;
             if (!isFollow(type) || !Pref.confirmFollow()) return true;
             String title = name == null || name.isEmpty()
-                    ? str("piko_confirm_follow_title") : str("piko_confirm_follow_user_title", name);
+                    ? str("spookd_confirm_follow_title") : str("spookd_confirm_follow_user_title", name);
             return !ask(button, FOLLOW, title, button, state, button::performClick);
         } catch (Throwable t) {
             Logger.printException(() -> "allowFollowClick failure", t);
@@ -105,7 +105,7 @@ public final class ActionConfirm {
             if (replay != null) return replay;
             if (media == null || stagedFeedLiked || !Pref.confirmLike()) return true;
             Object[] args = {media, mediaState, module, onDone, position};
-            return !ask(null, LIKE, str("piko_confirm_like_title"), media, state, call(feedLikeMethod(handler.getClass()), handler, args));
+            return !ask(null, LIKE, str("spookd_confirm_like_title"), media, state, call(feedLikeMethod(handler.getClass()), handler, args));
         } catch (Throwable t) {
             Logger.printException(() -> "allowFeedLike failure", t);
             return true;
@@ -126,7 +126,7 @@ public final class ActionConfirm {
             Object[] args = Arrays.copyOfRange(refs, 1, refs.length + 2);
             args[args.length - 2] = enabled;
             args[args.length - 1] = liked;
-            return !ask(view, LIKE, str("piko_confirm_like_title"), view, state, invoker(owner, name, refs[0], args));
+            return !ask(view, LIKE, str("spookd_confirm_like_title"), view, state, invoker(owner, name, refs[0], args));
         } catch (Throwable t) {
             Logger.printException(() -> "allowReelLike failure", t);
             return true;
@@ -143,7 +143,7 @@ public final class ActionConfirm {
             if (view == null || refs[5] != null || !Pref.confirmRepost()) return true;
             Object[] args = Arrays.copyOf(refs, refs.length + 1);
             args[refs.length] = last;
-            return !ask(view, REPOST, str("piko_confirm_repost_title"), view, state, invoker(owner, name, null, args));
+            return !ask(view, REPOST, str("spookd_confirm_repost_title"), view, state, invoker(owner, name, null, args));
         } catch (Throwable t) {
             Logger.printException(() -> "allowReelRepost failure", t);
             return true;
@@ -157,7 +157,7 @@ public final class ActionConfirm {
             Boolean replay = replayVerdict(composer, state);
             if (replay != null) return replay;
             if (composer == null || isBlank(text) || !Pref.confirmComment()) return true;
-            return !ask(null, COMMENT, str("piko_confirm_comment_title"), composer, state,
+            return !ask(null, COMMENT, str("spookd_confirm_comment_title"), composer, state,
                     invoker(owner, name, null, new Object[]{composer}));
         } catch (Throwable t) {
             Logger.printException(() -> "allowComment failure", t);
@@ -181,7 +181,7 @@ public final class ActionConfirm {
             args[refs.length] = last;
             Runnable send = invoker(owner, name, null, args);
             Activity activity = refs[0] instanceof Activity ? (Activity) refs[0] : null;
-            return !ask(null, COMMENT, str("piko_confirm_comment_title"), composer, state, () -> {
+            return !ask(null, COMMENT, str("spookd_confirm_comment_title"), composer, state, () -> {
                 if (activity == null || !activity.isFinishing()) send.run();
             });
         } catch (Throwable t) {
@@ -249,8 +249,8 @@ public final class ActionConfirm {
         if (activity == null || activity.isFinishing()) return false;
         AlertDialog dialog = new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                 .setTitle(title)
-                .setNegativeButton(str("piko_cancel"), null)
-                .setPositiveButton(str("piko_confirm_" + action + "_action"), (shown, which) -> {
+                .setNegativeButton(str("spookd_cancel"), null)
+                .setPositiveButton(str("spookd_confirm_" + action + "_action"), (shown, which) -> {
                     // A recycled or closed screen means the prompt no longer matches what is shown.
                     if (anchor == null || anchor.isAttachedToWindow()) runConfirmed(token, state, rerun);
                 })

@@ -119,12 +119,12 @@ final class StorySeenButtonView {
     private static Presentation presentationFor(StorySeenBridge.SeenState seenState) {
         switch (seenState) {
             case MARKED:
-                return new Presentation(false, 0.50f, "piko_story_seen_sent");
+                return new Presentation(false, 0.50f, "spookd_story_seen_sent");
             case PENDING:
-                return new Presentation(false, 1.0f, "piko_story_seen_pending");
+                return new Presentation(false, 1.0f, "spookd_story_seen_pending");
             case UNMARKED:
             default:
-                return new Presentation(true, 1.0f, "piko_mark_story_seen");
+                return new Presentation(true, 1.0f, "spookd_mark_story_seen");
         }
     }
 

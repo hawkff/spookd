@@ -207,7 +207,7 @@ public class Links {
 
     public static String customSharingDomainSummary(String customDomain) {
         String domain = normalizeCustomDomain(customDomain);
-        return domain.isEmpty() ? str("piko_custom_sharing_domain_desc") : domain;
+        return domain.isEmpty() ? str("spookd_custom_sharing_domain_desc") : domain;
     }
 
     private static String normalizeCustomDomain(String customDomain) {

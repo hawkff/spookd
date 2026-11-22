@@ -65,7 +65,7 @@ public class ProfilePictureViewer {
             String username = userData.getUsername();
 
             if (imageUrl == null || imageUrl.isEmpty()) {
-                Utils.showToastShort(str("piko_fail_no_file"));
+                Utils.showToastShort(str("spookd_fail_no_file"));
                 return;
             }
 
@@ -101,8 +101,8 @@ public class ProfilePictureViewer {
             content.setOrientation(LinearLayout.VERTICAL);
             scroll.addView(content, new ScrollView.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            View openButton = buildActionButton(dialogContext, str("piko_open_image_externally"));
-            View downloadButton = buildActionButton(dialogContext, str("piko_download_profile_picture"));
+            View openButton = buildActionButton(dialogContext, str("spookd_open_image_externally"));
+            View downloadButton = buildActionButton(dialogContext, str("spookd_download_profile_picture"));
             content.addView(buildImageArea(dialog, imageUrl, placeholderColor, refreshUrl, resolvedUrl -> {
                 openButton.setOnClickListener(v -> {
                     dialog.dismiss();
@@ -110,7 +110,7 @@ public class ProfilePictureViewer {
                         ActivityHook.handleUrlIntent(false, resolvedUrl);
                     } catch (Exception e) {
                         Logger.printInfo(() -> "Profile picture external open: " + e.getClass().getSimpleName());
-                        Utils.showToastShort(str("piko_fail_no_file"));
+                        Utils.showToastShort(str("spookd_fail_no_file"));
                     }
                 });
                 downloadButton.setOnClickListener(v -> {
@@ -120,7 +120,7 @@ public class ProfilePictureViewer {
                         DownloadUtils.downloadMediaUrl(context, resolvedUrl, subFolder, filename, username);
                     } catch (Exception e) {
                         Logger.printInfo(() -> "Profile picture download: " + e.getClass().getSimpleName());
-                        Utils.showToastShort(str("piko_download_failed_media"));
+                        Utils.showToastShort(str("spookd_download_failed_media"));
                     }
                     dialog.dismiss();
                 });
@@ -149,7 +149,7 @@ public class ProfilePictureViewer {
             dialog.show();
         } catch (Exception e) {
             Logger.printInfo(() -> "Profile picture dialog: " + e.getClass().getSimpleName());
-            Utils.showToastShort(str("piko_fail_no_file"));
+            Utils.showToastShort(str("spookd_fail_no_file"));
         }
     }
 
@@ -165,7 +165,7 @@ public class ProfilePictureViewer {
         }
         int padding = dp(context, 10);
         close.setPadding(padding, padding, padding, padding);
-        close.setContentDescription(str("piko_close"));
+        close.setContentDescription(str("spookd_close"));
         UI.setThemedIcon(close, UI.DRAWABLE_CLEAR);
 
         FrameLayout.LayoutParams closeParams = new FrameLayout.LayoutParams(dp(context, 40), dp(context, 40));
@@ -210,7 +210,7 @@ public class ProfilePictureViewer {
                 imageView.setVisibility(View.VISIBLE);
                 onUrlResolved.accept(resolvedUrl);
             } else {
-                Utils.showToastShort(str("piko_download_failed_media"));
+                Utils.showToastShort(str("spookd_download_failed_media"));
             }
         });
         return frame;

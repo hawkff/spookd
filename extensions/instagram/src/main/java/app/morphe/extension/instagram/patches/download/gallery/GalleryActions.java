@@ -75,11 +75,11 @@ final class GalleryActions {
             request.onFinished = done -> {
                 if (done) saved.incrementAndGet();
                 if (ended.incrementAndGet() == total) {
-                    Utils.showToastShort(str("piko_gallery_exported", saved.get(), total));
+                    Utils.showToastShort(str("spookd_gallery_exported", saved.get(), total));
                 }
             };
         }
-        if (StorageUtils.checkStoragePermissions()) Utils.showToastShort(str("piko_gallery_exporting"));
+        if (StorageUtils.checkStoragePermissions()) Utils.showToastShort(str("spookd_gallery_exporting"));
         new MediaDownloader(context) {
             @Override
             protected void showToast(String msg) {
