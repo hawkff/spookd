@@ -18,7 +18,6 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.classDefBy
-import app.morphe.patcher.patch.classDefByOrNull
 import app.morphe.patcher.patch.mutableClassDefBy
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.util.getReference
@@ -27,7 +26,10 @@ import app.morphe.util.findInstructionIndicesReversedOrThrow
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
+import com.android.tools.smali.dexlib2.iface.Method
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
@@ -41,6 +43,21 @@ import com.android.tools.smali.dexlib2.util.MethodUtil
 private const val PROFILE_ANALYZER_CLASS = "$PATCHES_DESCRIPTOR/analyzer/ProfileAnalyzer;"
 
 private val MOVE_OBJECT_OPCODES = setOf(Opcode.MOVE_OBJECT, Opcode.MOVE_OBJECT_FROM16, Opcode.MOVE_OBJECT_16)
+
+/** How the app sends one list's GraphQL request, read from its own call site. */
+private class ListRequest(
+    val builder: Method,
+    val builderInstance: FieldReference,
+    val operationFactory: MethodReference,
+    val converterType: String,
+    val converterInit: MethodReference,
+    val converterKind: Int,
+    val map: MethodReference,
+    val mapArguments: List<Int>,
+    val taskFactory: MethodReference,
+    /** The class the call site is defined in. */
+    val callerType: String,
+)
 
 @Suppress("unused")
 val profileAnalyzerPatch =
@@ -65,14 +82,43 @@ val profileAnalyzerPatch =
             val currentSessionRegister =
                 currentSession.getInstruction<OneRegisterInstruction>(currentSessionReturn).registerA
 
-            val builder = FollowListRequestFingerprint.originalMethod
+            // The app's own Followers and Following requests, as its list screen sends them.
+            val followers = listRequest(FollowersListRequestFingerprint.originalMethod)
+            val following = listRequest(FollowingListRequestFingerprint.originalMethod)
+            val converter = FollowListConverterFingerprint.originalMethod
+            if (followers.converterType != converter.definingClass || following.converterType != converter.definingClass ||
+                followers.converterKind == following.converterKind ||
+                followers.taskFactory != following.taskFactory || followers.operationFactory != following.operationFactory
+            ) {
+                throw PatchException("The follow list requests do not share one converter, operation and task")
+            }
+            // The converter reads the session from the request holder, which the following request is defined in.
+            val holderType = following.callerType
+            val holder = classDefBy(holderType)
+            val holderSession = holder.fields.singleOrNull {
+                it.type == USER_SESSION_CLASS && !AccessFlags.STATIC.isSet(it.accessFlags)
+            } ?: throw PatchException("Could not resolve the follow list request holder session")
+            val converterReadsSession = converter.implementation?.instructions?.any {
+                it.opcode == Opcode.IGET_OBJECT && it.getReference<FieldReference>()?.let { field ->
+                    field.definingClass == holderType && field.name == holderSession.name
+                } == true
+            } == true
+            if (!converterReadsSession) {
+                throw PatchException("The follow list converter does not read the request holder session")
+            }
+            val holderInit = holder.methods.firstOrNull { it.name == "<init>" && it.parameterTypes.isEmpty() }
+                ?.let { "$holderType-><init>()V" }
+                ?: "${holder.superclass ?: throw PatchException("No follow list request holder constructor")}-><init>()V"
+
+            val executorType = followers.operationFactory.parameterTypes.first().toString()
+            val executor = graphQLExecutorFingerprint(executorType).originalMethod
             val runner = InlineSchedulerFingerprint.originalMethod
-            if (!AccessFlags.STATIC.isSet(builder.accessFlags) || !AccessFlags.STATIC.isSet(runner.accessFlags)) {
-                throw PatchException("Expected a static follow list request builder and inline runner")
+            if (!AccessFlags.STATIC.isSet(executor.accessFlags) || !AccessFlags.STATIC.isSet(runner.accessFlags)) {
+                throw PatchException("Expected a static GraphQL executor lookup and inline runner")
             }
 
-            // The task the builder returns: its operation, the operation's outcome calls and the success value.
-            val run = followListTaskRunFingerprint(builder.returnType).match()
+            // The task: its operation, the operation's outcome calls and the success value.
+            val run = followListTaskRunFingerprint(followers.taskFactory.returnType).match()
             val operation = run.instructionMatches[0].fieldReference
             val failed = run.instructionMatches[2].methodReference
             val result = run.instructionMatches[3].methodReference
@@ -84,100 +130,62 @@ val profileAnalyzerPatch =
                 it.type == "Ljava/lang/Object;" && !AccessFlags.STATIC.isSet(it.accessFlags)
             } ?: throw PatchException("Could not resolve the follow list task success value")
 
-            // The builder's parser wraps the parsed response in the page the task succeeds with.
-            val responseParser = FollowListResponseParseFingerprint.originalClassDef.type
-            val pageParse = builder.implementation!!.instructions
-                .filter { it.opcode == Opcode.SGET_OBJECT }
-                .mapNotNull { it.getReference<FieldReference>()?.type }
-                .distinct()
-                .mapNotNull { classDefByOrNull(it) }
-                .flatMap { it.methods }
-                .singleOrNull { method ->
-                    method.name == "unsafeParseFromJson" && method.implementation?.instructions?.any {
-                        it.getReference<FieldReference>()?.definingClass == responseParser
-                    } == true
-                } ?: throw PatchException("Could not resolve the follow list page parser")
-            val pageType = pageParse.implementation!!.instructions
-                .filter { it.opcode == Opcode.NEW_INSTANCE }
-                .mapNotNull { it.getReference<TypeReference>()?.type }
-                .distinct()
-                .singleOrNull() ?: throw PatchException("Could not resolve the follow list page type")
-            val pageResponse = classDefBy(pageType).fields.singleOrNull {
-                !AccessFlags.STATIC.isSet(it.accessFlags)
-            } ?: throw PatchException("Could not resolve the follow list page response field")
-
-            // The parsed users and next_max_id go into the response constructor, which stores each in a field.
+            // The list model: the items, and the next max id getter of the shared response interface,
+            // named by the REST response model, which answers it with its parsed next_max_id.
+            val model = FollowListModelFingerprint.originalClassDef
             val parse = FollowListResponseParseFingerprint.originalMethod.implementation!!.instructions.toList()
             val constructorCallIndex = parse.indices.singleOrNull {
                 parse[it].opcode == Opcode.INVOKE_DIRECT_RANGE &&
                     parse[it].getReference<MethodReference>()?.name == "<init>"
             } ?: throw PatchException("Could not resolve the follow list response constructor call")
             val constructor = parse[constructorCallIndex].getReference<MethodReference>()!!
-            val usersRegister = parsedValueRegister(parse, "users") {
-                parse[it].opcode == Opcode.NEW_INSTANCE &&
-                    parse[it].getReference<TypeReference>()?.type == "Ljava/util/ArrayList;"
-            }
             val nextMaxIdRegister = parsedValueRegister(parse, "next_max_id") {
                 parse[it].opcode == Opcode.MOVE_RESULT_OBJECT &&
                     parse[it - 1].getReference<MethodReference>()?.returnType == "Ljava/lang/String;"
             }
-            val usersField = constructorField(
-                constructor, argumentOffset(parse, constructorCallIndex, usersRegister), "Ljava/util/List;",
-            )
             val nextMaxIdField = constructorField(
                 constructor, argumentOffset(parse, constructorCallIndex, nextMaxIdRegister), "Ljava/lang/String;",
             )
-
-            // 12 builder arguments in v0 .. v11, then the 4 parameters.
-            replaceBody(
-                FetchPageNativeFingerprint,
-                16,
-                """
-                check-cast p0, $USER_SESSION_CLASS
-                move-object v0, p0
-                move-object v1, p1
-                const-string v2, ""
-                const-string v3, "follow_list_page"
-                move-object v4, p2
-                move-object v5, p3
-                const/4 v6, 0x0
-                const/4 v7, 0x0
-                const/4 v8, 0x0
-                const/4 v9, 0x0
-                const/4 v10, 0x0
-                const/4 v11, 0x1
-                invoke-static/range {v0 .. v11}, $builder
-                move-result-object v0
-                invoke-static {v0}, $runner
-                iget-object v1, v0, $operation
-                invoke-virtual {v1}, $failed
-                move-result v2
-                if-nez v2, :piko_no_page
-                invoke-virtual {v1}, $result
-                move-result-object v1
-                instance-of v2, v1, $successType
-                if-eqz v2, :piko_no_page
-                check-cast v1, $successType
-                iget-object v1, v1, $successValue
-                return-object v1
-                :piko_no_page
-                const/4 v1, 0x0
-                return-object v1
-                """,
-            )
-            listOf(PageUsersNativeFingerprint to usersField, PageNextMaxIdNativeFingerprint to nextMaxIdField)
-                .forEach { (stub, field) ->
-                    stub.method.addInstructions(
-                        0,
-                        """
-                        check-cast p0, $pageType
-                        iget-object p0, p0, $pageResponse
-                        check-cast p0, ${constructor.definingClass}
-                        iget-object p0, p0, $field
-                        return-object p0
-                        """.trimIndent(),
-                    )
+            val nextMaxIdGetter = classDefBy(constructor.definingClass).methods.singleOrNull { method ->
+                method.parameterTypes.isEmpty() && method.returnType == "Ljava/lang/String;" &&
+                    method.implementation?.instructions?.toList()?.let {
+                        it.size == 2 && it[0].opcode == Opcode.IGET_OBJECT &&
+                            it[0].getReference<FieldReference>() == nextMaxIdField &&
+                            it[1].opcode == Opcode.RETURN_OBJECT
+                    } == true
+            }?.name ?: throw PatchException("Could not resolve the follow list next max id getter")
+            listOf(nextMaxIdGetter, "getItems").forEach { name ->
+                if (model.methods.none { it.name == name && it.parameterTypes.isEmpty() }) {
+                    throw PatchException("The follow list model has no $name()")
                 }
+            }
+
+            replaceBody(FetchFollowersNativeFingerprint, 16, fetchBody(
+                followers, holderType, holderInit, holderSession.toString(), executor.toString(),
+                runner.toString(), operation, failed, result, successType, successValue.toString(),
+            ))
+            replaceBody(FetchFollowingNativeFingerprint, 16, fetchBody(
+                following, holderType, holderInit, holderSession.toString(), executor.toString(),
+                runner.toString(), operation, failed, result, successType, successValue.toString(),
+            ))
+            PageUsersNativeFingerprint.method.addInstructions(
+                0,
+                """
+                check-cast p0, ${model.type}
+                invoke-virtual {p0}, ${model.type}->getItems()Ljava/util/List;
+                move-result-object p0
+                return-object p0
+                """.trimIndent(),
+            )
+            PageNextMaxIdNativeFingerprint.method.addInstructions(
+                0,
+                """
+                check-cast p0, ${model.type}
+                invoke-virtual {p0}, ${model.type}->$nextMaxIdGetter()Ljava/lang/String;
+                move-result-object p0
+                return-object p0
+                """.trimIndent(),
+            )
 
             currentSession.addInstruction(
                 currentSessionReturn,
@@ -192,6 +200,120 @@ val profileAnalyzerPatch =
             enableSettings("profileAnalyzer")
         }
     }
+
+/** Reads how the app's list screen sends the request [builder] builds. */
+private fun listRequest(builder: Method): ListRequest {
+    if (AccessFlags.STATIC.isSet(builder.accessFlags)) throw PatchException("Unexpected static $builder")
+    val descriptor = "${builder.definingClass}->${builder.name}(${builder.parameterTypes.joinToString("")})" +
+        builder.returnType
+    val call = followListRequestCallFingerprint(descriptor).match()
+    val instructions = call.originalMethod.implementation!!.instructions.toList()
+    val matches = call.instructionMatches
+    val builderIndex = matches[0].index
+    // The builder instance the call site reads right before.
+    val builderInstance = instructions.subList(0, builderIndex).lastOrNull {
+        it.opcode == Opcode.SGET_OBJECT && it.getReference<FieldReference>()?.type == builder.definingClass
+    }?.getReference<FieldReference>() ?: throw PatchException("Could not resolve the instance of $builder")
+    val converterInit = matches[4].methodReference
+    val converterType = matches[3].instruction.getReference<TypeReference>()!!.type
+    if (converterInit.definingClass != converterType) throw PatchException("Unexpected converter for $builder")
+    val converterKind = constBefore(
+        instructions, matches[4].index, (matches[4].instruction as FiveRegisterInstruction).registerE,
+    )
+    val map = matches[5].methodReference
+    val mapCall = matches[5].instruction as FiveRegisterInstruction
+    if (mapCall.registerD != (matches[4].instruction as FiveRegisterInstruction).registerC) {
+        throw PatchException("The mapped operation of $builder does not use its converter")
+    }
+    val mapArguments = listOf(mapCall.registerE, mapCall.registerF, mapCall.registerG).map {
+        constBefore(instructions, matches[5].index, it)
+    }
+    return ListRequest(
+        builder, builderInstance, matches[1].methodReference, converterType, converterInit, converterKind,
+        map, mapArguments, matches[7].methodReference, call.originalMethod.definingClass,
+    )
+}
+
+/** The value of the nearest constant written to [register] before [index]; anything else throws. */
+private fun constBefore(instructions: List<Instruction>, index: Int, register: Int): Int {
+    for (i in index - 1 downTo 0) {
+        val instruction = instructions[i]
+        if (!instruction.opcode.setsRegister() || (instruction as? OneRegisterInstruction)?.registerA != register) continue
+        return (instruction as? NarrowLiteralInstruction)?.narrowLiteral
+            ?: throw PatchException("v$register is not a constant before $index")
+    }
+    throw PatchException("v$register is never set before $index")
+}
+
+/**
+ * Builds and runs one page request like the app does, then returns the task's success value or null.
+ * The registers v0 .. v11 are locals, p0 .. p3 the session, user id, max id and rank token.
+ */
+private fun fetchBody(
+    request: ListRequest,
+    holderType: String,
+    holderInit: String,
+    holderSession: String,
+    executor: String,
+    runner: String,
+    operation: FieldReference,
+    failed: MethodReference,
+    result: MethodReference,
+    successType: String,
+    successValue: String,
+): String {
+    // Following lists take enable groups (true here, as the app's own list) before the cache flag.
+    val following = request.builder.parameterTypes.size == 10
+    val lastArgument = if (following) 10 else 9
+    return """
+        check-cast p0, $USER_SESSION_CLASS
+        sget-object v0, ${request.builderInstance}
+        move-object v1, p0
+        const/4 v2, 0x0
+        const/4 v3, 0x0
+        const-string v4, ""
+        const/4 v5, 0x0
+        move-object v6, p2
+        move-object v7, p1
+        move-object v8, p3
+        const/4 v9, 0x1
+        const/4 v10, 0x1
+        invoke-virtual/range {v0 .. v$lastArgument}, ${request.builder}
+        move-result-object v1
+        invoke-static {p0}, $executor
+        move-result-object v0
+        invoke-static {v0, v1}, ${request.operationFactory}
+        move-result-object v0
+        new-instance v1, $holderType
+        invoke-direct {v1}, $holderInit
+        iput-object p0, v1, $holderSession
+        new-instance v2, ${request.converterType}
+        const v3, ${request.converterKind}
+        invoke-direct {v2, v1, v3}, ${request.converterInit}
+        const v3, ${request.mapArguments[0]}
+        const v4, ${request.mapArguments[1]}
+        const v5, ${request.mapArguments[2]}
+        invoke-virtual {v0, v2, v3, v4, v5}, ${request.map}
+        move-result-object v0
+        invoke-static {v0}, ${request.taskFactory}
+        move-result-object v0
+        invoke-static {v0}, $runner
+        iget-object v1, v0, $operation
+        invoke-virtual {v1}, $failed
+        move-result v2
+        if-nez v2, :piko_no_page
+        invoke-virtual {v1}, $result
+        move-result-object v1
+        instance-of v2, v1, $successType
+        if-eqz v2, :piko_no_page
+        check-cast v1, $successType
+        iget-object v1, v1, $successValue
+        return-object v1
+        :piko_no_page
+        const/4 v1, 0x0
+        return-object v1
+    """
+}
 
 /**
  * The register that receives the value parsed for [key]: the first instruction matching [isValue]

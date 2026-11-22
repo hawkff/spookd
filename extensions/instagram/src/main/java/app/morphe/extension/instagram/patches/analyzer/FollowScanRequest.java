@@ -9,8 +9,8 @@ import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.shared.Logger;
 
 /**
- * Fetches a page of the own followers or following with Instagram's own request, which adds the
- * session itself. The native stubs are rewritten at patch time.
+ * Fetches a page of the own followers or following with the GraphQL request Instagram's own list
+ * screens send, which adds the session itself. The native stubs are rewritten at patch time.
  */
 public final class FollowScanRequest implements PageSource {
 
@@ -24,9 +24,9 @@ public final class FollowScanRequest implements PageSource {
         try {
             UserSession session = ProfileAnalyzer.session(accountId);
             if (session == null || !accountId.equals(session.getUserId())) return null;
-            String path = "friendships/" + accountId
-                    + (list == PikoFollowDb.LIST_FOLLOWERS ? "/followers/" : "/following/");
-            Object page = fetchPageNative(session, path, maxId, rankToken);
+            Object page = list == PikoFollowDb.LIST_FOLLOWERS
+                    ? fetchFollowersNative(session, accountId, maxId, rankToken)
+                    : fetchFollowingNative(session, accountId, maxId, rankToken);
             List<?> users = page == null ? null : pageUsersNative(page);
             if (users == null) {
                 Logger.printInfo(() -> "FollowScanRequest: no page");
@@ -70,8 +70,14 @@ public final class FollowScanRequest implements PageSource {
         }
     }
 
-    /** Builds the app's follow-list request, runs it inline and returns the parsed page, else null. */
-    private static Object fetchPageNative(Object session, String path, String maxId, String rankToken) {
+    /** Builds the app's uncached list request, runs it inline and returns the list model, else null. */
+    private static Object fetchFollowersNative(Object session, String userId, String maxId,
+                                               String rankToken) {
+        return null;
+    }
+
+    private static Object fetchFollowingNative(Object session, String userId, String maxId,
+                                               String rankToken) {
         return null;
     }
 
