@@ -154,7 +154,7 @@ public class DownloadUtils {
                 } catch (Exception e) {
                     PikoUtils.logger(e);
                     Logger.printException(() -> "Error at buildVariantDialogBox", e);
-                    Utils.showToastShort(e.getMessage());
+                    Utils.showToastShort(String.valueOf(e));
                 }
 
             }
@@ -245,7 +245,7 @@ public class DownloadUtils {
                 } catch (Exception e) {
                     PikoUtils.logger(e);
                     Logger.printException(() -> "Error at downloadDialogBox", e);
-                    Utils.showToastShort(e.getMessage());
+                    Utils.showToastShort(String.valueOf(e));
                 }
             }
         });

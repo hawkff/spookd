@@ -115,7 +115,7 @@ public class ButtonPref extends Preference {
                         );
                     }
                 } catch (Exception e) {
-                    Utils.showToastShort(e.getMessage());
+                    Utils.showToastShort(String.valueOf(e));
                     Logger.printException(() -> "Preference button onclick failure", e);
                 }
                 return true;

@@ -43,7 +43,9 @@ public final class Gallery {
 
     /** The account that is saving now, or null before the first account switch was seen. */
     public static String accountId() {
-        return SharedPref.getStringPref(AccountSettings.OWNER_KEY, null);
+        // The shared preference reader rejects a null default.
+        String id = SharedPref.getStringPref(AccountSettings.OWNER_KEY, "");
+        return id.isEmpty() ? null : id;
     }
 
     /** Saves a download as a gallery item; its calls run on the download thread. */
