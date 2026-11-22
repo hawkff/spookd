@@ -989,7 +989,7 @@ public class DownloadUtils {
     }
 
     /** A null {@code item} saves to the download folder; otherwise the request saves into the private gallery. */
-    private static DownloadRequest createDownloadRequest(String url, String subFolder, String fileName, GalleryItem item) {
+    public static DownloadRequest createDownloadRequest(String url, String subFolder, String fileName, GalleryItem item) {
         DownloadRequest request = new DownloadRequest(url, subFolder, fileName);
         String policy = SharedPref.getStringPref(Settings.DOWNLOAD_CONFLICT_POLICY);
         if ("skip".equals(policy)) {

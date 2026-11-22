@@ -334,6 +334,15 @@
     <string name="piko_gallery_empty">Nothing saved in this tab yet.</string>
     <string name="piko_gallery_audio">audio</string>
     <string name="piko_gallery_delete_confirm">Delete this item from the private gallery?</string>
+    <string name="piko_gallery_export">Export</string>
+    <string name="piko_gallery_share">Share</string>
+    <string name="piko_gallery_open_post">Open post</string>
+    <string name="piko_gallery_open_profile">Open profile</string>
+    <string name="piko_gallery_export_all">Export all</string>
+    <string name="piko_gallery_export_all_confirm">Copy everything in this tab to your download folder? Items: %1$d</string>
+    <string name="piko_gallery_exporting">Exporting to your download folder…</string>
+    <string name="piko_gallery_exported">Exported %1$d of %2$d to your download folder</string>
+    <string name="piko_gallery_action_failed">Something went wrong. Try again.</string>
     <string name="piko_download_with_external_downloader">Download with external downloader</string>
     <string name="piko_external_downloader_package_name">External downloader package name</string>
     <string name="piko_external_downloader_package_name_not_found">External downloader package name not found</string>

@@ -5,25 +5,30 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Application;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
 import android.media.MediaDataSource;
 import android.media.MediaMetadataRetriever;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
 import android.util.LruCache;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.BaseAdapter;
 import android.widget.FrameLayout;
+import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.io.File;
@@ -38,20 +43,25 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import app.morphe.extension.crimera.legacydownloader.DownloadRequest;
+import app.morphe.extension.crimera.legacydownloader.MediaDownloader;
+import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.patches.dm.InboxLock;
 import app.morphe.extension.instagram.patches.dm.vault.MediaVault;
 import app.morphe.extension.instagram.patches.dm.vault.PlainMedia;
 import app.morphe.extension.instagram.patches.dm.vault.VaultViewer;
 import app.morphe.extension.instagram.patches.dm.vault.ViewerMedia;
+import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.shared.Logger;
+import app.morphe.extension.shared.Utils;
 
 /**
  * The private gallery, built in code inside the app's modal activity: downloads by tab, and stored
- * DM media in the DMs tab. The UI runs on the main thread; listing, cleanup and deletes run on one
- * background thread, thumbnails on a small pool.
+ * DM media in the DMs tab. The UI runs on the main thread; listing, cleanup, deletes and share copies
+ * run on one background thread, thumbnails on a small pool, exports on the download writer's thread.
  */
 public final class PrivateGalleryActivity {
     private static final int COLUMNS = 3;
@@ -102,6 +112,11 @@ public final class PrivateGalleryActivity {
         final Long durationMs;
         /** Null for vault items. */
         final File file;
+        /** Export name and subfolder, as phone-storage mode names the file. */
+        final String fileName;
+        final String subFolder;
+        final String link;
+        final String ownerUsername;
 
         Item(GalleryStore.Entry entry) {
             id = entry.id;
@@ -111,6 +126,10 @@ public final class PrivateGalleryActivity {
             size = entry.sizeBytes;
             durationMs = entry.durationMs;
             file = entry.file;
+            fileName = entry.fileName;
+            subFolder = entry.subFolder;
+            link = entry.item.link;
+            ownerUsername = entry.item.ownerUsername;
         }
 
         Item(MediaVault.Item stored) {
@@ -121,10 +140,15 @@ public final class PrivateGalleryActivity {
             size = stored.sizeBytes;
             durationMs = null;
             file = null;
+            fileName = GalleryActions.dmFileName(stored.itemId, stored.id, stored.mime, stored.kind);
+            subFolder = Constants.DEFAULT_DM_FOLDER;
+            link = null;
+            ownerUsername = stored.senderUsername;
         }
 
+        /** Includes the download's file, which an overwrite replaces, so a cached thumbnail never outlives it. */
         String key() {
-            return (vault ? "v" : "d") + id;
+            return vault ? "v" + id : "d" + id + "/" + file.getName();
         }
 
         boolean photo() {
@@ -133,19 +157,6 @@ public final class PrivateGalleryActivity {
 
         boolean video() {
             return GalleryItem.VIDEO.equals(kind);
-        }
-    }
-
-    private static final class Tile {
-        final View view;
-        final ImageView image;
-        final Item item;
-        boolean loaded;
-
-        Tile(View view, ImageView image, Item item) {
-            this.view = view;
-            this.image = image;
-            this.item = item;
         }
     }
 
@@ -177,14 +188,12 @@ public final class PrivateGalleryActivity {
     private static final class Controller {
         private final Activity activity;
         private final Handler ui = new Handler(Looper.getMainLooper());
-        private final Runnable sweep = this::sweepVisible;
-        private final List<Tile> tiles = new ArrayList<>();
         private Map<GalleryTab, List<Item>> items = new EnumMap<>(GalleryTab.class);
         private GalleryTab tab = GalleryTab.POSTS;
         private TextView[] tabViews;
         private TextView summary;
+        private TextView exportAll;
         private FrameLayout content;
-        private ScrollView scroll;
         private ThumbLoader thumbs;
         private float density;
         private int tileSize;
@@ -223,18 +232,31 @@ public final class PrivateGalleryActivity {
             }
             root.addView(tabsRow);
 
+            LinearLayout header = new LinearLayout(activity);
+            header.setOrientation(LinearLayout.HORIZONTAL);
+            header.setGravity(Gravity.CENTER_VERTICAL);
             summary = new TextView(activity);
             summary.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
             summary.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
             summary.setPadding(dp(16), dp(4), dp(16), dp(8));
-            root.addView(summary);
+            header.addView(summary, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            exportAll = new TextView(activity);
+            exportAll.setText(str("piko_gallery_export_all"));
+            exportAll.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+            exportAll.setTypeface(null, Typeface.BOLD);
+            exportAll.setTextColor(InstagramPreferenceStyle.primaryTextColor());
+            exportAll.setPadding(dp(16), dp(4), dp(16), dp(8));
+            exportAll.setVisibility(View.GONE);
+            exportAll.setOnClickListener(v -> confirmExportAll());
+            header.addView(exportAll);
+            root.addView(header);
 
             content = new FrameLayout(activity);
-            content.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) ->
-                    updateTileSize(right - left));
             root.addView(content, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
             updateTabs();
             watchLifecycle();
+            Context app = activity.getApplicationContext();
+            JOBS.execute(() -> GalleryActions.clearShared(app));
             reload(true);
         }
 
@@ -312,7 +334,6 @@ public final class PrivateGalleryActivity {
             if (closed) return;
             closed = true;
             ui.removeCallbacksAndMessages(null);
-            tiles.clear();
             content.removeAllViews();
             thumbs.shutdown();
         }
@@ -370,68 +391,82 @@ public final class PrivateGalleryActivity {
         }
 
         private void rebuildContent() {
-            tiles.clear();
-            ui.removeCallbacks(sweep);
             content.removeAllViews();
-            scroll = null;
             List<Item> list = items.get(tab);
-            if (list == null || list.isEmpty()) {
+            boolean empty = list == null || list.isEmpty();
+            exportAll.setVisibility(empty ? View.GONE : View.VISIBLE);
+            if (empty) {
                 content.addView(message(str("piko_gallery_empty")));
                 return;
             }
             int gap = dp(2);
-            LinearLayout body = new LinearLayout(activity);
-            body.setOrientation(LinearLayout.VERTICAL);
-            LinearLayout row = null;
-            for (int i = 0; i < list.size(); i++) {
-                if (i % COLUMNS == 0) {
-                    row = new LinearLayout(activity);
-                    row.setOrientation(LinearLayout.HORIZONTAL);
-                    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-                    params.topMargin = gap;
-                    params.leftMargin = gap;
-                    body.addView(row, params);
-                }
-                row.addView(buildTile(list.get(i), gap));
-            }
-            scroll = new ScrollView(activity);
-            scroll.addView(body);
-            content.addView(scroll, new FrameLayout.LayoutParams(
+            GridView grid = new GridView(activity);
+            grid.setNumColumns(COLUMNS);
+            grid.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
+            grid.setHorizontalSpacing(gap);
+            grid.setVerticalSpacing(gap);
+            grid.setPadding(gap, gap, gap, gap);
+            grid.setClipToPadding(false);
+            grid.setAdapter(new TileAdapter(list));
+            grid.setOnItemClickListener((parent, view, position, id) ->
+                    VaultViewer.showFor(activity, viewerSource(list.get(position))));
+            grid.setOnItemLongClickListener((parent, view, position, id) -> {
+                showOptions(list.get(position));
+                return true;
+            });
+            content.addView(grid, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-            scroll.setOnScrollChangeListener((v, x, y, oldX, oldY) -> scheduleSweep());
-            scroll.getViewTreeObserver().addOnGlobalLayoutListener(this::scheduleSweep);
-            scheduleSweep();
         }
 
-        private View buildTile(Item item, int gap) {
-            FrameLayout tile = new FrameLayout(activity);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(tileSize, tileSize);
-            params.rightMargin = gap;
-            tile.setLayoutParams(params);
-            tile.setBackgroundColor(themed("igds_color_secondary_background", 0xFF262626));
-            tile.setContentDescription(str(item.photo() ? "piko_media_photo"
-                    : item.video() ? "piko_media_video" : "piko_gallery_audio"));
+        /** Builds only the visible tiles and reuses them while scrolling. */
+        private final class TileAdapter extends BaseAdapter {
+            private final List<Item> list;
 
-            ImageView image = new ImageView(activity);
-            image.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            tile.addView(image, new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+            TileAdapter(List<Item> list) {
+                this.list = list;
+            }
 
-            if (!item.photo() && !item.video()) {
-                TextView note = new TextView(activity);
+            @Override
+            public int getCount() {
+                return list.size();
+            }
+
+            @Override
+            public Object getItem(int position) {
+                return list.get(position);
+            }
+
+            @Override
+            public long getItemId(int position) {
+                return position;
+            }
+
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                Tile tile = convertView instanceof Tile ? (Tile) convertView : new Tile();
+                tile.bind(list.get(position));
+                return tile;
+            }
+        }
+
+        /** A square tile: thumbnail, an audio glyph, and a play and duration badge. */
+        private final class Tile extends FrameLayout {
+            private final ImageView image = new ImageView(activity);
+            private final TextView note = new TextView(activity);
+            private final TextView badge = new TextView(activity);
+
+            Tile() {
+                super(activity);
+                setBackgroundColor(themed("igds_color_secondary_background", 0xFF262626));
+                image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                addView(image, new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
                 note.setText("♪");
                 note.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
                 note.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
                 note.setGravity(Gravity.CENTER);
-                tile.addView(note, new FrameLayout.LayoutParams(
+                addView(note, new FrameLayout.LayoutParams(
                         FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-            }
-            String duration = item.durationMs == null ? "" : DateUtils.formatElapsedTime(item.durationMs / 1000);
-            String badgeText = item.video() ? ("▶ " + duration).trim() : duration;
-            if (!badgeText.isEmpty()) {
-                TextView badge = new TextView(activity);
-                badge.setText(badgeText);
                 badge.setTextColor(0xFFFFFFFF);
                 badge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
                 badge.setPadding(dp(4), 0, dp(4), 0);
@@ -440,16 +475,25 @@ public final class PrivateGalleryActivity {
                         FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
                 badgeParams.gravity = Gravity.BOTTOM | Gravity.END;
                 badgeParams.setMargins(0, 0, dp(4), dp(4));
-                tile.addView(badge, badgeParams);
+                addView(badge, badgeParams);
             }
 
-            tile.setOnClickListener(v -> VaultViewer.showFor(activity, viewerSource(item)));
-            tile.setOnLongClickListener(v -> {
-                showOptions(item);
-                return true;
-            });
-            tiles.add(new Tile(tile, image, item));
-            return tile;
+            void bind(Item item) {
+                setContentDescription(str(item.photo() ? "piko_media_photo"
+                        : item.video() ? "piko_media_video" : "piko_gallery_audio"));
+                note.setVisibility(item.photo() || item.video() ? View.GONE : View.VISIBLE);
+                String duration = item.durationMs == null ? "" : DateUtils.formatElapsedTime(item.durationMs / 1000);
+                String badgeText = item.video() ? ("▶ " + duration).trim() : duration;
+                badge.setText(badgeText);
+                badge.setVisibility(badgeText.isEmpty() ? View.GONE : View.VISIBLE);
+                image.setImageBitmap(null);
+                thumbs.load(item, image);
+            }
+
+            @Override
+            protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+                super.onMeasure(widthMeasureSpec, widthMeasureSpec);
+            }
         }
 
         /** Opens the item for the viewer on its loader thread. */
@@ -461,10 +505,96 @@ public final class PrivateGalleryActivity {
             };
         }
 
+        /** Main thread. Open post and Open profile show only when the item knows its link or owner. */
         private void showOptions(Item item) {
+            List<CharSequence> labels = new ArrayList<>();
+            List<Runnable> actions = new ArrayList<>();
+            labels.add(str("piko_gallery_export"));
+            actions.add(() -> export(item));
+            labels.add(str("piko_gallery_share"));
+            actions.add(() -> share(item));
+            labels.add(str("piko_delete"));
+            actions.add(() -> confirmDelete(item));
+            if (!TextUtils.isEmpty(item.link)) {
+                labels.add(str("piko_gallery_open_post"));
+                actions.add(() -> view(item.link));
+            }
+            if (!TextUtils.isEmpty(item.ownerUsername)) {
+                labels.add(str("piko_gallery_open_profile"));
+                actions.add(() -> view(GalleryActions.profileLink(item.ownerUsername)));
+            }
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
-                    .setItems(new CharSequence[]{str("piko_delete")}, (d, which) -> confirmDelete(item))
+                    .setItems(labels.toArray(new CharSequence[0]), (d, which) -> actions.get(which).run())
                     .show();
+        }
+
+        /** The download writer copies the item into the download folder, or asks for the folder first. */
+        private static DownloadRequest exportRequest(Item item) {
+            DownloadRequest request = DownloadUtils.createDownloadRequest(null, item.subFolder, item.fileName, null);
+            request.localSource = () -> GalleryActions.open(item.vault, item.id, item.file);
+            return request;
+        }
+
+        private void export(Item item) {
+            try {
+                new MediaDownloader(activity).enqueue(exportRequest(item));
+            } catch (Exception e) {
+                failed("export " + item.key(), e);
+            }
+        }
+
+        private void confirmExportAll() {
+            List<Item> list = items.get(tab);
+            if (list == null || list.isEmpty()) return;
+            new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
+                    .setMessage(str("piko_gallery_export_all_confirm", list.size()))
+                    .setPositiveButton(str("piko_gallery_export"), (d, which) -> {
+                        try {
+                            List<DownloadRequest> requests = new ArrayList<>();
+                            for (Item item : list) requests.add(exportRequest(item));
+                            GalleryActions.exportAll(activity, requests);
+                        } catch (Exception e) {
+                            failed("export all", e);
+                        }
+                    })
+                    .setNegativeButton(str("piko_cancel"), null)
+                    .show();
+        }
+
+        /** Copies on the jobs thread, then offers the copy to other apps from the main thread. */
+        private void share(Item item) {
+            Context app = activity.getApplicationContext();
+            JOBS.execute(() -> {
+                Uri uri;
+                try {
+                    uri = GalleryActions.shareCopy(app, item.fileName, item.vault, item.id, item.file);
+                } catch (Exception e) {
+                    failed("share " + item.key(), e);
+                    return;
+                }
+                ui.post(() -> {
+                    if (closed) return;
+                    try {
+                        GalleryActions.share(activity, uri, GalleryActions.mimeType(item.fileName, item.kind));
+                    } catch (Exception e) {
+                        failed("share " + item.key(), e);
+                    }
+                });
+            });
+        }
+
+        private void view(String url) {
+            try {
+                GalleryActions.view(activity, url);
+            } catch (Exception e) {
+                failed("open " + url, e);
+            }
+        }
+
+        /** Any thread. */
+        private static void failed(String action, Exception e) {
+            Logger.printException(() -> "Private gallery: cannot " + action, e);
+            Utils.showToastShort(str("piko_gallery_action_failed"));
         }
 
         private void confirmDelete(Item item) {
@@ -475,11 +605,12 @@ public final class PrivateGalleryActivity {
                     .show();
         }
 
+        /** A download is deleted only while it is still the file shown; either way the screen reloads. */
         private void delete(Item item) {
             JOBS.execute(() -> {
                 try {
                     if (item.vault) MediaVault.get().delete(item.id);
-                    else GalleryStore.get().delete(item.id);
+                    else GalleryStore.get().delete(item.id, item.file);
                 } catch (Exception e) {
                     Logger.printException(() -> "Private gallery: cannot delete " + item.key(), e);
                 }
@@ -487,57 +618,6 @@ public final class PrivateGalleryActivity {
                     if (!closed) reload(false);
                 });
             });
-        }
-
-        private void scheduleSweep() {
-            ui.removeCallbacks(sweep);
-            ui.post(sweep);
-        }
-
-        private void updateTileSize(int width) {
-            int size = (width - dp(2) * (COLUMNS + 1)) / COLUMNS;
-            if (size <= 0 || size == tileSize) return;
-            tileSize = size;
-            for (Tile tile : tiles) {
-                LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) tile.view.getLayoutParams();
-                params.width = size;
-                params.height = size;
-                tile.view.setLayoutParams(params);
-            }
-            scheduleSweep();
-        }
-
-        /** Loads thumbnails of the tiles within a screen of the visible area and drops the others. */
-        private void sweepVisible() {
-            if (closed || scroll == null || tiles.isEmpty()) return;
-            int top = scroll.getScrollY();
-            int height = scroll.getHeight();
-            if (height == 0) return;
-            int from = top - height;
-            int to = top + height * 2;
-            for (Tile tile : tiles) {
-                int tileTop = topWithinScroll(tile.view);
-                boolean wanted = tileTop >= 0 && tileTop + tileSize >= from && tileTop <= to;
-                if (wanted && !tile.loaded) {
-                    tile.loaded = true;
-                    thumbs.load(tile.item, tile.image);
-                } else if (!wanted && tile.loaded) {
-                    tile.loaded = false;
-                    tile.image.setImageBitmap(null);
-                    tile.image.setTag(null);
-                }
-            }
-        }
-
-        private int topWithinScroll(View view) {
-            int offset = 0;
-            View node = view;
-            while (node != null && node != scroll) {
-                offset += node.getTop();
-                if (!(node.getParent() instanceof View)) return -1;
-                node = (View) node.getParent();
-            }
-            return node == scroll ? offset : -1;
         }
 
         private TextView message(CharSequence text) {
@@ -567,7 +647,6 @@ public final class PrivateGalleryActivity {
         /** Download thumbnails are cached as JPEG; DM thumbnails stay in memory so no plaintext of them reaches disk. */
         private final class ThumbLoader {
             private final ExecutorService pool = Executors.newFixedThreadPool(3);
-            private final File dir = new File(activity.getCacheDir(), "piko_gallery_thumbs");
             private final LruCache<String, Bitmap> cache =
                     new LruCache<String, Bitmap>((int) (Runtime.getRuntime().maxMemory() / 8192)) {
                         @Override
@@ -593,6 +672,8 @@ public final class PrivateGalleryActivity {
                 if (pool.isShutdown()) return;
                 int size = Math.max(1, tileSize);
                 pool.execute(() -> {
+                    // A tile scrolled away and reused meanwhile no longer wants this one; a stale read only decodes once more.
+                    if (!key.equals(view.getTag())) return;
                     Bitmap bitmap;
                     try {
                         bitmap = thumbnail(item, size);
@@ -613,7 +694,7 @@ public final class PrivateGalleryActivity {
             /** Pool thread. */
             private Bitmap thumbnail(Item item, int size) throws Exception {
                 if (!item.photo() && !item.video()) return null;
-                File cached = item.vault ? null : new File(dir, item.id + ".jpg");
+                File cached = item.vault ? null : GalleryStore.get().thumb(item.file.getName());
                 if (cached != null && cached.isFile()) {
                     Bitmap disk = BitmapFactory.decodeFile(cached.getPath());
                     if (disk != null) return disk;
