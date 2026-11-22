@@ -9,8 +9,8 @@ package app.morphe.extension.instagram.patches.devFlags;
 
 import java.util.Map;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.function.LongToIntFunction;
 
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.entity.DeveloperOptions;
@@ -23,9 +23,11 @@ public class HookFlags {
     private static Map<String, Boolean> BOOL_FLAGS = new HashMap<>();
     private static Map<String, Long> LONG_FLAGS = new HashMap<>();
     private static DeveloperOptions developerOptions = new DeveloperOptions();
-    // Universal ids that have any override; null until load() publishes them, so earlier checks still read the maps.
-    private static volatile Set<String> boolUniversalIds = null;
-    private static volatile Set<String> longUniversalIds = null;
+    // Overrides indexed by numeric id; null until load() publishes them, so earlier checks still read the maps.
+    private static volatile FlagOverrides<Boolean> boolOverrides = null;
+    private static volatile FlagOverrides<Long> longOverrides = null;
+    private static final FlagOverrides.UniversalIdCache universalIdCache = new FlagOverrides.UniversalIdCache(12);
+    private static final LongToIntFunction universalIdLookup = DeveloperOptionsItem::getUniversalIdValue;
 
     private static void simpleOverflowMenuFlags() {
         BOOL_FLAGS.put("104772", false); //ig_ini
@@ -206,30 +208,22 @@ public class HookFlags {
         }
     }
 
-    private static Set<String> universalIds(Set<String> flagIds) {
-        Set<String> ids = new HashSet<>();
-        for (String flagId : flagIds) {
-            int end = flagId.indexOf("::");
-            ids.add(end < 0 ? flagId : flagId.substring(0, end));
-        }
-        return ids;
-    }
-
     public static void load() {
         addRecommendedFlags();
-        boolUniversalIds = universalIds(BOOL_FLAGS.keySet());
-        longUniversalIds = universalIds(LONG_FLAGS.keySet());
+        boolOverrides = new FlagOverrides<>(BOOL_FLAGS);
+        longOverrides = new FlagOverrides<>(LONG_FLAGS);
     }
 
     public static Boolean handleBoolFlags(long mobileConfigSpecifier) {
-        Set<String> overriddenIds = boolUniversalIds;
-        if (overriddenIds != null && overriddenIds.isEmpty()) return null;
+        FlagOverrides<Boolean> overrides = boolOverrides;
+        if (overrides != null && overrides.isEmpty()) return null;
         try {
             // Sometimes I want to block all the subflags inside a universal ID.
             // In which case I would only add the universal ID in the BOOL_MAP map.
             // If a boolean value is found then it will return else it will check for for the usual config ID
-            String universalId = DeveloperOptionsItem.getUniversalId(mobileConfigSpecifier);
-            if (overriddenIds != null && !overriddenIds.contains(universalId)) return null;
+            int universalIdValue = universalIdCache.get(mobileConfigSpecifier, universalIdLookup);
+            if (overrides != null) return overrides.get(universalIdValue, FlagOverrides.paramId(mobileConfigSpecifier));
+            String universalId = String.valueOf(universalIdValue);
             Boolean universalFlag = BOOL_FLAGS.getOrDefault(universalId, null);
             if(universalFlag!=null) return universalFlag;
 
@@ -244,11 +238,12 @@ public class HookFlags {
     // mobileConfig has no dedicated int type, hence the integer-valued flags (counts, limits) are stored and returned.
     // as long instead of boolean
     public static Long handleLongFlags(long mobileConfigSpecifier) {
-        Set<String> overriddenIds = longUniversalIds;
-        if (overriddenIds != null && overriddenIds.isEmpty()) return null;
+        FlagOverrides<Long> overrides = longOverrides;
+        if (overrides != null && overrides.isEmpty()) return null;
         try {
-            String universalId = DeveloperOptionsItem.getUniversalId(mobileConfigSpecifier);
-            if (overriddenIds != null && !overriddenIds.contains(universalId)) return null;
+            int universalIdValue = universalIdCache.get(mobileConfigSpecifier, universalIdLookup);
+            if (overrides != null) return overrides.get(universalIdValue, FlagOverrides.paramId(mobileConfigSpecifier));
+            String universalId = String.valueOf(universalIdValue);
             Long universalFlag = LONG_FLAGS.getOrDefault(universalId, null);
             if(universalFlag!=null) return universalFlag;
 

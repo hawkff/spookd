@@ -70,6 +70,16 @@ public class DeveloperOptionsItem {
         return "0";
     }
 
+    // Same lookup as getUniversalId(long) without the String, 0 on failure as there.
+    public static int getUniversalIdValue(long mobileConfigSpecifier) {
+        try {
+            return (int) getUniversalIdMethod().invoke(null, mobileConfigSpecifier);
+        } catch (Exception e){
+            PikoUtils.logger(e);
+        }
+        return 0;
+    }
+
     public static String getParamId(long mobileConfigSpecifier) {
         try{
             long shifted = mobileConfigSpecifier >>> 16;
