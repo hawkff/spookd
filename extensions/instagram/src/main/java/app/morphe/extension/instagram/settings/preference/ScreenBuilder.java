@@ -17,6 +17,7 @@ import android.preference.PreferenceCategory;
 import java.util.TreeMap;
 import java.util.Map;
 import java.util.List;
+import java.util.function.LongSupplier;
 import app.morphe.extension.instagram.patches.devFlags.Flag;
 import app.morphe.extension.instagram.patches.devFlags.RecommendedFlags;
 
@@ -32,6 +33,7 @@ import app.morphe.extension.instagram.patches.focusLock.FocusLockTargets;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.BooleanSetting;
 import app.morphe.extension.instagram.settings.Settings;
+import app.morphe.extension.instagram.settings.StringSetting;
 import app.morphe.extension.instagram.settings.preference.widgets.*;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.instagram.utils.Pref;
@@ -1024,21 +1026,12 @@ public class ScreenBuilder {
                 )
         );
 
-        addPreference(
-                helper.editTextNumPreference(
-                        str("piko_gallery_max_age_days"),
-                        str("piko_gallery_max_age_days_desc"),
-                        Settings.GALLERY_MAX_AGE_DAYS
-                )
-        );
-
-        addPreference(
-                helper.editTextNumPreference(
-                        str("piko_gallery_max_size_gb"),
-                        str("piko_gallery_max_size_gb_desc"),
-                        Settings.GALLERY_MAX_SIZE_GB
-                )
-        );
+        addPreference(galleryLimitPreference("piko_gallery_max_age_days", "piko_gallery_max_age_days_desc",
+                Settings.GALLERY_MAX_AGE_DAYS,
+                Pref::galleryMaxAgeDays));
+        addPreference(galleryLimitPreference("piko_gallery_max_size_gb", "piko_gallery_max_size_gb_desc",
+                Settings.GALLERY_MAX_SIZE_GB,
+                () -> Pref.galleryMaxBytes() / 1_000_000_000L));
 
         addPreference(
                 helper.buttonPreference(
@@ -1068,6 +1061,19 @@ public class ScreenBuilder {
                     )
             );
         }
+    }
+
+    /** A cleanup limit whose summary shows the limit in force and that 0 turns it off, also after edits. */
+    private Preference galleryLimitPreference(String titleKey, String summaryKey, StringSetting setting,
+                                              LongSupplier limit) {
+        Preference preference = helper.editTextNumPreference(str(titleKey),
+                String.format(str(summaryKey), limit.getAsLong()), setting);
+        preference.setOnPreferenceChangeListener((changed, value) -> {
+            helper.setValue(changed, value);
+            changed.setSummary(String.format(str(summaryKey), limit.getAsLong()));
+            return true;
+        });
+        return preference;
     }
 
     public void buildActionBarSection() {

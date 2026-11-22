@@ -323,9 +323,9 @@
     <string name="piko_save_downloads_to_phone_storage_old_android">Android 10 and older always save downloads to phone storage</string>
     <string name="piko_save_downloads_to_phone_storage_no_lock">Set a screen lock to save downloads to the private gallery</string>
     <string name="piko_gallery_max_age_days">Delete gallery downloads older than (days)</string>
-    <string name="piko_gallery_max_age_days_desc">0 keeps them all. Saved DM media is not affected.</string>
+    <string name="piko_gallery_max_age_days_desc">Now %1$d. 0 keeps them all. Saved DM media is not affected.</string>
     <string name="piko_gallery_max_size_gb">Keep gallery downloads under (GB)</string>
-    <string name="piko_gallery_max_size_gb_desc">Deletes the oldest downloads first. 0 turns this off. Saved DM media is not affected.</string>
+    <string name="piko_gallery_max_size_gb_desc">Now %1$d. Deletes the oldest downloads first. 0 turns this off. Saved DM media is not affected.</string>
     <string name="piko_gallery_tab_posts">Posts</string>
     <string name="piko_gallery_tab_reels">Reels</string>
     <string name="piko_gallery_tab_stories">Stories</string>
