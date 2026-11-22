@@ -72,6 +72,11 @@ internal object IsVerifiedExtensionFingerprint : Fingerprint(
     definingClass = EXTENSION_CLASS_DESCRIPTOR,
 )
 
+internal object GetRawFullNameExtensionFingerprint : Fingerprint(
+    name = "getRawFullName",
+    definingClass = EXTENSION_CLASS_DESCRIPTOR,
+)
+
 internal object GetFollowerCountExtensionFingerprint : Fingerprint(
     name = "getFollowerCount",
     definingClass = EXTENSION_CLASS_DESCRIPTOR,

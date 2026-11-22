@@ -27,6 +27,7 @@ val userDataEntity =
                 UserIdLiveTreeUserDictFingerprint.instructionMatches.last().methodReference.name,
             )
             GetFullNameExtensionFingerprint.changeFirstString(FullNameLiveTreeUserDictFingerprint.originalMethod.name)
+            GetRawFullNameExtensionFingerprint.changeFirstString(FullNameLiveTreeUserDictFingerprint.originalMethod.name)
             GetUserFriendshipStatusExtensionFingerprint.changeFirstString(
                 FriendshipStatusLiveTreeUserDictFingerprint.originalMethod.name,
             )

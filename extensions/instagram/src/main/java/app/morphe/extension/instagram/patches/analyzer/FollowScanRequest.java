@@ -49,14 +49,17 @@ public final class FollowScanRequest implements PageSource {
     private static FollowUser toFollowUser(Object user) {
         if (user == null) return null;
         UserData data = new UserData(user);
-        String id = orNull(data::getUserId);
-        if (id == null || id.isEmpty()) return null;
-        String username = orNull(data::getUsername);
-        String fullName = orNull(data::getFullName);
-        // getFullName falls back to the username when the name is empty.
-        if (fullName != null && fullName.equals(username)) fullName = null;
-        return new FollowUser(id, username, fullName, Boolean.TRUE.equals(orNull(data::isVerified)),
+        return followUser(orNull(data::getUserId), orNull(data::getUsername),
+                orNull(data::getRawFullName), Boolean.TRUE.equals(orNull(data::isVerified)),
                 orNull(data::getProfilePicId));
+    }
+
+    /** Null without an id; an empty full name is missing. */
+    static FollowUser followUser(String id, String username, String rawFullName, boolean verified,
+                                 String picId) {
+        if (id == null || id.isEmpty()) return null;
+        String fullName = rawFullName == null || rawFullName.isEmpty() ? null : rawFullName;
+        return new FollowUser(id, username, fullName, verified, picId);
     }
 
     private static <T> T orNull(Getter<T> getter) {
