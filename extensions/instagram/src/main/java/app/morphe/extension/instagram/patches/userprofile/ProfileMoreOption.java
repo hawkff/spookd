@@ -105,7 +105,7 @@ public class ProfileMoreOption {
                         }
                     } catch (Exception e) {
                         Logger.printException(() -> "Error at moreOptionsDailogueBox onclick", e);
-                        Utils.showToastShort(e.getMessage());
+                        Utils.showToastShort(String.valueOf(e));
                     }
                 }
             });
@@ -118,7 +118,7 @@ public class ProfileMoreOption {
             dlg.show();
         } catch (Exception e) {
             Logger.printException(() -> "Error at moreOptionsDailogueBox", e);
-            Utils.showToastShort(e.getMessage());
+            Utils.showToastShort(String.valueOf(e));
         }
     }
 

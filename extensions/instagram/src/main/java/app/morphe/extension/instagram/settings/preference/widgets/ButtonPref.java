@@ -97,6 +97,9 @@ public class ButtonPref extends Preference {
                         ActivityHook.launchActivity(context,
                                 app.morphe.extension.instagram.patches.instants.InstantsVaultActivity.class);
 
+                    } else if (key.equals("piko_private_gallery")) {
+                        ActivityHook.startPrivateGalleryActivity(context);
+
                     } else if (key.equals("view_deleted_messages")) {
                         SavedMessagesHook.openDeletedMessages(context);
 
@@ -112,7 +115,7 @@ public class ButtonPref extends Preference {
                         );
                     }
                 } catch (Exception e) {
-                    Utils.showToastShort(e.getMessage());
+                    Utils.showToastShort(String.valueOf(e));
                     Logger.printException(() -> "Preference button onclick failure", e);
                 }
                 return true;
@@ -171,6 +174,7 @@ public class ButtonPref extends Preference {
                 || key.equals("piko_download_id_mapping")
                 || key.equals("piko_rec_flags_refresh_file")
                 || key.equals("piko_view_saved_instants")
+                || key.equals("piko_private_gallery")
                 || key.equals("piko_pref_add_font")
                 || key.equals("piko_pref_delete_font")
                 || key.equals("view_deleted_messages")

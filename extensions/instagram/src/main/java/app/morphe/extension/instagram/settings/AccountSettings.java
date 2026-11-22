@@ -43,7 +43,7 @@ import app.morphe.extension.shared.Utils;
  */
 public final class AccountSettings {
 
-    static final String OWNER_KEY = "piko_account_owner";
+    public static final String OWNER_KEY = "piko_account_owner";
     private static final String ACCOUNTS_PREF_NAME = Constants.SHARED_PREF_NAME + "_accounts";
     private static final String ADOPT_LIVE_FILE_KEY = "adopt_live_file";
 
@@ -70,6 +70,9 @@ public final class AccountSettings {
             "custom_download_tree_uri",
             "external_downloader_package_name",
             "download_with_external_downloader",
+            "save_downloads_to_phone_storage",
+            "gallery_max_age_days",
+            "gallery_max_size_gb",
             "marked_story_keys_v2",
             "inbox_lock",
             "inbox_lock_notifications",

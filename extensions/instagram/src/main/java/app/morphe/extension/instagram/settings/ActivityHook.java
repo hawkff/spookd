@@ -25,6 +25,7 @@ import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzerActivity;
 import app.morphe.extension.instagram.patches.dm.DeletedMessagesActivity;
 import app.morphe.extension.instagram.patches.dm.InboxLock;
+import app.morphe.extension.instagram.patches.download.gallery.PrivateGalleryActivity;
 import app.morphe.extension.instagram.patches.instants.InstantsVaultActivity;
 import app.morphe.extension.instagram.settings.preference.fragments.BackupPrefFragment;
 import app.morphe.extension.instagram.settings.preference.fragments.RestorePrefFragment;
@@ -45,6 +46,7 @@ public class ActivityHook {
     static final String LAUNCH_TYPE_DELETED_MESSAGES = "deleted_messages";
     static final String LAUNCH_TYPE_INSTANTS_VAULT = "instants_vault";
     static final String LAUNCH_TYPE_PROFILE_ANALYZER = "profile_analyzer";
+    static final String LAUNCH_TYPE_PRIVATE_GALLERY = "private_gallery";
 
 
     public static void launchActivity(Context context, Class<?> activityClass) {
@@ -173,6 +175,9 @@ public class ActivityHook {
             case LAUNCH_TYPE_PROFILE_ANALYZER:
                 InboxLock.confirmViewer(activity, () -> ProfileAnalyzerActivity.setupOnActivity(activity));
                 break;
+            case LAUNCH_TYPE_PRIVATE_GALLERY:
+                PrivateGalleryActivity.open(activity);
+                break;
             case LAUNCH_TYPE_BACKUP:
             case LAUNCH_TYPE_RESTORE:
             case LAUNCH_TYPE_FOLDER_PICKER:
@@ -243,6 +248,12 @@ public class ActivityHook {
     public static void startProfileAnalyzerActivity(Context context) {
         Intent intent = createProxyIntent(context);
         intent.putExtra(EXTRA_PIKO_LAUNCH_TYPE, LAUNCH_TYPE_PROFILE_ANALYZER);
+        launchActivity(context, intent);
+    }
+
+    public static void startPrivateGalleryActivity(Context context) {
+        Intent intent = createProxyIntent(context);
+        intent.putExtra(EXTRA_PIKO_LAUNCH_TYPE, LAUNCH_TYPE_PRIVATE_GALLERY);
         launchActivity(context, intent);
     }
 

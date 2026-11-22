@@ -305,6 +305,22 @@ public final class InboxLock {
         }, activity::finish);
     }
 
+    /** {@link #confirmViewer} that asks for the device credential even while the lock is off; the caller checked for a secure screen lock. */
+    public static void confirmViewerWithCredential(Activity activity, Runnable setup) {
+        if (prompting) {
+            activity.finish();
+            return;
+        }
+        cancelAction = activity::finish;
+        authenticate(activity, () -> {
+            if (initialized && Pref.inboxLock()) {
+                viewers.add(activity);
+                hideFromRecents(activity, true);
+            }
+            setup.run();
+        });
+    }
+
     private static void authenticate(Activity activity, Runnable afterUnlock) {
         if (prompting) return;
         KeyguardManager keyguard = (KeyguardManager) activity.getSystemService(Activity.KEYGUARD_SERVICE);

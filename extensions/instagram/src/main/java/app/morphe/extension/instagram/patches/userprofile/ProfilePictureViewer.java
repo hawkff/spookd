@@ -117,7 +117,7 @@ public class ProfilePictureViewer {
                     try {
                         String filename = username + "_dp.jpg";
                         String subFolder = DownloadUtils.getSubfolderName(username);
-                        DownloadUtils.downloadMediaUrl(context, resolvedUrl, subFolder, filename);
+                        DownloadUtils.downloadMediaUrl(context, resolvedUrl, subFolder, filename, username);
                     } catch (Exception e) {
                         Logger.printInfo(() -> "Profile picture download: " + e.getClass().getSimpleName());
                         Utils.showToastShort(str("piko_download_failed_media"));

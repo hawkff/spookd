@@ -446,6 +446,29 @@ public class Pref {
         return removeLineBreaks(SharedPref.getStringPref(Settings.DOWNLOAD_FILE_NAME_TEMPLATE));
     }
 
+    public static boolean saveDownloadsToPhoneStorage() {
+        return SharedPref.getBooleanPref(Settings.SAVE_DOWNLOADS_TO_PHONE_STORAGE);
+    }
+
+    /** 0 when off or not a number. */
+    public static int galleryMaxAgeDays() {
+        try {
+            return Math.max(0, Integer.parseInt(SharedPref.getStringPref(Settings.GALLERY_MAX_AGE_DAYS).trim()));
+        } catch (RuntimeException e) {
+            return 0;
+        }
+    }
+
+    /** In bytes, 0 when off or not a number. */
+    public static long galleryMaxBytes() {
+        try {
+            long gb = Long.parseLong(SharedPref.getStringPref(Settings.GALLERY_MAX_SIZE_GB).trim());
+            return Math.max(0, Math.min(gb, 1_000_000L)) * 1_000_000_000L;
+        } catch (RuntimeException e) {
+            return 0;
+        }
+    }
+
     public static boolean hideNavigationFeed() {
         return SharedPref.getBooleanPref(Settings.HIDE_NAVIGATION_FEED);
     }

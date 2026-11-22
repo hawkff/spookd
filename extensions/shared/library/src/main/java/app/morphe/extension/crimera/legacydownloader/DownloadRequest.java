@@ -7,6 +7,8 @@
 
 package app.morphe.extension.crimera.legacydownloader;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,6 +41,23 @@ public class DownloadRequest {
     public String fallbackUrl;
     /** Alternate renditions in retry order, before the legacy complete-file fallback. */
     public final List<Source> fallbackSources = new ArrayList<>();
+    /** Saves into app-private storage instead of the download folder; null keeps the folder. */
+    public PrivateTarget privateTarget;
+
+    /** An app-private destination; every call runs on the download thread. */
+    public interface PrivateTarget {
+        /** A new file for the download to write into. */
+        File partFile() throws IOException;
+
+        /** Whether an item with this request's name is already saved, for the skip policy. */
+        boolean exists();
+
+        /**
+         * Makes the finished part a saved item; false when the skip policy found the name taken
+         * meanwhile, checked atomically with saving. On throw or false the part is deleted.
+         */
+        boolean publish(File part) throws IOException;
+    }
 
     public DownloadRequest(String url, String subFolder, String fileName) {
         this.url = url;

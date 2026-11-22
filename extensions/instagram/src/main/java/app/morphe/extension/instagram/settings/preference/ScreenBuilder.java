@@ -10,12 +10,14 @@ package app.morphe.extension.instagram.settings.preference;
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.content.Context;
+import android.os.Build;
 import android.preference.PreferenceScreen;
 import android.preference.Preference;
 import android.preference.PreferenceCategory;
 import java.util.TreeMap;
 import java.util.Map;
 import java.util.List;
+import java.util.function.LongSupplier;
 import app.morphe.extension.instagram.patches.devFlags.Flag;
 import app.morphe.extension.instagram.patches.devFlags.RecommendedFlags;
 
@@ -25,11 +27,13 @@ import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.patches.Links;
 import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzer;
 import app.morphe.extension.instagram.patches.customise.font.FontStorage;
+import app.morphe.extension.instagram.patches.download.gallery.Gallery;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
 import app.morphe.extension.instagram.patches.focusLock.FocusLockTargets;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.BooleanSetting;
 import app.morphe.extension.instagram.settings.Settings;
+import app.morphe.extension.instagram.settings.StringSetting;
 import app.morphe.extension.instagram.settings.preference.widgets.*;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.instagram.utils.Pref;
@@ -1003,6 +1007,34 @@ public class ScreenBuilder {
 
         addPreference(
                 helper.buttonPreference(
+                        str("piko_private_gallery"),
+                        str("piko_private_gallery_desc"),
+                        "piko_private_gallery"
+                )
+        );
+
+        String phoneStorageReason = Build.VERSION.SDK_INT < 30
+                ? str("piko_save_downloads_to_phone_storage_old_android")
+                : Gallery.canOpen(context) ? null : str("piko_save_downloads_to_phone_storage_no_lock");
+        addPreference(
+                helper.forcedSwitchPreference(
+                        str("piko_save_downloads_to_phone_storage"),
+                        str("piko_save_downloads_to_phone_storage_desc"),
+                        Settings.SAVE_DOWNLOADS_TO_PHONE_STORAGE,
+                        phoneStorageReason != null,
+                        phoneStorageReason
+                )
+        );
+
+        addPreference(galleryLimitPreference("piko_gallery_max_age_days", "piko_gallery_max_age_days_desc",
+                Settings.GALLERY_MAX_AGE_DAYS,
+                Pref::galleryMaxAgeDays));
+        addPreference(galleryLimitPreference("piko_gallery_max_size_gb", "piko_gallery_max_size_gb_desc",
+                Settings.GALLERY_MAX_SIZE_GB,
+                () -> Pref.galleryMaxBytes() / 1_000_000_000L));
+
+        addPreference(
+                helper.buttonPreference(
                         str("piko_download_set_path"),
                         StorageUtils.getCustomPathForDisplay(),
                         "piko_download_set_path"
@@ -1029,6 +1061,19 @@ public class ScreenBuilder {
                     )
             );
         }
+    }
+
+    /** A cleanup limit whose summary shows the limit in force and that 0 turns it off, also after edits. */
+    private Preference galleryLimitPreference(String titleKey, String summaryKey, StringSetting setting,
+                                              LongSupplier limit) {
+        Preference preference = helper.editTextNumPreference(str(titleKey),
+                String.format(str(summaryKey), limit.getAsLong()), setting);
+        preference.setOnPreferenceChangeListener((changed, value) -> {
+            helper.setValue(changed, value);
+            changed.setSummary(String.format(str(summaryKey), limit.getAsLong()));
+            return true;
+        });
+        return preference;
     }
 
     public void buildActionBarSection() {

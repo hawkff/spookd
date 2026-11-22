@@ -160,7 +160,7 @@ public final class ReelDownload {
             DownloadUtils.downloadPost(context, userSession, media, currentIndex(copy.component));
         } catch (Exception e) {
             Logger.printException(() -> "Error at reel download", e);
-            Utils.showToastShort(e.getMessage());
+            Utils.showToastShort(String.valueOf(e));
         }
     }
 

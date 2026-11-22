@@ -858,7 +858,7 @@ public final class InstantsVaultActivity {
             String fileName = DownloadFileNameFormatter.format(
                     Pref.downloadFileNameTemplate(), values, isVideo ? ".mp4" : ".jpg", ZoneId.systemDefault()
             );
-            DownloadUtils.downloadMediaUrl(activity, url, DownloadUtils.getSubfolderName(row[1]), fileName);
+            DownloadUtils.downloadMediaUrl(activity, url, DownloadUtils.getSubfolderName(row[1]), fileName, row[1]);
         }
 
         private void confirm(CharSequence message, String positiveText, Runnable onConfirm) {

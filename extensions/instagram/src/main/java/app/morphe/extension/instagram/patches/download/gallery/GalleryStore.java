@@ -7,15 +7,20 @@ import android.database.sqlite.SQLiteDatabase;
 import android.media.MediaMetadataRetriever;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,6 +39,9 @@ public final class GalleryStore {
     private static final String COLUMNS = "id, file, tab, kind, file_name, sub_folder,"
             + " owner_username, owner_id, media_id, link, account_id, saved_at, taken_at,"
             + " size_bytes, duration_ms";
+
+    /** What {@link #publish} does when a saved download already has the same subfolder and name. */
+    public enum Conflict { RENAME, SKIP, OVERWRITE }
 
     /** One saved download. */
     public static final class Entry {
@@ -113,6 +121,12 @@ public final class GalleryStore {
      */
     public long publish(File part, GalleryItem item, String subFolder, String fileName,
                         boolean overwrite) throws IOException {
+        return publish(part, item, subFolder, fileName, overwrite ? Conflict.OVERWRITE : Conflict.RENAME);
+    }
+
+    /** {@link #publish} that with SKIP deletes the part and returns -1 when the name is taken, checked under the store's lock. */
+    public long publish(File part, GalleryItem item, String subFolder, String fileName,
+                        Conflict conflict) throws IOException {
         try {
             if (!part.isFile()) throw new IOException("Missing " + part);
             Long durationMs = GalleryItem.PHOTO.equals(item.kind) ? null : durationMs(part);
@@ -135,7 +149,11 @@ public final class GalleryStore {
                 values.put("taken_at", item.takenAt);
                 values.put("size_bytes", size);
                 values.put("duration_ms", durationMs);
-                Object[] existing = overwrite ? newest(subFolder, fileName) : null;
+                Object[] existing = conflict == Conflict.RENAME ? null : newest(subFolder, fileName);
+                if (existing != null && conflict == Conflict.SKIP) {
+                    part.delete();
+                    return -1;
+                }
                 if (existing != null) {
                     long id = (Long) existing[0];
                     // The old file stays until the row points at the replacement; a crash leaves an orphan.
@@ -194,6 +212,27 @@ public final class GalleryStore {
     }
 
     /**
+     * Writes item {@code id}'s thumbnail through {@code write} only while {@code file} is still its
+     * file, under the lock a delete or overwrite takes, so neither leaves a stale thumbnail. Returns
+     * false, writing nothing, when the item is gone or was replaced.
+     */
+    public synchronized boolean writeThumb(long id, File file, Predicate<OutputStream> write) throws IOException {
+        try (Cursor c = db.rawQuery("SELECT file FROM gallery_items WHERE id = ?",
+                new String[]{String.valueOf(id)})) {
+            if (!c.moveToFirst() || !file.getName().equals(c.getString(0)) || !file.isFile()) return false;
+        }
+        if (!thumbDir.isDirectory() && !thumbDir.mkdirs()) return false;
+        File thumb = thumb(id);
+        boolean written = false;
+        try (OutputStream out = new FileOutputStream(thumb)) {
+            written = write.test(out);
+        } finally {
+            if (!written) thumb.delete();
+        }
+        return written;
+    }
+
+    /**
      * Opt-in cleanup of downloads only: deletes the oldest until none is older than
      * {@code maxAgeDays} and all fit in {@code maxBytes}; 0 turns either limit off. Returns how
      * many were deleted.
@@ -235,13 +274,21 @@ public final class GalleryStore {
         try (Cursor c = db.rawQuery("SELECT file, id FROM gallery_items", null)) {
             while (c.moveToNext()) rows.put(c.getString(0), c.getLong(1));
         }
+        Set<String> thumbs = new HashSet<>();
+        for (long id : rows.values()) thumbs.add(thumb(id).getName());
         for (File file : files) {
             String name = file.getName();
             if (name.endsWith(PART) || rows.remove(name) == null) file.delete();
         }
         for (long id : rows.values()) {
             db.delete("gallery_items", "id = ?", new String[]{String.valueOf(id)});
-            thumb(id).delete();
+            thumbs.remove(thumb(id).getName());
+        }
+        File[] cached = thumbDir.listFiles();
+        if (cached != null) {
+            for (File thumb : cached) {
+                if (!thumbs.contains(thumb.getName())) thumb.delete();
+            }
         }
         recovered = true;
     }

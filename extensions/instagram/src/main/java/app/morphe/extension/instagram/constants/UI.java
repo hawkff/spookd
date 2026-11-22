@@ -223,7 +223,7 @@ public class UI {
                     }
                 } catch (Exception e) {
                     Logger.printException(() -> "Error at restartDialogBox", e);
-                    Utils.showToastShort(e.getMessage());
+                    Utils.showToastShort(String.valueOf(e));
                 }
             }
         });
@@ -263,7 +263,7 @@ public class UI {
 
                 } catch (Exception e) {
                     Logger.printException(() -> "Error at welcomeDialogBox", e);
-                    Utils.showToastShort(e.getMessage());
+                    Utils.showToastShort(String.valueOf(e));
                 }
             }
         });
