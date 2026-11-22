@@ -223,9 +223,11 @@ public final class MediaVault {
         public final String accountId;
         public final String senderUsername;
         public final String senderId;
+        /** The DM item id the media belongs to. */
+        public final String itemId;
 
         Item(long id, String kind, String mime, long sizeBytes, long msgTimestamp, String accountId,
-             String senderUsername, String senderId) {
+             String senderUsername, String senderId, String itemId) {
             this.id = id;
             this.kind = kind;
             this.mime = mime;
@@ -234,6 +236,7 @@ public final class MediaVault {
             this.accountId = accountId;
             this.senderUsername = senderUsername;
             this.senderId = senderId;
+            this.itemId = itemId;
         }
     }
 
