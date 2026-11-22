@@ -88,7 +88,8 @@ public class MediaDownloader {
     public void enqueueBatch(List<DownloadRequest> requests) {
         List<DownloadRequest> batch = new ArrayList<>(requests);
         if (batch.isEmpty()) return;
-        if (!StorageUtils.checkStoragePermissions()) {
+        if (batch.stream().anyMatch(request -> request.privateTarget == null)
+                && !StorageUtils.checkStoragePermissions()) {
             StorageUtils.allowStorageAccess();
             return;
         }
@@ -117,6 +118,10 @@ public class MediaDownloader {
                     .setContentTitle(ExtensionStrings.DOWNLOAD_ONGOING + request.fileName)
                     .setOngoing(true) // Keeps notification un-swipable during download execution.
                     .setProgress(100, 0, false);
+            if (request.privateTarget != null) {
+                savePrivately(request, builder, notificationId);
+                return;
+            }
 
             synchronized (CREATE_DOCUMENT_LOCK) {
                 Uri targetDirectoryUri = getTargetDirectoryUri(request);
@@ -205,6 +210,43 @@ public class MediaDownloader {
             }
             if (replacement != null) replacement.delete();
         }
+    }
+
+    /** Downloads into the request's private target; a part that is not published is deleted. */
+    private void savePrivately(DownloadRequest request, Notification.Builder builder, int notificationId)
+            throws Exception {
+        DownloadRequest.PrivateTarget target = request.privateTarget;
+        if (request.conflictPolicy == DownloadRequest.ConflictPolicy.SKIP && target.exists()) {
+            showToast(ExtensionStrings.DOWNLOAD_MEDIA_EXISTS);
+            return;
+        }
+        String downloadStartString = ExtensionStrings.DOWNLOAD_ONGOING + request.fileName;
+        builder.setContentTitle(downloadStartString);
+        notificationManager.notify(notificationId, builder.build());
+        showToast(downloadStartString);
+        File part = target.partFile();
+        try {
+            downloadSources(request, Uri.fromFile(part), builder, notificationId);
+            target.publish(part);
+        } finally {
+            // Published parts were already renamed away.
+            part.delete();
+        }
+        String downloadCompletedString = ExtensionStrings.DOWNLOAD_COMPLETED + request.fileName;
+        // No tap action: a private file cannot be handed to another app's viewer.
+        mainHandler.post(() -> {
+            builder.setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setContentTitle(downloadCompletedString)
+                    .setContentText(request.fileName)
+                    .setOngoing(false)
+                    .setProgress(0, 0, false)
+                    .setAutoCancel(true);
+            notificationManager.notify(notificationId, builder.build());
+
+            try {
+                PikoUtils.toast(downloadCompletedString);
+            } catch (Exception ignored) {}
+        });
     }
 
     private void replaceDocument(File replacement, Uri destination) throws IOException {

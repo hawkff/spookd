@@ -10,6 +10,7 @@ package app.morphe.extension.instagram.settings.preference;
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.content.Context;
+import android.os.Build;
 import android.preference.PreferenceScreen;
 import android.preference.Preference;
 import android.preference.PreferenceCategory;
@@ -25,6 +26,7 @@ import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.patches.Links;
 import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzer;
 import app.morphe.extension.instagram.patches.customise.font.FontStorage;
+import app.morphe.extension.instagram.patches.download.gallery.Gallery;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
 import app.morphe.extension.instagram.patches.focusLock.FocusLockTargets;
 import app.morphe.extension.instagram.settings.SettingsStatus;
@@ -1006,6 +1008,35 @@ public class ScreenBuilder {
                         str("piko_private_gallery"),
                         str("piko_private_gallery_desc"),
                         "piko_private_gallery"
+                )
+        );
+
+        String phoneStorageReason = Build.VERSION.SDK_INT < 30
+                ? str("piko_save_downloads_to_phone_storage_old_android")
+                : Gallery.canOpen(context) ? null : str("piko_save_downloads_to_phone_storage_no_lock");
+        addPreference(
+                helper.forcedSwitchPreference(
+                        str("piko_save_downloads_to_phone_storage"),
+                        str("piko_save_downloads_to_phone_storage_desc"),
+                        Settings.SAVE_DOWNLOADS_TO_PHONE_STORAGE,
+                        phoneStorageReason != null,
+                        phoneStorageReason
+                )
+        );
+
+        addPreference(
+                helper.editTextNumPreference(
+                        str("piko_gallery_max_age_days"),
+                        str("piko_gallery_max_age_days_desc"),
+                        Settings.GALLERY_MAX_AGE_DAYS
+                )
+        );
+
+        addPreference(
+                helper.editTextNumPreference(
+                        str("piko_gallery_max_size_gb"),
+                        str("piko_gallery_max_size_gb_desc"),
+                        Settings.GALLERY_MAX_SIZE_GB
                 )
         );
 

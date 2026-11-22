@@ -40,7 +40,11 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import app.morphe.extension.instagram.constants.Constants;
+import app.morphe.extension.instagram.constants.PostType;
 import app.morphe.extension.instagram.constants.UI;
+import app.morphe.extension.instagram.patches.download.gallery.Gallery;
+import app.morphe.extension.instagram.patches.download.gallery.GalleryItem;
+import app.morphe.extension.instagram.patches.download.gallery.GalleryTab;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.utils.MediaUrls;
@@ -95,6 +99,7 @@ public class DownloadUtils {
             int position,
             int filenameIndex,
             MediaType mediaType,
+            PostType hint,
             DialogInterface.OnDismissListener onDismiss
     ) throws Exception {
         MediaData currentMediaData = mediaInfo.getMediaAt(position);
@@ -141,7 +146,8 @@ public class DownloadUtils {
                             data.getUrl(),
                             subFolder,
                             fileName,
-                            data
+                            data,
+                            hint
                     );
                     enqueueDownload(context, request);
                 } catch (Exception e) {
@@ -170,6 +176,8 @@ public class DownloadUtils {
         int filenameIndex = group.currentFilenameIndex(position);
         Boolean isCurrentMediaVideo = currentMediaData.isVideo();
         Boolean currentMediaHasAudio = currentMediaData.hasAudio();
+        // Story groups have no carousel parent.
+        PostType hint = group.carouselParent == null ? PostType.STORY : null;
 
         InstagramDialogBox dialog = new InstagramDialogBox(context);
 
@@ -202,10 +210,10 @@ public class DownloadUtils {
                     String selectedOption = options.get(which);
 
                     if (selectedOption.equals(str("piko_download_current_media"))) {
-                        downloadMedia(context, mediaInfo, position, filenameIndex, MediaType.ANY);
+                        downloadMedia(context, mediaInfo, position, filenameIndex, MediaType.ANY, hint);
 
                     } else if (selectedOption.equals(str("piko_download_as_image"))) {
-                        downloadMedia(context, mediaInfo, position, filenameIndex, MediaType.IMAGE);
+                        downloadMedia(context, mediaInfo, position, filenameIndex, MediaType.IMAGE, hint);
 
                     } else if (selectedOption.equals(str("piko_copy_media_link"))) {
                         Utils.setClipboard(MediaUrls.forViewing(currentMediaData.getMediaLink()));
@@ -222,14 +230,14 @@ public class DownloadUtils {
                         downloadAllMedia(context, group);
 
                     } else if (selectedOption.equals(str("piko_download_audio"))) {
-                        downloadMedia(context, mediaInfo, position, MediaType.AUDIO);
+                        downloadMedia(context, mediaInfo, position, position, MediaType.AUDIO, hint);
 
                     } else if (selectedOption.equals(str("piko_video_variants"))) {
-                        buildVariantDialogBox(context, mediaInfo, position, filenameIndex, MediaType.VIDEO, onDismiss);
+                        buildVariantDialogBox(context, mediaInfo, position, filenameIndex, MediaType.VIDEO, hint, onDismiss);
                         childDialogShown[0] = true;
 
                     } else if (selectedOption.equals(str("piko_image_variants"))) {
-                        buildVariantDialogBox(context, mediaInfo, position, filenameIndex, MediaType.IMAGE, onDismiss);
+                        buildVariantDialogBox(context, mediaInfo, position, filenameIndex, MediaType.IMAGE, hint, onDismiss);
                         childDialogShown[0] = true;
 
                     }
@@ -339,24 +347,26 @@ public class DownloadUtils {
         int total = group.size();
         String username = group.username();
         String subFolder = getSubfolderName(username);
+        PostType hint = group.carouselParent == null ? PostType.STORY : null;
         List<DownloadRequest> requests = new ArrayList<>(indexes.size());
         for (int index : new TreeSet<>(indexes)) {
             if (index < 0 || index >= total) throw new IllegalArgumentException("Invalid media index");
             MediaData child = group.itemAt(index);
             MediaData root = group.carouselParent == null ? child : group.carouselParent;
             requests.add(buildMediaRequest(root, child, group.carouselParent == null ? 0 : index, index, MediaType.ANY, child.getMediaLink(),
-                    subFolder, username + "_" + child.getDownloadFilename(MediaType.ANY), null));
+                    subFolder, username + "_" + child.getDownloadFilename(MediaType.ANY), null, hint));
         }
         getDownloadAllDownloader(context).enqueueBatch(requests);
     }
 
     // Position is set to -1 if we want to download all medias from the media info object.
     public static void downloadMedia(Context context, MediaData mediaInfo, int position, MediaType mediaType) throws Exception {
-        downloadMedia(context, mediaInfo, position, position, mediaType);
+        downloadMedia(context, mediaInfo, position, position, mediaType, null);
     }
 
+    /** {@code hint} is the gallery tab's post type when the type the media reads may be its fallback. */
     private static void downloadMedia(Context context, MediaData mediaInfo, int position, int filenameIndex,
-                                      MediaType mediaType) throws Exception {
+                                      MediaType mediaType, PostType hint) throws Exception {
         if(!Utils.isNetworkConnected()){
             Utils.showToastShort(str("piko_no_internet"));
             return;
@@ -371,7 +381,8 @@ public class DownloadUtils {
             AudioMediaInterface audioMedia = mediaInfo.getMediaAt(position).getAudioMedia();
             String audioUrl = audioMedia.getAudioUrl();
             String fileName = audioMedia.getDownloadName() + ".mp3";
-            downloader.enqueue(createDownloadRequest(audioUrl, Constants.DEFAULT_AUDIO_FOLDER, fileName));
+            downloader.enqueue(createDownloadRequest(audioUrl, Constants.DEFAULT_AUDIO_FOLDER, fileName,
+                    galleryItem(mediaInfo, mediaInfo.getMediaAt(position), position, hint, GalleryItem.AUDIO)));
 
         } else if (position != -1) {
             MediaData mediaData = mediaInfo.getMediaAt(position);
@@ -391,10 +402,11 @@ public class DownloadUtils {
                     mediaUrl,
                     subFolder,
                     fileName,
-                    null
+                    null,
+                    hint
             );
             if (!mediaType.equals(MediaType.IMAGE) || !mediaData.isVideo()
-                    || !StorageUtils.checkStoragePermissions()) {
+                    || !(request.privateTarget != null || StorageUtils.checkStoragePermissions())) {
                 downloader.enqueue(request);
                 return;
             }
@@ -521,7 +533,8 @@ public class DownloadUtils {
             String mediaUrl,
             String subFolder,
             String fallbackFileName,
-            MediaInterface variant
+            MediaInterface variant,
+            PostType hint
     ) throws Exception {
         boolean isVideo = mediaType.equals(MediaType.VIDEO)
                 || (mediaType.equals(MediaType.ANY) && childMediaData.isVideo());
@@ -573,7 +586,8 @@ public class DownloadUtils {
             );
         }
 
-        DownloadRequest request = createDownloadRequest(mediaUrl, subFolder, fileName);
+        DownloadRequest request = createDownloadRequest(mediaUrl, subFolder, fileName, galleryItem(rootMediaData,
+                childMediaData, postPosition, hint, isVideo ? GalleryItem.VIDEO : GalleryItem.PHOTO));
         if (variant instanceof VideoResolution) {
             List<VideoVariant> candidates = ((VideoResolution) variant).getCandidates();
             for (int i = 1; i < candidates.size(); i++) {
@@ -726,7 +740,15 @@ public class DownloadUtils {
 
 
     public static void downloadMediaUrl(Context context, String mediaUrl, String subFolder, String fileName) throws Exception {
-        enqueueDownload(context, createDownloadRequest(mediaUrl, subFolder, fileName));
+        downloadMediaUrl(context, mediaUrl, subFolder, fileName, null);
+    }
+
+    /** {@code ownerUsername} is whose media it is, kept in the private gallery; null when unknown. */
+    public static void downloadMediaUrl(Context context, String mediaUrl, String subFolder, String fileName,
+                                        String ownerUsername) throws Exception {
+        GalleryItem item = Gallery.enabled() ? new GalleryItem(GalleryTab.of(null, null, subFolder),
+                Gallery.kindOf(fileName), ownerUsername, null, null, null, Gallery.accountId(), null) : null;
+        enqueueDownload(context, createDownloadRequest(mediaUrl, subFolder, fileName, item));
     }
 
     private static final Object FEED_DOWNLOAD_BUTTON_TAG = new Object();
@@ -934,7 +956,7 @@ public class DownloadUtils {
                 int filenameIndex = template != null && template.contains(DownloadFileNameFormatter.Token.CAROUSEL_INDEX.placeholder())
                         ? DownloadMediaGroup.stories(current, reel, userSession).currentFilenameIndex(0)
                         : 0;
-                downloadMedia(activity, current, 0, filenameIndex, MediaType.ANY);
+                downloadMedia(activity, current, 0, filenameIndex, MediaType.ANY, PostType.STORY);
                 return;
             }
             DownloadMediaGroup group = DownloadMediaGroup.stories(current, reel, userSession);
@@ -965,7 +987,8 @@ public class DownloadUtils {
         throw new IllegalStateException("No activity found above the story download button");
     }
 
-    private static DownloadRequest createDownloadRequest(String url, String subFolder, String fileName) {
+    /** A null {@code item} saves to the download folder; otherwise the request saves into the private gallery. */
+    private static DownloadRequest createDownloadRequest(String url, String subFolder, String fileName, GalleryItem item) {
         DownloadRequest request = new DownloadRequest(url, subFolder, fileName);
         String policy = SharedPref.getStringPref(Settings.DOWNLOAD_CONFLICT_POLICY);
         if ("skip".equals(policy)) {
@@ -973,7 +996,34 @@ public class DownloadUtils {
         } else if ("overwrite".equals(policy)) {
             request.conflictPolicy = DownloadRequest.ConflictPolicy.OVERWRITE;
         }
+        if (item != null) {
+            request.privateTarget = Gallery.target(item, subFolder, fileName,
+                    request.conflictPolicy == DownloadRequest.ConflictPolicy.OVERWRITE);
+        }
         return request;
+    }
+
+    /** What the gallery keeps about one media of a post, or null when downloads go to phone storage. */
+    private static GalleryItem galleryItem(MediaData root, MediaData child, int postPosition, PostType hint,
+                                           String kind) {
+        if (!Gallery.enabled()) return null;
+        PostType type = root.getPostType();
+        String username = null, userId = null, mediaId = null, link = null;
+        Long takenAt = null;
+        try {
+            UserData owner = root.getUserData();
+            username = owner.getUsername();
+            userId = owner.getUserId();
+            mediaId = child.getMediaPkId();
+            Long seconds = root.getTakenAtSeconds();
+            takenAt = seconds == null ? null : seconds * 1000L;
+            link = Links.generatePostLink(root, postPosition);
+        } catch (Exception | LinkageError e) {
+            // Missing details only leave columns empty; the download still goes to the gallery.
+            Logger.printException(() -> "Could not read gallery details", e);
+        }
+        return new GalleryItem(GalleryTab.of(type, hint, null), kind, username, userId, mediaId, link,
+                Gallery.accountId(), takenAt);
     }
 
     private static void enqueueDownload(Context context, DownloadRequest request) {
