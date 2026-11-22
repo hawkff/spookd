@@ -10,11 +10,17 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.system.Os;
+import android.system.OsConstants;
 import android.util.Log;
 
 import java.io.File;
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -34,6 +40,8 @@ public final class SpookdMigration {
     private static final String TAG = "spookd";
     private static final String MARKER = "spookd_migration_v1";
     private static final String LOCK = "spookd_migration.lock";
+    private static final String JOURNAL = "spookd_migration_journal";
+    private static final String JOURNAL_END = "end";
 
     private static final String SETTINGS_OLD = "piko_settings";
     private static final String SETTINGS_NEW = "spookd_settings";
@@ -129,10 +137,17 @@ public final class SpookdMigration {
     }
 
     /** True when every step finished; a conflict that keeps both copies still counts as finished. */
-    private static boolean migrate(Context app) {
+    private static boolean migrate(Context app) throws IOException {
         boolean finished = true;
+        File journal = journal(app);
+        List<Move> pending = readJournal(journal);
+        // Whatever a resumed group moved back is planned again below.
+        if (pending != null) apply(app, pending, true);
+        // A group that could neither finish nor go back keeps its entry, and no other group may replace it.
+        if (journal.exists()) return false;
         for (List<Move> group : plan(existing(app))) {
-            finished &= apply(app, group);
+            finished &= apply(app, group, isRenameGroup(group));
+            if (journal.exists()) return false;
         }
         try {
             finished &= renameKeys(app);
@@ -166,12 +181,12 @@ public final class SpookdMigration {
             String to = "shared_prefs/" + newPrefsName(base);
             boolean newXml = existing.contains(to + ".xml");
             boolean newBak = existing.contains(to + ".xml.bak");
-            if (newBak && !newXml && !existing.contains(from + ".xml.bak")) {
-                // A move stopped after the .bak: finish it, and Android drops this .xml for the .bak on load.
-                groups.add(Collections.singletonList(new Move(Op.RENAME, from + ".xml", to + ".xml")));
+            if (newBak && !newXml) {
+                // Only the journal can tell an interrupted move; here Android would drop the old file for the .bak.
+                groups.add(Collections.singletonList(new Move(Op.KEEP_BOTH, from, to)));
                 continue;
             }
-            if (newXml || newBak) {
+            if (newXml) {
                 groups.add(Collections.singletonList(new Move(Op.MERGE_PREFS, from, to)));
                 continue;
             }
@@ -283,23 +298,120 @@ public final class SpookdMigration {
         return slash < 0 ? dir : new File(dir, path.substring(slash + 1));
     }
 
-    private static boolean apply(Context app, List<Move> group) {
-        List<Move> done = new ArrayList<>();
+    private static boolean isRenameGroup(List<Move> group) {
+        if (group.size() < 2) return false;
+        for (Move move : group) {
+            if (move.op != Op.RENAME) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Runs a group, also one resumed from the journal: forward when every remaining move can happen,
+     * otherwise all its renames go back, including those of an earlier start. A journaled group keeps
+     * its entry until it finished or every source is back under its old name.
+     */
+    private static boolean apply(Context app, List<Move> group, boolean journaled) {
         try {
+            if (journaled) writeJournal(app, group);
+            boolean forward = true;
             for (Move move : group) {
-                if (!apply(app, move)) throw new IOException("Could not " + move);
-                done.add(move);
+                if (move.op == Op.RENAME && !isDone(app, move) && !canMove(app, move)) forward = false;
             }
-            return true;
-        } catch (Throwable t) {
-            log("Migration step failed", t);
-            for (int i = done.size() - 1; i >= 0; i--) {
-                Move move = done.get(i);
-                if (move.op == Op.RENAME && !file(app, move.to).renameTo(file(app, move.from))) {
-                    log("Could not undo " + move, null);
+            Move failed = null;
+            if (forward) {
+                for (Move move : group) {
+                    if (move.op == Op.RENAME && isDone(app, move)) continue;
+                    if (!apply(app, move)) {
+                        failed = move;
+                        break;
+                    }
+                }
+                if (failed == null) {
+                    if (journaled) clearJournal(app);
+                    return true;
                 }
             }
-            return false;
+            log("Could not " + (failed == null ? "resume " + group : failed) + "; moving the group back", null);
+            if (rollBack(app, group) && journaled) clearJournal(app);
+        } catch (Throwable t) {
+            log("Migration step failed", t);
+        }
+        return false;
+    }
+
+    private static boolean isDone(Context app, Move move) {
+        return !file(app, move.from).exists() && file(app, move.to).exists();
+    }
+
+    private static boolean canMove(Context app, Move move) {
+        return file(app, move.from).exists() && !file(app, move.to).exists();
+    }
+
+    /** True when every source of the group is back under its old name. */
+    private static boolean rollBack(Context app, List<Move> group) {
+        boolean restored = true;
+        for (int i = group.size() - 1; i >= 0; i--) {
+            Move move = group.get(i);
+            if (move.op != Op.RENAME) continue;
+            if (isDone(app, move) && !file(app, move.to).renameTo(file(app, move.from))) {
+                log("Could not undo " + move, null);
+            }
+            restored &= file(app, move.from).exists();
+        }
+        return restored;
+    }
+
+    private static File journal(Context app) {
+        return new File(app.getFilesDir(), JOURNAL);
+    }
+
+    /** Records a group's renames on disk before the first of them. */
+    static void writeJournal(Context app, List<Move> group) throws IOException {
+        StringBuilder text = new StringBuilder();
+        for (Move move : group) {
+            text.append(move.from).append('\t').append(move.to).append('\n');
+        }
+        text.append(JOURNAL_END).append('\n');
+        File file = journal(app);
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            out.write(text.toString().getBytes(StandardCharsets.UTF_8));
+            out.getFD().sync();
+        }
+        syncDirectory(file.getParentFile());
+    }
+
+    /** The journaled renames, or null when there is none; an entry without its end was cut before any rename. */
+    private static List<Move> readJournal(File file) throws IOException {
+        if (!file.exists()) return null;
+        String[] lines = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8).split("\n");
+        List<Move> group = new ArrayList<>();
+        for (int i = 0; i < lines.length - 1; i++) {
+            String[] paths = lines[i].split("\t", -1);
+            if (paths.length != 2) break;
+            group.add(new Move(Op.RENAME, paths[0], paths[1]));
+        }
+        if (group.size() == lines.length - 1 && JOURNAL_END.equals(lines[lines.length - 1])) return group;
+        if (!file.delete()) throw new IOException("Could not delete " + file);
+        return null;
+    }
+
+    private static void clearJournal(Context app) throws IOException {
+        File file = journal(app);
+        if (!file.delete() && file.exists()) throw new IOException("Could not delete " + file);
+        syncDirectory(file.getParentFile());
+    }
+
+    private static void syncDirectory(File dir) {
+        try {
+            FileDescriptor fd = Os.open(dir.getPath(), OsConstants.O_RDONLY, 0);
+            try {
+                Os.fsync(fd);
+            } finally {
+                Os.close(fd);
+            }
+        } catch (Throwable t) {
+            log("Could not sync " + dir, t);
         }
     }
 

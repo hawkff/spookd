@@ -131,14 +131,14 @@ public final class SpookdMigrationTest {
                 "databases/spookd_dm_vault.db-wal",
                 "no_backup/spookd_vault"));
         assertEquals(Arrays.asList(
-                "[RENAME shared_prefs/piko_dm.xml -> shared_prefs/spookd_dm.xml]",
+                "[KEEP_BOTH shared_prefs/piko_dm -> shared_prefs/spookd_dm]",
                 "[RENAME shared_prefs/piko_hidden_chats.xml -> shared_prefs/spookd_hidden_chats.xml]",
                 "[RENAME databases/piko_dm_vault.db -> databases/spookd_dm_vault.db]",
                 "[MERGE_DIRECTORY no_backup/piko_gallery -> no_backup/spookd_gallery]"
         ), plan(
                 "shared_prefs/spookd_settings.xml",
                 "shared_prefs/piko_hidden_chats.xml",
-                // The .bak moved, the .xml did not: the move resumes instead of merging.
+                // Without a journal entry this is a conflict: the new .bak would override the old file.
                 "shared_prefs/spookd_dm.xml.bak",
                 "shared_prefs/piko_dm.xml",
                 // The media and sidecars moved, the database did not.
@@ -243,18 +243,62 @@ public final class SpookdMigrationTest {
     }
 
     @Test
-    public void aMoveStoppedAfterTheBackupKeepsTheBackupAuthoritative() throws Exception {
+    public void aJournaledMoveStoppedAfterTheBackupResumesForward() throws Exception {
         writePrefs("piko_settings.xml", "<string name=\"k\">stale</string>"
                 + "<boolean name=\"enable_developer_options\" value=\"true\" />");
-        writePrefs("spookd_settings.xml.bak", "<string name=\"k\">bak</string>");
+        writePrefs("piko_settings.xml.bak", "<string name=\"k\">bak</string>");
+        // The first start journaled the group and died after its first rename.
+        SpookdMigration.writeJournal(app, Arrays.asList(
+                rename("shared_prefs/piko_settings.xml.bak", "shared_prefs/spookd_settings.xml.bak"),
+                rename("shared_prefs/piko_settings.xml", "shared_prefs/spookd_settings.xml")));
+        assertTrue(prefsFile("piko_settings.xml.bak").renameTo(prefsFile("spookd_settings.xml.bak")));
 
         SpookdMigration.run(app);
 
         assertFalse(prefsFile("piko_settings.xml").exists());
+        assertFalse(journalFile().exists());
         SharedPreferences live = prefs("spookd_settings");
         assertEquals("bak", live.getString("k", null));
         assertFalse(live.contains("enable_developer_options"));
         assertEquals(1, live.getAll().size());
+        assertTrue(marker().exists());
+    }
+
+    @Test
+    public void oldXmlAndNewBackupWithoutAJournalEntryKeepBoth() throws Exception {
+        writePrefs("piko_settings.xml", "<string name=\"piko_account_owner\">1</string>"
+                + "<string name=\"k\">one</string>");
+        writePrefs("spookd_settings.xml.bak", "<string name=\"spookd_account_owner\">2</string>");
+
+        SpookdMigration.run(app);
+
+        assertTrue(prefsFile("piko_settings.xml").exists());
+        assertTrue(readFile(prefsFile("piko_settings.xml")).contains(">one<"));
+        SharedPreferences live = prefs("spookd_settings");
+        assertEquals("2", live.getString("spookd_account_owner", null));
+        assertFalse(live.contains("k"));
+        assertTrue(marker().exists());
+    }
+
+    @Test
+    public void aJournaledGroupThatCannotFinishMovesBackAtTheNextStart() throws Exception {
+        vaultDb("piko_dm_vault.db", 1);
+        writeFile(new File(app.getNoBackupFilesDir(), "piko_vault/1.pkv"), "one");
+        SpookdMigration.writeJournal(app, Arrays.asList(
+                rename("no_backup/piko_vault", "no_backup/spookd_vault"),
+                rename("databases/piko_dm_vault.db", "databases/spookd_dm_vault.db")));
+        assertTrue(new File(app.getNoBackupFilesDir(), "piko_vault")
+                .renameTo(new File(app.getNoBackupFilesDir(), "spookd_vault")));
+        // Something created the new database meanwhile, so the database cannot follow its media.
+        vaultDb("spookd_dm_vault.db", 2);
+
+        SpookdMigration.run(app);
+
+        assertEquals("one", readFile(new File(app.getNoBackupFilesDir(), "piko_vault/1.pkv")));
+        assertFalse(new File(app.getNoBackupFilesDir(), "spookd_vault").exists());
+        assertEquals(Arrays.asList("stored"), column("piko_dm_vault.db", "SELECT state FROM saved_media"));
+        assertFalse(journalFile().exists());
+        // With the pair whole again, both databases exist: a kept conflict.
         assertTrue(marker().exists());
     }
 
@@ -602,6 +646,14 @@ public final class SpookdMigrationTest {
                     (LongSupplier) () -> NOW, kek, new File(app.getNoBackupFilesDir(), "spookd_vault"), null);
             recover.invoke(vault);
         }
+    }
+
+    private static SpookdMigration.Move rename(String from, String to) {
+        return new SpookdMigration.Move(SpookdMigration.Op.RENAME, from, to);
+    }
+
+    private File journalFile() {
+        return new File(app.getFilesDir(), "spookd_migration_journal");
     }
 
     private static List<String> plan(String... existing) {
