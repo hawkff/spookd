@@ -18,6 +18,7 @@ import android.view.View;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
 import java.util.WeakHashMap;
 
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
@@ -36,9 +37,12 @@ public final class ActionConfirm {
     static final String REPOST = "repost";
     static final String COMMENT = "comment";
 
-    // Set only while a confirmed action runs again, so its own checks let it through.
-    private static Object bypass;
+    // Set only while an approved action runs again: what it was about, and how it looked when asked.
+    private static Object pendingToken;
+    private static List<Object> pendingState;
     private static final WeakHashMap<View, String> followNames = new WeakHashMap<>();
+    // Counts click listener changes, so a rebound button no longer matches an earlier prompt.
+    private static final WeakHashMap<View, Integer> bindCounts = new WeakHashMap<>();
 
     private ActionConfirm() {
     }
@@ -46,13 +50,15 @@ public final class ActionConfirm {
     /** From the follow button's click; {@code textType} is the label it shows. */
     public static boolean allowFollowClick(View button, Object textType) {
         try {
-            if (isBypassed(button)) return true;
             String type = textType instanceof Enum ? ((Enum<?>) textType).name() : null;
-            if (!isFollow(type) || !Pref.confirmFollow()) return true;
             String name = followNames.get(button);
+            List<Object> state = Arrays.asList(bindCount(button), name, type);
+            Boolean replay = replayVerdict(button, state);
+            if (replay != null) return replay;
+            if (!isFollow(type) || !Pref.confirmFollow()) return true;
             String title = name == null || name.isEmpty()
                     ? str("piko_confirm_follow_title") : str("piko_confirm_follow_user_title", name);
-            return !ask(button, FOLLOW, title, button, button::performClick);
+            return !ask(button, FOLLOW, title, button, state, button::performClick);
         } catch (Throwable t) {
             Logger.printException(() -> "allowFollowClick failure", t);
             return true;
@@ -68,10 +74,22 @@ public final class ActionConfirm {
         }
     }
 
+    /** From a confirmed button's setOnClickListener, which Instagram calls on every bind. */
+    public static void onClickListenerSet(View button) {
+        try {
+            bindCounts.put(button, bindCount(button) + 1);
+        } catch (Throwable t) {
+            Logger.printException(() -> "onClickListenerSet failure", t);
+        }
+    }
+
     /** From a feed like or repost button's click; the button is selected once liked or reposted. */
     public static boolean allowUfiClick(View button) {
         try {
-            if (isBypassed(button) || button.getId() == View.NO_ID) return true;
+            List<Object> state = Arrays.asList(bindCount(button), button.isSelected());
+            Boolean replay = replayVerdict(button, state);
+            if (replay != null) return replay;
+            if (button.getId() == View.NO_ID) return true;
             String idName;
             try {
                 idName = button.getResources().getResourceEntryName(button.getId());
@@ -80,7 +98,7 @@ public final class ActionConfirm {
             }
             String action = ufiAction(idName, button.isSelected());
             if (action == null || !isEnabled(action)) return true;
-            return !ask(button, action, str("piko_confirm_" + action + "_title"), button, button::performClick);
+            return !ask(button, action, str("piko_confirm_" + action + "_title"), button, state, button::performClick);
         } catch (Throwable t) {
             Logger.printException(() -> "allowUfiClick failure", t);
             return true;
@@ -94,11 +112,14 @@ public final class ActionConfirm {
     public static boolean allowReelLike(Object[] refs, boolean enabled, boolean liked, Class<?> owner, String name) {
         try {
             View view = (View) refs[1];
-            if (view == null || isBypassed(view) || isReaction(refs) || !enabled || liked || !Pref.confirmLike()) return true;
+            List<Object> state = Arrays.asList(liked);
+            Boolean replay = replayVerdict(view, state);
+            if (replay != null) return replay;
+            if (view == null || isReaction(refs) || !enabled || liked || !Pref.confirmLike()) return true;
             Object[] args = Arrays.copyOfRange(refs, 1, refs.length + 2);
             args[args.length - 2] = enabled;
             args[args.length - 1] = liked;
-            return !ask(view, LIKE, str("piko_confirm_like_title"), view, invoker(owner, name, refs[0], args));
+            return !ask(view, LIKE, str("piko_confirm_like_title"), view, state, invoker(owner, name, refs[0], args));
         } catch (Throwable t) {
             Logger.printException(() -> "allowReelLike failure", t);
             return true;
@@ -109,21 +130,27 @@ public final class ActionConfirm {
     public static boolean allowReelRepost(Object[] refs, int last, Class<?> owner, String name) {
         try {
             View view = (View) refs[0];
-            if (view == null || isBypassed(view) || refs[5] != null || !Pref.confirmRepost()) return true;
+            List<Object> state = Arrays.asList(refs[5]);
+            Boolean replay = replayVerdict(view, state);
+            if (replay != null) return replay;
+            if (view == null || refs[5] != null || !Pref.confirmRepost()) return true;
             Object[] args = Arrays.copyOf(refs, refs.length + 1);
             args[refs.length] = last;
-            return !ask(view, REPOST, str("piko_confirm_repost_title"), view, invoker(owner, name, null, args));
+            return !ask(view, REPOST, str("piko_confirm_repost_title"), view, state, invoker(owner, name, null, args));
         } catch (Throwable t) {
             Logger.printException(() -> "allowReelRepost failure", t);
             return true;
         }
     }
 
-    /** From the comment composer's static post method; {@code text} is what the composer holds. */
-    public static boolean allowComment(Object composer, CharSequence text, Class<?> owner, String name) {
+    /** From the classic comment box's static post method, with the text and post it holds. */
+    public static boolean allowComment(Object composer, CharSequence text, Object media, Class<?> owner, String name) {
         try {
-            if (composer == null || isBypassed(composer) || isBlank(text) || !Pref.confirmComment()) return true;
-            return !ask(null, COMMENT, str("piko_confirm_comment_title"), composer,
+            List<Object> state = Arrays.asList(text == null ? null : text.toString(), media);
+            Boolean replay = replayVerdict(composer, state);
+            if (replay != null) return replay;
+            if (composer == null || isBlank(text) || !Pref.confirmComment()) return true;
+            return !ask(null, COMMENT, str("piko_confirm_comment_title"), composer, state,
                     invoker(owner, name, null, new Object[]{composer}));
         } catch (Throwable t) {
             Logger.printException(() -> "allowComment failure", t);
@@ -151,20 +178,45 @@ public final class ActionConfirm {
         return text == null || text.toString().trim().isEmpty();
     }
 
-    static boolean isBypassed(Object token) {
-        return token != null && bypass == token;
+    /**
+     * While an approved action replays: true when {@code token} still looks as it did when asked,
+     * false when it changed, so the replay is dropped. Null when this call is not that replay.
+     */
+    static Boolean replayVerdict(Object token, List<Object> state) {
+        if (token == null || token != pendingToken) return null;
+        return sameState(pendingState, state);
     }
 
-    /** Runs {@code action} once with {@code token} let through; the bypass ends with it. */
-    static void runConfirmed(Object token, Runnable action) {
-        bypass = token;
+    /** Text, flags and counters compare by value; accounts, posts and views by identity. */
+    static boolean sameState(List<Object> before, List<Object> now) {
+        if (before == null || now == null || before.size() != now.size()) return false;
+        for (int i = 0; i < before.size(); i++) {
+            Object a = before.get(i);
+            Object b = now.get(i);
+            if (a == b) continue;
+            boolean byValue = a instanceof String || a instanceof Boolean || a instanceof Integer;
+            if (!byValue || !a.equals(b)) return false;
+        }
+        return true;
+    }
+
+    /** Runs {@code action} once, letting {@code token} through only while it matches {@code state}. */
+    static void runConfirmed(Object token, List<Object> state, Runnable action) {
+        pendingToken = token;
+        pendingState = state;
         try {
             action.run();
         } catch (Throwable t) {
             Logger.printException(() -> "Confirmed action failed", t);
         } finally {
-            bypass = null;
+            pendingToken = null;
+            pendingState = null;
         }
+    }
+
+    private static int bindCount(View button) {
+        Integer count = bindCounts.get(button);
+        return count == null ? 0 : count;
     }
 
     private static boolean isEnabled(String action) {
@@ -172,13 +224,16 @@ public final class ActionConfirm {
     }
 
     /** Shows the dialog; false when it cannot be shown, so the action goes ahead. */
-    private static boolean ask(View anchor, String action, String title, Object token, Runnable rerun) {
+    private static boolean ask(View anchor, String action, String title, Object token, List<Object> state, Runnable rerun) {
         Activity activity = activityOf(anchor == null ? null : anchor.getContext());
         if (activity == null || activity.isFinishing()) return false;
         new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                 .setTitle(title)
                 .setNegativeButton(str("piko_cancel"), null)
-                .setPositiveButton(str("piko_confirm_" + action + "_action"), (dialog, which) -> runConfirmed(token, rerun))
+                .setPositiveButton(str("piko_confirm_" + action + "_action"), (dialog, which) -> {
+                    // A recycled or closed screen means the prompt no longer matches what is shown.
+                    if (anchor == null || anchor.isAttachedToWindow()) runConfirmed(token, state, rerun);
+                })
                 .show();
         return true;
     }

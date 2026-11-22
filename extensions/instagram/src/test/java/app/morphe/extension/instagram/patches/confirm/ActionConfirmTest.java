@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Test;
@@ -48,28 +49,50 @@ public class ActionConfirmTest {
     }
 
     @Test
-    public void bypassLastsForTheOneRerunOfItsOwnTarget() {
-        Object target = new Object();
-        Object other = new Object();
-        List<Boolean> seen = new ArrayList<>();
-
-        assertFalse(ActionConfirm.isBypassed(target));
-        ActionConfirm.runConfirmed(target, () -> {
-            seen.add(ActionConfirm.isBypassed(target));
-            seen.add(ActionConfirm.isBypassed(other));
-            seen.add(ActionConfirm.isBypassed(null));
-        });
-
-        assertEquals(List.of(true, false, false), seen);
-        assertFalse(ActionConfirm.isBypassed(target));
+    public void unchangedStateMatchesByValueAndIdentity() {
+        Object media = new Object();
+        assertTrue(ActionConfirm.sameState(Arrays.asList(2, "alice", "FOLLOW"), Arrays.asList(2, "alice", "FOLLOW")));
+        assertTrue(ActionConfirm.sameState(Arrays.asList("nice", media), Arrays.asList(new String("nice"), media)));
+        assertTrue(ActionConfirm.sameState(Arrays.asList(false, null), Arrays.asList(false, null)));
     }
 
     @Test
-    public void bypassEndsWhenTheRerunFails() {
+    public void changedStateDoesNotMatch() {
+        assertFalse(ActionConfirm.sameState(Arrays.asList(2, false), Arrays.asList(3, false)));
+        assertFalse(ActionConfirm.sameState(Arrays.asList(2, false), Arrays.asList(2, true)));
+        assertFalse(ActionConfirm.sameState(Arrays.asList(1, "alice", "FOLLOW"), Arrays.asList(1, "bob", "FOLLOW")));
+        assertFalse(ActionConfirm.sameState(Arrays.asList("nice", new Object()), Arrays.asList("nice", new Object())));
+        assertFalse(ActionConfirm.sameState(Arrays.asList("nice"), Arrays.asList("nice!")));
+        assertFalse(ActionConfirm.sameState(Arrays.asList("a"), Arrays.asList("a", "b")));
+        assertFalse(ActionConfirm.sameState(null, Arrays.asList("a")));
+    }
+
+    @Test
+    public void replayGoesThroughOnlyForItsTargetWhileUnchanged() {
         Object target = new Object();
-        ActionConfirm.runConfirmed(target, () -> {
+        Object other = new Object();
+        List<Object> asked = Arrays.asList(1, false);
+        List<Boolean> seen = new ArrayList<>();
+
+        assertNull(ActionConfirm.replayVerdict(target, asked));
+        ActionConfirm.runConfirmed(target, asked, () -> {
+            seen.add(ActionConfirm.replayVerdict(target, Arrays.asList(1, false)));
+            seen.add(ActionConfirm.replayVerdict(target, Arrays.asList(2, false)));
+            seen.add(ActionConfirm.replayVerdict(other, asked));
+            seen.add(ActionConfirm.replayVerdict(null, asked));
+        });
+
+        assertEquals(Arrays.asList(true, false, null, null), seen);
+        assertNull(ActionConfirm.replayVerdict(target, asked));
+    }
+
+    @Test
+    public void replayEndsWhenItFails() {
+        Object target = new Object();
+        List<Object> asked = Arrays.asList("nice");
+        ActionConfirm.runConfirmed(target, asked, () -> {
             throw new IllegalStateException("rerun failed");
         });
-        assertFalse(ActionConfirm.isBypassed(target));
+        assertNull(ActionConfirm.replayVerdict(target, asked));
     }
 }

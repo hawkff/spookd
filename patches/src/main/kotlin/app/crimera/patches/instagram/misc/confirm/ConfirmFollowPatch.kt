@@ -25,11 +25,13 @@ import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
 
 internal const val ACTION_CONFIRM = "$PATCHES_DESCRIPTOR/confirm/ActionConfirm;"
 
 private const val FOLLOW_BUTTON = "Lcom/instagram/user/follow/FollowButtonBase;"
 private const val STRING = "Ljava/lang/String;"
+private const val CLICK_LISTENER = "Landroid/view/View\$OnClickListener;"
 
 private object FollowButtonTextTypeFingerprint : Fingerprint(
     definingClass = FOLLOW_BUTTON,
@@ -46,12 +48,18 @@ private object FollowButtonBindFingerprint : Fingerprint(
 
 /**
  * Gives [classType] a performClick that runs [gate] first, which leaves true in v0 to let the click
- * through. False when the class is missing or already has one.
+ * through, and a setOnClickListener that reports each bind. False when the class is missing or
+ * already has either.
  */
 internal fun addConfirmedPerformClick(classType: String, gate: String): Boolean {
     val classDef = classDefByOrNull(classType) ?: return false
     val superclass = classDef.superclass ?: return false
-    if (classDef.methods.any { it.name == "performClick" && it.parameterTypes.isEmpty() }) return false
+    if (classDef.methods.any {
+            (it.name == "performClick" && it.parameterTypes.isEmpty()) ||
+                (it.name == "setOnClickListener" && it.parameterTypes.map(CharSequence::toString) == listOf(CLICK_LISTENER))
+        }) {
+        return false
+    }
     val performClick = ImmutableMethod(
         classType, "performClick", emptyList(), "Z", AccessFlags.PUBLIC.value,
         null, null, MutableMethodImplementation(2),
@@ -69,7 +77,22 @@ internal fun addConfirmedPerformClick(classType: String, gate: String): Boolean 
             return v0
             """.trimIndent(),
     )
-    mutableClassDefBy(classType).methods.add(performClick)
+    val setOnClickListener = ImmutableMethod(
+        classType, "setOnClickListener", listOf(ImmutableMethodParameter(CLICK_LISTENER, emptySet(), null)), "V",
+        AccessFlags.PUBLIC.value, null, null, MutableMethodImplementation(2),
+    ).toMutable()
+    setOnClickListener.addInstructions(
+        0,
+        """
+        invoke-static {p0}, $ACTION_CONFIRM->onClickListenerSet(Landroid/view/View;)V
+        invoke-super {p0, p1}, $superclass->setOnClickListener($CLICK_LISTENER)V
+        return-void
+        """.trimIndent(),
+    )
+    mutableClassDefBy(classType).methods.apply {
+        add(performClick)
+        add(setOnClickListener)
+    }
     return true
 }
 
