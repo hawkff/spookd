@@ -127,7 +127,7 @@ public class InstaUtils {
 
                 new Handler(Looper.getMainLooper()).post(() -> {
                     if (!fileWritten) {
-                        PikoUtils.toast(str("piko_download_failed_media") + outputFile.getName());
+                        PikoUtils.toast(str("piko_download_failed_file", outputFile.getName()));
                         return;
                     }
                     PikoUtils.toast(str("piko_downloaded_media") + outputFile.getName());
@@ -139,7 +139,7 @@ public class InstaUtils {
 
             } catch (Exception e) {
                 PikoUtils.logger(e);
-                PikoUtils.toast(str("piko_download_failed_media") + outputFile.getName());
+                PikoUtils.toast(str("piko_download_failed_file", outputFile.getName()));
             }
         });
     }

@@ -70,7 +70,8 @@ public class Constants {
         ExtensionStrings.setDownloadCompleted(str("piko_downloaded_media"));
         ExtensionStrings.DOWNLOAD_MEDIA_EXISTS = str("piko_download_media_exists");
         ExtensionStrings.DOWNLOAD_MEDIA_IN_PROGRESS = str("piko_download_media_in_progress");
-        ExtensionStrings.setDownloadError(str("piko_download_failed_media"));
+        // The downloader appends the failure reason to this text.
+        ExtensionStrings.setDownloadError(str("piko_download_failed_media") + ": ");
         ExtensionStrings.setDownloadSetPathFailed(str("piko_download_set_path_failed"));
         ExtensionStrings.setDownloadSetPathSuccess(str("piko_download_set_path_success"));
         ExtensionStrings.setDownloadGrantPermission(str("piko_download_choose_folder"));
