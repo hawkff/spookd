@@ -341,6 +341,15 @@
     <string name="spookd_loop_story_desc">Replay the current story when it ends</string>
     <string name="spookd_hide_story_follow_button">Hide story follow button</string>
     <string name="spookd_hide_story_follow_button_desc">Hides the follow button at the top of stories from accounts you do not follow</string>
+    <string name="spookd_story_auto_save">Auto-save stories</string>
+    <string name="spookd_story_auto_save_off">Off</string>
+    <string name="spookd_story_auto_save_listed">Listed users</string>
+    <string name="spookd_story_auto_save_users">Story auto-save list</string>
+    <string name="spookd_story_auto_save_users_desc">People whose stories are saved when Auto-save stories is set to Listed users. Add or remove someone with Add to or remove from auto-save list in the ⋯ menu of their story, or tap a name here to remove it</string>
+    <string name="spookd_story_auto_save_toggle">Add to or remove from auto-save list</string>
+    <string name="spookd_story_auto_save_added">Added @%1$s to the story auto-save list</string>
+    <string name="spookd_story_auto_save_removed">Removed @%1$s from the story auto-save list</string>
+    <string name="spookd_story_auto_save_remove_confirm">Remove %1$s from the story auto-save list?</string>
 
     <!-- Download Media Section -->
     <string name="spookd_category_download_media">Download media</string>

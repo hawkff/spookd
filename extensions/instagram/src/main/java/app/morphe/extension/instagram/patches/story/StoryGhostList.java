@@ -8,11 +8,9 @@ package app.morphe.extension.instagram.patches.story;
 
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import java.util.ArrayList;
-import java.util.List;
+
 import java.util.Map;
 
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
@@ -20,7 +18,6 @@ import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.settings.SettingsStatus;
-import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
@@ -42,13 +39,20 @@ public final class StoryGhostList {
         return true;
     }
 
+    /** Whether a story of {@code ownerId} sends no automatic receipt; an unknown (null) owner never does. */
+    static boolean staysAnonymous(String mode, String ownerId, Map<String, String> listed) {
+        return ownerId == null || appliesTo(mode, listed.containsKey(ownerId));
+    }
+
     /** Instagram queuing a consumed item for its receipt, on the main thread: owners the mode leaves out get it sent. */
     public static void onStoryConsumed(Object logger, Object item, Object reel) {
         try {
             if (!Pref.viewStoriesAnonymously()) return;
             String mode = SharedPref.getStringPref(Settings.STORY_GHOST_MODE);
-            if (appliesTo(mode, StoryGhostUsers.all().containsKey(ownerIdNative(reel)))) return;
-            markSeen(loggerSessionNative(logger), item, reel);
+            Object session = loggerSessionNative(logger);
+            String ownerId = StoryUserList.ownerId(mediaNative(item), session);
+            if (staysAnonymous(mode, ownerId, StoryUserList.GHOST.all())) return;
+            markSeen(session, item, reel);
         } catch (Throwable throwable) {
             Logger.printException(() -> "Failed to apply the story ghost list", throwable);
         }
@@ -97,7 +101,7 @@ public final class StoryGhostList {
             String userId = owner.getUserId();
             String username = owner.getUsername();
             if (userId != null && username != null && !userId.equals(session.getUserId())) {
-                Utils.showToastShort(str(StoryGhostUsers.add(userId, username)
+                Utils.showToastShort(str(StoryUserList.GHOST.add(userId, username)
                         ? "spookd_story_ghost_added"
                         : "spookd_story_ghost_already_added", username));
             }
@@ -110,35 +114,11 @@ public final class StoryGhostList {
 
     /** The list screen in the Ghost settings: tap a username to remove it. */
     public static void showList(Context context) {
-        Map<String, String> users = StoryGhostUsers.all();
-        List<String> ids = new ArrayList<>(users.keySet());
-        CharSequence[] names = new CharSequence[ids.size()];
-        for (int i = 0; i < names.length; i++) names[i] = "@" + users.get(ids.get(i));
-
-        AlertDialog.Builder dialog = new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(context))
-                .setTitle(str("spookd_story_ghost_users"))
-                .setNegativeButton(str("spookd_close"), null);
-        if (ids.isEmpty()) {
-            dialog.setMessage(str("spookd_story_ghost_users_empty"));
-        } else {
-            dialog.setItems(names, (d, which) -> confirmRemove(context, ids.get(which), names[which]));
-        }
-        dialog.show();
-    }
-
-    private static void confirmRemove(Context context, String userId, CharSequence name) {
-        new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(context))
-                .setMessage(str("spookd_story_ghost_remove_confirm", name))
-                .setNegativeButton(str("spookd_cancel"), (d, which) -> showList(context))
-                .setPositiveButton(str("spookd_story_ghost_remove"), (d, which) -> {
-                    StoryGhostUsers.remove(userId);
-                    showList(context);
-                })
-                .show();
+        StoryUserList.GHOST.showList(context);
     }
 
     // The patch replaces these bodies with reads from Instagram's story objects.
-    public static String ownerIdNative(Object reel) {
+    public static Object mediaNative(Object item) {
         return null;
     }
 

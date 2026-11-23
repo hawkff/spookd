@@ -56,6 +56,7 @@ val downloadMediaPatch =
             feedDownloadButtonPatch,
             reelDownloadButtonPatch,
             storyDownloadButtonPatch,
+            storyAutoSavePatch,
         )
         compatibleWith(COMPATIBILITY_INSTAGRAM)
 

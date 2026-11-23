@@ -117,8 +117,10 @@ public class SettingsStatus {
     public static void hideStoryFollowButton() {
         hideStoryFollowButton = true;
     }
+    public static boolean storyAutoSave = false;
+    public static void storyAutoSave() { storyAutoSave = true; }
     public static boolean storySection() {
-        return (customiseStoryTimestamp || viewStoryMentions || disableStoryFlipping || loopStory || customiseStoryRingSize || hideStoryFollowButton);
+        return (customiseStoryTimestamp || viewStoryMentions || disableStoryFlipping || loopStory || customiseStoryRingSize || hideStoryFollowButton || storyAutoSave);
     }
 
     //Links section.
@@ -392,6 +394,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_loop_story"),SettingsStatus.loopStory);
         FLAGS.put(str("spookd_hide_story_follow_button"),SettingsStatus.hideStoryFollowButton);
         FLAGS.put(str("spookd_view_story_mentions"),SettingsStatus.viewStoryMentions);
+        FLAGS.put(str("spookd_story_auto_save"), SettingsStatus.storyAutoSave);
         FLAGS.put(str("spookd_follow_back_indicator"),SettingsStatus.followBackIndicator);
         FLAGS.put(str("spookd_exact_profile_counts"), SettingsStatus.exactProfileCounts);
         FLAGS.put(str("spookd_profile_analyzer"), SettingsStatus.profileAnalyzer);

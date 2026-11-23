@@ -37,6 +37,14 @@ public final class DownloadFileNameFormatter {
     }
 
     public static String format(String template, Values values, String extension, ZoneId zoneId) {
+        return format(template, values, false, extension, zoneId);
+    }
+
+    /**
+     * {@link #format}; with {@code keepMediaId} the name ends with the whole media id, added after an
+     * underscore unless the name already ends with it, and only the part before it is shortened to fit.
+     */
+    public static String format(String template, Values values, boolean keepMediaId, String extension, ZoneId zoneId) {
         Values safeValues = values == null ? Values.EMPTY : values;
         ZoneId safeZoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
         String effectiveTemplate = isValidTemplate(template)
@@ -51,7 +59,14 @@ public final class DownloadFileNameFormatter {
             filename = "download";
         }
 
-        return limitFilenameLength(filename, normalizeExtension(extension));
+        String mediaId = keepMediaId ? sanitize(safeValues.mediaId) : "";
+        if (mediaId.isEmpty()) return limitFilenameLength(filename, normalizeExtension(extension));
+        String head = filename.endsWith(mediaId) ? filename.substring(0, filename.length() - mediaId.length()) : null;
+        // Reuse a trailing id only when it stands on its own, so a longer id ending in this one cannot give the same name.
+        if (head == null || (!head.isEmpty() && Character.isLetterOrDigit(head.charAt(head.length() - 1)))) {
+            head = filename + "_";
+        }
+        return limitFilenameLength(head, mediaId + normalizeExtension(extension));
     }
 
     public static boolean isValidTemplate(String template) {

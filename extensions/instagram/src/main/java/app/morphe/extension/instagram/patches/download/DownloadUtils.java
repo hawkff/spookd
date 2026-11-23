@@ -538,6 +538,28 @@ public class DownloadUtils {
             MediaInterface variant,
             PostType hint
     ) throws Exception {
+        return buildMediaRequest(rootMediaData, childMediaData, postPosition, filenameIndex, mediaType, mediaUrl,
+                subFolder, fallbackFileName, variant, hint, false, null);
+    }
+
+    /**
+     * With {@code keepMediaId} the formatted file name ends with the whole media id; a null
+     * {@code conflictPolicy} applies the user's setting.
+     */
+    private static DownloadRequest buildMediaRequest(
+            MediaData rootMediaData,
+            MediaData childMediaData,
+            int postPosition,
+            int filenameIndex,
+            MediaType mediaType,
+            String mediaUrl,
+            String subFolder,
+            String fallbackFileName,
+            MediaInterface variant,
+            PostType hint,
+            boolean keepMediaId,
+            DownloadRequest.ConflictPolicy conflictPolicy
+    ) throws Exception {
         boolean isVideo = mediaType.equals(MediaType.VIDEO)
                 || (mediaType.equals(MediaType.ANY) && childMediaData.isVideo());
         String fileName = fallbackFileName;
@@ -577,6 +599,7 @@ public class DownloadUtils {
             fileName = DownloadFileNameFormatter.format(
                     Pref.downloadFileNameTemplate(),
                     fileNameValues,
+                    keepMediaId,
                     isVideo ? ".mp4" : ".jpg",
                     ZoneId.systemDefault()
             );
@@ -589,7 +612,7 @@ public class DownloadUtils {
         }
 
         DownloadRequest request = createDownloadRequest(mediaUrl, subFolder, fileName, galleryItem(rootMediaData,
-                childMediaData, postPosition, hint, isVideo ? GalleryItem.VIDEO : GalleryItem.PHOTO));
+                childMediaData, postPosition, hint, isVideo ? GalleryItem.VIDEO : GalleryItem.PHOTO), conflictPolicy);
         if (variant instanceof VideoResolution) {
             List<VideoVariant> candidates = ((VideoResolution) variant).getCandidates();
             for (int i = 1; i < candidates.size(); i++) {
@@ -974,6 +997,25 @@ public class DownloadUtils {
         }
     }
 
+    /**
+     * The request a direct story download makes for this story item, its file name ending with the whole
+     * media id and saved with {@code conflictPolicy}, both set before its gallery target is made. Reads
+     * Instagram's objects on the caller's thread.
+     */
+    public static DownloadRequest storyRequest(Object media, Object reel, UserSession userSession,
+                                               DownloadRequest.ConflictPolicy conflictPolicy) throws Exception {
+        MediaData current = new MediaData(media, userSession);
+        String template = Pref.downloadFileNameTemplate();
+        int filenameIndex = template != null && template.contains(DownloadFileNameFormatter.Token.CAROUSEL_INDEX.placeholder())
+                ? DownloadMediaGroup.stories(current, reel, userSession).currentFilenameIndex(0)
+                : 0;
+        MediaData item = current.getMediaAt(0);
+        String username = current.getUserData().getUsername();
+        return buildMediaRequest(current, item, 0, filenameIndex, MediaType.ANY, item.getMediaLink(),
+                getSubfolderName(username), username + "_" + item.getDownloadFilename(MediaType.ANY), null, PostType.STORY,
+                true, conflictPolicy);
+    }
+
     // The toolbar uses an application context wrapper; its ancestors carry the hosting Activity.
     private static Activity storyActivity(View view) {
         for (View current = view; current != null; ) {
@@ -995,9 +1037,17 @@ public class DownloadUtils {
      * a null one saves to the download folder without a history row.
      */
     public static DownloadRequest createDownloadRequest(String url, String subFolder, String fileName, GalleryItem item) {
+        return createDownloadRequest(url, subFolder, fileName, item, null);
+    }
+
+    /** {@link #createDownloadRequest(String, String, String, GalleryItem)} with {@code conflictPolicy}; null applies the user's setting. */
+    private static DownloadRequest createDownloadRequest(String url, String subFolder, String fileName, GalleryItem item,
+                                                         DownloadRequest.ConflictPolicy conflictPolicy) {
         DownloadRequest request = new DownloadRequest(url, subFolder, fileName);
         String policy = SharedPref.getStringPref(Settings.DOWNLOAD_CONFLICT_POLICY);
-        if ("skip".equals(policy)) {
+        if (conflictPolicy != null) {
+            request.conflictPolicy = conflictPolicy;
+        } else if ("skip".equals(policy)) {
             request.conflictPolicy = DownloadRequest.ConflictPolicy.SKIP;
         } else if ("overwrite".equals(policy)) {
             request.conflictPolicy = DownloadRequest.ConflictPolicy.OVERWRITE;

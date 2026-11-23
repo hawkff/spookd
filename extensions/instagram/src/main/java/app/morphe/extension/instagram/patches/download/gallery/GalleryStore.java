@@ -114,6 +114,16 @@ public final class GalleryStore {
         return newest(subFolder, fileName) != null;
     }
 
+    /** Whether a saved download is of media {@code mediaId}, whatever its name. */
+    public synchronized boolean hasMedia(String mediaId) {
+        if (mediaId == null) return false;
+        recover();
+        try (Cursor c = db.rawQuery("SELECT 1 FROM gallery_items WHERE media_id = ? LIMIT 1",
+                new String[]{mediaId})) {
+            return c.moveToFirst();
+        }
+    }
+
     /**
      * Makes a finished part a gallery item and returns its id. With {@code overwrite} the part
      * and its metadata replace the newest item of the same subfolder and name, if any, keeping its

@@ -53,18 +53,17 @@ private fun storyGhostListFingerprint(name: String) = Fingerprint(
  */
 internal fun addStoryGhostListHooks(
     reelParentClass: String,
-    reelModelField: FieldReference,
-    reelOwnerIdField: FieldReference,
+    mediaField: FieldReference,
 ) {
     val loggerClass = ConsumedStoryFingerprint.originalClassDef
     val loggerSessionField = loggerClass.fields.single { it.type == USER_SESSION_CLASS }
 
-    storyGhostListFingerprint("ownerIdNative").method.addInstructions(
+    // The story owner comes from the media: a reel id is not a user id for highlights and other reel types.
+    storyGhostListFingerprint("mediaNative").method.addInstructions(
         0,
         """
-        check-cast p0, $reelParentClass
-        iget-object p0, p0, $reelModelField
-        iget-object p0, p0, $reelOwnerIdField
+        check-cast p0, $REEL_ITEM_CLASS
+        iget-object p0, p0, $mediaField
         return-object p0
         """.trimIndent(),
     )
