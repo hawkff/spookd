@@ -85,10 +85,9 @@ public final class StoryGhostList {
         StorySeenBridge.markSeenAutomatically(session, item, reel, null);
     }
 
+    // Shown in every mode so the list can be prepared before switching modes.
     public static boolean showMenuItem() {
-        return SettingsStatus.viewStoriesAnonymously
-                && Pref.viewStoriesAnonymously()
-                && !MODE_EVERYONE.equals(SharedPref.getStringPref(Settings.STORY_GHOST_MODE));
+        return SettingsStatus.viewStoriesAnonymously && Pref.viewStoriesAnonymously();
     }
 
     /** The story menu item, on the main thread. The menu left resuming the story to this action. */
