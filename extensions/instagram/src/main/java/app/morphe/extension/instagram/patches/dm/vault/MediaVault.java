@@ -124,10 +124,13 @@ public final class MediaVault {
 
     /**
      * Queues the media of a received item ({@code kind} photo, video or voice) for download.
+     * {@code viewMode} is the item's original view mode, or null when unknown; once and
+     * replayable media is kept until the user deletes it.
      * Runs on the caller's thread and never throws. Skips items whose link is missing or
      * expired, and messages already older than the retention.
      */
-    public void enqueue(String itemId, String accountId, String kind, String url, long msgTimestamp) {
+    public void enqueue(String itemId, String accountId, String kind, String url, long msgTimestamp,
+                        String viewMode) {
         try {
             start();
             long now = clock.getAsLong();
@@ -135,7 +138,7 @@ public final class MediaVault {
             if (itemId == null || itemId.isEmpty() || expiresAt <= now
                     || msgTimestamp < now - RETENTION_MS
                     || !("photo".equals(kind) || "video".equals(kind) || "voice".equals(kind))) return;
-            long id = store.insertQueued(itemId, accountId, kind, url, expiresAt, msgTimestamp);
+            long id = store.insertQueued(itemId, accountId, kind, url, expiresAt, msgTimestamp, viewMode);
             if (id != -1) schedule(id, 0);
         } catch (Exception e) {
             Logger.printException(() -> "MediaVault.enqueue failed", e);
@@ -225,9 +228,11 @@ public final class MediaVault {
         public final String senderId;
         /** The DM item id the media belongs to. */
         public final String itemId;
+        /** The item's original view mode, such as once or replayable; null when unknown. */
+        public final String viewMode;
 
         Item(long id, String kind, String mime, long sizeBytes, long msgTimestamp, String accountId,
-             String senderUsername, String senderId, String itemId) {
+             String senderUsername, String senderId, String itemId, String viewMode) {
             this.id = id;
             this.kind = kind;
             this.mime = mime;
@@ -237,6 +242,7 @@ public final class MediaVault {
             this.senderUsername = senderUsername;
             this.senderId = senderId;
             this.itemId = itemId;
+            this.viewMode = viewMode;
         }
     }
 

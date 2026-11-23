@@ -329,7 +329,7 @@ public class SavedMessagesHook {
         String url = directItem.getMediaUrl();
         if (url == null) return;
         String kind = "voice_media".equals(type) ? "voice" : MediaUrls.isVideo(url) ? "video" : "photo";
-        MediaVault.get().enqueue(serverId, viewerId, kind, url, timestamp);
+        MediaVault.get().enqueue(serverId, viewerId, kind, url, timestamp, null);
     }
 
     private static void antiRevokeItem(DirectItem directItem, String restoredContent) {
