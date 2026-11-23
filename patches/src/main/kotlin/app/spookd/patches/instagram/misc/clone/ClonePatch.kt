@@ -47,7 +47,7 @@ val clonePatch =
 
         val packageName by stringOption(
             key = "packageName",
-            default = "com.instagram.android.piko",
+            default = "com.instagram.android.spookd",
             title = "Package name",
             description = "A new package name for the patched app.",
             required = true,
@@ -57,7 +57,7 @@ val clonePatch =
 
         val appName by stringOption(
             key = "appName",
-            default = "Piko Instagram",
+            default = "spookd Instagram",
             title = "App name",
             description = "A new app name (label). Entering \"Instagram\" will skip changing the app name.",
             required = true,
