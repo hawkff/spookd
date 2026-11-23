@@ -43,6 +43,33 @@ public class ActionConfirmTest {
     }
 
     @Test
+    public void storyLikeReplayIsDroppedWhenThePresenterMovesToAnotherStory() throws Exception {
+        Object presenter = new Object();
+        Object storyA = new Object();
+        Object storyB = new Object();
+        Object button = new Object();
+        ActionConfirm.rememberStoryLikePresenter(null, presenter);
+        ActionConfirm.onStoryItemBound(presenter, storyA);
+        List<Object> asked = Arrays.asList(0, false, ActionConfirm.storyItemOf(presenter));
+        List<Boolean> seen = new ArrayList<>();
+
+        ActionConfirm.runConfirmed(button, asked, () -> {
+            seen.add(ActionConfirm.replayVerdict(button, Arrays.asList(0, false, ActionConfirm.storyItemOf(presenter))));
+            ActionConfirm.onStoryItemBound(presenter, storyB);
+            seen.add(ActionConfirm.replayVerdict(button, Arrays.asList(0, false, ActionConfirm.storyItemOf(presenter))));
+        });
+
+        assertEquals(Arrays.asList(true, false), seen);
+    }
+
+    @Test
+    public void otherPresentersAreNotTracked() throws Exception {
+        Object presenter = new Object();
+        ActionConfirm.onStoryItemBound(presenter, new Object());
+        assertNull(ActionConfirm.storyItemOf(presenter));
+    }
+
+    @Test
     public void reelLikesWithAStoredReactionAreNotAsked() {
         Object[] plainTap = new Object[10];
         Object[] reaction = new Object[10];

@@ -16,6 +16,7 @@ import android.content.ContextWrapper;
 import android.os.Bundle;
 import android.view.View;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -56,6 +57,9 @@ public final class ActionConfirm {
     private static int repostsUfiId;
     private static int storyLikeId;
     private static int followRequestAcceptId;
+    // The story heart's presenter, and the item that presenter was last bound to.
+    private static final WeakHashMap<View, Object> storyLikePresenters = new WeakHashMap<>();
+    private static final WeakHashMap<Object, Object> storyModels = new WeakHashMap<>();
 
     private ActionConfirm() {
     }
@@ -225,9 +229,11 @@ public final class ActionConfirm {
             if (storyLikeId == 0) storyLikeId = idOf(button, "toolbar_like_button");
             int id = button.getId();
             boolean repost = id == repostsUfiId;
-            if (!repost && id != storyLikeId) return true;
+            // An untracked heart could approve a story other than the one asked about.
+            if (!repost && (id != storyLikeId || !storyLikePresenters.containsKey(button))) return true;
             // Selected means reposted or liked already, so the tap undoes it.
-            List<Object> state = Arrays.asList(bindCount(button), button.isSelected());
+            List<Object> state = Arrays.asList(bindCount(button), button.isSelected(),
+                    repost ? null : storyItemOf(storyLikePresenters.get(button)));
             Boolean replay = replayVerdict(button, state);
             if (replay != null) return replay;
             if (button.isSelected() || !(repost ? Pref.confirmRepost() : Pref.confirmStoryLike())) return true;
@@ -237,6 +243,42 @@ public final class ActionConfirm {
             Logger.printException(() -> "allowUfiClick failure", t);
             return true;
         }
+    }
+
+    /** From the story heart component's constructor: the presenter whose story the heart likes. */
+    public static void rememberStoryLikePresenter(View button, Object presenter) {
+        try {
+            storyLikePresenters.put(button, presenter);
+            if (!storyModels.containsKey(presenter)) storyModels.put(presenter, null);
+        } catch (Throwable t) {
+            Logger.printException(() -> "rememberStoryLikePresenter failure", t);
+        }
+    }
+
+    /** From every story viewer presenter's bind; only the story heart's presenters are kept. */
+    public static void onStoryItemBound(Object presenter, Object model) {
+        try {
+            if (storyModels.containsKey(presenter)) storyModels.put(presenter, model);
+        } catch (Throwable t) {
+            Logger.printException(() -> "onStoryItemBound failure", t);
+        }
+    }
+
+    /** The story {@code presenter} shows: its bound model's ReelItem, else the model itself. */
+    static Object storyItemOf(Object presenter) {
+        Object model = storyModels.get(presenter);
+        if (model == null) return null;
+        try {
+            for (Field field : model.getClass().getDeclaredFields()) {
+                if (field.getType().getName().equals("com.instagram.model.reels.ReelItem")) {
+                    field.setAccessible(true);
+                    return field.get(model);
+                }
+            }
+        } catch (IllegalAccessException e) {
+            Logger.printException(() -> "storyItemOf failure", e);
+        }
+        return model;
     }
 
     /** From the story reply bar's quick reaction send; {@code refs} holds the handler and its six arguments. */
