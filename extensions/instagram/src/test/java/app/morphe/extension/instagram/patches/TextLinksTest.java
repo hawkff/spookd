@@ -46,9 +46,13 @@ public class TextLinksTest {
     }
 
     @Test
-    public void stopsAtNonLatinTextButSkipsHostsCutByLatinLetters() {
-        assertLinks("\u8bbf\u95eewww.example.com\u4e86\u89e3", "https://www.example.com");
+    public void linksOnlyWhenTheWholeAuthorityMatched() {
+        assertLinks("https://user@example.com/path");
+        assertLinks("https://example.\u0440\u0444/path");
         assertLinks("https://b\u00fccher.de");
+        assertLinks("https://example.com:80x/path");
+        assertLinks("\u8bbf\u95eewww.example.com\u4e86\u89e3");
+        assertLinks("(www.example.com) \"https://example.org\"", "https://www.example.com", "https://example.org");
     }
 
     @Test

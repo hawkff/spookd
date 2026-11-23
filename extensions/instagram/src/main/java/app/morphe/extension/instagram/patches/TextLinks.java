@@ -23,13 +23,13 @@ import app.morphe.extension.shared.Logger;
 /** Makes plain-text web addresses in feed captions tappable. */
 @SuppressWarnings("unused")
 public final class TextLinks {
-    // http(s):// or a scheme-less www. host, optional port, then everything up to whitespace.
+    // Group 1 is the authority: http(s):// or a scheme-less www. ASCII host and an optional port; then the path up to whitespace.
     private static final Pattern LINK = Pattern.compile(
             "(?<![a-z0-9_@./:-])"
-                    + "(?:https?://(?:[a-z0-9-]+\\.)*[a-z0-9-]+|www\\.(?:[a-z0-9-]+\\.)+[a-z0-9-]{2,})"
-                    + "(?::\\d{1,5})?(?:[/?#][^\\s<>\"]*)?",
+                    + "((?:https?://(?:[a-z0-9-]+\\.)*[a-z0-9-]+|www\\.(?:[a-z0-9-]+\\.)+[a-z0-9-]{2,})(?::\\d{1,5})?)"
+                    + "(?:[/?#][^\\s<>\"]*)?",
             Pattern.CASE_INSENSITIVE);
-    private static final String TRAILING = ".,;:!?'*\u2026";
+    private static final String TRAILING = ".,;:!?'\"*\u2026";
 
     private TextLinks() {
     }
@@ -52,7 +52,9 @@ public final class TextLinks {
         while (matcher.find()) {
             int start = matcher.start();
             int end = trimEnd(text, start, matcher.end());
-            if (isCut(text, end) || isLinked(text, start, end)) continue;
+            if (!isWholeAuthority(text, start, matcher.end(1)) || isCut(text, end) || isLinked(text, start, end)) {
+                continue;
+            }
             String link = text.subSequence(start, end).toString();
             // Browsers register lowercase schemes only.
             String url = regionMatches(link, 0, "https://") ? "https" + link.substring(5)
@@ -102,12 +104,19 @@ public final class TextLinks {
         return count;
     }
 
-    // A collapsed caption can cut a link before its ellipsis, and a non-ASCII host letter ends the match early.
+    /** False when the written authority goes on past the match, as with userinfo, a non-ASCII host or a bad port. */
+    private static boolean isWholeAuthority(CharSequence text, int start, int authorityEnd) {
+        int written = authorityEnd;
+        while (written < text.length() && "/?#".indexOf(text.charAt(written)) < 0
+                && !Character.isWhitespace(text.charAt(written))) {
+            written++;
+        }
+        return trimEnd(text, start, written) == authorityEnd;
+    }
+
+    // A collapsed caption can cut a link before its ellipsis.
     private static boolean isCut(CharSequence text, int end) {
-        if (end >= text.length()) return false;
-        char next = text.charAt(end);
-        return next == '\u2026' || regionMatches(text, end, "...")
-                || (Character.isLetter(next) && Character.UnicodeScript.of(next) == Character.UnicodeScript.LATIN);
+        return end < text.length() && (text.charAt(end) == '\u2026' || regionMatches(text, end, "..."));
     }
 
     // Instagram's own links are not all URLSpans, so any tappable span over the range counts as linked.
