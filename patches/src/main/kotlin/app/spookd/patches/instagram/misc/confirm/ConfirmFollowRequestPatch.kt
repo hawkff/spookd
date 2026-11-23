@@ -134,6 +134,27 @@ val confirmFollowRequestPatch =
         execute {
             val method = FollowRequestAcceptFingerprint.matchOrNull()?.method ?: return@execute
             if (!AccessFlags.STATIC.isSet(method.accessFlags)) return@execute
+            // Asking before the list's click keeps a declined prompt from leaving the row looking accepted.
+            val click = FollowRequestRowClickFingerprint.matchOrNull()?.method?.takeIf { row ->
+                row.implementation!!.instructions.any {
+                    ((it as? ReferenceInstruction)?.reference as? MethodReference)?.definingClass == CONFIRM_FOLLOWER_UTIL
+                }
+            } ?: throw PatchException("Follow request row click not found")
+            // Without it a cancelled prompt would leave that callback's counts raised.
+            val callback = FollowRequestAcceptCallbackFingerprint.matchOrNull()?.method
+                ?: throw PatchException("Follow request accept callback not found")
+            // Both callers are asked before the accept itself, so it is never held back under a caller that goes on.
+            if (!callback.gateAcceptCase()) throw PatchException("Follow request accept callback has an unexpected shape")
+            val clickAdded = click.addConfirmGate(
+                2,
+                """
+                move-object/from16 v0, p1
+                move-object/from16 v1, p0
+                invoke-static {v0, v1}, $ACTION_CONFIRM->allowFollowRequestClick(Landroid/view/View;Ljava/lang/Object;)Z
+                move-result v0
+                """,
+            )
+            if (!clickAdded) throw PatchException("Follow request row click has too few registers")
             val added = method.addConfirmGate(
                 4,
                 """
@@ -146,26 +167,7 @@ val confirmFollowRequestPatch =
                 move-result v0
                 """,
             )
-            if (!added) return@execute
-
-            // Asking before the list's click keeps a declined prompt from leaving the row looking accepted.
-            FollowRequestRowClickFingerprint.matchOrNull()?.method?.takeIf { click ->
-                click.implementation!!.instructions.any {
-                    ((it as? ReferenceInstruction)?.reference as? MethodReference)?.definingClass == CONFIRM_FOLLOWER_UTIL
-                }
-            }?.addConfirmGate(
-                2,
-                """
-                move-object/from16 v0, p1
-                move-object/from16 v1, p0
-                invoke-static {v0, v1}, $ACTION_CONFIRM->allowFollowRequestClick(Landroid/view/View;Ljava/lang/Object;)Z
-                move-result v0
-                """,
-            )
-            // Without it a cancelled prompt would leave that callback's counts raised.
-            val callback = FollowRequestAcceptCallbackFingerprint.matchOrNull()?.method
-                ?: throw PatchException("Follow request accept callback not found")
-            if (!callback.gateAcceptCase()) throw PatchException("Follow request accept callback has an unexpected shape")
+            if (!added) throw PatchException("Follow request accept has too few registers")
             enableSettings("confirmFollowRequest")
         }
     }
