@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.patches.dm.InboxLock;
@@ -42,7 +43,6 @@ import app.morphe.extension.shared.Utils;
  */
 public final class DownloadHistoryActivity {
     private static final Executor JOBS = Executors.newSingleThreadExecutor();
-    private static final long REFRESH_MS = 2000;
 
     private DownloadHistoryActivity() {
     }
@@ -78,6 +78,18 @@ public final class DownloadHistoryActivity {
         private final Activity activity;
         private final Handler ui = new Handler(Looper.getMainLooper());
         private final Runnable refresh = this::reload;
+        private final AtomicBoolean changePosted = new AtomicBoolean();
+        // Runs on the writing thread; a burst of changes posts one reload.
+        private final Runnable onChange = () -> {
+            if (changePosted.compareAndSet(false, true)) {
+                ui.post(() -> {
+                    changePosted.set(false);
+                    // Qualified: a simple name here would be a forward reference.
+                    if (!this.closed) reload();
+                });
+            }
+        };
+        private boolean unlocked;
         private final Adapter adapter = new Adapter();
         private List<DownloadHistory.Entry> entries = new ArrayList<>();
         private TextView empty;
@@ -91,6 +103,7 @@ public final class DownloadHistoryActivity {
 
         /** {@code unlocked}: the credential was confirmed, so the history shows; otherwise only the screen-lock notice. */
         void setup(boolean unlocked) {
+            this.unlocked = unlocked;
             LinearLayout root = new LinearLayout(activity);
             root.setOrientation(LinearLayout.VERTICAL);
             root.setBackgroundColor(InstagramPreferenceStyle.backgroundColor());
@@ -153,7 +166,10 @@ public final class DownloadHistoryActivity {
             }
             activity.setContentView(root);
             watchLifecycle();
-            if (unlocked) reload();
+            if (unlocked) {
+                DownloadHistory.setListener(onChange);
+                reload();
+            }
         }
 
         /** Leaving the app or the screen ends it, as the private gallery does; a rotation keeps it. */
@@ -162,8 +178,18 @@ public final class DownloadHistoryActivity {
             app.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
                 @Override public void onActivityCreated(Activity a, Bundle b) {}
                 @Override public void onActivityStarted(Activity a) {}
-                @Override public void onActivityResumed(Activity a) {}
-                @Override public void onActivityPaused(Activity a) {}
+                @Override
+                public void onActivityResumed(Activity a) {
+                    if (a != activity || !unlocked || closed) return;
+                    DownloadHistory.setListener(onChange);
+                    reload();
+                }
+
+                @Override
+                public void onActivityPaused(Activity a) {
+                    if (a == activity) DownloadHistory.removeListener(onChange);
+                }
+
                 @Override public void onActivitySaveInstanceState(Activity a, Bundle b) {}
 
                 @Override
@@ -184,11 +210,12 @@ public final class DownloadHistoryActivity {
 
         private void close() {
             VaultViewer.close(activity);
+            DownloadHistory.removeListener(onChange);
             closed = true;
             ui.removeCallbacksAndMessages(null);
         }
 
-        /** Main thread; rows still downloading refresh until they end, and Retry goes when its link expires. */
+        /** Main thread; the store's changes reload it, and Retry goes when its link expires. */
         private void reload() {
             int generation = ++loads;
             JOBS.execute(() -> {
@@ -210,7 +237,6 @@ public final class DownloadHistoryActivity {
                     long now = System.currentTimeMillis();
                     long next = Long.MAX_VALUE;
                     for (DownloadHistory.Entry entry : result) {
-                        if (DownloadHistory.DOWNLOADING.equals(entry.status)) next = Math.min(next, now + REFRESH_MS);
                         long expiresAt = DownloadHistory.retryExpiresAt(entry.id);
                         if (expiresAt > now) next = Math.min(next, expiresAt);
                     }
@@ -228,9 +254,6 @@ public final class DownloadHistoryActivity {
                         } catch (Exception e) {
                             Logger.printException(() -> "Download history: cannot clear", e);
                         }
-                        ui.post(() -> {
-                            if (!closed) reload();
-                        });
                     }))
                     .setNegativeButton(str("spookd_cancel"), null)
                     .show();
@@ -271,9 +294,6 @@ public final class DownloadHistoryActivity {
                 Utils.showToastShort(str("spookd_gallery_action_failed"));
             }
             adapter.notifyDataSetChanged();
-            // The row turns downloading once the download thread starts it.
-            ui.removeCallbacks(refresh);
-            ui.postDelayed(refresh, REFRESH_MS / 4);
         }
 
         private static String status(DownloadHistory.Entry entry) {
@@ -317,6 +337,7 @@ public final class DownloadHistoryActivity {
         private final class RowView extends LinearLayout {
             private final TextView name = new TextView(activity);
             private final TextView details = new TextView(activity);
+            private final TextView file = new TextView(activity);
             private final TextView retryButton = new TextView(activity);
 
             RowView() {
@@ -334,8 +355,13 @@ public final class DownloadHistoryActivity {
                 details.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
                 details.setMaxLines(3);
                 details.setEllipsize(TextUtils.TruncateAt.END);
+                file.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+                file.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
+                file.setSingleLine(true);
+                file.setEllipsize(TextUtils.TruncateAt.MIDDLE);
                 texts.addView(name);
                 texts.addView(details);
+                texts.addView(file);
                 addView(texts, new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1));
                 retryButton.setText(str("spookd_download_history_retry"));
                 retryButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
@@ -347,7 +373,11 @@ public final class DownloadHistoryActivity {
             }
 
             void bind(DownloadHistory.Entry entry) {
-                name.setText(!TextUtils.isEmpty(entry.ownerUsername) ? entry.ownerUsername
+                boolean owner = !TextUtils.isEmpty(entry.ownerUsername);
+                // Under the owner, the file name tells that owner's downloads apart.
+                file.setText(owner ? entry.fileName : null);
+                file.setVisibility(owner && !TextUtils.isEmpty(entry.fileName) ? View.VISIBLE : View.GONE);
+                name.setText(owner ? entry.ownerUsername
                         : !TextUtils.isEmpty(entry.fileName) ? entry.fileName : str("spookd_unknown"));
                 String kind = str(GalleryItem.VIDEO.equals(entry.kind) ? "spookd_media_video"
                         : GalleryItem.AUDIO.equals(entry.kind) ? "spookd_gallery_audio" : "spookd_media_photo");

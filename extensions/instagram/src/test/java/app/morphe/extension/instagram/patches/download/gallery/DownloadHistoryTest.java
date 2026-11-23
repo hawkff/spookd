@@ -61,6 +61,7 @@ public final class DownloadHistoryTest {
     @After
     public void tearDown() {
         DownloadHistory.instance = null;
+        DownloadHistory.setListener(null);
         history.clear();
         helper.close();
     }
@@ -115,6 +116,28 @@ public final class DownloadHistoryTest {
         DownloadHistory.Entry entry = only();
         assertTrue(entry.inGallery);
         assertEquals(gallery.list(GalleryTab.POSTS).get(0).file, entry.galleryFile);
+    }
+
+    @Test
+    public void theListenerHearsEveryChangeUntilRemoved() {
+        int[] heard = {0};
+        Runnable listener = () -> heard[0]++;
+        DownloadHistory.setListener(listener);
+
+        long id = history.start(GalleryItem.PHOTO, "alice", "a.jpg");
+        history.failed(id, "IOException");
+        history.restart(id);
+        history.saved(id, "a.jpg", null, "content://a");
+        history.clear();
+        assertEquals(5, heard[0]);
+
+        DownloadHistory.removeListener(() -> { });
+        history.start(GalleryItem.PHOTO, "alice", "b.jpg");
+        assertEquals(6, heard[0]);
+
+        DownloadHistory.removeListener(listener);
+        history.start(GalleryItem.PHOTO, "alice", "c.jpg");
+        assertEquals(6, heard[0]);
     }
 
     @Test

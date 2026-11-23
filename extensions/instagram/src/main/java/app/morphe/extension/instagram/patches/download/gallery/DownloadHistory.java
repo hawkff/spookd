@@ -44,6 +44,8 @@ public final class DownloadHistory {
 
     // Package-private so tests can stand in a store.
     static volatile DownloadHistory instance;
+    // The open history screen, told on the writing thread after every change; null while none is in the foreground.
+    private static volatile Runnable listener;
 
     private final SQLiteDatabase db;
     private final File galleryDir;
@@ -132,6 +134,7 @@ public final class DownloadHistory {
         values.put("status", DOWNLOADING);
         long id = db.insertOrThrow(TABLE, null, values);
         db.delete(TABLE, "id <= ?", new String[]{String.valueOf(id - CAP)});
+        changed();
         return id;
     }
 
@@ -176,10 +179,27 @@ public final class DownloadHistory {
     synchronized void clear() {
         db.delete(TABLE, null, null);
         retryable.clear();
+        changed();
     }
 
     private void update(long id, ContentValues values) {
         db.update(TABLE, values, "id = ?", new String[]{String.valueOf(id)});
+        changed();
+    }
+
+    /** Sets the one listener told after every change, or removes it with null. */
+    static void setListener(Runnable changed) {
+        listener = changed;
+    }
+
+    /** Removes {@code changed} only if it is still the listener, so a newer screen keeps its own. */
+    static void removeListener(Runnable changed) {
+        if (listener == changed) listener = null;
+    }
+
+    private static void changed() {
+        Runnable current = listener;
+        if (current != null) current.run();
     }
 
     /** A short reason to show; a message holding a URL, as a failed HTTP fetch has, is left out. */
