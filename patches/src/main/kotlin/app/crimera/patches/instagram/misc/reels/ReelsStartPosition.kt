@@ -97,7 +97,7 @@ internal fun patchReelsStartPosition(): ReelStartPosition {
     require(paused != stop && positions == listOf(paused, stop)) { "Unexpected pause and stop positions in Reels player preparation" }
 
     val explicit = addReelMethod(
-        match.method.definingClass, "pikoHasExplicitReelStart", listOf(itemType), "Z", registers = 4,
+        match.method.definingClass, "spookdHasExplicitReelStart", listOf(itemType), "Z", registers = 4,
         flags = AccessFlags.PUBLIC.value or AccessFlags.FINAL.value or AccessFlags.SYNTHETIC.value,
         instructions = """
             invoke-direct {p0, p1}, $hasItemStart

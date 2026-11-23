@@ -22,18 +22,18 @@ import java.util.List;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 29, manifest = Config.NONE)
-public final class PikoFollowDbTest {
+public final class SpookdFollowDbTest {
     private static final String A = "1001";
     private static final String B = "2002";
 
     private Context context;
-    private PikoFollowDb db;
+    private SpookdFollowDb db;
 
     @Before
     public void setUp() {
         context = RuntimeEnvironment.getApplication();
         // A fresh helper per test; the singleton would keep an earlier test's context.
-        db = new PikoFollowDb(context);
+        db = new SpookdFollowDb(context);
     }
 
     @After
@@ -164,8 +164,8 @@ public final class PikoFollowDbTest {
         twoScans(A);
         db.close();
 
-        assertTrue(PikoFollowDb.deleteAll(context));
-        assertFalse(context.getDatabasePath(PikoFollowDb.DB_NAME).exists());
+        assertTrue(SpookdFollowDb.deleteAll(context));
+        assertFalse(context.getDatabasePath(SpookdFollowDb.DB_NAME).exists());
     }
 
     @Test
@@ -206,7 +206,7 @@ public final class PikoFollowDbTest {
     /** "kind user old new seenAt", sorted. */
     private List<String> changes(String account) {
         List<String> out = new ArrayList<>();
-        for (PikoFollowDb.Change c : db.history(account)) {
+        for (SpookdFollowDb.Change c : db.history(account)) {
             out.add(c.kind + " " + c.userId + " " + c.oldValue + " " + c.newValue + " " + c.seenAt);
         }
         Collections.sort(out);

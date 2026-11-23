@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Predicate;
 
-/** Helpers for the CDN urls piko stores and re-opens later. */
+/** Helpers for the CDN urls spookd stores and re-opens later. */
 public final class MediaUrls {
 
     private MediaUrls() {

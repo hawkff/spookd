@@ -58,7 +58,7 @@ import java.util.regex.Pattern;
 
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.constants.UI;
-import app.morphe.extension.instagram.db.PikoMessageDb;
+import app.morphe.extension.instagram.db.SpookdMessageDb;
 import app.morphe.extension.instagram.patches.dm.vault.MediaVault;
 import app.morphe.extension.instagram.patches.dm.vault.VaultViewer;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
@@ -416,7 +416,7 @@ public final class DeletedMessagesActivity {
                 List<String[]> loaded = null;
                 Set<String> stored = Collections.emptySet();
                 try {
-                    PikoMessageDb db = PikoMessageDb.getInstance(activity);
+                    SpookdMessageDb db = SpookdMessageDb.getInstance(activity);
                     if (deleteIds != null) SavedMessagesHook.deleteSavedMessages(deleteIds);
                     loaded = db.getDeletedMessages();
                     if (Pref.dmMediaVault()) MediaVault.get().start();

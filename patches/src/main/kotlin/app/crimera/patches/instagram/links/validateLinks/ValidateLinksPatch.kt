@@ -31,10 +31,10 @@ val validateLinksPatch =
                     """
                     invoke-static {p1}, ${LINKS_DESCRIPTOR}->signatureCheck(Ljava/lang/Object;)Z
                     move-result v0
-                    if-eqz v0, :piko
+                    if-eqz v0, :spookd
                     return v0
                     """.trimIndent(),
-                    ExternalLabel("piko", getInstruction(0)),
+                    ExternalLabel("spookd", getInstruction(0)),
                 )
             }
 

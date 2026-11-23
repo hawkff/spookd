@@ -23,7 +23,7 @@ import app.morphe.extension.instagram.settings.preference.widgets.ButtonPref;
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
 public final class SettingsSearchIndex {
-    private static final String PIKO_FRAGMENT_KEY_PREFIX = "piko_frag_";
+    private static final String SPOOKD_FRAGMENT_KEY_PREFIX = "spookd_frag_";
 
     private final List<IndexedResult> results;
 
@@ -135,7 +135,7 @@ public final class SettingsSearchIndex {
         for (int index = 0; index < group.getPreferenceCount(); index++) {
             Preference preference = group.getPreference(index);
             if (preference instanceof PreferenceGroup) {
-                if (Constants.PIKO_PATCH_INFO_PREFERENCE_CATEGORY.equals(preference.getKey())) {
+                if (Constants.SPOOKD_PATCH_INFO_PREFERENCE_CATEGORY.equals(preference.getKey())) {
                     continue;
                 }
                 order = collectPreferences(
@@ -197,12 +197,12 @@ public final class SettingsSearchIndex {
     }
 
     private static boolean isFragmentKey(String key) {
-        return key != null && key.startsWith(PIKO_FRAGMENT_KEY_PREFIX);
+        return key != null && key.startsWith(SPOOKD_FRAGMENT_KEY_PREFIX);
     }
 
     private static boolean isExcludedPreference(String preferenceKey) {
-        return Constants.PIKO_APP_VERSION_PREFERENCE.equals(preferenceKey)
-                || Constants.PIKO_PATCH_VERSION_PREFERENCE.equals(preferenceKey);
+        return Constants.SPOOKD_APP_VERSION_PREFERENCE.equals(preferenceKey)
+                || Constants.SPOOKD_PATCH_VERSION_PREFERENCE.equals(preferenceKey);
     }
 
     private static boolean isEmpty(String value) {

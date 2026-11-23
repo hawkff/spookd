@@ -38,8 +38,8 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 
 private const val STORY_FRAGMENT = "Linstagram/features/stories/fragment/ReelViewerFragment;"
-private const val STORY_BAR_WRAPPER = "pikoSetTrayStorySystemBars"
-private const val STORY_BAR_APPLY = "pikoApplyTrayStorySystemBars"
+private const val STORY_BAR_WRAPPER = "spookdSetTrayStorySystemBars"
+private const val STORY_BAR_APPLY = "spookdApplyTrayStorySystemBars"
 private val storyBarParameters = listOf(
     "Landroid/app/Activity;",
     "Landroidx/fragment/app/Fragment;",

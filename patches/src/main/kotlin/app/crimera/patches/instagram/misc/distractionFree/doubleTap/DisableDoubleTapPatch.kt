@@ -15,10 +15,10 @@ import app.morphe.patcher.patch.patch
 internal const val DOUBLE_TAP_PREF_DESCRIPTOR = """
                         $PREF_CALL_DESCRIPTOR->%s()Z
                         move-result v0
-                        if-eqz v0, :piko
+                        if-eqz v0, :spookd
                         const v0,0x1
                         return v0
-                        :piko
+                        :spookd
                         nop"""
 
 @Suppress("unused")

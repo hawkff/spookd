@@ -43,14 +43,14 @@ import app.morphe.extension.shared.ResourceUtils;
 
 public final class InstagramPreferenceStyle {
     static final long NAVIGATION_DRAG_DURATION_MS = 120L;
-    private static final String TAG_TITLE = "piko_instagram_pref_title";
-    private static final String TAG_SUMMARY = "piko_instagram_pref_summary";
-    private static final String TAG_TEXT_COLUMN = "piko_instagram_pref_text_column";
-    private static final String TAG_RESULT_CATEGORY = "piko_instagram_search_result_category";
-    private static final String TAG_RESULT_CATEGORY_ROW = "piko_instagram_search_result_category_row";
-    private static final String TAG_RESULT_CATEGORY_ICON = "piko_instagram_search_result_category_icon";
-    private static final String TAG_SWITCH = "piko_instagram_pref_switch";
-    private static final String TAG_TRAILING = "piko_instagram_pref_trailing";
+    private static final String TAG_TITLE = "spookd_instagram_pref_title";
+    private static final String TAG_SUMMARY = "spookd_instagram_pref_summary";
+    private static final String TAG_TEXT_COLUMN = "spookd_instagram_pref_text_column";
+    private static final String TAG_RESULT_CATEGORY = "spookd_instagram_search_result_category";
+    private static final String TAG_RESULT_CATEGORY_ROW = "spookd_instagram_search_result_category_row";
+    private static final String TAG_RESULT_CATEGORY_ICON = "spookd_instagram_search_result_category_icon";
+    private static final String TAG_SWITCH = "spookd_instagram_pref_switch";
+    private static final String TAG_TRAILING = "spookd_instagram_pref_trailing";
     private static final String IGDS_SWITCH_CLASS_NAME =
             "com.instagram.igds.components.switchbutton.IgdsSwitch";
 
@@ -608,12 +608,12 @@ public final class InstagramPreferenceStyle {
     public static boolean useMaterialSwitchStyle(View view, boolean original) {
         Context context = view.getContext();
         while (context instanceof ContextWrapper) {
-            if (context instanceof Activity && ActivityHook.isPiko((Activity) context)) {
+            if (context instanceof Activity && ActivityHook.isSpookd((Activity) context)) {
                 return true;
             }
             context = ((ContextWrapper) context).getBaseContext();
         }
-        if (context instanceof Activity && ActivityHook.isPiko((Activity) context)) {
+        if (context instanceof Activity && ActivityHook.isSpookd((Activity) context)) {
             return true;
         }
         return original;

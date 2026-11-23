@@ -78,11 +78,11 @@ internal val whitehatIndicatorPatch = patch {
             val activityRegister = parameterRegisterStart(this)
             val freeRegister = findFreeRegister(0, activityRegister)
 
-            // Piko modal layouts do not contain Instagram's certificate indicator stub.
+            // Spookd modal layouts do not contain Instagram's certificate indicator stub.
             addInstructionsWithLabels(
                 0,
                 """
-                    invoke-static/range {v$activityRegister .. v$activityRegister}, $ACTIVITY_SETTINGS_CLASS/ActivityHook;->isPiko(Landroid/app/Activity;)Z
+                    invoke-static/range {v$activityRegister .. v$activityRegister}, $ACTIVITY_SETTINGS_CLASS/ActivityHook;->isSpookd(Landroid/app/Activity;)Z
                     move-result v$freeRegister
                     if-eqz v$freeRegister, :instagram_indicator
                     return-void
@@ -155,9 +155,9 @@ val settingsPatch =
                     """
                         invoke-static/range { v$thisRegister .. v${thisRegister + 1} }, $ACTIVITY_SETTINGS_CLASS/ActivityHook;->create(Landroid/app/Activity;Landroid/os/Bundle;)Z
                         move-result v$freeRegister
-                        if-eqz v$freeRegister, :not_piko
+                        if-eqz v$freeRegister, :not_spookd
                         return-void
-                        :not_piko
+                        :not_spookd
                         nop
                     """,
                 )
@@ -175,11 +175,11 @@ val settingsPatch =
                 addInstructionsWithLabels(
                     overrideIndex,
                     """
-                        invoke-static/range { v$thisRegister .. v$thisRegister }, $ACTIVITY_SETTINGS_CLASS/ActivityHook;->isPiko(Landroid/app/Activity;)Z
+                        invoke-static/range { v$thisRegister .. v$thisRegister }, $ACTIVITY_SETTINGS_CLASS/ActivityHook;->isSpookd(Landroid/app/Activity;)Z
                         move-result v$freeRegister
-                        if-eqz v$freeRegister, :not_piko_post_create
+                        if-eqz v$freeRegister, :not_spookd_post_create
                         return-void
-                        :not_piko_post_create
+                        :not_spookd_post_create
                         nop
                     """,
                 )
@@ -192,11 +192,11 @@ val settingsPatch =
                 addInstructionsWithLabels(
                     0,
                     """
-                        invoke-static/range { v$thisRegister .. v$thisRegister }, $ACTIVITY_SETTINGS_CLASS/ActivityHook;->isPiko(Landroid/app/Activity;)Z
+                        invoke-static/range { v$thisRegister .. v$thisRegister }, $ACTIVITY_SETTINGS_CLASS/ActivityHook;->isSpookd(Landroid/app/Activity;)Z
                         move-result v$freeRegister
-                        if-eqz v$freeRegister, :not_piko_init
+                        if-eqz v$freeRegister, :not_spookd_init
                         return-void
-                        :not_piko_init
+                        :not_spookd_init
                         nop
                     """,
                 )

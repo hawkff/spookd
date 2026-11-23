@@ -40,7 +40,7 @@ public final class FollowScanTest {
     /** Sleeps and reported states in the order they happened. */
     private final List<String> order = Collections.synchronizedList(new ArrayList<>());
     private Context context;
-    private PikoFollowDb db;
+    private SpookdFollowDb db;
     private FollowScan.Foreground foreground;
     private Script script;
     private FollowScan scan;
@@ -48,7 +48,7 @@ public final class FollowScanTest {
     @Before
     public void setUp() {
         context = RuntimeEnvironment.getApplication();
-        db = new PikoFollowDb(context);
+        db = new SpookdFollowDb(context);
         foreground = new FollowScan.Foreground();
         foreground.onResumed();
         script = new Script();
@@ -72,7 +72,7 @@ public final class FollowScanTest {
 
     @After
     public void tearDown() {
-        PikoFollowDb.beforeCommitDecision = null;
+        SpookdFollowDb.beforeCommitDecision = null;
         db.close();
     }
 
@@ -263,7 +263,7 @@ public final class FollowScanTest {
         script.add(page(null, "1"), page(null, "2"));
         CountDownLatch inCommit = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
-        PikoFollowDb.beforeCommitDecision = () -> {
+        SpookdFollowDb.beforeCommitDecision = () -> {
             inCommit.countDown();
             // Waits through the stop's interrupt, as a database write would.
             while (true) {

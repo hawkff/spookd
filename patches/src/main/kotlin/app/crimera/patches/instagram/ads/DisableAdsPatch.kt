@@ -85,18 +85,18 @@ val disableAdsPatch =
                     """
                     ${Constants.PREF_CALL_DESCRIPTOR}->disableAds()Z
                     move-result v0
-                    if-eqz v0, :piko_original
-                    if-eqz p1, :piko_original
+                    if-eqz v0, :spookd_original
+                    if-eqz p1, :spookd_original
                     invoke-virtual/range {p1 .. p1}, $getMedia
                     move-result-object v0
-                    if-eqz v0, :piko_original
+                    if-eqz v0, :spookd_original
                     invoke-virtual {v0}, $isAd
                     move-result v0
-                    if-eqz v0, :piko_original
+                    if-eqz v0, :spookd_original
                     const/4 v0, 0x0
                     return v0
                     """.trimIndent(),
-                    ExternalLabel("piko_original", it.method.getInstruction(1)),
+                    ExternalLabel("spookd_original", it.method.getInstruction(1)),
                 )
             }
 

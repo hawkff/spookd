@@ -48,7 +48,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import javax.crypto.spec.SecretKeySpec;
 
-import app.morphe.extension.instagram.db.PikoMessageDb;
+import app.morphe.extension.instagram.db.SpookdMessageDb;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 29, manifest = Config.NONE)
@@ -62,7 +62,7 @@ public final class MediaVaultLifecycleTest {
     public TemporaryFolder tmp = new TemporaryFolder();
 
     private final long[] clock = {NOW};
-    private PikoMessageDb messages;
+    private SpookdMessageDb messages;
     private SQLiteDatabase db;
     private File dir;
     private FakeNetwork network;
@@ -72,7 +72,7 @@ public final class MediaVaultLifecycleTest {
     @Before
     public void setUp() throws Exception {
         // A fresh helper per test; the singleton would keep an earlier test's context.
-        Constructor<PikoMessageDb> constructor = PikoMessageDb.class.getDeclaredConstructor(Context.class);
+        Constructor<SpookdMessageDb> constructor = SpookdMessageDb.class.getDeclaredConstructor(Context.class);
         constructor.setAccessible(true);
         messages = constructor.newInstance(RuntimeEnvironment.getApplication());
         db = messages.getWritableDatabase();

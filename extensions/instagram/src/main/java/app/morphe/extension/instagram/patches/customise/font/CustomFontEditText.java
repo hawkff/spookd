@@ -11,7 +11,7 @@ import android.graphics.Typeface;
 import android.util.AttributeSet;
 import android.widget.EditText;
 
-/** Replaces the platform {@link EditText} in piko's own code. */
+/** Replaces the platform {@link EditText} in spookd's own code. */
 @SuppressWarnings("unused")
 public final class CustomFontEditText extends EditText {
     public CustomFontEditText(Context context) {
@@ -24,6 +24,6 @@ public final class CustomFontEditText extends EditText {
 
     @Override
     public void setTypeface(Typeface typeface) {
-        super.setTypeface(CustomFont.forPikoView(typeface));
+        super.setTypeface(CustomFont.forSpookdView(typeface));
     }
 }

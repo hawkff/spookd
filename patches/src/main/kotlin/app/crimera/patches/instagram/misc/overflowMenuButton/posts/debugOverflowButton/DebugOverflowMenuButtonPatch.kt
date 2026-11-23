@@ -20,6 +20,6 @@ val debugOverflowMenuButtonPatch =
         dependsOn(hookOverflowMenuButton)
         execute {
 
-            addOverflowMenuButtonAttributes("PIKO_DEBUG", "debugOverflowButton")
+            addOverflowMenuButtonAttributes("SPOOKD_DEBUG", "debugOverflowButton")
         }
     }

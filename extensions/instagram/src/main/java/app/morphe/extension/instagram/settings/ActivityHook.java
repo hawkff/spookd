@@ -35,8 +35,9 @@ public class ActivityHook {
 
     private static final String PROXY_ACTIVITY_CLASS = "com.instagram.modal.ModalActivity";
     private static final String PROXY_TRANSPARENT_ACTIVITY_CLASS = "com.instagram.modal.TransparentModalActivity";
-    private static final String EXTRA_PIKO = "piko";
-    private static final String EXTRA_PIKO_LAUNCH_TYPE = "piko_launch_type";
+    // Legacy stored names: launchers keep these extras in pinned settings shortcuts.
+    private static final String EXTRA_SPOOKD = "piko";
+    private static final String EXTRA_SPOOKD_LAUNCH_TYPE = "piko_launch_type";
     private static final String EXTRA_SHORTCUT = "shortcut";
 
     static final String LAUNCH_TYPE_SETTINGS = "settings";
@@ -59,7 +60,7 @@ public class ActivityHook {
             return;
         }
         if (activityClass != null && activityClass.equals(SettingsActivity.class)) {
-            startPikoActivity(null, null);
+            startSpookdActivity(null, null);
             return;
         }
         Intent intent = new Intent(context, activityClass);
@@ -88,7 +89,7 @@ public class ActivityHook {
     private static Intent createProxyIntent(Context context, String activityClass) {
         Intent intent = new Intent();
         intent.setClassName(context.getPackageName(), activityClass);
-        intent.putExtra(EXTRA_PIKO, true);
+        intent.putExtra(EXTRA_SPOOKD, true);
         intent.putExtra("fragment_arguments", new Bundle());
         return intent;
     }
@@ -97,13 +98,13 @@ public class ActivityHook {
         return createProxyIntent(context, PROXY_ACTIVITY_CLASS);
     }
 
-    public static boolean isPikoIntent(Intent intent) {
+    public static boolean isSpookdIntent(Intent intent) {
         if (intent == null) return false;
         try {
-            if (intent.getBooleanExtra(EXTRA_PIKO, false)) return true;
+            if (intent.getBooleanExtra(EXTRA_SPOOKD, false)) return true;
         } catch (Throwable ignored) {}
         try {
-            if ("true".equalsIgnoreCase(intent.getStringExtra(EXTRA_PIKO))) return true;
+            if ("true".equalsIgnoreCase(intent.getStringExtra(EXTRA_SPOOKD))) return true;
         } catch (Throwable ignored) {}
         try {
             if (LAUNCH_TYPE_SETTINGS.equals(intent.getStringExtra(EXTRA_SHORTCUT))) return true;
@@ -111,14 +112,14 @@ public class ActivityHook {
         return false;
     }
 
-    public static boolean isPiko(Activity activity) {
+    public static boolean isSpookd(Activity activity) {
         if (activity == null) return false;
-        return isPikoIntent(activity.getIntent());
+        return isSpookdIntent(activity.getIntent());
     }
 
     public static boolean create(Activity activity, Bundle savedInstanceState) {
         Intent intent = activity == null ? null : activity.getIntent();
-        if (!isPikoIntent(intent)) return false;
+        if (!isSpookdIntent(intent)) return false;
 
         if (activity instanceof androidx.activity.ComponentActivity) {
             try {
@@ -131,9 +132,9 @@ public class ActivityHook {
     }
 
     public static boolean onBackPressed(Activity activity) {
-        if (!isPiko(activity)) return false;
+        if (!isSpookd(activity)) return false;
         Intent intent = activity.getIntent();
-        String launchType = intent != null ? intent.getStringExtra(EXTRA_PIKO_LAUNCH_TYPE) : null;
+        String launchType = intent != null ? intent.getStringExtra(EXTRA_SPOOKD_LAUNCH_TYPE) : null;
         if (launchType == null && intent != null && LAUNCH_TYPE_SETTINGS.equals(intent.getStringExtra(EXTRA_SHORTCUT))) {
             launchType = LAUNCH_TYPE_SETTINGS;
         }
@@ -148,13 +149,13 @@ public class ActivityHook {
     }
 
     private static void handleNewIntent(Activity activity, Intent newIntent) {
-        if (!isPikoIntent(newIntent)) return;
+        if (!isSpookdIntent(newIntent)) return;
         activity.setIntent(newIntent);
         dispatchLaunch(activity, newIntent, null);
     }
 
     private static boolean dispatchLaunch(Activity activity, Intent intent, Bundle savedInstanceState) {
-        String launchType = intent.getStringExtra(EXTRA_PIKO_LAUNCH_TYPE);
+        String launchType = intent.getStringExtra(EXTRA_SPOOKD_LAUNCH_TYPE);
         if (launchType == null && LAUNCH_TYPE_SETTINGS.equals(intent.getStringExtra(EXTRA_SHORTCUT))) {
             launchType = LAUNCH_TYPE_SETTINGS;
         }
@@ -194,7 +195,7 @@ public class ActivityHook {
 
     private static void attachPickerFragment(Activity activity, String launchType, Bundle extras) {
         FragmentManager fm = activity.getFragmentManager();
-        if (fm == null || fm.findFragmentByTag("piko_picker") != null) {
+        if (fm == null || fm.findFragmentByTag("spookd_picker") != null) {
             return;
         }
         Fragment fragment;
@@ -215,29 +216,29 @@ public class ActivityHook {
             fragment.setArguments(extras);
         }
         fm.beginTransaction()
-                .add(fragment, "piko_picker")
+                .add(fragment, "spookd_picker")
                 .commitAllowingStateLoss();
     }
 
-    public static void startPikoActivity(String fragment_name, String title) {
-        startPikoActivity(fragment_name, title, null);
+    public static void startSpookdActivity(String fragment_name, String title) {
+        startSpookdActivity(fragment_name, title, null);
     }
 
-    public static void startPikoActivity(String fragment_name, String title, String targetPreferenceKey) {
+    public static void startSpookdActivity(String fragment_name, String title, String targetPreferenceKey) {
         Context context = PikoUtils.getContext();
         Intent intent = createProxyIntent(context);
-        intent.putExtra(EXTRA_PIKO_LAUNCH_TYPE, LAUNCH_TYPE_SETTINGS);
-        intent.putExtra(Constants.PIKO_FRAGMENT_NAME, fragment_name);
-        intent.putExtra(Constants.PIKO_FRAGMENT_TITLE, title);
+        intent.putExtra(EXTRA_SPOOKD_LAUNCH_TYPE, LAUNCH_TYPE_SETTINGS);
+        intent.putExtra(Constants.SPOOKD_FRAGMENT_NAME, fragment_name);
+        intent.putExtra(Constants.SPOOKD_FRAGMENT_TITLE, title);
         if (targetPreferenceKey != null && !targetPreferenceKey.isEmpty()) {
-            intent.putExtra(Constants.PIKO_SEARCH_TARGET_PREFERENCE_KEY, targetPreferenceKey);
+            intent.putExtra(Constants.SPOOKD_SEARCH_TARGET_PREFERENCE_KEY, targetPreferenceKey);
         }
         launchActivity(context, intent);
     }
 
     public static Intent createDeletedMessagesIntent(Context context) {
         Intent intent = createProxyIntent(context);
-        intent.putExtra(EXTRA_PIKO_LAUNCH_TYPE, LAUNCH_TYPE_DELETED_MESSAGES);
+        intent.putExtra(EXTRA_SPOOKD_LAUNCH_TYPE, LAUNCH_TYPE_DELETED_MESSAGES);
         return intent;
     }
 
@@ -247,19 +248,19 @@ public class ActivityHook {
 
     public static void startProfileAnalyzerActivity(Context context) {
         Intent intent = createProxyIntent(context);
-        intent.putExtra(EXTRA_PIKO_LAUNCH_TYPE, LAUNCH_TYPE_PROFILE_ANALYZER);
+        intent.putExtra(EXTRA_SPOOKD_LAUNCH_TYPE, LAUNCH_TYPE_PROFILE_ANALYZER);
         launchActivity(context, intent);
     }
 
     public static void startPrivateGalleryActivity(Context context) {
         Intent intent = createProxyIntent(context);
-        intent.putExtra(EXTRA_PIKO_LAUNCH_TYPE, LAUNCH_TYPE_PRIVATE_GALLERY);
+        intent.putExtra(EXTRA_SPOOKD_LAUNCH_TYPE, LAUNCH_TYPE_PRIVATE_GALLERY);
         launchActivity(context, intent);
     }
 
     public static void startInstantsVaultActivity(Context context) {
         Intent intent = createProxyIntent(context);
-        intent.putExtra(EXTRA_PIKO_LAUNCH_TYPE, LAUNCH_TYPE_INSTANTS_VAULT);
+        intent.putExtra(EXTRA_SPOOKD_LAUNCH_TYPE, LAUNCH_TYPE_INSTANTS_VAULT);
         launchActivity(context, intent);
     }
 
@@ -277,7 +278,7 @@ public class ActivityHook {
         }
 
         Intent intent = createProxyIntent(ctx, PROXY_TRANSPARENT_ACTIVITY_CLASS);
-        intent.putExtra(EXTRA_PIKO_LAUNCH_TYPE, launchType);
+        intent.putExtra(EXTRA_SPOOKD_LAUNCH_TYPE, launchType);
         intent.putExtra(bundleKey, true);
         launchActivity(ctx, intent);
     }

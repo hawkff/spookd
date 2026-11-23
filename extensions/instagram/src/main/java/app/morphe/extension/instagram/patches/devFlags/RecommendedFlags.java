@@ -82,7 +82,7 @@ public class RecommendedFlags {
 
     public static void downloadRecommendedFlagsFile(Runnable onComplete) {
         String filename = Constants.REC_FLAGS+".json";
-        String host = Constants.PIKO_MAPPINGS_PATH;
+        String host = Constants.SPOOKD_MAPPINGS_PATH;
         InstaUtils.downloadFile(host, filename, getRecommendedFlagsFile(), () -> {
             for (Runnable listener : changeListeners) {
                 listener.run();

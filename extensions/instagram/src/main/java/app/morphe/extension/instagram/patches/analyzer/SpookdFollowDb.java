@@ -18,8 +18,9 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 /** Follower and following snapshots per account, and the history of changes between them. */
-public final class PikoFollowDb extends SQLiteOpenHelper {
+public final class SpookdFollowDb extends SQLiteOpenHelper {
 
+    // Legacy stored name: existing installs keep their database under it.
     static final String DB_NAME = "piko_follow_snapshots.db";
     private static final int DB_VERSION = 1;
     static final int KEPT_SCANS = 10;
@@ -35,7 +36,7 @@ public final class PikoFollowDb extends SQLiteOpenHelper {
     public static final String FULL_NAME = "full_name";
     public static final String PICTURE = "picture";
 
-    private static PikoFollowDb instance;
+    private static SpookdFollowDb instance;
     /** Test seam run inside the commit transaction just before the commit decision; null in the app. */
     static volatile Runnable beforeCommitDecision;
 
@@ -113,9 +114,9 @@ public final class PikoFollowDb extends SQLiteOpenHelper {
         };
     }
 
-    public static synchronized PikoFollowDb getInstance(Context context) {
+    public static synchronized SpookdFollowDb getInstance(Context context) {
         if (instance == null) {
-            instance = new PikoFollowDb(context.getApplicationContext());
+            instance = new SpookdFollowDb(context.getApplicationContext());
         }
         return instance;
     }
@@ -129,7 +130,7 @@ public final class PikoFollowDb extends SQLiteOpenHelper {
         return context.deleteDatabase(DB_NAME);
     }
 
-    PikoFollowDb(Context context) {
+    SpookdFollowDb(Context context) {
         super(context, DB_NAME, null, DB_VERSION);
     }
 

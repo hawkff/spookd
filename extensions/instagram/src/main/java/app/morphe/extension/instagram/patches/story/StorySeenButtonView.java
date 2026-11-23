@@ -21,7 +21,7 @@ import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
 
 final class StorySeenButtonView {
-    private static final String BUTTON_TAG = "piko_mark_story_seen_button";
+    private static final String BUTTON_TAG = "spookd_mark_story_seen_button";
     private static final String[] ACTION_ID_NAMES = {
             "toolbar_like_container", "toolbar_reshare_button", "toolbar_menu_button"
     };

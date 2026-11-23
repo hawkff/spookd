@@ -24,7 +24,7 @@ import app.morphe.extension.shared.Logger;
 public final class FollowScanRequest implements PageSource {
 
     static final long FETCH_TIMEOUT_MS = 30_000L;
-    static final String FETCH_THREAD_NAME = "piko-analyzer-fetch";
+    static final String FETCH_THREAD_NAME = "spookd-analyzer-fetch";
     /** Fetches that ignore their cancel keep a thread each; beyond this many, pages count as throttled. */
     static final int MAX_OUTSTANDING_FETCHES = 2;
     private static final AtomicInteger OUTSTANDING_FETCHES = new AtomicInteger();
@@ -45,7 +45,7 @@ public final class FollowScanRequest implements PageSource {
         try {
             UserSession session = ProfileAnalyzer.session(accountId);
             if (session == null || !accountId.equals(session.getUserId())) return null;
-            boolean followers = list == PikoFollowDb.LIST_FOLLOWERS;
+            boolean followers = list == SpookdFollowDb.LIST_FOLLOWERS;
             Object page = withTimeout(() -> followers
                     ? fetchFollowersNative(session, accountId, maxId, rankToken)
                     : fetchFollowingNative(session, accountId, maxId, rankToken), FETCH_TIMEOUT_MS);

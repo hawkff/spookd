@@ -95,7 +95,7 @@ public class AddReelButton {
 
     // Called from hook — passes the real current carousel index.
     public static void includeCustomReelOverflowButtons(Context context, Object helperObject, Object mediaObject, int currentMediaIndex){
-        if(Pref.pikoDebug()){
+        if(Pref.spookdDebug()){
             AddReelButton.addDebugButton(context, helperObject, mediaObject, currentMediaIndex);
         }
         if(Pref.enableDownload()){

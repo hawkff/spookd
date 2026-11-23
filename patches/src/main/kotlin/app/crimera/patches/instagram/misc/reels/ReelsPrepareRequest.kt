@@ -31,7 +31,7 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableField
 
 private fun addResumeStartField(type: String): ImmutableField {
-    val field = ImmutableField(type, "pikoResumeStartMs", "I",
+    val field = ImmutableField(type, "spookdResumeStartMs", "I",
         AccessFlags.PUBLIC.value or AccessFlags.SYNTHETIC.value, null, emptySet(), emptySet())
     mutableClassDefBy(type).fields.add(field.toMutable())
     return field
@@ -82,7 +82,7 @@ internal fun markShortReelPrepare(
         prepare.parameterTypes[2].toString() == stateType) { "Unexpected Reels prepare signature: $prepare, $explicit, $stop" }
     val configMark = addResumeStartField(configType)
     val mark = addReelMethod(
-        controller.definingClass, "pikoMarkReelPrepare",
+        controller.definingClass, "spookdMarkReelPrepare",
         listOf(explicit.parameterTypes.single().toString(), stateType, configType), "V", registers = 6,
         instructions = """
             invoke-virtual {p2}, $pausePredicate
@@ -135,7 +135,7 @@ internal fun markShortReelPrepare(
     val ctorArgs = start[invoke - 1].registersUsed
     require(start[invoke - 2].registersUsed == listOf(ctorArgs[0], request) && ctorArgs[1] == ctorArgs[0] + 1)
     val copy = addReelMethod(
-        requestMark.definingClass, "pikoCopyReelStart", listOf(configType), "V", registers = 3,
+        requestMark.definingClass, "spookdCopyReelStart", listOf(configType), "V", registers = 3,
         flags = AccessFlags.PUBLIC.value or AccessFlags.SYNTHETIC.value,
         instructions = """
             iget v0, p1, $configMark

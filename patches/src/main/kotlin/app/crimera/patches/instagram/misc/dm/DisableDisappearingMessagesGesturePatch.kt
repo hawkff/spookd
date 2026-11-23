@@ -73,13 +73,13 @@ val disableDisappearingMessagesGesturePatch = patch(
             method.addInstructionsWithLabels(
                 index,
                 """
-                if-nez v$activeRegister, :piko_continue
+                if-nez v$activeRegister, :spookd_continue
                 $PREF_CALL_DESCRIPTOR->disableDisappearingMessagesGesture()Z
                 move-result v$scratchRegister
-                if-nez v$scratchRegister, :piko_disable_gesture
+                if-nez v$scratchRegister, :spookd_disable_gesture
                 """.trimIndent(),
-                ExternalLabel("piko_continue", method.getInstruction(index)),
-                ExternalLabel("piko_disable_gesture", method.getInstruction(instructionMatches.last().index)),
+                ExternalLabel("spookd_continue", method.getInstruction(index)),
+                ExternalLabel("spookd_disable_gesture", method.getInstruction(instructionMatches.last().index)),
             )
         }
         enableSettings("disableDisappearingMessagesGesture")

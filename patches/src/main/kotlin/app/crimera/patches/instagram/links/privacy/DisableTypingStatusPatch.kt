@@ -62,10 +62,10 @@ val disableTypingStatusPatch =
                     """
                     $PREF_CALL_DESCRIPTOR->disableTypingStatus()Z
                     move-result v$register
-                    if-eqz v$register, :piko
+                    if-eqz v$register, :spookd
                     return-void
                     """.trimIndent(),
-                    ExternalLabel("piko", originalInstruction),
+                    ExternalLabel("spookd", originalInstruction),
                 )
             }
 

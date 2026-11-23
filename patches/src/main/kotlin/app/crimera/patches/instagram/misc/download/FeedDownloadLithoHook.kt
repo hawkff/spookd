@@ -46,7 +46,7 @@ private const val CLICK_HANDLER_DESCRIPTOR =
     "Lapp/morphe/extension/instagram/patches/download/FeedDownloadClickFunction;"
 private const val CLICK_HANDLER_CONSTRUCTOR =
     "$CLICK_HANDLER_DESCRIPTOR-><init>($CONTEXT_DESCRIPTOR$USER_SESSION_DESCRIPTOR$OBJECT_DESCRIPTOR)V"
-private const val DOWNLOAD_ICON_METHOD = "pikoCreateDownloadIcon"
+private const val DOWNLOAD_ICON_METHOD = "spookdCreateDownloadIcon"
 
 private fun saveIconFingerprint(stateType: String) = Fingerprint(
     parameters = listOf("L", "L", "L", stateType, "Z"),

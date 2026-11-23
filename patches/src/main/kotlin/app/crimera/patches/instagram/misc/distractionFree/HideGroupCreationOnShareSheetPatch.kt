@@ -57,10 +57,10 @@ val hideGroupCreationOnShareSheetPatch =
                     """
                     ${PREF_CALL_DESCRIPTOR}->hideGroupCreationOnSharesheet()Z
                      move-result v$freeRegister
-                     if-eqz v$freeRegister, :piko
+                     if-eqz v$freeRegister, :spookd
                      return-void
                     """.trimIndent(),
-                    ExternalLabel("piko", getInstruction(conditionIndex)),
+                    ExternalLabel("spookd", getInstruction(conditionIndex)),
                 )
 
                 enableSettings("hideGroupCreationOnSharesheet")

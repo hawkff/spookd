@@ -32,7 +32,7 @@ public class StoryButton {
     static{
         VIEW_STORY_MENTIONS = Pref.viewStoryMentions() && SettingsStatus.viewStoryMentions;
         ENABLE_DOWNLOAD = Pref.enableDownload() && SettingsStatus.downloadMedia;
-        DEBUG = Pref.pikoDebug();
+        DEBUG = Pref.spookdDebug();
     }
 
     public static ArrayList addButtons(ArrayList buttonList){

@@ -14,7 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
-import app.morphe.extension.instagram.db.PikoInstantsDb;
+import app.morphe.extension.instagram.db.SpookdInstantsDb;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.shared.Logger;
@@ -68,7 +68,7 @@ public class InstantsDownloadHook {
             Runnable store = () -> {
                 try {
                     Context ctx = Utils.getContext();
-                    PikoInstantsDb db = ctx == null ? null : PikoInstantsDb.getInstance(ctx);
+                    SpookdInstantsDb db = ctx == null ? null : SpookdInstantsDb.getInstance(ctx);
                     if (db != null && !db.has(id)) {
                         db.insertOrIgnore(id, username, userId, imageUrl, videoUrl, isVideo, takenAtMillis, shortcode);
                     }

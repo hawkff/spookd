@@ -30,7 +30,7 @@ import kotlin.Unit;
 import kotlin.jvm.functions.Function1;
 
 public final class MaterialYouTheme {
-    private static final String PIKO_SETTINGS_ACTIVITY_PACKAGE =
+    private static final String SPOOKD_SETTINGS_ACTIVITY_PACKAGE =
             "app.morphe.extension.instagram.settings.";
     private static boolean initializationFailureLogged;
     private static boolean lifecycleCallbacksRegistered;
@@ -40,7 +40,7 @@ public final class MaterialYouTheme {
     private static int themeTransitionDepth;
     private static Activity themeTransitionActivity;
     private static boolean themeTransitionOverlayChanged;
-    private static boolean themeTransitionPikoRecreate;
+    private static boolean themeTransitionSpookdRecreate;
     private static int lastComposePrismOverrideArgb = Integer.MIN_VALUE;
     private static int lastComposeSearchRowOverrideArgb = Integer.MIN_VALUE;
 
@@ -305,11 +305,11 @@ public final class MaterialYouTheme {
 
     private static boolean resolveInstagramDark(Activity activity) {
         boolean activityDark = isActivityDark(activity);
-        boolean pikoSettingsActivity = activity == null
-                || activity.getClass().getName().startsWith(PIKO_SETTINGS_ACTIVITY_PACKAGE);
+        boolean spookdSettingsActivity = activity == null
+                || activity.getClass().getName().startsWith(SPOOKD_SETTINGS_ACTIVITY_PACKAGE);
         observedInstagramDark = MaterialYouState.updateObservedInstagramDark(
                 observedInstagramDark,
-                pikoSettingsActivity,
+                spookdSettingsActivity,
                 activityDark
         );
         return MaterialYouState.resolveInstagramDark(
@@ -408,7 +408,7 @@ public final class MaterialYouTheme {
         );
         boolean overlayChanged = previousEffectiveMode != requestedEffectiveMode
                 || previousInstagramDark != requestedInstagramDark;
-        boolean pikoRecreate = MaterialYouState.shouldPikoRecreate(
+        boolean spookdRecreate = MaterialYouState.shouldSpookdRecreate(
                 previousEffectiveMode,
                 requestedEffectiveMode,
                 nativeAction != null,
@@ -453,7 +453,7 @@ public final class MaterialYouTheme {
         runThemeTransition(
                 activity,
                 nativeAction,
-                pikoRecreate,
+                spookdRecreate,
                 overlayChanged
         );
         observedInstagramDark =
@@ -516,17 +516,17 @@ public final class MaterialYouTheme {
     private static void runThemeTransition(
             Activity activity,
             Runnable nativeAction,
-            boolean pikoRecreate,
+            boolean spookdRecreate,
             boolean overlayChanged
     ) {
         boolean rootTransition = themeTransitionDepth == 0;
         if (rootTransition) {
             themeTransitionActivity = activity;
             themeTransitionOverlayChanged = false;
-            themeTransitionPikoRecreate = false;
+            themeTransitionSpookdRecreate = false;
         }
         themeTransitionOverlayChanged |= overlayChanged;
-        themeTransitionPikoRecreate |= pikoRecreate;
+        themeTransitionSpookdRecreate |= spookdRecreate;
         themeTransitionDepth++;
         try {
             if (nativeAction != null) {
@@ -538,14 +538,14 @@ public final class MaterialYouTheme {
                 Activity refreshActivity = themeTransitionActivity;
                 themeTransitionActivity = null;
                 boolean changedOverlay = themeTransitionOverlayChanged;
-                boolean recreateWithPiko = themeTransitionPikoRecreate;
+                boolean recreateWithSpookd = themeTransitionSpookdRecreate;
                 themeTransitionOverlayChanged = false;
-                themeTransitionPikoRecreate = false;
+                themeTransitionSpookdRecreate = false;
                 if (refreshActivity != null && changedOverlay) {
                     ACTIVITY_GENERATIONS.advance();
                     ACTIVITY_GENERATIONS.recordCreated(refreshActivity);
                 }
-                if (refreshActivity != null && recreateWithPiko) {
+                if (refreshActivity != null && recreateWithSpookd) {
                     refreshActivity.recreate();
                 }
             }

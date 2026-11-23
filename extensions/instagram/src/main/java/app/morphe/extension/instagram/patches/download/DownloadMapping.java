@@ -81,7 +81,7 @@ public class DownloadMapping {
     }
 
     public static void downloadMapping() {
-        String host = Constants.PIKO_MAPPINGS_PATH;
+        String host = Constants.SPOOKD_MAPPINGS_PATH;
         String appVersionName = Utils.getAppVersionName();
         String mappings_filename = appVersionName + ".json";
         File destinationFile = new File(DownloadMapping.mappingsPath);

@@ -149,13 +149,13 @@ val userProfileActionBarButtonPatch =
                 val code =
                     """
                     move-object/from16 v$userObjectRegister, v$actionBarRelatedRegister
-                    if-eqz v$userObjectRegister, :piko
+                    if-eqz v$userObjectRegister, :spookd
                     iget-object v$userObjectRegister, v$userObjectRegister, $profileHeaderFieldInActionBarRelatedClass
 
-                    if-eqz v$userObjectRegister, :piko
+                    if-eqz v$userObjectRegister, :spookd
                     iget-object v$userObjectRegister, v$userObjectRegister, $userDetailViewModelFieldInProfileHeaderRelatedClass
 
-                    if-eqz v$userObjectRegister, :piko
+                    if-eqz v$userObjectRegister, :spookd
                     iget-object v$userObjectRegister, v$userObjectRegister, $userDataFieldInUserDetailClass
                     move-object/from16 v$userSessionCopyRegister, v$userSessionRegister
                     move-object/from16 v$layoutCopyRegister, v$layoutRegister
@@ -166,7 +166,7 @@ val userProfileActionBarButtonPatch =
                 addInstructionsWithLabels(
                     injectionIndex,
                     code,
-                    ExternalLabel("piko", resumeInstruction),
+                    ExternalLabel("spookd", resumeInstruction),
                 )
             }
 

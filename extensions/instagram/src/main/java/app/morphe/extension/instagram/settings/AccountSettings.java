@@ -355,7 +355,7 @@ public final class AccountSettings {
 
     private static void showRestartNotice(Activity activity) {
         try {
-            if (activity.isFinishing() || ActivityHook.isPiko(activity)) return;
+            if (activity.isFinishing() || ActivityHook.isSpookd(activity)) return;
             restartPending = false;
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                     .setTitle(str("spookd_restart_app"))

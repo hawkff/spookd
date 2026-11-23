@@ -44,7 +44,7 @@ internal fun buildThemeOverlayTable(
     require(packageName.isNotBlank())
     require(values.day.keys == values.night.keys)
 
-    val workRoot = Files.createTempDirectory("piko-theme-overlay").toFile()
+    val workRoot = Files.createTempDirectory("spookd-theme-overlay").toFile()
     try {
         sourceManifest
             .copyTo(workRoot.resolve("AndroidManifest.xml"), overwrite = true)

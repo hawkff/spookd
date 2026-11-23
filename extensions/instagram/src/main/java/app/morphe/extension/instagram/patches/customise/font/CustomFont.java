@@ -248,10 +248,10 @@ public class CustomFont {
     }
 
     /**
-     * The font for a view piko built itself. Those are never app content, so unlike
+     * The font for a view spookd built itself. Those are never app content, so unlike
      * {@link #assign(Typeface)} this asks no questions about the caller.
      */
-    static Typeface forPikoView(Typeface typeface) {
+    static Typeface forSpookdView(Typeface typeface) {
         if (!active) {
             return typeface;
         }

@@ -67,9 +67,9 @@ internal fun hideActivityFeedSuggestions() {
         """
         invoke-static/range {v$categoryRegister .. v$categoryRegister}, $SUGGESTIONS->hideActivityFeedSuggestions(Ljava/lang/String;)Z
         move-result v$loopScratch
-        if-nez v$loopScratch, :piko_skip_suggestion_rows
+        if-nez v$loopScratch, :spookd_skip_suggestion_rows
         """.trimIndent(),
-        ExternalLabel("piko_skip_suggestion_rows", skipSection),
+        ExternalLabel("spookd_skip_suggestion_rows", skipSection),
     )
 
     // Existing header branches must enter the gate instead of jumping straight to the append.
@@ -78,9 +78,9 @@ internal fun hideActivityFeedSuggestions() {
         """
         invoke-static/range {v$categoryRegister .. v$categoryRegister}, $SUGGESTIONS->hideActivityFeedSuggestions(Ljava/lang/String;)Z
         move-result v$headerScratch
-        if-nez v$headerScratch, :piko_skip_suggestion_header
+        if-nez v$headerScratch, :spookd_skip_suggestion_header
         """.trimIndent(),
-        ExternalLabel("piko_skip_suggestion_header", method.getInstruction(headerIndex + 1)),
+        ExternalLabel("spookd_skip_suggestion_header", method.getInstruction(headerIndex + 1)),
     )
 
     method.filterUsersAfter(delegatedRead)

@@ -121,11 +121,11 @@ val openLinksExternallyPatch =
                         """
                         invoke-static/range { v$urlRegister .. v$urlRegister }, ${Constants.LINKS_DESCRIPTOR}->openExternally(Ljava/lang/String;)Z
                         move-result v$freeRegister
-                        if-eqz v$freeRegister, :piko
+                        if-eqz v$freeRegister, :spookd
                         sget-object v$freeRegister, $handledResult
                         return-object v$freeRegister
                     """,
-                        ExternalLabel("piko", getInstruction(urlResultObjIndex + 1)),
+                        ExternalLabel("spookd", getInstruction(urlResultObjIndex + 1)),
                     )
 
                     enableSettings("openLinksExternally")

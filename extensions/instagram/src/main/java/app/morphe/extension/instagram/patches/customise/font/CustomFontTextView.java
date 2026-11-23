@@ -11,7 +11,7 @@ import android.graphics.Typeface;
 import android.util.AttributeSet;
 import android.widget.TextView;
 
-/** Replaces the platform {@link TextView} in piko's own code. */
+/** Replaces the platform {@link TextView} in spookd's own code. */
 @SuppressWarnings("unused")
 public final class CustomFontTextView extends TextView {
     public CustomFontTextView(Context context) {
@@ -24,6 +24,6 @@ public final class CustomFontTextView extends TextView {
 
     @Override
     public void setTypeface(Typeface typeface) {
-        super.setTypeface(CustomFont.forPikoView(typeface));
+        super.setTypeface(CustomFont.forSpookdView(typeface));
     }
 }

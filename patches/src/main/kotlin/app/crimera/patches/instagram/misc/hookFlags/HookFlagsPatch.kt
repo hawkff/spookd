@@ -45,11 +45,11 @@ val hookFlagsPatch =
                 invoke-static/range {p2 .. p3}, $HOOK_FLAGS_DESCRIPTOR->handleBoolFlags(J)Ljava/lang/Boolean;
                 move-result-object v0
                 # 1. Check if the result is NULL
-                if-eqz v0, :piko
+                if-eqz v0, :spookd
                 invoke-virtual {v0}, Ljava/lang/Boolean;->booleanValue()Z
                 move-result v1
                 return v1
-                :piko
+                :spookd
                 nop
                 """.trimIndent(),
             )
@@ -60,11 +60,11 @@ val hookFlagsPatch =
                 invoke-static/range {p2 .. p3}, $HOOK_FLAGS_DESCRIPTOR->handleLongFlags(J)Ljava/lang/Long;
                 move-result-object v0
                 # 1. Check if the result is NULL
-                if-eqz v0, :piko
+                if-eqz v0, :spookd
                 invoke-virtual {v0}, Ljava/lang/Long;->longValue()J
                 move-result-wide v1
                 return-wide v1
-                :piko
+                :spookd
                 nop
                 """.trimIndent(),
             )

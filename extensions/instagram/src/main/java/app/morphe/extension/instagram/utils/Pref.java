@@ -55,15 +55,15 @@ public class Pref {
         return SharedPref.clearAll();
     }
     
-    public static boolean pikoDebug() {
-        return SharedPref.getBooleanPref(Settings.PIKO_DEBUG);
+    public static boolean spookdDebug() {
+        return SharedPref.getBooleanPref(Settings.SPOOKD_DEBUG);
     }
 
-    public static boolean firstTimePiko() {
-        return SharedPref.getBooleanPref(Settings.FIRST_TIME_PIKO);
+    public static boolean firstTimeSpookd() {
+        return SharedPref.getBooleanPref(Settings.FIRST_TIME_SPOOKD);
     }
-    public static boolean setFirstTimePiko(boolean bool) {
-        return SharedPref.setBooleanPref(Settings.FIRST_TIME_PIKO.key,bool);
+    public static boolean setFirstTimeSpookd(boolean bool) {
+        return SharedPref.setBooleanPref(Settings.FIRST_TIME_SPOOKD.key,bool);
     }
 
     public static boolean disableAds() {

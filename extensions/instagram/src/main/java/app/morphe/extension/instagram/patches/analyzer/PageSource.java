@@ -6,7 +6,7 @@ import java.util.List;
 public interface PageSource {
 
     /**
-     * @param list      {@link PikoFollowDb#LIST_FOLLOWERS} or {@link PikoFollowDb#LIST_FOLLOWING}
+     * @param list      {@link SpookdFollowDb#LIST_FOLLOWERS} or {@link SpookdFollowDb#LIST_FOLLOWING}
      * @param maxId     cursor from the previous page, or null for the first page
      * @param rankToken one random token per scan
      * @return the page, or null for any outcome that is not a success page (a throttle)

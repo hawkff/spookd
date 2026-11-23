@@ -45,7 +45,7 @@ val hookOverflowMenuButtonOnClickPatch =
                         move-object/from16 v1, p1
                         invoke-static {v1}, $FEED_OVERFLOW_MENU_BUTTON_CLASS->isCustomButtonPressed($MEDIA_OPTIONS_CLASS)Z
                         move-result v0
-                        if-eqz v0, :piko
+                        if-eqz v0, :spookd
                         
                         move-object/from16 v0, p0
                         iget-object v5, v0, $appActivityField
@@ -59,7 +59,7 @@ val hookOverflowMenuButtonOnClickPatch =
                         return-void
                         
                         """.trimIndent(),
-                        ExternalLabel("piko", getInstruction(0)),
+                        ExternalLabel("spookd", getInstruction(0)),
                     )
                 }
             }

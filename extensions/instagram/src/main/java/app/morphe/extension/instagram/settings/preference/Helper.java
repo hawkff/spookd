@@ -134,7 +134,7 @@ public class Helper {
 
     public Preference categoryPreference(String title, String summary, String setting) {
         ButtonPref preference = buttonPreference(title, summary, setting);
-        // Among rows with a chevron (>), only top-level Piko categories get a pressed highlight.
+        // Among rows with a chevron (>), only top-level Spookd categories get a pressed highlight.
         // Other chevron rows keep the chevron without a pressed highlight.
         preference.setPressedHighlightEnabled(true);
         return preference;
@@ -143,7 +143,7 @@ public class Helper {
     public Preference navigationBarPreference(String title, String summary) {
         NavigationBarPreference preference = new NavigationBarPreference(context);
         preference.setPersistent(false);
-        preference.setKey("piko_navigation_tabs");
+        preference.setKey("spookd_navigation_tabs");
         preference.setTitle(title);
         preference.setSummary(summary);
         preference.setSingleLineTitle(false);

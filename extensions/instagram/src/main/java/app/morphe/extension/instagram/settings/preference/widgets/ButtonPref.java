@@ -74,7 +74,7 @@ public class ButtonPref extends Preference {
                     } else if (key.equals("spookd_reset_pref")) {
                         InstaUtils.showResetSettingsDialog(context);
 
-                    } else if (key.equals("piko_focus_lock_action")) {
+                    } else if (key.equals("spookd_focus_lock_action")) {
                         FocusLockDialogs.onActionPressed(context, ButtonPref.this);
 
                     } else if (key.equals("spookd_pref_delete_font")) {
@@ -155,7 +155,7 @@ public class ButtonPref extends Preference {
     }
 
     private static boolean isFragmentNavigation(String key) {
-        return key != null && key.startsWith("piko_frag_");
+        return key != null && key.startsWith("spookd_frag_");
     }
 
     private static boolean hasVisibleTrail(String key) {
@@ -167,7 +167,7 @@ public class ButtonPref extends Preference {
                 || key.equals("spookd_export_pref")
                 || key.equals("spookd_import_pref")
                 || key.equals("spookd_reset_pref")
-                || key.equals("piko_focus_lock_action")
+                || key.equals("spookd_focus_lock_action")
                 || key.equals("spookd_download_set_path")
                 || key.equals("spookd_export_experiment_list")
                 || key.equals("spookd_export_experiment_mappings")
@@ -183,8 +183,8 @@ public class ButtonPref extends Preference {
 
     private static boolean hasPressedHighlight(String key) {
         return isFragmentNavigation(key)
-                && !Constants.PIKO_FRAGMENT_FOCUS_LOCK.equals(key)
-                && !Constants.PIKO_FRAGMENT_REC_FLAGS.equals(key);
+                && !Constants.SPOOKD_FRAGMENT_FOCUS_LOCK.equals(key)
+                && !Constants.SPOOKD_FRAGMENT_REC_FLAGS.equals(key);
     }
 
     public void setPressedHighlightEnabled(boolean enabled) {
@@ -198,46 +198,46 @@ public class ButtonPref extends Preference {
         if (key == null) {
             return null;
         }
-        if (key.equals(Constants.PIKO_FRAGMENT_ADS)) {
+        if (key.equals(Constants.SPOOKD_FRAGMENT_ADS)) {
             return UI.DRAWABLE_ADS_ICON;
         }
-        if (key.equals(Constants.PIKO_FRAGMENT_GHOST)) {
+        if (key.equals(Constants.SPOOKD_FRAGMENT_GHOST)) {
             return UI.DRAWABLE_GHOST_ICON;
         }
-        if (key.equals(Constants.PIKO_FRAGMENT_STORY)) {
+        if (key.equals(Constants.SPOOKD_FRAGMENT_STORY)) {
             return UI.DRAWABLE_STORY_ICON;
         }
-        if (key.equals(Constants.PIKO_FRAGMENT_LINKS)) {
+        if (key.equals(Constants.SPOOKD_FRAGMENT_LINKS)) {
             return UI.DRAWABLE_LINK_ICON;
         }
-        if (key.equals(Constants.PIKO_FRAGMENT_DISTRACTION_FREE)) {
+        if (key.equals(Constants.SPOOKD_FRAGMENT_DISTRACTION_FREE)) {
             return UI.DRAWABLE_FRAME_CROSSED_ICON;
         }
-        if (key.equals(Constants.PIKO_FRAGMENT_MISC)) {
+        if (key.equals(Constants.SPOOKD_FRAGMENT_MISC)) {
             return UI.DRAWABLE_SHAPES_ICON;
         }
-        if (key.equals(Constants.PIKO_FRAGMENT_DOWNLOAD_MEDIA)) {
+        if (key.equals(Constants.SPOOKD_FRAGMENT_DOWNLOAD_MEDIA)) {
             return UI.DRAWABLE_DOWNLOAD_ICON;
         }
-        if (key.equals(Constants.PIKO_FRAGMENT_NAV_BTNS)) {
+        if (key.equals(Constants.SPOOKD_FRAGMENT_NAV_BTNS)) {
             return UI.DRAWABLE_STACK_ICON;
         }
-        if (key.equals(Constants.PIKO_FRAGMENT_DEV_OPTIONS)) {
+        if (key.equals(Constants.SPOOKD_FRAGMENT_DEV_OPTIONS)) {
             return UI.DRAWABLE_GEAR_ICON;
         }
-        if (key.equals(Constants.PIKO_FRAGMENT_ABOUT)) {
+        if (key.equals(Constants.SPOOKD_FRAGMENT_ABOUT)) {
             return UI.DRAWABLE_DEBUG_ICON;
         }
-        if (key.equals(Constants.PIKO_FRAGMENT_ACTION_BAR)) {
+        if (key.equals(Constants.SPOOKD_FRAGMENT_ACTION_BAR)) {
             return UI.DRAWABLE_COLLECTIONS_ICON;
         }
-        if (key.equals(Constants.PIKO_FRAGMENT_DM)) {
+        if (key.equals(Constants.SPOOKD_FRAGMENT_DM)) {
             return UI.DRAWABLE_SHARE_TO_DIRECT;
         }
-        if (key.equals(Constants.PIKO_FRAGMENT_FILTER_CONTENT)) {
+        if (key.equals(Constants.SPOOKD_FRAGMENT_FILTER_CONTENT)) {
             return UI.DRAWABLE_SHARE_TO_REEL;
         }
-        if(key.equals(Constants.PIKO_FRAGMENT_INSTANTS)){
+        if(key.equals(Constants.SPOOKD_FRAGMENT_INSTANTS)){
             return UI.DRAWABLE_INSTANTS_ICON;
         }
         return null;

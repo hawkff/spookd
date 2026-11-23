@@ -29,7 +29,7 @@ import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 
 private const val IGDS_SWITCH = "Lcom/instagram/igds/components/switchbutton/IgdsSwitch;"
-private const val STYLE_METHOD = "pikoUseMaterialSwitchStyle"
+private const val STYLE_METHOD = "spookdUseMaterialSwitchStyle"
 private const val PREFERENCE_STYLE =
     "Lapp/morphe/extension/instagram/settings/preference/widgets/InstagramPreferenceStyle;"
 

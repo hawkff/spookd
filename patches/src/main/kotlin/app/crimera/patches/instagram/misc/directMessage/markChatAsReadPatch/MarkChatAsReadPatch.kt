@@ -108,10 +108,10 @@ val markChatAsReadPatch =
                         
                         invoke-static {v1,v2,v3,v4,v5}, $EXTENSION_CLASS_NAME->buttonAction($context $USER_SESSION_CLASS Ljava/lang/Object;Ljava/lang/Object;$directThreadKeyClassName)Z
                         move-result v0
-                        if-eqz v0, : piko
+                        if-eqz v0, : spookd
                         return-void
                         """.trimIndent(),
-                        ExternalLabel("piko", getInstruction(0)),
+                        ExternalLabel("spookd", getInstruction(0)),
                     )
                 }
             }

@@ -81,7 +81,7 @@ public class RestorePrefFragment extends Fragment {
                     finishHost();
                     return;
                 }
-                destinationFile = new File(context.getApplicationInfo().dataDir + "/shared_prefs", Constants.PIKO_SETTINGS + ".xml");
+                destinationFile = new File(context.getApplicationInfo().dataDir + "/shared_prefs", Constants.SPOOKD_SETTINGS + ".xml");
             } else if (args.containsKey("spookd_pref_add_font")) {
                 // FontStorage decides where the font goes, and validates it first.
                 isFontImport = true;
@@ -178,7 +178,7 @@ public class RestorePrefFragment extends Fragment {
             }
             // A pending apply() would otherwise overwrite the restored file before the restart.
             SharedPref.flush();
-            if (!(destinationFile.getName().equals(Constants.PIKO_SETTINGS + ".xml")
+            if (!(destinationFile.getName().equals(Constants.SPOOKD_SETTINGS + ".xml")
                     ? AccountSettings.replaceLiveFile(tempFile, destinationFile)
                     : tempFile.renameTo(destinationFile))) {
                 throw new IOException("Could not replace " + destinationFile);

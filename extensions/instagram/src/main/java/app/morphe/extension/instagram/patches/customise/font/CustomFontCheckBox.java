@@ -11,7 +11,7 @@ import android.graphics.Typeface;
 import android.util.AttributeSet;
 import android.widget.CheckBox;
 
-/** Replaces the platform {@link CheckBox} in piko's own code. */
+/** Replaces the platform {@link CheckBox} in spookd's own code. */
 @SuppressWarnings("unused")
 public final class CustomFontCheckBox extends CheckBox {
     public CustomFontCheckBox(Context context) {
@@ -24,6 +24,6 @@ public final class CustomFontCheckBox extends CheckBox {
 
     @Override
     public void setTypeface(Typeface typeface) {
-        super.setTypeface(CustomFont.forPikoView(typeface));
+        super.setTypeface(CustomFont.forSpookdView(typeface));
     }
 }

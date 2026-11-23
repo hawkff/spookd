@@ -50,7 +50,7 @@ val customFontPatch =
 
             // Resolvers of fonts the user picks inside the app (they take the repository as their
             // first parameter), the app's own text views, and the plain text widgets
-            // piko's own code creates.
+            // spookd's own code creates.
             val contentFontResolvers = contentFontResolverFingerprint(typefaceRepository).matchAll()
             contentFontResolvers.forEach { it.method.markAsContentFontResolver() }
 
@@ -75,8 +75,8 @@ val customFontPatch =
             PlatformSpanFingerprint.matchAll().forEach {
                 it.method.replaceCreations(PLATFORM_TYPEFACE_SPANS)
             }
-            PikoWidgetCreatorFingerprint.matchAllOrNull()?.forEach {
-                it.method.replaceCreations(PIKO_TEXT_WIDGETS)
+            SpookdWidgetCreatorFingerprint.matchAllOrNull()?.forEach {
+                it.method.replaceCreations(SPOOKD_TEXT_WIDGETS)
             }
 
             enableSettings("customFont")

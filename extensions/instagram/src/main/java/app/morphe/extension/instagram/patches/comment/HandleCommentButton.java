@@ -39,7 +39,7 @@ public class HandleCommentButton {
         try {
             CommentData commentData = new CommentData(commentObject);
 
-            if (Pref.pikoDebug()) {
+            if (Pref.spookdDebug()) {
                 list.add(DebugButton.A00);
             }
             if (Pref.commentCopyButton() && commentData.hasText()) {
@@ -60,8 +60,8 @@ public class HandleCommentButton {
         }
     }
 
-    // return true = Piko button clicked no need to check Instagram's buttons.
-    // return false = Piko button not clicked, check Instagram's buttons.
+    // return true = Spookd button clicked no need to check Instagram's buttons.
+    // return false = Spookd button not clicked, check Instagram's buttons.
     public static boolean checkOnCommentButtonClick(Object button, List list) {
         try {
             if (list.isEmpty()) return false;

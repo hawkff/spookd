@@ -64,13 +64,13 @@ public class UserProfileButton {
                     && Pref.isMoreOptionsOnProfilePatched();
 
             if (showSettings){
-                UI.pikoSettingsButton(viewGroup, showProfileOptions ? 0 : Dim.dp8);
+                UI.spookdSettingsButton(viewGroup, showProfileOptions ? 0 : Dim.dp8);
             }
             if(showProfileOptions){
                 ProfileMoreOption.addProfileMoreOptionsButton(viewGroup, profileInfo);
             }
         } catch (Exception e) {
-            Logger.printException(() -> "Failed to add piko button: ", e);
+            Logger.printException(() -> "Failed to add spookd button: ", e);
         }
 
     }

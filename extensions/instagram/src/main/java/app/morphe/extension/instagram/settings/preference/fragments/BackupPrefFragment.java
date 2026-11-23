@@ -51,7 +51,7 @@ public class BackupPrefFragment extends Fragment {
                 ext = ".json";
                 sourceFile = new File(context.getFilesDir() + "/mobileconfig", filename + ext);
             } else if (args.containsKey("spookd_export_pref")) {
-                filename = Constants.PIKO_SETTINGS;
+                filename = Constants.SPOOKD_SETTINGS;
                 ext = ".xml";
                 sourceFile = new File(context.getApplicationInfo().dataDir + "/shared_prefs", filename + ext);
             }
