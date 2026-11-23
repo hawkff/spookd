@@ -199,19 +199,35 @@ public final class DownloadHistory {
         return row;
     }
 
-    /** Whether this process still holds the failed request of row {@code id} and its link has not expired. */
-    static boolean canRetry(long id) {
+    /** Whether this process still holds the failed request of row {@code id} and its link is still valid at {@code now}. */
+    static boolean canRetry(long id, long now) {
         DownloadRequest request = retryable.get(id);
-        return request != null && !MediaUrls.isExpired(request.url);
+        return request != null && alive(request, now);
     }
 
-    /** Main thread: runs the failed request of row {@code id} through the download writer again. */
-    static void retry(Context context, long id) {
+    /** When row {@code id}'s retry link expires, in epoch ms; 0 when it has none or cannot be retried. */
+    static long retryExpiresAt(long id) {
+        DownloadRequest request = retryable.get(id);
+        return request == null ? 0 : MediaUrls.expiresAt(request.url);
+    }
+
+    /**
+     * Main thread: runs the failed request of row {@code id} through the download writer again;
+     * false, dropping it, when its link expired by {@code now}. Nothing runs when it is already running or gone.
+     */
+    static boolean retry(Context context, long id, long now) {
         DownloadRequest request = retryable.remove(id);
-        if (request == null) return;
+        if (request == null) return true;
+        if (!alive(request, now)) return false;
         // Without the folder grant the writer opens the folder picker instead, so the row stays retryable.
         if (request.privateTarget == null && !StorageUtils.checkStoragePermissions()) retryable.put(id, request);
         new MediaDownloader(context).enqueue(request);
+        return true;
+    }
+
+    private static boolean alive(DownloadRequest request, long now) {
+        long expiresAt = MediaUrls.expiresAt(request.url);
+        return expiresAt == 0 || expiresAt > now;
     }
 
     /** One request's row: one insert when it starts, one update when it ends. Runs on the download thread, never throws. */

@@ -187,7 +187,7 @@ public final class DownloadHistoryActivity {
             ui.removeCallbacksAndMessages(null);
         }
 
-        /** Main thread; rows that are still downloading refresh until they end. */
+        /** Main thread; rows still downloading refresh until they end, and Retry goes when its link expires. */
         private void reload() {
             int generation = ++loads;
             JOBS.execute(() -> {
@@ -206,12 +206,14 @@ public final class DownloadHistoryActivity {
                     empty.setVisibility(result.isEmpty() ? View.VISIBLE : View.GONE);
                     list.setVisibility(result.isEmpty() ? View.GONE : View.VISIBLE);
                     ui.removeCallbacks(refresh);
+                    long now = System.currentTimeMillis();
+                    long next = Long.MAX_VALUE;
                     for (DownloadHistory.Entry entry : result) {
-                        if (DownloadHistory.DOWNLOADING.equals(entry.status)) {
-                            ui.postDelayed(refresh, REFRESH_MS);
-                            break;
-                        }
+                        if (DownloadHistory.DOWNLOADING.equals(entry.status)) next = Math.min(next, now + REFRESH_MS);
+                        long expiresAt = DownloadHistory.retryExpiresAt(entry.id);
+                        if (expiresAt > now) next = Math.min(next, expiresAt);
                     }
+                    if (next != Long.MAX_VALUE) ui.postDelayed(refresh, next - now);
                 });
             });
         }
@@ -260,7 +262,9 @@ public final class DownloadHistoryActivity {
                 return;
             }
             try {
-                DownloadHistory.retry(activity, entry.id);
+                if (!DownloadHistory.retry(activity, entry.id, System.currentTimeMillis())) {
+                    Utils.showToastShort(str("spookd_download_history_expired"));
+                }
             } catch (Exception e) {
                 Logger.printException(() -> "Download history: cannot retry " + entry.id, e);
                 Utils.showToastShort(str("spookd_gallery_action_failed"));
@@ -349,7 +353,7 @@ public final class DownloadHistoryActivity {
                 String time = DateUtils.formatDateTime(activity, entry.startedAt,
                         DateUtils.FORMAT_SHOW_DATE | DateUtils.FORMAT_SHOW_TIME | DateUtils.FORMAT_ABBREV_MONTH);
                 details.setText(kind + " · " + time + " · " + status(entry));
-                boolean canRetry = DownloadHistory.FAILED.equals(entry.status) && DownloadHistory.canRetry(entry.id);
+                boolean canRetry = DownloadHistory.FAILED.equals(entry.status) && DownloadHistory.canRetry(entry.id, System.currentTimeMillis());
                 retryButton.setVisibility(canRetry ? View.VISIBLE : View.GONE);
                 retryButton.setOnClickListener(v -> retry(entry));
             }

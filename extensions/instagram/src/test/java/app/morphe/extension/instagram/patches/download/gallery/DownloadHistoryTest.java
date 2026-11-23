@@ -78,15 +78,15 @@ public final class DownloadHistoryTest {
         assertEquals("IOException: broken", entry.error);
         assertEquals("alice", entry.ownerUsername);
         assertEquals(GalleryItem.PHOTO, entry.kind);
-        assertTrue(DownloadHistory.canRetry(entry.id));
+        assertTrue(DownloadHistory.canRetry(entry.id, NOW));
 
         row.started();
         assertEquals(DownloadHistory.DOWNLOADING, only().status);
-        assertFalse(DownloadHistory.canRetry(entry.id));
+        assertFalse(DownloadHistory.canRetry(entry.id, NOW));
 
         row.ended(false, null, null);
         assertEquals(ExtensionStrings.DOWNLOAD_MEDIA_EXISTS, only().error);
-        assertFalse(DownloadHistory.canRetry(entry.id));
+        assertFalse(DownloadHistory.canRetry(entry.id, NOW));
     }
 
     @Test
@@ -124,7 +124,25 @@ public final class DownloadHistoryTest {
         row.started();
         row.ended(false, null, new IOException("gone"));
 
-        assertFalse(DownloadHistory.canRetry(only().id));
+        assertFalse(DownloadHistory.canRetry(only().id, NOW));
+    }
+
+    @Test
+    public void aLinkExpiringAfterTheRowWasShownIsNotEnqueued() {
+        long expirySeconds = NOW / 1000 + 60;
+        String url = "https://scontent.cdninstagram.com/a.jpg?oe=" + Long.toHexString(expirySeconds);
+        DownloadHistory.Row row = DownloadHistory.track(new DownloadRequest(url, null, "a.jpg"), POST);
+        row.started();
+        row.ended(false, null, new IOException("broken"));
+        long id = only().id;
+        assertTrue(DownloadHistory.canRetry(id, NOW));
+        assertEquals(expirySeconds * 1000, DownloadHistory.retryExpiresAt(id));
+
+        // A null context would throw if the request reached the download writer.
+        assertFalse(DownloadHistory.retry(null, id, expirySeconds * 1000 + 1));
+        assertFalse(DownloadHistory.canRetry(id, NOW));
+        assertEquals(0, DownloadHistory.retryExpiresAt(id));
+        assertEquals(DownloadHistory.FAILED, only().status);
     }
 
     @Test
