@@ -26,6 +26,7 @@ public class Settings {
     public static final BooleanSetting OPEN_LINKS_EXTERNALLY = new BooleanSetting("open_links_externally", true, NOT_REQUIRED);
     public static final BooleanSetting SANITIZE_SHARE_LINKS = new BooleanSetting("sanitize_share_links", true, NOT_REQUIRED);
     public static final StringSetting CUSTOM_SHARING_DOMAIN = new StringSetting("custom_sharing_domain", "", NOT_REQUIRED);
+    public static final BooleanSetting DETECT_LINKS_IN_TEXT = new BooleanSetting("detect_links_in_text", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_SUGGESTED_CONTENT = new BooleanSetting("hide_suggested_content", true, REQUIRED);
     public static final BooleanSetting HIDE_META_AI = new BooleanSetting("hide_meta_ai", true, REQUIRED);
     public static final BooleanSetting DEVELOPER_OPTIONS = new BooleanSetting("enable_developer_options", false, NOT_REQUIRED);

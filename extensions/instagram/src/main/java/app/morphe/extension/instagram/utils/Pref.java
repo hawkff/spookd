@@ -98,6 +98,10 @@ public class Pref {
         return removeLineBreaks(SharedPref.getStringPref(Settings.CUSTOM_SHARING_DOMAIN));
     }
 
+    public static boolean detectLinksInText() {
+        return SettingsStatus.detectLinksInText && SharedPref.getBooleanPref(Settings.DETECT_LINKS_IN_TEXT);
+    }
+
     public static boolean getTurnOnAllGhostModes() {
         return SharedPref.getBooleanPref(Settings.TURN_ON_ALL_GHOST_MODES);
     }

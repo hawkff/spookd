@@ -510,6 +510,15 @@ public class ScreenBuilder {
                     )
             );
         }
+        if (SettingsStatus.detectLinksInText) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_detect_links_in_text"),
+                            str("spookd_detect_links_in_text_desc"),
+                            Settings.DETECT_LINKS_IN_TEXT
+                    )
+            );
+        }
     }
 
     public void distractionFreeSection() {
