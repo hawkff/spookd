@@ -13,6 +13,9 @@ import android.text.TextPaint;
 import android.text.style.ClickableSpan;
 import android.view.View;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,8 +33,14 @@ public final class TextLinks {
                     + "(?:[/?#][^\\s<>\"]*)?",
             Pattern.CASE_INSENSITIVE);
     private static final String TRAILING = ".,;:!?'\"*\u2026";
+    private static final Set<String> CAPTION_TAP_SPANS = new HashSet<>(Arrays.asList(captionTapSpanClasses().split(",")));
 
     private TextLinks() {
+    }
+
+    /** Rewritten at patch time to the comma-separated class names of the span Instagram puts over a caption's whole text area. */
+    static String captionTapSpanClasses() {
+        return "captionTapSpanClasses";
     }
 
     /** Called on the main thread at the start of IgTextLayoutView.setTextLayout. */
@@ -47,12 +56,16 @@ public final class TextLinks {
     }
 
     static void addLinks(Spannable text) {
+        addLinks(text, CAPTION_TAP_SPANS);
+    }
+
+    static void addLinks(Spannable text, Set<String> captionTapSpans) {
         if (!mayContainLink(text)) return;
         Matcher matcher = LINK.matcher(text);
         while (matcher.find()) {
             int start = matcher.start();
             int end = trimEnd(text, start, matcher.end());
-            if (!isWholeAuthority(text, start, matcher.end(1)) || isCut(text, end) || isLinked(text, start, end)) {
+            if (!isWholeAuthority(text, start, matcher.end(1)) || isCut(text, end) || isLinked(text, start, end, captionTapSpans)) {
                 continue;
             }
             String link = text.subSequence(start, end).toString();
@@ -119,9 +132,13 @@ public final class TextLinks {
         return end < text.length() && (text.charAt(end) == '\u2026' || regionMatches(text, end, "..."));
     }
 
-    // Instagram's own links are not all URLSpans, so any tappable span over the range counts as linked.
-    private static boolean isLinked(Spanned text, int start, int end) {
-        return text.getSpans(start, end, ClickableSpan.class).length > 0;
+    // Instagram's own links are not all URLSpans, so any tappable span over the range counts, except the caption text-area span around it.
+    private static boolean isLinked(Spanned text, int start, int end, Set<String> captionTapSpans) {
+        for (ClickableSpan span : text.getSpans(start, end, ClickableSpan.class)) {
+            boolean around = text.getSpanStart(span) <= start && text.getSpanEnd(span) >= end;
+            if (!around || !captionTapSpans.contains(span.getClass().getName())) return true;
+        }
+        return false;
     }
 
     static final class LinkSpan extends ClickableSpan {

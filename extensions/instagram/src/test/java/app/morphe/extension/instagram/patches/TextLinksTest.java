@@ -9,6 +9,9 @@ import android.text.style.ClickableSpan;
 import android.text.style.URLSpan;
 import android.view.View;
 
+import java.util.Collections;
+import java.util.Set;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
@@ -76,6 +79,27 @@ public class TextLinksTest {
     }
 
     @Test
+    public void linksInsideOnlyTheCaptionTextAreaSpan() {
+        Set<String> captionTapSpans = Collections.singleton(CaptionTap.class.getName());
+
+        SpannableStringBuilder text = new SpannableStringBuilder("user visit https://example.com now");
+        text.setSpan(new CaptionTap(), 5, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        TextLinks.addLinks(text, captionTapSpans);
+        assertEquals(1, text.getSpans(0, text.length(), TextLinks.LinkSpan.class).length);
+
+        text = new SpannableStringBuilder("visit https://example.com now");
+        text.setSpan(new CaptionTap(), 0, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        text.setSpan(new Tap(), 0, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        TextLinks.addLinks(text, captionTapSpans);
+        assertEquals(0, text.getSpans(0, text.length(), TextLinks.LinkSpan.class).length);
+
+        text = new SpannableStringBuilder("visit https://example.com now");
+        text.setSpan(new CaptionTap(), 0, 10, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        TextLinks.addLinks(text, captionTapSpans);
+        assertEquals(0, text.getSpans(0, text.length(), TextLinks.LinkSpan.class).length);
+    }
+
+    @Test
     public void linksNextToAnAdjacentMention() {
         SpannableStringBuilder text = new SpannableStringBuilder("@user https://example.com");
         text.setSpan(new Tap(), 0, 5, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -106,6 +130,12 @@ public class TextLinksTest {
     }
 
     private static final class Tap extends ClickableSpan {
+        @Override
+        public void onClick(View widget) {
+        }
+    }
+
+    private static final class CaptionTap extends ClickableSpan {
         @Override
         public void onClick(View widget) {
         }
