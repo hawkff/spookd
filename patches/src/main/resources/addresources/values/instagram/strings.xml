@@ -392,6 +392,7 @@
     <string name="spookd_download_history_saved_folder">saved to the download folder</string>
     <string name="spookd_download_history_failed">failed: %1$s</string>
     <string name="spookd_download_history_interrupted">failed: Instagram closed during the download</string>
+    <string name="spookd_back">Back</string>
     <string name="spookd_download_history_expired">This link has expired. Download it again from the post.</string>
     <string name="spookd_download_history_gone">This item is no longer in the private gallery</string>
     <string name="spookd_save_downloads_to_phone_storage">Save downloads to phone storage</string>

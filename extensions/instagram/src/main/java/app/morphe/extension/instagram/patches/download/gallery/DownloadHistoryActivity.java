@@ -102,6 +102,7 @@ public final class DownloadHistoryActivity {
             ImageView back = new ImageView(activity);
             UI.setThemedIcon(back, UI.DRAWABLE_ARROW_BACK);
             back.setOnClickListener(v -> activity.finish());
+            back.setContentDescription(str("spookd_back"));
             TextView title = new TextView(activity);
             title.setText(str("spookd_download_history"));
             title.setTextColor(InstagramPreferenceStyle.primaryTextColor());
