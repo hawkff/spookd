@@ -39,10 +39,10 @@ public class PlaybackSpeedTest {
         float defaultSpeed = 1.5f;
         // Untouched Reel: Instagram restores 1x, which becomes the default.
         assertEquals(Float.valueOf(1.5f), PlaybackSpeed.resolveReelSpeed(1f, null, false, defaultSpeed));
-        // A speed picked in Instagram's own menu stays, session-wide, until changed there.
+        // Any other speed Instagram restores is left alone.
         assertEquals(Float.valueOf(2f), PlaybackSpeed.resolveReelSpeed(2f, null, false, defaultSpeed));
         assertEquals(Float.valueOf(2f), PlaybackSpeed.resolveReelSpeed(2f, null, true, defaultSpeed));
-        // An explicit 1x pick in Instagram's menu stays 1x on that Reel.
+        // A Reel with an explicit 1x pick in Instagram's menu is left at 1x.
         assertEquals(Float.valueOf(1f), PlaybackSpeed.resolveReelSpeed(1f, null, true, defaultSpeed));
         // A panel pick applies to its Reel only and wins on resume.
         assertEquals(Float.valueOf(1.25f), PlaybackSpeed.resolveReelSpeed(1f, 1.25f, false, defaultSpeed));

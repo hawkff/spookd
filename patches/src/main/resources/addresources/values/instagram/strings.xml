@@ -238,9 +238,9 @@
     <string name="spookd_resume_reels_after_scrolling">Resume Reels after scrolling</string>
     <string name="spookd_resume_reels_after_scrolling_desc">Continue a Reel from where you left off when you scroll back to it</string>
     <string name="spookd_playback_speed_controls">Playback speed controls</string>
-    <string name="spookd_playback_speed_controls_desc">In the feed, hold the left or right edge of a playing video to watch it at 2x. In Reels, a Speed row appears in the More menu and in the menu that opens when you long-press a Reel. A speed picked in Instagram\'s own menu stays until you change it there.</string>
+    <string name="spookd_playback_speed_controls_desc">In the feed, hold the left or right edge of a playing video to watch it at 2x. In Reels, a Speed row appears in the More menu and in the menu that opens when you long-press a Reel.</string>
     <string name="spookd_default_playback_speed">Default playback speed</string>
-    <string name="spookd_default_playback_speed_desc">Reels and feed videos start at this speed, with normal voice pitch. A speed picked in the panel applies to that Reel only; a speed picked in Instagram\'s own menu stays until you change it there. After you let go of a press-and-hold speed-up, the video continues at 1x. To change the speed or position of one Reel, open its More menu and tap Speed and seek</string>
+    <string name="spookd_default_playback_speed_desc">Reels and feed videos start at this speed, with normal voice pitch. A speed picked in Speed and seek applies to that Reel only.</string>
     <string name="spookd_speed_and_seek">Speed and seek</string>
     <string name="spookd_speed_panel_back">−10 s</string>
     <string name="spookd_speed_panel_forward">+10 s</string>

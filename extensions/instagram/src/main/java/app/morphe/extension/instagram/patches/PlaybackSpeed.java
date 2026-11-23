@@ -112,7 +112,7 @@ public final class PlaybackSpeed {
         }
     }
 
-    // The default replaces only Instagram's 1x for a Reel without a pick; Instagram's session-wide menu speeds stay.
+    // The default replaces only Instagram's 1x for a Reel without a pick; other restored speeds are left alone.
     static Float resolveReelSpeed(Float nativeSpeed, Float panelSpeed, boolean menuPick, float defaultSpeed) {
         if (nativeSpeed == null) return null;
         if (panelSpeed != null) return panelSpeed;
