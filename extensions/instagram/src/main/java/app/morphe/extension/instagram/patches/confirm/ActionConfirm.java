@@ -60,6 +60,8 @@ public final class ActionConfirm {
     // The story heart's presenter, and the item that presenter was last bound to.
     private static final WeakHashMap<View, Object> storyLikePresenters = new WeakHashMap<>();
     private static final WeakHashMap<Object, Object> storyModels = new WeakHashMap<>();
+    // The story-like switch as last read when a heart was created; binds only read this copy.
+    private static boolean storyLikeTracking;
 
     private ActionConfirm() {
     }
@@ -248,15 +250,30 @@ public final class ActionConfirm {
     /** From the story heart component's constructor: the presenter whose story the heart likes. */
     public static void rememberStoryLikePresenter(View button, Object presenter) {
         try {
-            storyLikePresenters.put(button, presenter);
-            if (!storyModels.containsKey(presenter)) storyModels.put(presenter, null);
+            trackStoryLikePresenter(button, presenter, Pref.confirmStoryLike());
         } catch (Throwable t) {
             Logger.printException(() -> "rememberStoryLikePresenter failure", t);
         }
     }
 
+    static void trackStoryLikePresenter(View button, Object presenter, boolean enabled) {
+        if (!enabled) {
+            // Binds missed while off would leave stale stories, so tracking starts over with new hearts.
+            if (storyLikeTracking) {
+                storyLikePresenters.clear();
+                storyModels.clear();
+            }
+            storyLikeTracking = false;
+            return;
+        }
+        storyLikeTracking = true;
+        storyLikePresenters.put(button, presenter);
+        if (!storyModels.containsKey(presenter)) storyModels.put(presenter, null);
+    }
+
     /** From every story viewer presenter's bind; only the story heart's presenters are kept. */
     public static void onStoryItemBound(Object presenter, Object model) {
+        if (!storyLikeTracking) return;
         try {
             if (storyModels.containsKey(presenter)) storyModels.put(presenter, model);
         } catch (Throwable t) {

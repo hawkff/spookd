@@ -48,7 +48,7 @@ public class ActionConfirmTest {
         Object storyA = new Object();
         Object storyB = new Object();
         Object button = new Object();
-        ActionConfirm.rememberStoryLikePresenter(null, presenter);
+        ActionConfirm.trackStoryLikePresenter(null, presenter, true);
         ActionConfirm.onStoryItemBound(presenter, storyA);
         List<Object> asked = Arrays.asList(0, false, ActionConfirm.storyItemOf(presenter));
         List<Boolean> seen = new ArrayList<>();
@@ -85,6 +85,21 @@ public class ActionConfirmTest {
         ActionConfirm.runConfirmed(new Object(), Arrays.asList("arg"),
                 () -> seen.add(ActionConfirm.asksFollowRequestCallback(2, 2)));
         assertEquals(Arrays.asList(false), seen);
+    }
+
+    @Test
+    public void storyHeartsAreNotTrackedWhileTheSwitchIsOff() {
+        Object tracked = new Object();
+        ActionConfirm.trackStoryLikePresenter(null, tracked, true);
+        ActionConfirm.onStoryItemBound(tracked, new Object());
+
+        Object created = new Object();
+        ActionConfirm.trackStoryLikePresenter(null, created, false);
+        ActionConfirm.onStoryItemBound(created, new Object());
+        ActionConfirm.onStoryItemBound(tracked, new Object());
+
+        assertNull(ActionConfirm.storyItemOf(created));
+        assertNull(ActionConfirm.storyItemOf(tracked));
     }
 
     @Test
