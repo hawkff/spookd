@@ -908,6 +908,23 @@ public class ScreenBuilder {
                     Settings.DEFAULT_PLAYBACK_SPEED
             ));
         }
+        if (SettingsStatus.reelsPlayerOptions) {
+            addPreference(helper.switchPreference(
+                    str("spookd_reels_start_muted"),
+                    str("spookd_reels_start_muted_desc"),
+                    Settings.REELS_START_MUTED
+            ));
+            addPreference(helper.switchPreference(
+                    str("spookd_reels_stop_looping"),
+                    str("spookd_reels_stop_looping_desc"),
+                    Settings.REELS_STOP_LOOPING
+            ));
+            addPreference(helper.switchPreference(
+                    str("spookd_reels_tap_to_pause"),
+                    str("spookd_reels_tap_to_pause_desc"),
+                    Settings.REELS_TAP_TO_PAUSE
+            ));
+        }
         if (SettingsStatus.improveImageViewing) {
             addPreference(
                     helper.switchPreference(
