@@ -13,6 +13,8 @@ import app.spookd.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
+import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.string
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
@@ -53,7 +55,10 @@ private object FollowRequestAcceptCallbackFingerprint : Fingerprint(
     name = "invoke",
     returnType = "Ljava/lang/Object;",
     parameters = listOf("Ljava/lang/Object;"),
-    filters = listOf(string("loadingSpinnerSubtitle")),
+    filters = listOf(
+        methodCall(definingClass = CONFIRM_FOLLOWER_UTIL, returnType = "V"),
+        string("loadingSpinnerSubtitle"),
+    ),
 )
 
 /**
@@ -157,7 +162,10 @@ val confirmFollowRequestPatch =
                 move-result v0
                 """,
             )
-            FollowRequestAcceptCallbackFingerprint.matchOrNull()?.method?.gateAcceptCase()
+            // Without it a cancelled prompt would leave that callback's counts raised.
+            val callback = FollowRequestAcceptCallbackFingerprint.matchOrNull()?.method
+                ?: throw PatchException("Follow request accept callback not found")
+            if (!callback.gateAcceptCase()) throw PatchException("Follow request accept callback has an unexpected shape")
             enableSettings("confirmFollowRequest")
         }
     }
