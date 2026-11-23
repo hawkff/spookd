@@ -48,24 +48,26 @@ public final class DownloadHistoryActivity {
     }
 
     /**
-     * Main thread, from the launch dispatch. With a secure screen lock on Android 11 or newer it asks
-     * for the device credential as the private gallery does; otherwise nothing saved privately can be
-     * opened, and Inbox lock guards it as it guards the other viewers.
+     * Main thread, from the launch dispatch. Fails closed like the private gallery: below Android 11
+     * or without a secure screen lock only the screen-lock notice shows; otherwise one credential
+     * prompt, and cancelling it closes the screen.
      */
     public static void open(Activity activity) {
         try {
             activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
-            boolean confirmed = Gallery.canOpen(activity);
-            Runnable setup = () -> {
+            Screen screen = new Screen(activity);
+            if (!Gallery.canOpen(activity)) {
+                screen.setup(false);
+                return;
+            }
+            InboxLock.confirmViewerWithCredential(activity, () -> {
                 try {
-                    if (!activity.isFinishing() && !activity.isDestroyed()) new Screen(activity, confirmed).setup();
+                    if (!activity.isFinishing() && !activity.isDestroyed()) screen.setup(true);
                 } catch (Exception e) {
                     Logger.printException(() -> "DownloadHistoryActivity setup failed", e);
                     activity.finish();
                 }
-            };
-            if (confirmed) InboxLock.confirmViewerWithCredential(activity, setup);
-            else InboxLock.confirmViewer(activity, setup);
+            });
         } catch (Exception e) {
             Logger.printException(() -> "DownloadHistoryActivity.open failed", e);
             activity.finish();
@@ -74,8 +76,6 @@ public final class DownloadHistoryActivity {
 
     private static final class Screen {
         private final Activity activity;
-        /** Whether the device credential was confirmed, so gallery items may be shown. */
-        private final boolean confirmed;
         private final Handler ui = new Handler(Looper.getMainLooper());
         private final Runnable refresh = this::reload;
         private final Adapter adapter = new Adapter();
@@ -85,12 +85,12 @@ public final class DownloadHistoryActivity {
         private int loads;
         private boolean closed;
 
-        Screen(Activity activity, boolean confirmed) {
+        Screen(Activity activity) {
             this.activity = activity;
-            this.confirmed = confirmed;
         }
 
-        void setup() {
+        /** {@code unlocked}: the credential was confirmed, so the history shows; otherwise only the screen-lock notice. */
+        void setup(boolean unlocked) {
             LinearLayout root = new LinearLayout(activity);
             root.setOrientation(LinearLayout.VERTICAL);
             root.setBackgroundColor(InstagramPreferenceStyle.backgroundColor());
@@ -112,22 +112,24 @@ public final class DownloadHistoryActivity {
             clear.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             clear.setPadding(dp(12), dp(8), dp(4), dp(8));
             clear.setOnClickListener(v -> confirmClear());
+            clear.setVisibility(unlocked ? View.VISIBLE : View.GONE);
             toolbar.addView(back);
             toolbar.addView(title);
             toolbar.addView(clear);
             root.addView(toolbar);
 
             empty = new TextView(activity);
-            empty.setText(str("spookd_download_history_empty"));
+            empty.setText(str(unlocked ? "spookd_download_history_empty" : "spookd_vault_needs_screen_lock"));
             empty.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
             empty.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(dp(24), dp(24), dp(24), dp(24));
-            empty.setVisibility(View.GONE);
+            empty.setVisibility(unlocked ? View.GONE : View.VISIBLE);
             root.addView(empty, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
             list = new ListView(activity);
             list.setAdapter(adapter);
             list.setOnItemClickListener((parent, view, position, id) -> openSaved(entries.get(position)));
+            list.setVisibility(unlocked ? View.VISIBLE : View.GONE);
             root.addView(list, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
 
             root.setOnApplyWindowInsetsListener((v, insets) -> {
@@ -150,7 +152,7 @@ public final class DownloadHistoryActivity {
             }
             activity.setContentView(root);
             watchLifecycle();
-            reload();
+            if (unlocked) reload();
         }
 
         /** Leaving the app or the screen ends it, as the private gallery does; a rotation keeps it. */
@@ -235,10 +237,7 @@ public final class DownloadHistoryActivity {
         private void openSaved(DownloadHistory.Entry entry) {
             if (!DownloadHistory.SAVED.equals(entry.status)) return;
             try {
-                if (entry.galleryFile != null && !confirmed) {
-                    // Shows the screen-lock notice.
-                    VaultViewer.showFor(activity, null);
-                } else if (entry.galleryFile != null) {
+                if (entry.galleryFile != null) {
                     VaultViewer.showFor(activity,
                             () -> new VaultViewer.Opened(new PlainMedia(entry.galleryFile), entry.kind));
                 } else if (entry.document != null) {
