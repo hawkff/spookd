@@ -699,6 +699,12 @@ public class ScreenBuilder {
                     Settings.DISABLE_DOUBLE_TAP_LIKE_MESSAGE
             );
         }
+        if (SettingsStatus.hideCommentEmojiBar) {
+            addPreference(helper.switchPreference(str("spookd_hide_comment_emoji_bar"), str("spookd_hide_comment_emoji_bar_desc"), Settings.HIDE_COMMENT_EMOJI_BAR));
+        }
+        if (SettingsStatus.hideReelsVisualSearch) {
+            addPreference(helper.switchPreference(str("spookd_hide_reels_visual_search"), str("spookd_hide_reels_visual_search_desc"), Settings.HIDE_REELS_VISUAL_SEARCH));
+        }
         if (SettingsStatus.hideProfileNotesBubble) {
             addPreference(helper.switchPreference(str("spookd_hide_profile_notes_bubble"), str("spookd_hide_profile_notes_bubble_desc"), Settings.HIDE_PROFILE_NOTES_BUBBLE));
         }

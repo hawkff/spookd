@@ -116,6 +116,10 @@
     <string name="spookd_disable_double_tap_like_comment">Disable double tap like on comment</string>
     <string name="spookd_disable_double_tap_like_message">Disable double tap like on message</string>
     <string name="spookd_disable_double_tap_to_like">Disable double tap to like</string>
+    <string name="spookd_hide_comment_emoji_bar">Hide comment emoji bar</string>
+    <string name="spookd_hide_comment_emoji_bar_desc">Removes the row of quick emojis above the comment box</string>
+    <string name="spookd_hide_reels_visual_search">Hide Reels visual search button</string>
+    <string name="spookd_hide_reels_visual_search_desc">Removes the visual search button from the Reels side buttons</string>
     <string name="spookd_hide_profile_notes_bubble">Hide profile notes bubble</string>
     <string name="spookd_hide_profile_notes_bubble_desc">Hides the note bubble on profile pictures, including the add note bubble on your own profile</string>
     <string name="spookd_hide_threads_button">Hide Threads button</string>

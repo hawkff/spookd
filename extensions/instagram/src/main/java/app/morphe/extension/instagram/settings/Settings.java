@@ -159,6 +159,8 @@ public class Settings {
     public static final StringSetting FILTER_STORY_MIN_STORY_ITEMS = new StringSetting("filter_story_min_story_items", "1", NOT_REQUIRED);
     public static final StringSetting FILTER_STORY_MAX_STORY_ITEMS = new StringSetting("filter_story_max_story_items", "9999", NOT_REQUIRED);
 
+    public static final BooleanSetting HIDE_COMMENT_EMOJI_BAR = new BooleanSetting("hide_comment_emoji_bar", false, NOT_REQUIRED);
+    public static final BooleanSetting HIDE_REELS_VISUAL_SEARCH = new BooleanSetting("hide_reels_visual_search", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_PROFILE_NOTES_BUBBLE = new BooleanSetting("hide_profile_notes_bubble", false, REQUIRED);
     public static final BooleanSetting HIDE_THREADS_BUTTON = new BooleanSetting("hide_threads_button", false, REQUIRED);
     public static final BooleanSetting HIDE_FRIENDS_MAP = new BooleanSetting("hide_friends_map", false, REQUIRED);

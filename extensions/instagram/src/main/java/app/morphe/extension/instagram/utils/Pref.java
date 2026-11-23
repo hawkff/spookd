@@ -208,6 +208,15 @@ public class Pref {
         return lockable(Settings.HIDE_NOTES_TRAY) && SettingsStatus.hideNotesTray;
     }
 
+    /** The comment sheet's own "hide emoji bar" argument, also set when the switch is on. */
+    public static boolean hideCommentEmojiBar(boolean hidden) {
+        return hidden || (SharedPref.getBooleanPref(Settings.HIDE_COMMENT_EMOJI_BAR) && SettingsStatus.hideCommentEmojiBar);
+    }
+
+    public static boolean hideReelsVisualSearch() {
+        return SharedPref.getBooleanPref(Settings.HIDE_REELS_VISUAL_SEARCH) && SettingsStatus.hideReelsVisualSearch;
+    }
+
     public static boolean hideProfileNotesBubble() {
         return SharedPref.getBooleanPref(Settings.HIDE_PROFILE_NOTES_BUBBLE) && SettingsStatus.hideProfileNotesBubble;
     }
