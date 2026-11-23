@@ -104,7 +104,11 @@ internal fun addStoryGhostListHooks(
 
     val replyHooked = storyReplySentFingerprint(loggerClass.type).matchOrNull()?.let { reply ->
         val currentItem = reply.instructionMatches.first().methodReference
-        if (currentItem.definingClass != reelParentClass) return@let false
+        if (currentItem.definingClass != reelParentClass ||
+            reply.method.parameterTypes[0].toString() != reelParentClass
+        ) {
+            return@let false
+        }
         storyGhostListFingerprint("currentItemNative").method.addInstructions(
             0,
             """
