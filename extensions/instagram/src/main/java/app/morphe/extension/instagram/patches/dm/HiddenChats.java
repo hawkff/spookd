@@ -338,6 +338,7 @@ public final class HiddenChats {
             String userId = ((UserSession) session).getUserId();
             if (menuButtonHides) HiddenChatsPref.add(userId, String.valueOf(threadKey));
             else HiddenChatsPref.remove(userId, String.valueOf(threadKey));
+            if (menuButtonHides) HiddenChatsShare.rememberUser(userId, threadKey);
             PikoUtils.toast(str(menuButtonHides ? "spookd_hidden_chats_hidden" : "spookd_hidden_chats_unhidden"));
             refresh(userId);
             return true;
@@ -405,6 +406,7 @@ public final class HiddenChats {
             for (Object thread : threads) {
                 Object key = threadKeyOf(thread);
                 if (key == null || !hidden.contains(idOf(key))) kept.add(thread);
+                else HiddenChatsShare.rememberUser(((UserSession) session).getUserId(), key);
             }
             return kept.size() == threads.size() ? threads : kept;
         } catch (Throwable t) {
@@ -575,6 +577,7 @@ public final class HiddenChats {
             List<Object> kept = new ArrayList<>();
             for (Object thread : list) {
                 Object key = threadKeyOf(thread);
+                if (key != null && hidden.contains(idOf(key))) HiddenChatsShare.rememberUser(userId, key);
                 boolean drop = key != null && hidden.contains(idOf(key)) != onlyHidden;
                 if (!drop) kept.add(thread);
             }
@@ -584,6 +587,11 @@ public final class HiddenChats {
         } catch (Throwable t) {
             Logger.printException(() -> "HiddenChats.filterRows failed", t);
         }
+    }
+
+    /** True while the hidden chats of the account are open, so they are shown everywhere like in the inbox. */
+    static boolean isOpenFor(String userId) {
+        return hiddenMode && userId.equals(modeUser);
     }
 
     /** The id of a chat, as {@link HiddenChatsPref#idOf} reads it from the saved form of its key. */
