@@ -238,7 +238,13 @@
     <string name="spookd_resume_reels_after_scrolling">Resume Reels after scrolling</string>
     <string name="spookd_resume_reels_after_scrolling_desc">Continue a Reel from where you left off when you scroll back to it</string>
     <string name="spookd_playback_speed_controls">Playback speed controls</string>
-    <string name="spookd_playback_speed_controls_desc">In the feed, hold the left or right edge of a playing video to watch it at 2x. In Reels, a Speed row appears in the More menu and in the menu that opens when you long-press a Reel. A speed you pick in Reels applies to that Reel only; the next Reel starts at 1x.</string>
+    <string name="spookd_playback_speed_controls_desc">In the feed, hold the left or right edge of a playing video to watch it at 2x. In Reels, a Speed row appears in the More menu and in the menu that opens when you long-press a Reel. A speed you pick in Reels applies to that Reel only; the next Reel starts at 1x, or at your default playback speed.</string>
+    <string name="spookd_default_playback_speed">Default playback speed</string>
+    <string name="spookd_default_playback_speed_desc">Reels and feed videos start at this speed, with normal voice pitch. A speed you pick for one Reel applies to that Reel only. After you let go of a press-and-hold speed-up, the video continues at 1x. To change the speed or position of one Reel, open its More menu and tap Speed and seek</string>
+    <string name="spookd_speed_and_seek">Speed and seek</string>
+    <string name="spookd_speed_panel_back">−10 s</string>
+    <string name="spookd_speed_panel_forward">+10 s</string>
+    <string name="spookd_speed_panel_no_video">Play this video first, then try again</string>
     <string name="spookd_improve_image_viewing">Improve image viewing</string>
     <string name="spookd_improve_image_viewing_desc">Fetches max resolution images from server. May reduce performance, increase app data size, or cause the app to switch to an older layout</string>
     <string name="spookd_copy_comment">Copy comment</string>

@@ -28,6 +28,7 @@ import app.morphe.extension.instagram.patches.overflowMenuButton.reels.buttons.D
 import app.morphe.extension.instagram.patches.overflowMenuButton.reels.buttons.DebugButton;
 import app.morphe.extension.instagram.patches.overflowMenuButton.reels.buttons.InfoButton;
 import app.morphe.extension.instagram.patches.overflowMenuButton.reels.buttons.ExternalDownloadButton;
+import app.morphe.extension.instagram.patches.overflowMenuButton.reels.buttons.SpeedPanelButton;
 
 public class AddReelButton {
 
@@ -106,6 +107,10 @@ public class AddReelButton {
         }
         if(Pref.moreOptionsOnPost()){
             AddReelButton.addInfoButton(context, helperObject, mediaObject, currentMediaIndex);
+        }
+        if(SettingsStatus.defaultPlaybackSpeed){
+            AddReelButton.addReelButton(context, new ReelOverflowButton("instagram_clock_dotted_outline_24",
+                    new SpeedPanelButton(context, mediaObject), str("spookd_speed_and_seek")), helperObject);
         }
     }
 

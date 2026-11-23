@@ -69,6 +69,9 @@ public class ListPref extends ListPreference {
             } else if (key == Settings.CHANGE_LIKE_ANIMATION.key) {
                 entries = ResourceUtils.getStringArray("spookd_array_change_like_animation");
                 entriesValues = ResourceUtils.getStringArray("spookd_array_change_like_animation_val");
+            } else if (Settings.DEFAULT_PLAYBACK_SPEED.key.equals(key)) {
+                entries = new CharSequence[]{"1x", "1.25x", "1.5x", "1.75x", "2x"};
+                entriesValues = new CharSequence[]{"1", "1.25", "1.5", "1.75", "2"};
             }
         } else {
             entries = ResourceUtils.getStringArray("spookd_array_recmd_flag_states");
