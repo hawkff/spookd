@@ -8,6 +8,8 @@ package app.morphe.extension.instagram.patches;
 
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
+import android.app.Activity;
+import android.app.Application;
 import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Color;
@@ -15,10 +17,12 @@ import android.graphics.PorterDuff;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
@@ -34,6 +38,7 @@ final class PlaybackSpeedPanel {
     private static final long REFRESH_MS = 500;
 
     private final Context context;
+    private final Activity host;
     private final Object player;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final int textColor = InstagramPreferenceStyle.primaryTextColor();
@@ -43,16 +48,50 @@ final class PlaybackSpeedPanel {
     private final SeekBar bar;
     private final TextView[] speeds = new TextView[PlaybackSpeed.PRESETS.length];
     private boolean dragging;
+    private boolean disposed;
+    private Dialog dialog;
 
     private final Runnable refresh = new Runnable() {
         @Override
         public void run() {
-            if (update()) handler.postDelayed(this, REFRESH_MS);
+            if (!disposed && update()) handler.postDelayed(this, REFRESH_MS);
         }
     };
 
-    private PlaybackSpeedPanel(Context context, Object player) {
+    private final Application.ActivityLifecycleCallbacks lifecycle = new Application.ActivityLifecycleCallbacks() {
+        @Override
+        public void onActivityDestroyed(Activity activity) {
+            if (activity != host) return;
+            dispose();
+            try {
+                dialog.dismiss();
+            } catch (RuntimeException e) {
+                Logger.printDebug(() -> "Speed panel window already gone: " + e);
+            }
+        }
+
+        @Override
+        public void onActivityCreated(Activity activity, Bundle state) {}
+
+        @Override
+        public void onActivityStarted(Activity activity) {}
+
+        @Override
+        public void onActivityResumed(Activity activity) {}
+
+        @Override
+        public void onActivityPaused(Activity activity) {}
+
+        @Override
+        public void onActivityStopped(Activity activity) {}
+
+        @Override
+        public void onActivitySaveInstanceState(Activity activity, Bundle state) {}
+    };
+
+    private PlaybackSpeedPanel(Context context, Activity host, Object player) {
         this.context = context;
+        this.host = host;
         this.player = player;
         position = label();
         duration = label();
@@ -61,7 +100,7 @@ final class PlaybackSpeedPanel {
 
     static void show(Context context, Object player) {
         Context themed = InstagramPreferenceStyle.dialogContext(context);
-        new PlaybackSpeedPanel(themed, player).open();
+        new PlaybackSpeedPanel(themed, context instanceof Activity ? (Activity) context : null, player).open();
     }
 
     private void open() {
@@ -124,11 +163,21 @@ final class PlaybackSpeedPanel {
         }
         root.addView(speedRow);
 
-        Dialog dialog = new Dialog(context);
+        root.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override
+            public void onViewAttachedToWindow(View view) {}
+
+            @Override
+            public void onViewDetachedFromWindow(View view) {
+                dispose();
+            }
+        });
+
+        dialog = new Dialog(context);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(root);
         dialog.setCanceledOnTouchOutside(true);
-        dialog.setOnDismissListener(d -> handler.removeCallbacks(refresh));
+        dialog.setOnDismissListener(d -> dispose());
         Window window = dialog.getWindow();
         if (window != null) {
             window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -137,17 +186,27 @@ final class PlaybackSpeedPanel {
             window.setGravity(Gravity.BOTTOM);
             window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
+        if (host != null) host.getApplication().registerActivityLifecycleCallbacks(lifecycle);
         dialog.show();
         handler.post(refresh);
     }
 
-    // False once the player is gone, which stops the refresh.
+    // Runs once on dismissal, window detachment or host destruction; the panel never refreshes again.
+    private void dispose() {
+        if (disposed) return;
+        disposed = true;
+        handler.removeCallbacks(refresh);
+        if (host != null) host.getApplication().unregisterActivityLifecycleCallbacks(lifecycle);
+    }
+
+    // False once the player is released, which reports no duration, which stops the refresh.
     private boolean update() {
         try {
             int total = PlaybackSpeed.durationMs(player);
             bar.setEnabled(total > 0);
+            if (total <= 0) return false;
             duration.setText(PlaybackSpeed.formatTime(total));
-            if (total <= 0 || dragging) return true;
+            if (dragging) return true;
             int current = PlaybackSpeed.positionMs(player);
             bar.setMax(total);
             bar.setProgress(current);
