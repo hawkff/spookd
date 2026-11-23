@@ -54,6 +54,8 @@ public class DownloadRequest {
     public Consumer<Boolean> onFinished;
     /** Told when this request starts and ends; null for none. */
     public Tracker tracker;
+    /** Saves without any toast or notification; the tracker still hears about it. */
+    public boolean quiet;
 
     /** Follows one request; its calls run on the download thread and must not throw. */
     public interface Tracker {

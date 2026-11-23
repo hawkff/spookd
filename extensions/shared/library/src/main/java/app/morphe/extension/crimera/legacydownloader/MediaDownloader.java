@@ -57,6 +57,8 @@ public class MediaDownloader {
     private final NotificationManager notificationManager;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    // The running request's quiet flag; requests on one downloader run one at a time.
+    private volatile boolean quiet;
 
     public MediaDownloader(Context context) {
         Context resolvedContext = context != null ? context : Utils.getContext();
@@ -101,6 +103,7 @@ public class MediaDownloader {
     }
 
     private void runDownloadTask(DownloadRequest request) {
+        quiet = request.quiet;
         int notificationId = (int) System.currentTimeMillis();
         Uri outputDocumentUri = null;
         boolean downloadCompleted = false;
@@ -162,7 +165,7 @@ public class MediaDownloader {
 
             String downloadStartString = ExtensionStrings.DOWNLOAD_ONGOING + request.fileName;
             builder.setContentTitle(downloadStartString);
-            notificationManager.notify(notificationId, builder.build());
+            if (!request.quiet) notificationManager.notify(notificationId, builder.build());
             showToast(downloadStartString);
             if (replacing) {
                 // Finish all network and conversion work before touching the saved file.
@@ -182,6 +185,7 @@ public class MediaDownloader {
                     buildViewFilePendingIntent(outputDocumentUri, finalFileName, finalNotificationId);
 
             mainHandler.post(() -> {
+                if (request.quiet) return;
                 builder.setSmallIcon(android.R.drawable.stat_sys_download_done)
                         .setContentTitle(downloadCompletedString)
                         .setContentText(finalFileName)
@@ -234,7 +238,7 @@ public class MediaDownloader {
         }
         String downloadStartString = ExtensionStrings.DOWNLOAD_ONGOING + request.fileName;
         builder.setContentTitle(downloadStartString);
-        notificationManager.notify(notificationId, builder.build());
+        if (!request.quiet) notificationManager.notify(notificationId, builder.build());
         showToast(downloadStartString);
         File part = target.partFile();
         boolean published;
@@ -253,6 +257,7 @@ public class MediaDownloader {
         String downloadCompletedString = ExtensionStrings.DOWNLOAD_COMPLETED + request.fileName;
         // No tap action: a private file cannot be handed to another app's viewer.
         mainHandler.post(() -> {
+            if (request.quiet) return;
             builder.setSmallIcon(android.R.drawable.stat_sys_download_done)
                     .setContentTitle(downloadCompletedString)
                     .setContentText(request.fileName)
@@ -386,7 +391,7 @@ public class MediaDownloader {
                 long currentTime = System.currentTimeMillis();
                 if (currentTime - lastUpdateTime > 200) {
                     builder.setProgress(100, percent, false);
-                    notificationManager.notify(notificationId, builder.build());
+                    if (!quiet) notificationManager.notify(notificationId, builder.build());
                     lastUpdateTime = currentTime;
                 }
             }
@@ -476,6 +481,7 @@ public class MediaDownloader {
     }
 
     protected void showToast(String msg) {
+        if (quiet) return;
         mainHandler.post(() -> PikoUtils.toast(msg));
     }
 
