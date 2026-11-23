@@ -76,6 +76,24 @@ public class StoryAutoSaveTest {
     }
 
     @Test
+    public void aNameThatEndsWithTheMediaIdKeepsItOnce() {
+        assertEquals("alice_101.jpg", name(DownloadFileNameFormatter.DEFAULT_TEMPLATE, "101"));
+        assertEquals("alice_101.jpg", name("{username}_{media_id}", "101"));
+        assertEquals("101.jpg", name("{media_id}", "101"));
+        // Glued to other text the id is added on its own, so a longer id cannot give the same name.
+        assertEquals("x101_101.jpg", name("x{media_id}", "101"));
+    }
+
+    @Test
+    public void aTrailingMediaIdSurvivesTheLengthLimitOnce() {
+        String name = name(repeat('a', 300) + "_{media_id}", "1234567890123456789");
+
+        assertTrue(name, name.endsWith("_1234567890123456789.jpg"));
+        assertEquals(name.indexOf("1234567890123456789"), name.lastIndexOf("1234567890123456789"));
+        assertTrue(name.getBytes(StandardCharsets.UTF_8).length <= 255);
+    }
+
+    @Test
     public void theMediaIdSurvivesTheLengthLimitWhole() {
         String template = repeat('a', 121) + "{media_id}" + repeat('b', 121);
         String first = name(template, "1234567890123456789");
@@ -137,7 +155,7 @@ public class StoryAutoSaveTest {
     private static String name(String template, String mediaId) {
         return DownloadFileNameFormatter.format(template,
                 new DownloadFileNameFormatter.Values("alice", mediaId, "", null, "image", 0, ""),
-                StoryAutoSave.nameSuffix(mediaId), ".jpg", ZoneOffset.UTC);
+                true, ".jpg", ZoneOffset.UTC);
     }
 
     private static String repeat(char c, int count) {

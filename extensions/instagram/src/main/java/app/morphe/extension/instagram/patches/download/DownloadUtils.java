@@ -539,12 +539,12 @@ public class DownloadUtils {
             PostType hint
     ) throws Exception {
         return buildMediaRequest(rootMediaData, childMediaData, postPosition, filenameIndex, mediaType, mediaUrl,
-                subFolder, fallbackFileName, variant, hint, "", null);
+                subFolder, fallbackFileName, variant, hint, false, null);
     }
 
     /**
-     * {@code nameSuffix} ends the formatted file name and is never shortened; a null {@code conflictPolicy}
-     * applies the user's setting.
+     * With {@code keepMediaId} the formatted file name ends with the whole media id; a null
+     * {@code conflictPolicy} applies the user's setting.
      */
     private static DownloadRequest buildMediaRequest(
             MediaData rootMediaData,
@@ -557,7 +557,7 @@ public class DownloadUtils {
             String fallbackFileName,
             MediaInterface variant,
             PostType hint,
-            String nameSuffix,
+            boolean keepMediaId,
             DownloadRequest.ConflictPolicy conflictPolicy
     ) throws Exception {
         boolean isVideo = mediaType.equals(MediaType.VIDEO)
@@ -599,7 +599,7 @@ public class DownloadUtils {
             fileName = DownloadFileNameFormatter.format(
                     Pref.downloadFileNameTemplate(),
                     fileNameValues,
-                    nameSuffix,
+                    keepMediaId,
                     isVideo ? ".mp4" : ".jpg",
                     ZoneId.systemDefault()
             );
@@ -998,11 +998,11 @@ public class DownloadUtils {
     }
 
     /**
-     * The request a direct story download makes for this story item, its file name ending in {@code nameSuffix}
-     * and saved with {@code conflictPolicy}, both set before its gallery target is made. Reads Instagram's
-     * objects on the caller's thread.
+     * The request a direct story download makes for this story item, its file name ending with the whole
+     * media id and saved with {@code conflictPolicy}, both set before its gallery target is made. Reads
+     * Instagram's objects on the caller's thread.
      */
-    public static DownloadRequest storyRequest(Object media, Object reel, UserSession userSession, String nameSuffix,
+    public static DownloadRequest storyRequest(Object media, Object reel, UserSession userSession,
                                                DownloadRequest.ConflictPolicy conflictPolicy) throws Exception {
         MediaData current = new MediaData(media, userSession);
         String template = Pref.downloadFileNameTemplate();
@@ -1013,7 +1013,7 @@ public class DownloadUtils {
         String username = current.getUserData().getUsername();
         return buildMediaRequest(current, item, 0, filenameIndex, MediaType.ANY, item.getMediaLink(),
                 getSubfolderName(username), username + "_" + item.getDownloadFilename(MediaType.ANY), null, PostType.STORY,
-                nameSuffix, conflictPolicy);
+                true, conflictPolicy);
     }
 
     // The toolbar uses an application context wrapper; its ancestors carry the hosting Activity.

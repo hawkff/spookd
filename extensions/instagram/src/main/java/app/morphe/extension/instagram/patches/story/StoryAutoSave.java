@@ -52,14 +52,6 @@ public final class StoryAutoSave {
         return MODE_LISTED.equals(mode) && listed;
     }
 
-    /**
-     * What auto-save ends every file name with; it survives the length limit whole, so distinct media
-     * never share a name and a taken name is the same media.
-     */
-    static String nameSuffix(String mediaId) {
-        return "_" + mediaId;
-    }
-
     /** False when media {@code mediaId} is unknown or was already taken in this process. */
     static boolean firstView(String mediaId) {
         return mediaId != null && handled.add(mediaId);
@@ -94,9 +86,9 @@ public final class StoryAutoSave {
     private static void save(Object media, Object reel, UserSession session, String mediaId) {
         try {
             if (GalleryStore.get().hasMedia(mediaId)) return;
-            // Names are unique per media, so skipping a taken name never drops or replaces other media.
+            // Names end with the whole media id, so skipping a taken name never drops or replaces other media.
             DownloadRequest request = buildOrRelease(mediaId, () -> DownloadUtils.storyRequest(media, reel, session,
-                    nameSuffix(mediaId), DownloadRequest.ConflictPolicy.SKIP));
+                    DownloadRequest.ConflictPolicy.SKIP));
             if (request == null) return;
             request.quiet = true;
             request.tracker = releaseOnFailure(request.tracker, mediaId);
