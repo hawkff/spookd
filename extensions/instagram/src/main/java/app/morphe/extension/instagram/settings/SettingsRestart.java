@@ -127,12 +127,12 @@ public final class SettingsRestart {
 
         try {
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
-                    .setTitle(str("piko_restart_app"))
-                    .setPositiveButton(str("piko_ok"), (dialog, which) -> {
+                    .setTitle(str("spookd_restart_app"))
+                    .setPositiveButton(str("spookd_ok"), (dialog, which) -> {
                         clearPendingRestart();
                         InstaUtils.restartApp(activity);
                     })
-                    .setNegativeButton(str("piko_cancel"), (dialog, which) -> {
+                    .setNegativeButton(str("spookd_cancel"), (dialog, which) -> {
                         activity.finish();
                     })
                     .setOnCancelListener(dialog -> {

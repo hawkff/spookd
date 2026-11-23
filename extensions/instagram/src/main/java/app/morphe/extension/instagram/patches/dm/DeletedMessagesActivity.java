@@ -134,7 +134,7 @@ public final class DeletedMessagesActivity {
     }
 
     private static String mediaLabel(String type, String url) {
-        if (type == null) return "[" + str("piko_media_unknown") + "]";
+        if (type == null) return "[" + str("spookd_media_unknown") + "]";
         // Instagram uses these item types for both photos and videos, including saved rows.
         if (("media".equals(type) || "raven_media".equals(type) || "visual_media".equals(type))
                 && isVideo(url, type)) {
@@ -143,16 +143,16 @@ public final class DeletedMessagesActivity {
         String label;
         switch (type) {
             case "media":
-            case "image":          label = str("piko_media_photo"); break;
-            case "video":          label = str("piko_media_video"); break;
+            case "image":          label = str("spookd_media_photo"); break;
+            case "video":          label = str("spookd_media_video"); break;
             case "voice_media":
-            case "audio":          label = str("piko_media_voice"); break;
-            case "animated_media": label = str("piko_media_gif"); break;
-            case "reel_share":     label = str("piko_media_reel"); break;
-            case "story_share":    label = str("piko_media_story"); break;
-            case "media_share":    label = str("piko_media_post"); break;
+            case "audio":          label = str("spookd_media_voice"); break;
+            case "animated_media": label = str("spookd_media_gif"); break;
+            case "reel_share":     label = str("spookd_media_reel"); break;
+            case "story_share":    label = str("spookd_media_story"); break;
+            case "media_share":    label = str("spookd_media_post"); break;
             case "clip":
-            case "xma_clip":       label = str("piko_media_reel"); break;
+            case "xma_clip":       label = str("spookd_media_reel"); break;
             default:               return "[" + type + "]";
         }
         return "[" + label + "]";
@@ -243,7 +243,7 @@ public final class DeletedMessagesActivity {
             backAction = back;
 
             toolbarTitle = new TextView(activity);
-            toolbarTitle.setText(str("piko_all_deleted_messages"));
+            toolbarTitle.setText(str("spookd_all_deleted_messages"));
             toolbarTitle.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             InstagramPreferenceStyle.applyToolbarLayout(
                     activity, toolbar, back, toolbarTitle, false);
@@ -254,7 +254,7 @@ public final class DeletedMessagesActivity {
             selectAll.setMinimumWidth(Dim.dp48);
             selectAll.setMinimumHeight(Dim.dp48);
             selectAll.setVisibility(View.GONE);
-            selectAll.setContentDescription(str("piko_all"));
+            selectAll.setContentDescription(str("spookd_all"));
 
             selectAllCheck = new SelectionCheck(
                     InstagramPreferenceStyle.dialogContext(activity), selectionControlDrawable());
@@ -262,7 +262,7 @@ public final class DeletedMessagesActivity {
                     Dim.dp48, Dim.dp48));
 
             selectAllLabel = new TextView(activity);
-            selectAllLabel.setText(str("piko_all"));
+            selectAllLabel.setText(str("spookd_all"));
             selectAllLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
             selectAllLabel.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             selectAllLabel.setGravity(Gravity.CENTER);
@@ -275,7 +275,7 @@ public final class DeletedMessagesActivity {
             selectAllAction = selectAll;
 
             TextView cancelSelection = new TextView(activity);
-            cancelSelection.setText(str("piko_cancel"));
+            cancelSelection.setText(str("spookd_cancel"));
             cancelSelection.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
             cancelSelection.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             cancelSelection.setGravity(Gravity.CENTER);
@@ -295,7 +295,7 @@ public final class DeletedMessagesActivity {
 
             FrameLayout content = new FrameLayout(activity);
             TextView empty = new TextView(activity);
-            empty.setText(str("piko_no_deleted_messages"));
+            empty.setText(str("spookd_no_deleted_messages"));
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(Dim.dp8 * 2, Dim.dp8 * 4, Dim.dp8 * 2, Dim.dp8 * 4);
             empty.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
@@ -321,7 +321,7 @@ public final class DeletedMessagesActivity {
                 } else if (body != null && body.startsWith("http")) {
                     showMediaOptions(messageId, body, type);
                 } else if (type != null && !"text".equals(type)) {
-                    Toast.makeText(activity, str("piko_media_not_available"),
+                    Toast.makeText(activity, str("spookd_media_not_available"),
                             Toast.LENGTH_SHORT).show();
                 }
             });
@@ -344,7 +344,7 @@ public final class DeletedMessagesActivity {
                     LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
 
             deleteAction = new Button(activity);
-            deleteAction.setText(str("piko_delete"));
+            deleteAction.setText(str("spookd_delete"));
             deleteAction.setAllCaps(false);
             deleteAction.setTextColor(UI.getThemedColour("igds_color_error_or_destructive"));
             deleteAction.setBackgroundTintList(null);
@@ -479,8 +479,8 @@ public final class DeletedMessagesActivity {
                 selectionToolbarVisible = selecting;
             }
             toolbarTitle.setText(selecting
-                    ? String.format(Locale.getDefault(), str("piko_selected_count"), checkedCount)
-                    : str("piko_all_deleted_messages"));
+                    ? String.format(Locale.getDefault(), str("spookd_selected_count"), checkedCount)
+                    : str("spookd_all_deleted_messages"));
             backAction.setVisibility(selecting ? View.GONE : View.VISIBLE);
             selectAllAction.setVisibility(selecting ? View.VISIBLE : View.GONE);
             selectAllCheck.setChecked(areAllSelected(
@@ -525,14 +525,14 @@ public final class DeletedMessagesActivity {
             if (selectedIds.isEmpty()) return;
 
             String prompt = String.format(Locale.getDefault(),
-                    str("piko_delete_selected_confirm"), selectedIds.size());
+                    str("spookd_delete_selected_confirm"), selectedIds.size());
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                     .setMessage(prompt)
-                    .setPositiveButton(str("piko_delete"), (dialog, which) -> {
+                    .setPositiveButton(str("spookd_delete"), (dialog, which) -> {
                         loadMessages(selectedIds, null);
                         updateSelectionUi();
                     })
-                    .setNegativeButton(str("piko_cancel"), null)
+                    .setNegativeButton(str("spookd_cancel"), null)
                     .show();
         }
 
@@ -545,16 +545,16 @@ public final class DeletedMessagesActivity {
                         || url.contains("instagram.com/p/") || url.contains("instagram.com/tv/");
 
                 final CharSequence[] options = new CharSequence[] {
-                    str("piko_download_current_media"),
-                    isShare ? str("piko_open_share_in_instagram")
-                            : isAudio ? str("piko_open_voice_with_player")
-                            : isVideo ? str("piko_open_video_externally")
-                            : str("piko_open_image_externally"),
-                    str("piko_copy_media_link"),
+                    str("spookd_download_current_media"),
+                    isShare ? str("spookd_open_share_in_instagram")
+                            : isAudio ? str("spookd_open_voice_with_player")
+                            : isVideo ? str("spookd_open_video_externally")
+                            : str("spookd_open_image_externally"),
+                    str("spookd_copy_media_link"),
                 };
 
                 new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
-                    .setTitle(str("piko_download_options"))
+                    .setTitle(str("spookd_download_options"))
                     .setItems(options, (d, which) -> {
                         try {
                             if (which == 0) {
@@ -562,7 +562,7 @@ public final class DeletedMessagesActivity {
                                 DownloadUtils.downloadMediaUrl(activity, url, Constants.DEFAULT_DM_FOLDER, fileName);
                             } else if (which == 2) {
                                 Utils.setClipboard(MediaUrls.forViewing(url));
-                                Utils.showToastShort(str("piko_copied_media_link"));
+                                Utils.showToastShort(str("spookd_copied_media_link"));
                             } else {
                                 Uri uri = Uri.parse(url);
                                 // Captured message text can also start with "http" without using a web scheme.
@@ -706,19 +706,19 @@ public final class DeletedMessagesActivity {
                 if (sender != null && !sender.isEmpty()) {
                     who = "@" + sender;
                 } else {
-                    who = str("piko_unknown");
+                    who = str("spookd_unknown");
                 }
                 senderView.setText(who);
                 boolean isMediaUrl = content != null && content.startsWith("http");
                 if (isMediaUrl) {
                     contentView.setText(mediaLabel(type, content) + "  ·  "
-                            + str(storedIds.contains(msg[0]) ? "piko_media_saved"
-                                    : isExpiredMediaUrl(content) ? "piko_media_expired" : "piko_tap_to_view"));
+                            + str(storedIds.contains(msg[0]) ? "spookd_media_saved"
+                                    : isExpiredMediaUrl(content) ? "spookd_media_expired" : "spookd_tap_to_view"));
                 } else {
                     String text = content != null && !content.isEmpty() ? content
-                            : (type != null ? "[" + type + "]" : str("piko_media_deleted_generic"));
+                            : (type != null ? "[" + type + "]" : str("spookd_media_deleted_generic"));
                     contentView.setText(storedIds.contains(msg[0])
-                            ? text + "  ·  " + str("piko_media_saved") : text);
+                            ? text + "  ·  " + str("spookd_media_saved") : text);
                 }
                 metaView.setText(timestampFormatter.format(new Date(timestamp)));
                 boolean checked = messageList.isItemChecked(position);

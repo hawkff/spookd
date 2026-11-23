@@ -21,10 +21,10 @@ final class NavigationSettingsAccessWarning {
 
     static void show(Context context, SaveAction saveAction) {
         AlertDialog warningDialog = new AlertDialog.Builder(context)
-                .setTitle(str("piko_navigation_settings_lockout_title"))
-                .setMessage(str("piko_navigation_settings_lockout_message"))
-                .setNegativeButton(str("piko_cancel"), null)
-                .setPositiveButton(str("piko_ok"), null)
+                .setTitle(str("spookd_navigation_settings_lockout_title"))
+                .setMessage(str("spookd_navigation_settings_lockout_message"))
+                .setNegativeButton(str("spookd_cancel"), null)
+                .setPositiveButton(str("spookd_ok"), null)
                 .create();
         warningDialog.setOnShowListener(ignored ->
                 warningDialog.getButton(AlertDialog.BUTTON_POSITIVE)

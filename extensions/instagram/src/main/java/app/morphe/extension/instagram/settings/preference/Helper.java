@@ -152,7 +152,7 @@ public class Helper {
 
     public Preference navigationStartupPreference(String title, String summary) {
         NavigationStartupPreference preference = new NavigationStartupPreference(context);
-        preference.setKey("piko_navigation_startup_tab");
+        preference.setKey("spookd_navigation_startup_tab");
         preference.setTitle(title);
         preference.setDialogTitle(title);
         preference.setSummary(summary);

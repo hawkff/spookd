@@ -64,17 +64,17 @@ public class Constants {
     public static final String PIKO_FRAGMENT_FONT = "piko_frag_font";
 
     public static void load() {
-        StorageUtils.setStorageAccessLauncher(ctx -> ActivityHook.launchFragment(ctx, "piko_download_set_path"));
+        StorageUtils.setStorageAccessLauncher(ctx -> ActivityHook.launchFragment(ctx, "spookd_download_set_path"));
         ExtensionStrings.setDefaultPikoFolder(Constants.DEFAULT_PIKO_FOLDER);
-        ExtensionStrings.setDownloadOngoing(str("piko_downloading_media"));
-        ExtensionStrings.setDownloadCompleted(str("piko_downloaded_media"));
-        ExtensionStrings.DOWNLOAD_MEDIA_EXISTS = str("piko_download_media_exists");
-        ExtensionStrings.DOWNLOAD_MEDIA_IN_PROGRESS = str("piko_download_media_in_progress");
+        ExtensionStrings.setDownloadOngoing(str("spookd_downloading_media"));
+        ExtensionStrings.setDownloadCompleted(str("spookd_downloaded_media"));
+        ExtensionStrings.DOWNLOAD_MEDIA_EXISTS = str("spookd_download_media_exists");
+        ExtensionStrings.DOWNLOAD_MEDIA_IN_PROGRESS = str("spookd_download_media_in_progress");
         // The downloader appends the failure reason; older translations still end with a colon.
-        ExtensionStrings.setDownloadError(str("piko_download_failed_media").replaceAll("[\\s:\\uFF1A]+$", "") + ": ");
-        ExtensionStrings.setDownloadSetPathFailed(str("piko_download_set_path_failed"));
-        ExtensionStrings.setDownloadSetPathSuccess(str("piko_download_set_path_success"));
-        ExtensionStrings.setDownloadGrantPermission(str("piko_download_choose_folder"));
-        ExtensionStrings.setDownloadGrantPermissionFailed(str("piko_download_choose_folder_failed"));
+        ExtensionStrings.setDownloadError(str("spookd_download_failed_media").replaceAll("[\\s:\\uFF1A]+$", "") + ": ");
+        ExtensionStrings.setDownloadSetPathFailed(str("spookd_download_set_path_failed"));
+        ExtensionStrings.setDownloadSetPathSuccess(str("spookd_download_set_path_success"));
+        ExtensionStrings.setDownloadGrantPermission(str("spookd_download_choose_folder"));
+        ExtensionStrings.setDownloadGrantPermissionFailed(str("spookd_download_choose_folder_failed"));
     }
 }

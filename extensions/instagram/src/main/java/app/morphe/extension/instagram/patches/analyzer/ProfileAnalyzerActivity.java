@@ -93,10 +93,10 @@ public final class ProfileAnalyzerActivity {
     static List<Object> rows(List<FollowUser> notFollowingBack, List<FollowUser> notFollowedBack,
                              List<FollowUser> mutuals, List<PikoFollowDb.Change> history) {
         List<Object> out = new ArrayList<>();
-        section(out, "piko_profile_analyzer_not_following_back", notFollowingBack);
-        section(out, "piko_profile_analyzer_not_followed_back", notFollowedBack);
-        section(out, "piko_profile_analyzer_mutuals", mutuals);
-        section(out, "piko_profile_analyzer_history", history);
+        section(out, "spookd_profile_analyzer_not_following_back", notFollowingBack);
+        section(out, "spookd_profile_analyzer_not_followed_back", notFollowedBack);
+        section(out, "spookd_profile_analyzer_mutuals", mutuals);
+        section(out, "spookd_profile_analyzer_history", history);
         return out;
     }
 
@@ -140,18 +140,18 @@ public final class ProfileAnalyzerActivity {
         boolean hadOld = oldValue != null && !oldValue.isEmpty();
         boolean hasNew = newValue != null && !newValue.isEmpty();
         switch (kind) {
-            case PikoFollowDb.NEW_FOLLOWER: return "piko_profile_analyzer_new_follower";
-            case PikoFollowDb.LOST_FOLLOWER: return "piko_profile_analyzer_lost_follower";
-            case PikoFollowDb.STARTED_FOLLOWING: return "piko_profile_analyzer_started_following";
-            case PikoFollowDb.STOPPED_FOLLOWING: return "piko_profile_analyzer_stopped_following";
+            case PikoFollowDb.NEW_FOLLOWER: return "spookd_profile_analyzer_new_follower";
+            case PikoFollowDb.LOST_FOLLOWER: return "spookd_profile_analyzer_lost_follower";
+            case PikoFollowDb.STARTED_FOLLOWING: return "spookd_profile_analyzer_started_following";
+            case PikoFollowDb.STOPPED_FOLLOWING: return "spookd_profile_analyzer_stopped_following";
             case PikoFollowDb.USERNAME:
-                return hadOld ? "piko_profile_analyzer_username_changed"
-                        : "piko_profile_analyzer_username_set";
+                return hadOld ? "spookd_profile_analyzer_username_changed"
+                        : "spookd_profile_analyzer_username_set";
             case PikoFollowDb.FULL_NAME:
-                if (!hasNew) return "piko_profile_analyzer_name_removed";
-                return hadOld ? "piko_profile_analyzer_name_changed"
-                        : "piko_profile_analyzer_name_set";
-            case PikoFollowDb.PICTURE: return "piko_profile_analyzer_picture_changed";
+                if (!hasNew) return "spookd_profile_analyzer_name_removed";
+                return hadOld ? "spookd_profile_analyzer_name_changed"
+                        : "spookd_profile_analyzer_name_set";
+            case PikoFollowDb.PICTURE: return "spookd_profile_analyzer_picture_changed";
             default: return null;
         }
     }
@@ -230,7 +230,7 @@ public final class ProfileAnalyzerActivity {
             UI.setThemedIcon(back, UI.DRAWABLE_ARROW_BACK);
             back.setOnClickListener(v -> activity.finish());
             TextView title = new TextView(activity);
-            title.setText(str("piko_profile_analyzer"));
+            title.setText(str("spookd_profile_analyzer"));
             title.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             InstagramPreferenceStyle.applyToolbarLayout(activity, toolbar, back, title, false);
             toolbar.addView(back);
@@ -249,14 +249,14 @@ public final class ProfileAnalyzerActivity {
             startAction.setOnClickListener(v -> {
                 if (sameAccount()) ProfileAnalyzer.startScan(activity);
             });
-            clearAction = actionButton(header, str("piko_profile_analyzer_clear_history"),
+            clearAction = actionButton(header, str("spookd_profile_analyzer_clear_history"),
                     InstagramPreferenceStyle.primaryTextColor());
-            clearAction.setOnClickListener(v -> confirm("piko_profile_analyzer_clear_history_confirm",
-                    "piko_profile_analyzer_clear", CLEAR_HISTORY));
-            deleteAction = actionButton(header, str("piko_profile_analyzer_delete_data"),
+            clearAction.setOnClickListener(v -> confirm("spookd_profile_analyzer_clear_history_confirm",
+                    "spookd_profile_analyzer_clear", CLEAR_HISTORY));
+            deleteAction = actionButton(header, str("spookd_profile_analyzer_delete_data"),
                     UI.getThemedColour("igds_color_error_or_destructive"));
-            deleteAction.setOnClickListener(v -> confirm("piko_profile_analyzer_delete_data_confirm",
-                    "piko_delete", DELETE_DATA));
+            deleteAction.setOnClickListener(v -> confirm("spookd_profile_analyzer_delete_data_confirm",
+                    "spookd_delete", DELETE_DATA));
 
             ListView list = new ListView(activity);
             list.addHeaderView(header, null, false);
@@ -390,7 +390,7 @@ public final class ProfileAnalyzerActivity {
                         if (job == DELETE_DATA && ProfileAnalyzer.isScanning()) return;
                         load(job, account);
                     })
-                    .setNegativeButton(str("piko_cancel"), null)
+                    .setNegativeButton(str("spookd_cancel"), null)
                     .show();
         }
 
@@ -417,7 +417,7 @@ public final class ProfileAnalyzerActivity {
                 Utils.runOnMainThread(() -> {
                     if (activity.isFinishing() || activity.isDestroyed()) return;
                     if (result == null) {
-                        PikoUtils.toast(str("piko_profile_analyzer_load_failed"));
+                        PikoUtils.toast(str("spookd_profile_analyzer_load_failed"));
                         return;
                     }
                     // A result for an account the screen no longer shows is dropped.
@@ -430,8 +430,8 @@ public final class ProfileAnalyzerActivity {
         private void bind(Loaded loaded) {
             hasScan = loaded.scan != null;
             hasHistory = loaded.hasHistory;
-            summary.setText(loaded.scan == null ? str("piko_profile_analyzer_no_scan")
-                    : str("piko_profile_analyzer_last_scan",
+            summary.setText(loaded.scan == null ? str("spookd_profile_analyzer_no_scan")
+                    : str("spookd_profile_analyzer_last_scan",
                     dateFormat.format(new Date(loaded.scan.finishedAt)),
                     ProfileAnalyzer.count(loaded.scan.followerCount),
                     ProfileAnalyzer.count(loaded.scan.followingCount)));
@@ -502,7 +502,7 @@ public final class ProfileAnalyzerActivity {
                 String name = user != null && user.username != null ? user.username : username;
                 String fullName = user != null ? user.fullName : null;
                 views.initials.setText(initials(name, fullName));
-                views.username.setText(name != null ? name : str("piko_unknown"));
+                views.username.setText(name != null ? name : str("spookd_unknown"));
                 views.verified.setVisibility(user != null && user.verified ? View.VISIBLE : View.GONE);
                 views.fullName.setText(fullName);
                 views.fullName.setVisibility(fullName != null && !fullName.isEmpty()
@@ -539,7 +539,7 @@ public final class ProfileAnalyzerActivity {
                 nameLine.addView(views.username);
                 views.verified = text(14, InstagramPreferenceStyle.selectionColor());
                 views.verified.setText("\u2713");
-                views.verified.setContentDescription(str("piko_profile_analyzer_verified"));
+                views.verified.setContentDescription(str("spookd_profile_analyzer_verified"));
                 views.verified.setPaddingRelative(Dim.dp4, 0, 0, 0);
                 nameLine.addView(views.verified);
                 column.addView(nameLine);
@@ -549,7 +549,7 @@ public final class ProfileAnalyzerActivity {
                 views.change.setPadding(0, Dim.dp4, 0, 0);
                 column.addView(views.change);
                 views.note = text(12, InstagramPreferenceStyle.secondaryTextColor());
-                views.note.setText(str("piko_profile_analyzer_lost_follower_note"));
+                views.note.setText(str("spookd_profile_analyzer_lost_follower_note"));
                 column.addView(views.note);
                 views.date = text(11, InstagramPreferenceStyle.secondaryTextColor());
                 views.date.setPadding(0, Dim.dp4, 0, 0);

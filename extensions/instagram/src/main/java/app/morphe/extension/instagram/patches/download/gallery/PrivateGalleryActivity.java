@@ -68,8 +68,8 @@ public final class PrivateGalleryActivity {
     // Serial, so a delete runs before the reload that follows it.
     private static final Executor JOBS = Executors.newSingleThreadExecutor();
     private static final GalleryTab[] TABS = GalleryTab.values();
-    private static final String[] TAB_TITLES = {"piko_gallery_tab_posts", "piko_gallery_tab_reels",
-            "piko_gallery_tab_stories", "piko_gallery_tab_dms"};
+    private static final String[] TAB_TITLES = {"spookd_gallery_tab_posts", "spookd_gallery_tab_reels",
+            "spookd_gallery_tab_stories", "spookd_gallery_tab_dms"};
 
     private PrivateGalleryActivity() {
     }
@@ -207,7 +207,7 @@ public final class PrivateGalleryActivity {
         }
 
         void showNotice() {
-            buildRoot().addView(message(str("piko_vault_needs_screen_lock")),
+            buildRoot().addView(message(str("spookd_vault_needs_screen_lock")),
                     new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
         }
 
@@ -242,7 +242,7 @@ public final class PrivateGalleryActivity {
             summary.setPadding(dp(16), dp(4), dp(16), dp(8));
             header.addView(summary, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
             exportAll = new TextView(activity);
-            exportAll.setText(str("piko_gallery_export_all"));
+            exportAll.setText(str("spookd_gallery_export_all"));
             exportAll.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
             exportAll.setTypeface(null, Typeface.BOLD);
             exportAll.setTextColor(InstagramPreferenceStyle.primaryTextColor());
@@ -275,7 +275,7 @@ public final class PrivateGalleryActivity {
             UI.setThemedIcon(back, UI.DRAWABLE_ARROW_BACK);
             back.setOnClickListener(v -> activity.finish());
             TextView title = new TextView(activity);
-            title.setText(str("piko_private_gallery"));
+            title.setText(str("spookd_private_gallery"));
             title.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             InstagramPreferenceStyle.applyToolbarLayout(activity, toolbar, back, title, false);
             toolbar.addView(back);
@@ -359,7 +359,7 @@ public final class PrivateGalleryActivity {
                     bytes += item.size;
                 }
             }
-            summary.setText(String.format(Locale.getDefault(), str("piko_gallery_summary"), count,
+            summary.setText(String.format(Locale.getDefault(), str("spookd_gallery_summary"), count,
                     Formatter.formatShortFileSize(activity, bytes)));
             if (tab == GalleryTab.DMS && !dmsShown()) tab = GalleryTab.POSTS;
             updateTabs();
@@ -397,7 +397,7 @@ public final class PrivateGalleryActivity {
             boolean empty = list == null || list.isEmpty();
             exportAll.setVisibility(empty ? View.GONE : View.VISIBLE);
             if (empty) {
-                content.addView(message(str("piko_gallery_empty")));
+                content.addView(message(str("spookd_gallery_empty")));
                 return;
             }
             int gap = dp(2);
@@ -480,8 +480,8 @@ public final class PrivateGalleryActivity {
             }
 
             void bind(Item item) {
-                setContentDescription(str(item.photo() ? "piko_media_photo"
-                        : item.video() ? "piko_media_video" : "piko_gallery_audio"));
+                setContentDescription(str(item.photo() ? "spookd_media_photo"
+                        : item.video() ? "spookd_media_video" : "spookd_gallery_audio"));
                 note.setVisibility(item.photo() || item.video() ? View.GONE : View.VISIBLE);
                 String duration = item.durationMs == null ? "" : DateUtils.formatElapsedTime(item.durationMs / 1000);
                 String badgeText = item.video() ? ("▶ " + duration).trim() : duration;
@@ -510,18 +510,18 @@ public final class PrivateGalleryActivity {
         private void showOptions(Item item) {
             List<CharSequence> labels = new ArrayList<>();
             List<Runnable> actions = new ArrayList<>();
-            labels.add(str("piko_gallery_export"));
+            labels.add(str("spookd_gallery_export"));
             actions.add(() -> export(item));
-            labels.add(str("piko_gallery_share"));
+            labels.add(str("spookd_gallery_share"));
             actions.add(() -> share(item));
-            labels.add(str("piko_delete"));
+            labels.add(str("spookd_delete"));
             actions.add(() -> confirmDelete(item));
             if (!TextUtils.isEmpty(item.link)) {
-                labels.add(str("piko_gallery_open_post"));
+                labels.add(str("spookd_gallery_open_post"));
                 actions.add(() -> view(item.link));
             }
             if (!TextUtils.isEmpty(item.ownerUsername)) {
-                labels.add(str("piko_gallery_open_profile"));
+                labels.add(str("spookd_gallery_open_profile"));
                 actions.add(() -> view(GalleryActions.profileLink(item.ownerUsername)));
             }
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
@@ -548,8 +548,8 @@ public final class PrivateGalleryActivity {
             List<Item> list = items.get(tab);
             if (list == null || list.isEmpty()) return;
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
-                    .setMessage(str("piko_gallery_export_all_confirm", list.size()))
-                    .setPositiveButton(str("piko_gallery_export"), (d, which) -> {
+                    .setMessage(str("spookd_gallery_export_all_confirm", list.size()))
+                    .setPositiveButton(str("spookd_gallery_export"), (d, which) -> {
                         try {
                             List<DownloadRequest> requests = new ArrayList<>();
                             for (Item item : list) requests.add(exportRequest(item));
@@ -558,7 +558,7 @@ public final class PrivateGalleryActivity {
                             failed("export all", e);
                         }
                     })
-                    .setNegativeButton(str("piko_cancel"), null)
+                    .setNegativeButton(str("spookd_cancel"), null)
                     .show();
         }
 
@@ -600,14 +600,14 @@ public final class PrivateGalleryActivity {
         /** Any thread. */
         private static void failed(String action, Exception e) {
             Logger.printException(() -> "Private gallery: cannot " + action, e);
-            Utils.showToastShort(str("piko_gallery_action_failed"));
+            Utils.showToastShort(str("spookd_gallery_action_failed"));
         }
 
         private void confirmDelete(Item item) {
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
-                    .setMessage(str("piko_gallery_delete_confirm"))
-                    .setPositiveButton(str("piko_delete"), (d, which) -> delete(item))
-                    .setNegativeButton(str("piko_cancel"), null)
+                    .setMessage(str("spookd_gallery_delete_confirm"))
+                    .setPositiveButton(str("spookd_delete"), (d, which) -> delete(item))
+                    .setNegativeButton(str("spookd_cancel"), null)
                     .show();
         }
 

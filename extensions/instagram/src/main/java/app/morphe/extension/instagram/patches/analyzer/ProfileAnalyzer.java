@@ -35,12 +35,12 @@ public final class ProfileAnalyzer {
     static final String NOTIFICATION_CHANNEL_ID = "piko_profile_analyzer";
     private static final int NOTIFICATION_ID = 0x70f11e;
 
-    static final String ROW_START = "piko_profile_analyzer_start";
-    static final String ROW_SCANNING = "piko_profile_analyzer_scanning";
-    static final String ROW_PAUSED = "piko_profile_analyzer_paused";
-    static final String ROW_NEXT_SCAN = "piko_profile_analyzer_next_scan";
-    static final String ROW_OPEN_PROFILE = "piko_profile_analyzer_open_profile";
-    static final String ROW_TOO_MANY = "piko_profile_analyzer_too_many";
+    static final String ROW_START = "spookd_profile_analyzer_start";
+    static final String ROW_SCANNING = "spookd_profile_analyzer_scanning";
+    static final String ROW_PAUSED = "spookd_profile_analyzer_paused";
+    static final String ROW_NEXT_SCAN = "spookd_profile_analyzer_next_scan";
+    static final String ROW_OPEN_PROFILE = "spookd_profile_analyzer_open_profile";
+    static final String ROW_TOO_MANY = "spookd_profile_analyzer_too_many";
 
     /** Follower and following counts from an own profile header. */
     static final class Counts {
@@ -175,7 +175,7 @@ public final class ProfileAnalyzer {
             if (refusal == FollowScan.Refusal.TOO_MANY_ACCOUNTS) {
                 Utils.showToastLong(str(ROW_TOO_MANY));
             } else if (refusal == FollowScan.Refusal.ALREADY_RUNNING) {
-                Utils.showToastShort(str("piko_profile_analyzer_running"));
+                Utils.showToastShort(str("spookd_profile_analyzer_running"));
             } else if (refusal == FollowScan.Refusal.TOO_SOON) {
                 Utils.showToastLong(str(ROW_NEXT_SCAN,
                         time(activity, engine.nextAllowedStart(accountId))));
@@ -279,9 +279,9 @@ public final class ProfileAnalyzer {
             followers = followersReceived;
         }
         if (state == FollowScan.State.FINISHED) {
-            Utils.showToastLong(str("piko_profile_analyzer_finished", count(followers), count(received)));
+            Utils.showToastLong(str("spookd_profile_analyzer_finished", count(followers), count(received)));
         } else if (state == FollowScan.State.FAILED) {
-            Utils.showToastLong(str("piko_profile_analyzer_failed"));
+            Utils.showToastLong(str("spookd_profile_analyzer_failed"));
         }
         String text = null;
         if (state == FollowScan.State.PAUSED) {
@@ -307,14 +307,14 @@ public final class ProfileAnalyzer {
             if (!manager.areNotificationsEnabled()) return;
             if (!channelCreated) {
                 manager.createNotificationChannel(new NotificationChannel(NOTIFICATION_CHANNEL_ID,
-                        str("piko_profile_analyzer"), NotificationManager.IMPORTANCE_LOW));
+                        str("spookd_profile_analyzer"), NotificationManager.IMPORTANCE_LOW));
                 channelCreated = true;
             }
             int icon = context.getApplicationInfo().icon;
             int max = Math.max(expected, received);
             Notification notification = new Notification.Builder(context, NOTIFICATION_CHANNEL_ID)
                     .setSmallIcon(icon != 0 ? icon : android.R.drawable.stat_sys_download)
-                    .setContentTitle(str("piko_profile_analyzer"))
+                    .setContentTitle(str("spookd_profile_analyzer"))
                     .setContentText(text)
                     .setProgress(max, received, max == 0)
                     .setOngoing(true)
@@ -328,8 +328,8 @@ public final class ProfileAnalyzer {
     }
 
     private static String progress(int list, int received, int expected) {
-        return str(list == PikoFollowDb.LIST_FOLLOWERS ? "piko_profile_analyzer_followers_progress"
-                : "piko_profile_analyzer_following_progress", count(received), count(expected));
+        return str(list == PikoFollowDb.LIST_FOLLOWERS ? "spookd_profile_analyzer_followers_progress"
+                : "spookd_profile_analyzer_following_progress", count(received), count(expected));
     }
 
     static String count(int value) {

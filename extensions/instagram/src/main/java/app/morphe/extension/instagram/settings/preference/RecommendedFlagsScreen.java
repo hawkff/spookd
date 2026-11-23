@@ -42,11 +42,11 @@ public final class RecommendedFlagsScreen {
     }
 
     public static String titleKey(String name) {
-        if (MODIFIED.equals(name)) return "piko_rec_flags_modified";
+        if (MODIFIED.equals(name)) return "spookd_rec_flags_modified";
         for (Flag.Category category : Flag.Category.values()) {
             if (fragmentName(category).equals(name)) return category.titleKey();
         }
-        return "piko_category_rec_flags";
+        return "spookd_category_rec_flags";
     }
 
     public static void build(Context context, PreferenceScreen screen, String name, boolean forSearch,
@@ -56,7 +56,7 @@ public final class RecommendedFlagsScreen {
             if (!forSearch) {
                 for (Flag flag : flags) {
                     if (flag.isModified()) {
-                        screen.addPreference(helper.categoryPreference(str("piko_rec_flags_modified"), "", MODIFIED));
+                        screen.addPreference(helper.categoryPreference(str("spookd_rec_flags_modified"), "", MODIFIED));
                         break;
                     }
                 }
@@ -70,16 +70,16 @@ public final class RecommendedFlagsScreen {
                 }
             }
             long lastModified = RecommendedFlags.getLastModified();
-            String summary = str("piko_rec_flags_download_hint");
+            String summary = str("spookd_rec_flags_download_hint");
             if (lastModified > 0L) {
                 Locale locale = context.getResources().getConfiguration().getLocales().get(0);
                 String skeleton = DateFormat.is24HourFormat(context) ? "yMMMEdHm" : "yMMMEdhm";
                 String pattern = DateFormat.getBestDateTimePattern(locale, skeleton);
-                summary = str("piko_rec_flags_last_modified_at",
+                summary = str("spookd_rec_flags_last_modified_at",
                         new SimpleDateFormat(pattern, locale).format(new Date(lastModified)));
             }
-            screen.addPreference(helper.buttonPreference(str("piko_rec_flags_refresh_file"), summary,
-                    "piko_rec_flags_refresh_file"));
+            screen.addPreference(helper.buttonPreference(str("spookd_rec_flags_refresh_file"), summary,
+                    "spookd_rec_flags_refresh_file"));
             return;
         }
         for (Flag flag : flags) {
@@ -88,7 +88,7 @@ public final class RecommendedFlagsScreen {
             }
         }
         if (screen.getPreferenceCount() == 0) {
-            Preference empty = helper.buttonPreference(str("piko_settings_search_no_results"), "", null);
+            Preference empty = helper.buttonPreference(str("spookd_settings_search_no_results"), "", null);
             empty.setSelectable(false);
             screen.addPreference(empty);
         }

@@ -28,7 +28,7 @@ public final class FocusLockDuration {
 
     private static int[] steps() {
         try {
-            CharSequence[] values = ResourceUtils.getStringArray("piko_array_focus_lock_duration_val");
+            CharSequence[] values = ResourceUtils.getStringArray("spookd_array_focus_lock_duration_val");
             if (values != null && values.length > 0) {
                 int[] steps = new int[values.length];
                 for (int i = 0; i < values.length; i++) {
@@ -78,7 +78,7 @@ public final class FocusLockDuration {
 
     public static String labelForStep(int step) {
         try {
-            CharSequence[] labels = ResourceUtils.getStringArray("piko_array_focus_lock_duration");
+            CharSequence[] labels = ResourceUtils.getStringArray("spookd_array_focus_lock_duration");
             if (labels != null && step >= 0 && step < labels.length) return labels[step].toString();
         } catch (Exception ignored) {
             // Fall through to the raw minutes.

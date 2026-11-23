@@ -40,21 +40,21 @@ public class FocusLockDialogs {
 
     private static void confirmLock(Context context) {
         if (!FocusLock.hasSelection()) {
-            PikoUtils.toast(str("piko_focus_lock_nothing_selected"));
+            PikoUtils.toast(str("spookd_focus_lock_nothing_selected"));
             return;
         }
         String message = String.format(
-                str("piko_focus_lock_confirm_lock_desc"),
+                str("spookd_focus_lock_confirm_lock_desc"),
                 FocusLockDuration.summary(),
                 FocusLock.COOLING_OFF_MS / (60 * 60 * 1000)
         );
         new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(context))
-                .setTitle(str("piko_focus_lock_confirm_lock"))
+                .setTitle(str("spookd_focus_lock_confirm_lock"))
                 .setMessage(message)
-                .setNegativeButton(str("piko_cancel"), null)
-                .setPositiveButton(str("piko_ok"), (d, w) -> {
+                .setNegativeButton(str("spookd_cancel"), null)
+                .setPositiveButton(str("spookd_ok"), (d, w) -> {
                     if (FocusLock.lock()) {
-                        PikoUtils.toast(str("piko_focus_lock_locked_toast"));
+                        PikoUtils.toast(str("spookd_focus_lock_locked_toast"));
                         // Some hooks read preferences once at class-load time, so restart.
                         InstaUtils.restartApp(Utils.getContext());
                     }
@@ -64,14 +64,14 @@ public class FocusLockDialogs {
 
     private static void confirmRequestUnlock(Context context, Preference button) {
         String message = String.format(
-                str("piko_focus_lock_confirm_request_unlock_desc"),
+                str("spookd_focus_lock_confirm_request_unlock_desc"),
                 FocusLock.COOLING_OFF_MS / (60 * 60 * 1000)
         );
         new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(context))
-                .setTitle(str("piko_focus_lock_confirm_request_unlock"))
+                .setTitle(str("spookd_focus_lock_confirm_request_unlock"))
                 .setMessage(message)
-                .setNegativeButton(str("piko_cancel"), null)
-                .setPositiveButton(str("piko_ok"), (d, w) -> {
+                .setNegativeButton(str("spookd_cancel"), null)
+                .setPositiveButton(str("spookd_ok"), (d, w) -> {
                     FocusLock.requestUnlock();
                     refresh(button);
                 })
@@ -80,10 +80,10 @@ public class FocusLockDialogs {
 
     private static void confirmUnlock(Context context) {
         new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(context))
-                .setTitle(str("piko_focus_lock_confirm_unlock"))
-                .setMessage(str("piko_focus_lock_confirm_unlock_desc"))
-                .setNegativeButton(str("piko_cancel"), null)
-                .setPositiveButton(str("piko_ok"), (d, w) -> {
+                .setTitle(str("spookd_focus_lock_confirm_unlock"))
+                .setMessage(str("spookd_focus_lock_confirm_unlock_desc"))
+                .setNegativeButton(str("spookd_cancel"), null)
+                .setPositiveButton(str("spookd_ok"), (d, w) -> {
                     if (FocusLock.unlock()) {
                         InstaUtils.restartApp(Utils.getContext());
                     }

@@ -40,10 +40,10 @@ public final class RecommendedFlagPreference {
     private static CharSequence summary(Flag flag, String value, boolean showCategory) {
         boolean modified = value != null && !value.isEmpty()
                 && !FlagState.DEFAULT.toString().equals(value);
-        String label = str("piko_array_default");
+        String label = str("spookd_array_default");
         if (modified) {
             label = flag.isLongType() ? value : str(FlagState.ENABLE.toString().equals(value)
-                    ? "piko_array_recmd_flag_state_enable" : "piko_array_recmd_flag_state_disable");
+                    ? "spookd_array_recmd_flag_state_enable" : "spookd_array_recmd_flag_state_disable");
         }
         SpannableStringBuilder text = new SpannableStringBuilder(label);
         if (modified) {
@@ -99,7 +99,7 @@ public final class RecommendedFlagPreference {
                 try {
                     Long.parseLong(value);
                 } catch (NumberFormatException exception) {
-                    Utils.showToastShort(str("piko_rec_flags_invalid_number"));
+                    Utils.showToastShort(str("spookd_rec_flags_invalid_number"));
                     return;
                 }
             }
@@ -109,7 +109,7 @@ public final class RecommendedFlagPreference {
         @Override
         protected void onPrepareDialogBuilder(AlertDialog.Builder builder) {
             super.onPrepareDialogBuilder(builder);
-            builder.setNeutralButton(str("piko_array_default"),
+            builder.setNeutralButton(str("spookd_array_default"),
                     (dialog, which) -> save(FlagState.DEFAULT.toString()));
         }
 

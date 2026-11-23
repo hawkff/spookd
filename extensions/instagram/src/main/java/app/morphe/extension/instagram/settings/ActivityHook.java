@@ -265,12 +265,12 @@ public class ActivityHook {
 
     public static void launchFragment(Context ctx, String bundleKey) {
         String launchType;
-        if (bundleKey.equals("piko_export_dev_overrides") || bundleKey.equals("piko_export_pref")) {
+        if (bundleKey.equals("spookd_export_dev_overrides") || bundleKey.equals("spookd_export_pref")) {
             launchType = LAUNCH_TYPE_BACKUP;
-        } else if (bundleKey.equals("piko_import_dev_overrides") || bundleKey.equals("piko_import_id_mapping")
-                || bundleKey.equals("piko_import_pref") || bundleKey.equals("piko_pref_add_font")) {
+        } else if (bundleKey.equals("spookd_import_dev_overrides") || bundleKey.equals("spookd_import_id_mapping")
+                || bundleKey.equals("spookd_import_pref") || bundleKey.equals("spookd_pref_add_font")) {
             launchType = LAUNCH_TYPE_RESTORE;
-        } else if (bundleKey.equals("piko_download_set_path")) {
+        } else if (bundleKey.equals("spookd_download_set_path")) {
             launchType = LAUNCH_TYPE_FOLDER_PICKER;
         } else {
             return;
@@ -284,10 +284,10 @@ public class ActivityHook {
 
     public static void handleUrlIntent(Boolean isVideo, String mediaUrl) {
         String dataType = "image/*";
-        String exportHeaderString = str("piko_open_image_with");
+        String exportHeaderString = str("spookd_open_image_with");
         if (isVideo) {
             dataType = "video/*";
-            exportHeaderString = str("piko_open_video_with");
+            exportHeaderString = str("spookd_open_video_with");
         }
 
         Uri uri = Uri.parse(mediaUrl);

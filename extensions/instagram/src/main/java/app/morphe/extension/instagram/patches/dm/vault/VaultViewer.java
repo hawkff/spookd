@@ -80,7 +80,7 @@ public final class VaultViewer extends Dialog {
             }
             // InboxLock drops a request while any prompt is up and keeps that prompt's callback.
             if (InboxLock.isPrompting()) {
-                Utils.showToastShort(str("piko_vault_finish_unlocking"));
+                Utils.showToastShort(str("spookd_vault_finish_unlocking"));
                 return;
             }
             Object request = new Object();
@@ -136,7 +136,7 @@ public final class VaultViewer extends Dialog {
             shown.put(activity, viewer);
             viewer.show();
             if (source == null) {
-                viewer.showText(str("piko_vault_needs_screen_lock"));
+                viewer.showText(str("spookd_vault_needs_screen_lock"));
             } else {
                 LOADER.execute(() -> viewer.load(source));
             }
@@ -176,7 +176,7 @@ public final class VaultViewer extends Dialog {
         try {
             Opened stored = source.call();
             if (stored == null) {
-                Utils.runOnMainThread(() -> showText(str("piko_media_unreadable")));
+                Utils.runOnMainThread(() -> showText(str("spookd_media_unreadable")));
                 return;
             }
             if (!adopt(stored.file)) {
@@ -186,7 +186,7 @@ public final class VaultViewer extends Dialog {
             if ("photo".equals(stored.kind)) {
                 Bitmap bitmap = decode(stored.file);
                 Utils.runOnMainThread(() -> {
-                    if (bitmap == null) showText(str("piko_media_unreadable"));
+                    if (bitmap == null) showText(str("spookd_media_unreadable"));
                     else showPhoto(bitmap);
                 });
             } else {
@@ -195,7 +195,7 @@ public final class VaultViewer extends Dialog {
             }
         } catch (Exception | OutOfMemoryError e) {
             Logger.printException(() -> "VaultViewer: cannot open media", e);
-            Utils.runOnMainThread(() -> showText(str("piko_media_unreadable")));
+            Utils.runOnMainThread(() -> showText(str("spookd_media_unreadable")));
         }
     }
 
@@ -260,7 +260,7 @@ public final class VaultViewer extends Dialog {
             media.setDataSource(new Source(vault));
         } catch (RuntimeException e) {
             Logger.printException(() -> "VaultViewer: player rejected the media", e);
-            showText(str("piko_media_unreadable"));
+            showText(str("spookd_media_unreadable"));
             return;
         }
         media.setOnErrorListener((mp, what, extra) -> {
@@ -268,7 +268,7 @@ public final class VaultViewer extends Dialog {
             prepared = false;
             if (controller != null) controller.hide();
             controller = null;
-            showText(str("piko_media_unreadable"));
+            showText(str("spookd_media_unreadable"));
             return true;
         });
         if (video) {

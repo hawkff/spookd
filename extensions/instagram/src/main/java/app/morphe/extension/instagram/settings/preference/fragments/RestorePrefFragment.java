@@ -70,19 +70,19 @@ public class RestorePrefFragment extends Fragment {
         Bundle args = getArguments();
 
         if (args != null) {
-            if (args.containsKey("piko_import_dev_overrides")) {
+            if (args.containsKey("spookd_import_dev_overrides")) {
                 destinationFile = new File(context.getFilesDir() + "/mobileconfig", "mc_overrides.json");
-            } else if (args.containsKey("piko_import_id_mapping")) {
+            } else if (args.containsKey("spookd_import_id_mapping")) {
                 destinationFile = new File(context.getFilesDir() + "/mobileconfig", "id_name_mapping.json");
-            } else if (args.containsKey("piko_import_pref")) {
+            } else if (args.containsKey("spookd_import_pref")) {
                 // Importing an older settings file would drop an active Focus Lock.
                 if (FocusLock.isActive()) {
-                    toast(str("piko_focus_lock_blocked_action"));
+                    toast(str("spookd_focus_lock_blocked_action"));
                     finishHost();
                     return;
                 }
                 destinationFile = new File(context.getApplicationInfo().dataDir + "/shared_prefs", Constants.PIKO_SETTINGS + ".xml");
-            } else if (args.containsKey("piko_pref_add_font")) {
+            } else if (args.containsKey("spookd_pref_add_font")) {
                 // FontStorage decides where the font goes, and validates it first.
                 isFontImport = true;
             }
@@ -90,13 +90,13 @@ public class RestorePrefFragment extends Fragment {
         if (savedInstanceState == null) {
             if (destinationFile != null || isFontImport) {
                 // An imported file can turn Inbox lock off, so it has to be confirmed first while the lock is up.
-                if (args != null && args.containsKey("piko_import_pref") && getActivity() != null) {
+                if (args != null && args.containsKey("spookd_import_pref") && getActivity() != null) {
                     InboxLock.confirmIfLocked(getActivity(), this::requestFileForRestore, this::finishHost);
                 } else {
                     requestFileForRestore();
                 }
             } else {
-                toast(str("piko_import_fail"));
+                toast(str("spookd_import_fail"));
                 finishHost();
             }
         }
@@ -114,8 +114,8 @@ public class RestorePrefFragment extends Fragment {
         } catch (Exception e) {
             Logger.printException(() -> "requestFileForRestore failure", e);
             toast(str(e instanceof ActivityNotFoundException
-                    ? "piko_file_picker_unavailable"
-                    : "piko_import_fail"));
+                    ? "spookd_file_picker_unavailable"
+                    : "spookd_import_fail"));
             finishHost();
         }
     }
@@ -131,16 +131,16 @@ public class RestorePrefFragment extends Fragment {
             mainHandler.post(() -> {
                 switch (result) {
                     case ADDED:
-                        toast(str("piko_pref_add_font_success"));
+                        toast(str("spookd_pref_add_font_success"));
                         break;
                     case NOT_A_FONT:
-                        toast(str("piko_pref_add_font_invalid"));
+                        toast(str("spookd_pref_add_font_invalid"));
                         break;
                     case TOO_LARGE:
-                        toast(str("piko_pref_add_font_too_large"));
+                        toast(str("spookd_pref_add_font_too_large"));
                         break;
                     default:
-                        toast(str("piko_pref_add_font_fail"));
+                        toast(str("spookd_pref_add_font_fail"));
                         break;
                 }
                 finishHost();
@@ -173,7 +173,7 @@ public class RestorePrefFragment extends Fragment {
             // Don't touch the current file unless the whole picked file is what we restore.
             if (!isValidRestoreFile(tempFile)) {
                 tempFile.delete();
-                toast(str("piko_import_fail"));
+                toast(str("spookd_import_fail"));
                 return;
             }
             // A pending apply() would otherwise overwrite the restored file before the restart.
@@ -184,12 +184,12 @@ public class RestorePrefFragment extends Fragment {
                 throw new IOException("Could not replace " + destinationFile);
             }
 
-            toast(str("piko_import_success"));
+            toast(str("spookd_import_success"));
             mainHandler.post(() -> InstaUtils.restartApp(ctx));
 
         } catch (Exception e) {
             if (tempFile != null) tempFile.delete();
-            toast(str("piko_import_fail"));
+            toast(str("spookd_import_fail"));
             Logger.printException(() -> "import failure", e);
         }
     }
@@ -297,7 +297,7 @@ public class RestorePrefFragment extends Fragment {
             Uri uri = intent.getData();
             Context ctx = getActivity() != null ? getActivity() : context;
             if (uri == null) {
-                toast(str("piko_fail_no_path"));
+                toast(str("spookd_fail_no_path"));
             } else if (isFontImport) {
                 // Finishes itself once the font is imported off the main thread.
                 receiveFont(ctx, uri);

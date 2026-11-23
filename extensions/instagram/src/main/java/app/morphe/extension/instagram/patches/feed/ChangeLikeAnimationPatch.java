@@ -106,7 +106,7 @@ public class ChangeLikeAnimationPatch {
         for (Object value : animationClass().getEnumConstants()) {
             available.add(((Enum<?>) value).name());
         }
-        for (String name : ResourceUtils.getStringArray("piko_array_change_like_animation_val")) {
+        for (String name : ResourceUtils.getStringArray("spookd_array_change_like_animation_val")) {
             if (DEFAULT.equals(name) || RANDOM.equals(name)) continue;
             if (available.contains(name)) candidates.add(name);
         }

@@ -49,14 +49,14 @@ public class RecommendedFlags {
         try{
             File recFlagsFile = getRecommendedFlagsFile();
             if (!recFlagsFile.exists()) {
-                if (notifyErrors) PikoUtils.toast(str("piko_rec_flags_no_file"));
+                if (notifyErrors) PikoUtils.toast(str("spookd_rec_flags_no_file"));
             } else {
                 String data = PikoUtils.readFile(recFlagsFile);
                 return new JSONArray(data);
             }
         } catch (Exception e) {
             PikoUtils.logger(e);
-            if (notifyErrors) PikoUtils.toast(str("piko_rec_flags_read_error"));
+            if (notifyErrors) PikoUtils.toast(str("spookd_rec_flags_read_error"));
         }
         return new JSONArray();
     }
@@ -75,7 +75,7 @@ public class RecommendedFlags {
             }
         } catch (Exception e) {
             PikoUtils.logger(e);
-            if (notifyErrors) PikoUtils.toast(str("piko_rec_flags_read_error"));
+            if (notifyErrors) PikoUtils.toast(str("spookd_rec_flags_read_error"));
         }
         return flags;
     }

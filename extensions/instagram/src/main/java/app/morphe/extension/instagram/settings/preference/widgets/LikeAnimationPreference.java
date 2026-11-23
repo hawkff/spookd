@@ -61,12 +61,12 @@ public final class LikeAnimationPreference extends ListPref {
 
         preview = new ImageView(context);
         preview.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        preview.setContentDescription(str("piko_like_animation_preview"));
+        preview.setContentDescription(str("spookd_like_animation_preview"));
         header.addView(preview, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, InstagramPreferenceStyle.dp(context, 128)));
 
         unavailablePreview = new TextView(context);
-        unavailablePreview.setText(str("piko_like_animation_preview_unavailable"));
+        unavailablePreview.setText(str("spookd_like_animation_preview_unavailable"));
         unavailablePreview.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
         unavailablePreview.setGravity(Gravity.CENTER);
         unavailablePreview.setVisibility(View.GONE);
@@ -92,7 +92,7 @@ public final class LikeAnimationPreference extends ListPref {
     private void playPreview() {
         if (preview == null) return;
         stopPreview();
-        preview.setContentDescription(str("piko_like_animation_preview"));
+        preview.setContentDescription(str("spookd_like_animation_preview"));
         String selection = getEntryValues()[selectedIndex].toString();
         try {
             String name = ChangeLikeAnimationPatch.previewAnimation(selection);

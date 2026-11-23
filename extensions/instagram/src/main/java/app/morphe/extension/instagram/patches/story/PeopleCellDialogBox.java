@@ -32,8 +32,8 @@ public class PeopleCellDialogBox {
                                        @Nullable ArrayList<IgdsPeopleCell> peopleCells,
                                        @Nullable DialogInterface.OnDismissListener onDismiss) {
         InstagramDialogBox builder = new InstagramDialogBox(context);
-        builder.setTitle(str("piko_vsm_title"));
-        builder.setNegativeButton(str("piko_close"), (dialog, which) -> dialog.dismiss());
+        builder.setTitle(str("spookd_vsm_title"));
+        builder.setNegativeButton(str("spookd_close"), (dialog, which) -> dialog.dismiss());
         builder.setCancelable(true);
         builder.setCanceledOnTouchOutside(true);
 
@@ -48,7 +48,7 @@ public class PeopleCellDialogBox {
             }
             builder.addDialogMenuItems(names, (dialog, which) -> peopleCells.get(which).performClick());
         } else {
-            builder.setMessage(str("piko_vsm_no_mentions"));
+            builder.setMessage(str("spookd_vsm_no_mentions"));
         }
 
         builder.setOnDismissListener(onDismiss);

@@ -362,16 +362,16 @@ public class SavedMessagesHook {
 
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 android.app.NotificationChannel channel = new android.app.NotificationChannel(
-                        NOTIFICATION_CHANNEL_ID, str("piko_deleted_messages_channel"),
+                        NOTIFICATION_CHANNEL_ID, str("spookd_deleted_messages_channel"),
                         android.app.NotificationManager.IMPORTANCE_DEFAULT);
-                channel.setDescription(str("piko_deleted_messages_channel_desc"));
+                channel.setDescription(str("spookd_deleted_messages_channel_desc"));
                 manager.createNotificationChannel(channel);
             }
 
-            String who = !isBlank(sender) ? sender : str("piko_someone");
+            String who = !isBlank(sender) ? sender : str("spookd_someone");
             String body = !isBlank(content)
                     ? content
-                    : !isBlank(type) ? "[" + type + "]" : str("piko_media_deleted_generic");
+                    : !isBlank(type) ? "[" + type + "]" : str("spookd_media_deleted_generic");
 
             Intent intent = ActivityHook.createDeletedMessagesIntent(context);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -389,7 +389,7 @@ public class SavedMessagesHook {
             android.app.Notification notification = builder
                     .setSmallIcon(icon != 0 ? icon : android.R.drawable.ic_dialog_info)
                     .setCategory(android.app.Notification.CATEGORY_MESSAGE)
-                    .setContentTitle(String.format(str("piko_deleted_a_message"), who))
+                    .setContentTitle(String.format(str("spookd_deleted_a_message"), who))
                     .setContentText(body)
                     .setAutoCancel(true)
                     .setContentIntent(pendingIntent)
@@ -403,7 +403,7 @@ public class SavedMessagesHook {
     }
 
     private static String describeMediaType(String type, String url) {
-        if (type == null) return str("piko_media_deleted_generic");
+        if (type == null) return str("spookd_media_deleted_generic");
         if (("media".equals(type) || "raven_media".equals(type) || "visual_media".equals(type))
                 && MediaUrls.isVideo(url)) {
             type = "video";
@@ -411,21 +411,21 @@ public class SavedMessagesHook {
         String label;
         switch (type) {
             case "media":
-            case "image":           label = str("piko_media_photo"); break;
-            case "raven_media":     label = str("piko_media_disappearing_photo"); break;
-            case "video":           label = str("piko_media_video"); break;
+            case "image":           label = str("spookd_media_photo"); break;
+            case "raven_media":     label = str("spookd_media_disappearing_photo"); break;
+            case "video":           label = str("spookd_media_video"); break;
             case "voice_media":
-            case "audio":           label = str("piko_media_voice"); break;
-            case "animated_media":  label = str("piko_media_gif"); break;
-            case "reel_share":      label = str("piko_media_reel"); break;
-            case "story_share":     label = str("piko_media_story"); break;
-            case "media_share":     label = str("piko_media_post"); break;
-            case "like":            label = str("piko_media_like"); break;
-            case "link":            label = str("piko_media_link"); break;
-            case "action_log":      label = str("piko_media_activity"); break;
+            case "audio":           label = str("spookd_media_voice"); break;
+            case "animated_media":  label = str("spookd_media_gif"); break;
+            case "reel_share":      label = str("spookd_media_reel"); break;
+            case "story_share":     label = str("spookd_media_story"); break;
+            case "media_share":     label = str("spookd_media_post"); break;
+            case "like":            label = str("spookd_media_like"); break;
+            case "link":            label = str("spookd_media_link"); break;
+            case "action_log":      label = str("spookd_media_activity"); break;
             default:                 label = type; break;
         }
-        return String.format(str("piko_media_deleted"), label);
+        return String.format(str("spookd_media_deleted"), label);
     }
 
     /** Deletes stored media, rows and their cached text on the worker and waits; never call from the main thread. */

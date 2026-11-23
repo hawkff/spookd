@@ -740,7 +740,7 @@ public final class SettingsActivity {
                     .registerOnSharedPreferenceChangeListener(dependencyListener);
             helper.updateDependencies(getPreferenceScreen());
             refreshPreferenceSummary(
-                    "piko_download_set_path",
+                    "spookd_download_set_path",
                     StorageUtils::getCustomPathForDisplay
             );
             Preference preference = findPreference(Settings.AMOLED_THEME.key);

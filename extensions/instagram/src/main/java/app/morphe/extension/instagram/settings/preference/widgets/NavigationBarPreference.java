@@ -30,7 +30,7 @@ public class NavigationBarPreference extends Preference {
         AlertDialog dialog = new AlertDialog.Builder(dialogContext)
                 .setTitle(getTitle())
                 .setAdapter(adapter, null)
-                .setNeutralButton(str("piko_reset"), null)
+                .setNeutralButton(str("spookd_reset"), null)
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(android.R.string.ok, null)
                 .create();

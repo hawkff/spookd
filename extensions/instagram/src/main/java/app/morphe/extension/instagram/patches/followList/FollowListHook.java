@@ -84,7 +84,7 @@ public class FollowListHook {
             badge.setColorFilter(new PorterDuffColorFilter(iconColor, PorterDuff.Mode.SRC_ATOP));
             ((GradientDrawable) badge.getBackground()).setColor(
                     themedColor(context, "igds_color_primary_background"));
-            badge.setContentDescription(str("piko_fbi_doesnt_follows_you"));
+            badge.setContentDescription(str("spookd_fbi_doesnt_follows_you"));
             FriendshipStatusIndicator.setStatusClickListener(badge, friendshipStatus);
             badge.setVisibility(View.VISIBLE);
         } catch (Exception e) {

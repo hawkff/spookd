@@ -40,7 +40,7 @@ public class Flag {
         }
 
         public String titleKey() {
-            return this == SEARCH ? "piko_navigation_tab_search" : "piko_rec_flags_category_" + id;
+            return this == SEARCH ? "spookd_navigation_tab_search" : "spookd_rec_flags_category_" + id;
         }
 
         public static Category fromId(String id) {
@@ -85,9 +85,9 @@ public class Flag {
                     hash.append(Character.forDigit((digest[i] & 0xff) >>> 4, 16));
                     hash.append(Character.forDigit(digest[i] & 0xf, 16));
                 }
-                prefix = "piko_rec_flag_group_" + hash;
+                prefix = "spookd_rec_flag_group_" + hash;
             } else {
-                prefix = "piko_rec_flag_" + codeKey.replace("::", "_");
+                prefix = "spookd_rec_flag_" + codeKey.replace("::", "_");
             }
             Context context = IgStr.baseContext();
             Resources resources = context.getResources();
