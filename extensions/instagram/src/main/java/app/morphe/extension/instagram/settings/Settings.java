@@ -60,7 +60,7 @@ public class Settings {
     public static final BooleanSetting CONFIRM_REPOST = new BooleanSetting("confirm_repost", false, NOT_REQUIRED);
     public static final BooleanSetting CONFIRM_COMMENT = new BooleanSetting("confirm_comment", false, NOT_REQUIRED);
     public static final BooleanSetting CONFIRM_UNFOLLOW = new BooleanSetting("confirm_unfollow", false, NOT_REQUIRED);
-    public static final BooleanSetting CONFIRM_STORY_LIKE = new BooleanSetting("confirm_story_like", false, NOT_REQUIRED);
+    public static final BooleanSetting CONFIRM_STORY_LIKE = new BooleanSetting("confirm_story_like", false, REQUIRED);
     public static final BooleanSetting CONFIRM_CALL = new BooleanSetting("confirm_call", false, NOT_REQUIRED);
     public static final BooleanSetting CONFIRM_FOLLOW_REQUEST = new BooleanSetting("confirm_follow_request", false, NOT_REQUIRED);
     public static final BooleanSetting VIEW_STORY_MENTIONS = new BooleanSetting("view_story_mentions", true, REQUIRED);
