@@ -24,7 +24,7 @@ import java.util.List;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 29, manifest = Config.NONE)
-public final class PikoMessageDbMigrationTest {
+public final class SpookdMessageDbMigrationTest {
     private static final String DB_NAME = "piko_dm_vault.db";
 
     @Test
@@ -33,7 +33,7 @@ public final class PikoMessageDbMigrationTest {
         createV4(context, false);
         List<String> before = dump(context);
 
-        PikoMessageDb helper = newHelper(context);
+        SpookdMessageDb helper = newHelper(context);
         SQLiteDatabase db = helper.getWritableDatabase();
         assertEquals(5, db.getVersion());
         assertEquals(Arrays.asList("id", "item_id", "account_id", "kind", "url", "url_expires_at",
@@ -51,7 +51,7 @@ public final class PikoMessageDbMigrationTest {
         createV4(context, true);
         List<String> before = dump(context);
 
-        PikoMessageDb helper = newHelper(context);
+        SpookdMessageDb helper = newHelper(context);
         assertThrows(SQLiteException.class, helper::getWritableDatabase);
         helper.close();
 
@@ -66,7 +66,7 @@ public final class PikoMessageDbMigrationTest {
     @Test
     public void v5FileOpenedAtV4ThrowsAndStaysUnchanged() throws Exception {
         Context context = RuntimeEnvironment.getApplication();
-        PikoMessageDb current = newHelper(context);
+        SpookdMessageDb current = newHelper(context);
         SQLiteDatabase created = current.getWritableDatabase();
         insertMessages(created);
         created.execSQL("INSERT INTO saved_media (item_id, kind, url_expires_at, msg_timestamp, state)"
@@ -92,9 +92,9 @@ public final class PikoMessageDbMigrationTest {
         assertEquals(before, dump(context));
     }
 
-    private static PikoMessageDb newHelper(Context context) throws Exception {
+    private static SpookdMessageDb newHelper(Context context) throws Exception {
         // A fresh instance per test; the singleton would keep an earlier test's context.
-        Constructor<PikoMessageDb> constructor = PikoMessageDb.class.getDeclaredConstructor(Context.class);
+        Constructor<SpookdMessageDb> constructor = SpookdMessageDb.class.getDeclaredConstructor(Context.class);
         constructor.setAccessible(true);
         return constructor.newInstance(context);
     }

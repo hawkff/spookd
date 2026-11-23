@@ -30,7 +30,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.SecretKey;
 
 import app.morphe.extension.crimera.PikoUtils;
-import app.morphe.extension.instagram.db.PikoMessageDb;
+import app.morphe.extension.instagram.db.SpookdMessageDb;
 import app.morphe.extension.instagram.utils.MediaUrls;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
@@ -117,7 +117,7 @@ public final class MediaVault {
                 return (HttpURLConnection) url.openConnection();
             }
         };
-        return new MediaVault(new VaultStore(PikoMessageDb.getInstance(context).getWritableDatabase()),
+        return new MediaVault(new VaultStore(SpookdMessageDb.getInstance(context).getWritableDatabase()),
                 network, System::currentTimeMillis, VaultKeys.INSTANCE,
                 new File(context.getNoBackupFilesDir(), "piko_vault"), executor);
     }

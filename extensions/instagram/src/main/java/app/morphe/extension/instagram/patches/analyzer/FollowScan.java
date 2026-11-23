@@ -44,7 +44,7 @@ public final class FollowScan {
     }
 
     private final SharedPreferences prefs;
-    private final PikoFollowDb db;
+    private final SpookdFollowDb db;
     private final PageSource source;
     private final Foreground foreground;
     private final LongSupplier clock;
@@ -57,7 +57,7 @@ public final class FollowScan {
     private boolean committed;
     private volatile boolean stopped;
 
-    public FollowScan(Context context, PikoFollowDb db, PageSource source, Foreground foreground,
+    public FollowScan(Context context, SpookdFollowDb db, PageSource source, Foreground foreground,
                       LongSupplier clock, Sleeper sleeper, Random random) {
         this.prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         this.db = db;
@@ -112,11 +112,11 @@ public final class FollowScan {
         String rankToken = UUID.randomUUID().toString();
         Map<String, FollowUser> followers = new LinkedHashMap<>();
         Map<String, FollowUser> following = new LinkedHashMap<>();
-        int list = PikoFollowDb.LIST_FOLLOWERS;
+        int list = SpookdFollowDb.LIST_FOLLOWERS;
         State outcome = State.FAILED;
         try {
             if (scanList(accountId, list, followerCount, rankToken, followers, listener)) {
-                list = PikoFollowDb.LIST_FOLLOWING;
+                list = SpookdFollowDb.LIST_FOLLOWING;
                 if (scanList(accountId, list, followingCount, rankToken, following, listener)) {
                     checkStopped();
                     long scanId = db.commitScan(accountId, clock.getAsLong(), followers.values(),
@@ -137,7 +137,7 @@ public final class FollowScan {
             int followingRows = following.size();
             Logger.printInfo(() -> "FollowScan " + end + ": followers " + followerRows
                     + ", following " + followingRows);
-            boolean onFollowers = list == PikoFollowDb.LIST_FOLLOWERS;
+            boolean onFollowers = list == SpookdFollowDb.LIST_FOLLOWERS;
             report(listener, list, onFollowers ? followerRows : followingRows,
                     onFollowers ? followerCount : followingCount, end);
         } finally {
@@ -177,7 +177,7 @@ public final class FollowScan {
             int pageRows = page.users.size();
             Logger.printInfo(() -> "FollowScan page: list " + list + ", rows " + pageRows);
             report(listener, list, staged.size(), expected, State.RUNNING);
-            if (cursor == null && list == PikoFollowDb.LIST_FOLLOWING) return true;
+            if (cursor == null && list == SpookdFollowDb.LIST_FOLLOWING) return true;
             sleeper.sleep(MIN_PAGE_WAIT_MS + random.nextInt(MAX_PAGE_WAIT_MS - MIN_PAGE_WAIT_MS + 1));
             if (cursor == null) return true;
         }

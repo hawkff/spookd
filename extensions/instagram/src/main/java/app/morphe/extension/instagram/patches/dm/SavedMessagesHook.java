@@ -17,7 +17,7 @@ import java.lang.reflect.Modifier;
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import app.morphe.extension.crimera.PikoUtils;
-import app.morphe.extension.instagram.db.PikoMessageDb;
+import app.morphe.extension.instagram.db.SpookdMessageDb;
 import app.morphe.extension.instagram.entity.DirectItem;
 import app.morphe.extension.instagram.entity.DirectItemWrappers;
 import app.morphe.extension.instagram.patches.dm.vault.MediaEligibility;
@@ -62,7 +62,7 @@ public class SavedMessagesHook {
         }
         getWorker().post(() -> {
             try {
-                PikoMessageDb db = PikoMessageDb.getInstance(PikoUtils.getContext());
+                SpookdMessageDb db = SpookdMessageDb.getInstance(PikoUtils.getContext());
                 for (Object user : copy) {
                     if (user == null) continue;
                     try {
@@ -191,7 +191,7 @@ public class SavedMessagesHook {
 
     private static void warmUpRevokeCache() {
         try {
-            PikoMessageDb db = PikoMessageDb.getInstance(PikoUtils.getContext());
+            SpookdMessageDb db = SpookdMessageDb.getInstance(PikoUtils.getContext());
             // Oldest first, so the newest rows end up most recently used.
             android.database.Cursor c = db.getReadableDatabase().rawQuery(
                     "SELECT message_id, server_id, client_context, content FROM"
@@ -233,7 +233,7 @@ public class SavedMessagesHook {
         return null;
     }
 
-    private static String resolveSenderUsername(PikoMessageDb db, String senderId,
+    private static String resolveSenderUsername(SpookdMessageDb db, String senderId,
                                                 String threadId, UserSession session,
                                                 String viewerId) {
         String username = db.getUsername(senderId);
@@ -273,7 +273,7 @@ public class SavedMessagesHook {
             if (isBlank(threadId) && !isBlank(threadIdHint)) threadId = threadIdHint;
             if (threadId == null) threadId = "";
 
-            PikoMessageDb db = PikoMessageDb.getInstance(PikoUtils.getContext());
+            SpookdMessageDb db = SpookdMessageDb.getInstance(PikoUtils.getContext());
             String senderUsername = resolveSenderUsername(
                     db, senderId, threadId, session, sessionViewerId);
             String content = directItem.getText();
@@ -337,7 +337,7 @@ public class SavedMessagesHook {
         if (!isBlank(restoredContent)) directItem.setText(restoredContent);
     }
 
-    private static void markDeletedAndNotify(PikoMessageDb db, String messageId) {
+    private static void markDeletedAndNotify(SpookdMessageDb db, String messageId) {
         if (!db.markDeleted(messageId)) return;
         // The notice shows who wrote what, so a hidden chat gets none.
         if (HiddenChats.shouldMuteDeletion(db.getThreadId(messageId))) return;
@@ -433,7 +433,7 @@ public class SavedMessagesHook {
         java.util.concurrent.FutureTask<Void> task = new java.util.concurrent.FutureTask<Void>(() -> {
             // On the worker, so no capture of these messages can slip in between the media and the rows.
             MediaVault.get().deleteForMessages(messageIds);
-            PikoMessageDb.getInstance(PikoUtils.getContext()).deleteSaved(messageIds);
+            SpookdMessageDb.getInstance(PikoUtils.getContext()).deleteSaved(messageIds);
             RevokeCache.INSTANCE.removeMessages(messageIds);
             return null;
         });
@@ -456,7 +456,7 @@ public class SavedMessagesHook {
     private static void processMessageHiddenFromDb(String serverId, String clientContext) {
         try {
             if (!Pref.saveDeletedMessages()) return;
-            PikoMessageDb db = PikoMessageDb.getInstance(PikoUtils.getContext());
+            SpookdMessageDb db = SpookdMessageDb.getInstance(PikoUtils.getContext());
             String messageId = db.resolveAndMergeMessageId(serverId, clientContext);
             if (messageId == null) return;
             RevokeCache.INSTANCE.put(serverId, clientContext, messageId,

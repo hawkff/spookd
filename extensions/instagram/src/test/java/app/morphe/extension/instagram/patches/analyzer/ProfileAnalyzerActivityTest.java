@@ -18,8 +18,8 @@ public final class ProfileAnalyzerActivityTest {
     public void sectionsComeInScreenOrderWithCountsAndEmptyTexts() {
         FollowUser a = new FollowUser("1", "a", null, false, null);
         FollowUser b = new FollowUser("2", "b", null, false, null);
-        PikoFollowDb.Change newer = change(PikoFollowDb.NEW_FOLLOWER, null, "b", null);
-        PikoFollowDb.Change older = change(PikoFollowDb.LOST_FOLLOWER, null, "c", null);
+        SpookdFollowDb.Change newer = change(SpookdFollowDb.NEW_FOLLOWER, null, "b", null);
+        SpookdFollowDb.Change older = change(SpookdFollowDb.LOST_FOLLOWER, null, "c", null);
 
         List<Object> rows = ProfileAnalyzerActivity.rows(Arrays.asList(a, b),
                 Collections.emptyList(), Collections.singletonList(a), Arrays.asList(newer, older));
@@ -29,8 +29,8 @@ public final class ProfileAnalyzerActivityTest {
                 "spookd_profile_analyzer_not_followed_back 0",
                 "spookd_profile_analyzer_not_followed_back_empty -1",
                 "spookd_profile_analyzer_mutuals 1", "1",
-                "spookd_profile_analyzer_history 2", PikoFollowDb.NEW_FOLLOWER,
-                PikoFollowDb.LOST_FOLLOWER), describe(rows));
+                "spookd_profile_analyzer_history 2", SpookdFollowDb.NEW_FOLLOWER,
+                SpookdFollowDb.LOST_FOLLOWER), describe(rows));
         assertSame(newer, rows.get(8));
     }
 
@@ -47,19 +47,19 @@ public final class ProfileAnalyzerActivityTest {
     @Test
     public void historyTextFitsTheValuesThatExist() {
         assertEquals("spookd_profile_analyzer_username_changed",
-                ProfileAnalyzerActivity.historyKey(PikoFollowDb.USERNAME, "old", "new"));
+                ProfileAnalyzerActivity.historyKey(SpookdFollowDb.USERNAME, "old", "new"));
         assertEquals("spookd_profile_analyzer_username_set",
-                ProfileAnalyzerActivity.historyKey(PikoFollowDb.USERNAME, null, "new"));
+                ProfileAnalyzerActivity.historyKey(SpookdFollowDb.USERNAME, null, "new"));
         assertEquals("spookd_profile_analyzer_name_changed",
-                ProfileAnalyzerActivity.historyKey(PikoFollowDb.FULL_NAME, "Bob", "Robert"));
+                ProfileAnalyzerActivity.historyKey(SpookdFollowDb.FULL_NAME, "Bob", "Robert"));
         assertEquals("spookd_profile_analyzer_name_set",
-                ProfileAnalyzerActivity.historyKey(PikoFollowDb.FULL_NAME, "", "Robert"));
+                ProfileAnalyzerActivity.historyKey(SpookdFollowDb.FULL_NAME, "", "Robert"));
         assertEquals("spookd_profile_analyzer_name_removed",
-                ProfileAnalyzerActivity.historyKey(PikoFollowDb.FULL_NAME, "Bob", ""));
+                ProfileAnalyzerActivity.historyKey(SpookdFollowDb.FULL_NAME, "Bob", ""));
         assertEquals("spookd_profile_analyzer_lost_follower",
-                ProfileAnalyzerActivity.historyKey(PikoFollowDb.LOST_FOLLOWER, null, "c"));
+                ProfileAnalyzerActivity.historyKey(SpookdFollowDb.LOST_FOLLOWER, null, "c"));
         assertEquals("spookd_profile_analyzer_picture_changed",
-                ProfileAnalyzerActivity.historyKey(PikoFollowDb.PICTURE, "p1", "p2"));
+                ProfileAnalyzerActivity.historyKey(SpookdFollowDb.PICTURE, "p1", "p2"));
         assertNull(ProfileAnalyzerActivity.historyKey("other", null, null));
         assertNull(ProfileAnalyzerActivity.historyKey(null, null, null));
     }
@@ -67,10 +67,10 @@ public final class ProfileAnalyzerActivityTest {
     @Test
     public void aRenamedUserWhoLeftAndWasPrunedOpensTheNewestUsername() {
         // Newest first: renamed a to b, then b to c, then stopped following; the identity is pruned.
-        PikoFollowDb.Change aToB = change("1", PikoFollowDb.USERNAME, "a", "b", null);
-        List<PikoFollowDb.Change> history = Arrays.asList(
-                change("1", PikoFollowDb.LOST_FOLLOWER, null, "c", null),
-                change("1", PikoFollowDb.USERNAME, "b", "c", null),
+        SpookdFollowDb.Change aToB = change("1", SpookdFollowDb.USERNAME, "a", "b", null);
+        List<SpookdFollowDb.Change> history = Arrays.asList(
+                change("1", SpookdFollowDb.LOST_FOLLOWER, null, "c", null),
+                change("1", SpookdFollowDb.USERNAME, "b", "c", null),
                 aToB);
 
         assertEquals("c", ProfileAnalyzerActivity.latestUsernames(history).get(aToB.userId));
@@ -81,11 +81,11 @@ public final class ProfileAnalyzerActivityTest {
         FollowUser stored = new FollowUser("3", "z", null, false, null);
         Map<String, String> usernames = ProfileAnalyzerActivity.latestUsernames(Arrays.asList(
                 // The new value of a name or picture change is not a username.
-                change("2", PikoFollowDb.PICTURE, "p1", "p2", null),
-                change("2", PikoFollowDb.USERNAME, "x", "y", null),
-                change("3", PikoFollowDb.NEW_FOLLOWER, null, "then", stored),
-                change("4", PikoFollowDb.FULL_NAME, "Bob", "Robert", null),
-                change("5", PikoFollowDb.LOST_FOLLOWER, null, null, null)));
+                change("2", SpookdFollowDb.PICTURE, "p1", "p2", null),
+                change("2", SpookdFollowDb.USERNAME, "x", "y", null),
+                change("3", SpookdFollowDb.NEW_FOLLOWER, null, "then", stored),
+                change("4", SpookdFollowDb.FULL_NAME, "Bob", "Robert", null),
+                change("5", SpookdFollowDb.LOST_FOLLOWER, null, null, null)));
 
         assertEquals("y", usernames.get("2"));
         assertEquals("z", usernames.get("3"));
@@ -93,14 +93,14 @@ public final class ProfileAnalyzerActivityTest {
         assertNull(usernames.get("5"));
     }
 
-    private static PikoFollowDb.Change change(String kind, String oldValue, String newValue,
+    private static SpookdFollowDb.Change change(String kind, String oldValue, String newValue,
                                               FollowUser user) {
         return change("1", kind, oldValue, newValue, user);
     }
 
-    private static PikoFollowDb.Change change(String userId, String kind, String oldValue,
+    private static SpookdFollowDb.Change change(String userId, String kind, String oldValue,
                                               String newValue, FollowUser user) {
-        return new PikoFollowDb.Change(userId, kind, oldValue, newValue, 1000, user);
+        return new SpookdFollowDb.Change(userId, kind, oldValue, newValue, 1000, user);
     }
 
     private static List<String> describe(List<Object> rows) {
@@ -112,7 +112,7 @@ public final class ProfileAnalyzerActivityTest {
             } else if (row instanceof FollowUser) {
                 out.add(((FollowUser) row).id);
             } else {
-                out.add(((PikoFollowDb.Change) row).kind);
+                out.add(((SpookdFollowDb.Change) row).kind);
             }
         }
         return out;

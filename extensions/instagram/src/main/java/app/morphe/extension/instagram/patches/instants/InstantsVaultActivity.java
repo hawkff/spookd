@@ -69,7 +69,7 @@ import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramSearchStyle;
-import app.morphe.extension.instagram.db.PikoInstantsDb;
+import app.morphe.extension.instagram.db.SpookdInstantsDb;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.instagram.patches.download.DownloadFileNameFormatter;
 import app.morphe.extension.instagram.settings.ActivityHook;
@@ -209,7 +209,7 @@ public final class InstantsVaultActivity {
             Utils.runOnBackgroundThread(() -> {
                 List<String[]> loaded;
                 try {
-                    PikoInstantsDb db = PikoInstantsDb.getInstance(activity);
+                    SpookdInstantsDb db = SpookdInstantsDb.getInstance(activity);
                     db.purgeExpired();
                     loaded = db.getAll();
                 } catch (Exception e) {
@@ -466,7 +466,7 @@ public final class InstantsVaultActivity {
 
         private void drop(String mediaId) {
             selectedIds.remove(mediaId);
-            PikoInstantsDb.getInstance(activity).delete(mediaId);
+            SpookdInstantsDb.getInstance(activity).delete(mediaId);
             File f = cacheFile(mediaId);
             if (f != null) f.delete();
             for (int i = items.size() - 1; i >= 0; i--) {

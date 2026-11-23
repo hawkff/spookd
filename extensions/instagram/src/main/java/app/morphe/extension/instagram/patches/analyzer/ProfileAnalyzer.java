@@ -167,7 +167,7 @@ public final class ProfileAnalyzer {
                         ProfileAnalyzer::onProgress);
                 if (refusal == null) {
                     state = FollowScan.State.RUNNING;
-                    list = PikoFollowDb.LIST_FOLLOWERS;
+                    list = SpookdFollowDb.LIST_FOLLOWERS;
                     received = 0;
                     expected = counts.followers;
                 }
@@ -190,7 +190,7 @@ public final class ProfileAnalyzer {
     private static FollowScan scan(Activity activity) {
         if (scan == null) {
             Context context = activity.getApplicationContext();
-            scan = new FollowScan(context, PikoFollowDb.getInstance(context), new FollowScanRequest(),
+            scan = new FollowScan(context, SpookdFollowDb.getInstance(context), new FollowScanRequest(),
                     FollowScan.Foreground.get(activity), System::currentTimeMillis, Thread::sleep,
                     new Random());
         }
@@ -271,7 +271,7 @@ public final class ProfileAnalyzer {
     private static void onProgress(int list, int received, int expected, FollowScan.State state) {
         int followers;
         synchronized (ProfileAnalyzer.class) {
-            if (list == PikoFollowDb.LIST_FOLLOWERS) followersReceived = received;
+            if (list == SpookdFollowDb.LIST_FOLLOWERS) followersReceived = received;
             ProfileAnalyzer.list = list;
             ProfileAnalyzer.received = received;
             ProfileAnalyzer.expected = expected;
@@ -328,7 +328,7 @@ public final class ProfileAnalyzer {
     }
 
     private static String progress(int list, int received, int expected) {
-        return str(list == PikoFollowDb.LIST_FOLLOWERS ? "spookd_profile_analyzer_followers_progress"
+        return str(list == SpookdFollowDb.LIST_FOLLOWERS ? "spookd_profile_analyzer_followers_progress"
                 : "spookd_profile_analyzer_following_progress", count(received), count(expected));
     }
 

@@ -45,7 +45,7 @@ public final class FollowScanRequest implements PageSource {
         try {
             UserSession session = ProfileAnalyzer.session(accountId);
             if (session == null || !accountId.equals(session.getUserId())) return null;
-            boolean followers = list == PikoFollowDb.LIST_FOLLOWERS;
+            boolean followers = list == SpookdFollowDb.LIST_FOLLOWERS;
             Object page = withTimeout(() -> followers
                     ? fetchFollowersNative(session, accountId, maxId, rankToken)
                     : fetchFollowingNative(session, accountId, maxId, rankToken), FETCH_TIMEOUT_MS);

@@ -18,15 +18,15 @@ import java.util.List;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 29, manifest = Config.NONE)
-public final class PikoFollowDbResultsTest {
+public final class SpookdFollowDbResultsTest {
     private static final String A = "1001";
     private static final String B = "2002";
 
-    private PikoFollowDb db;
+    private SpookdFollowDb db;
 
     @Before
     public void setUp() {
-        db = new PikoFollowDb(RuntimeEnvironment.getApplication());
+        db = new SpookdFollowDb(RuntimeEnvironment.getApplication());
     }
 
     @After
@@ -41,7 +41,7 @@ public final class PikoFollowDbResultsTest {
         commit(A, 2000, Collections.singletonList(user("1", "a")),
                 Collections.singletonList(user("3", "c")));
 
-        PikoFollowDb.Scan scan = db.latestScan(A);
+        SpookdFollowDb.Scan scan = db.latestScan(A);
         assertEquals(2000, scan.finishedAt);
         assertEquals(1, scan.followerCount);
         assertEquals(1, scan.followingCount);
@@ -55,16 +55,16 @@ public final class PikoFollowDbResultsTest {
         commit(A, 3000, Collections.singletonList(
                 new FollowUser("1", "a2", "Name", true, null)), Collections.emptyList());
 
-        List<PikoFollowDb.Change> history = db.history(A);
+        List<SpookdFollowDb.Change> history = db.history(A);
         assertEquals(3, history.size());
         // Within one scan the name change is recorded after the username change.
-        assertEquals(PikoFollowDb.FULL_NAME, history.get(0).kind);
+        assertEquals(SpookdFollowDb.FULL_NAME, history.get(0).kind);
         assertEquals("Name", history.get(0).user.fullName);
         assertTrue(history.get(0).user.verified);
-        assertEquals(PikoFollowDb.USERNAME, history.get(1).kind);
+        assertEquals(SpookdFollowDb.USERNAME, history.get(1).kind);
         assertEquals("a2", history.get(1).user.username);
         // The lost follower is still in a kept scan, so its identity is still stored.
-        assertEquals(PikoFollowDb.LOST_FOLLOWER, history.get(2).kind);
+        assertEquals(SpookdFollowDb.LOST_FOLLOWER, history.get(2).kind);
         assertEquals("b", history.get(2).user.username);
     }
 
@@ -75,7 +75,7 @@ public final class PikoFollowDbResultsTest {
             commit(A, i, Collections.singletonList(user("1", "a")), Collections.emptyList());
         }
 
-        List<PikoFollowDb.Change> history = db.history(A);
+        List<SpookdFollowDb.Change> history = db.history(A);
         assertEquals(1, history.size());
         assertNull(history.get(0).user);
         assertEquals("z", history.get(0).newValue);

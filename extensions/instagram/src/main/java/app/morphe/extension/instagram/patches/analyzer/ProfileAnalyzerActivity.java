@@ -91,7 +91,7 @@ public final class ProfileAnalyzerActivity {
 
     /** Section titles in screen order, each followed by its rows or by its empty text. */
     static List<Object> rows(List<FollowUser> notFollowingBack, List<FollowUser> notFollowedBack,
-                             List<FollowUser> mutuals, List<PikoFollowDb.Change> history) {
+                             List<FollowUser> mutuals, List<SpookdFollowDb.Change> history) {
         List<Object> out = new ArrayList<>();
         section(out, "spookd_profile_analyzer_not_following_back", notFollowingBack);
         section(out, "spookd_profile_analyzer_not_followed_back", notFollowedBack);
@@ -140,18 +140,18 @@ public final class ProfileAnalyzerActivity {
         boolean hadOld = oldValue != null && !oldValue.isEmpty();
         boolean hasNew = newValue != null && !newValue.isEmpty();
         switch (kind) {
-            case PikoFollowDb.NEW_FOLLOWER: return "spookd_profile_analyzer_new_follower";
-            case PikoFollowDb.LOST_FOLLOWER: return "spookd_profile_analyzer_lost_follower";
-            case PikoFollowDb.STARTED_FOLLOWING: return "spookd_profile_analyzer_started_following";
-            case PikoFollowDb.STOPPED_FOLLOWING: return "spookd_profile_analyzer_stopped_following";
-            case PikoFollowDb.USERNAME:
+            case SpookdFollowDb.NEW_FOLLOWER: return "spookd_profile_analyzer_new_follower";
+            case SpookdFollowDb.LOST_FOLLOWER: return "spookd_profile_analyzer_lost_follower";
+            case SpookdFollowDb.STARTED_FOLLOWING: return "spookd_profile_analyzer_started_following";
+            case SpookdFollowDb.STOPPED_FOLLOWING: return "spookd_profile_analyzer_stopped_following";
+            case SpookdFollowDb.USERNAME:
                 return hadOld ? "spookd_profile_analyzer_username_changed"
                         : "spookd_profile_analyzer_username_set";
-            case PikoFollowDb.FULL_NAME:
+            case SpookdFollowDb.FULL_NAME:
                 if (!hasNew) return "spookd_profile_analyzer_name_removed";
                 return hadOld ? "spookd_profile_analyzer_name_changed"
                         : "spookd_profile_analyzer_name_set";
-            case PikoFollowDb.PICTURE: return "spookd_profile_analyzer_picture_changed";
+            case SpookdFollowDb.PICTURE: return "spookd_profile_analyzer_picture_changed";
             default: return null;
         }
     }
@@ -160,14 +160,14 @@ public final class ProfileAnalyzerActivity {
      * One latest known username per user of a newest-first history: the stored identity, else the
      * newest event that carries a username.
      */
-    static Map<String, String> latestUsernames(List<PikoFollowDb.Change> history) {
+    static Map<String, String> latestUsernames(List<SpookdFollowDb.Change> history) {
         Map<String, String> out = new HashMap<>();
-        for (PikoFollowDb.Change change : history) {
+        for (SpookdFollowDb.Change change : history) {
             if (out.containsKey(change.userId)) continue;
             String username = change.user != null ? change.user.username : null;
             // For name and picture changes the new value is not a username.
-            if (username == null && !PikoFollowDb.FULL_NAME.equals(change.kind)
-                    && !PikoFollowDb.PICTURE.equals(change.kind)) {
+            if (username == null && !SpookdFollowDb.FULL_NAME.equals(change.kind)
+                    && !SpookdFollowDb.PICTURE.equals(change.kind)) {
                 username = change.newValue;
             }
             if (username != null && !username.isEmpty()) out.put(change.userId, username);
@@ -177,12 +177,12 @@ public final class ProfileAnalyzerActivity {
 
     private static final class Loaded {
         final String accountId;
-        final PikoFollowDb.Scan scan;
+        final SpookdFollowDb.Scan scan;
         final List<Object> rows;
         final Map<String, String> usernames;
         final boolean hasHistory;
 
-        Loaded(String accountId, PikoFollowDb.Scan scan, List<Object> rows,
+        Loaded(String accountId, SpookdFollowDb.Scan scan, List<Object> rows,
                Map<String, String> usernames, boolean hasHistory) {
             this.accountId = accountId;
             this.scan = scan;
@@ -399,11 +399,11 @@ public final class ProfileAnalyzerActivity {
             DB_JOBS.execute(() -> {
                 Loaded loaded = null;
                 try {
-                    PikoFollowDb db = PikoFollowDb.getInstance(activity);
+                    SpookdFollowDb db = SpookdFollowDb.getInstance(activity);
                     if (job == CLEAR_HISTORY) db.clearHistory(account);
                     else if (job == DELETE_DATA) db.deleteAccount(account);
-                    PikoFollowDb.Scan scan = db.latestScan(account);
-                    List<PikoFollowDb.Change> history = db.history(account, HISTORY_LIMIT);
+                    SpookdFollowDb.Scan scan = db.latestScan(account);
+                    List<SpookdFollowDb.Change> history = db.history(account, HISTORY_LIMIT);
                     List<Object> found = scan == null ? new ArrayList<>() : rows(
                             db.notFollowingBack(account), db.followersNotFollowedBack(account),
                             db.mutuals(account), history);
@@ -444,8 +444,8 @@ public final class ProfileAnalyzerActivity {
         private void openProfile(Object item) {
             if (!sameAccount() || accountId == null) return;
             String username = item instanceof FollowUser ? ((FollowUser) item).username
-                    : item instanceof PikoFollowDb.Change
-                    ? usernames.get(((PikoFollowDb.Change) item).userId) : null;
+                    : item instanceof SpookdFollowDb.Change
+                    ? usernames.get(((SpookdFollowDb.Change) item).userId) : null;
             if (username == null || username.isEmpty()) return;
             PikoUtils.openUrl("instagram://user?username=" + Uri.encode(username), true);
         }
@@ -471,13 +471,13 @@ public final class ProfileAnalyzerActivity {
                     views.note.setVisibility(View.GONE);
                     views.date.setVisibility(View.GONE);
                 } else {
-                    PikoFollowDb.Change change = (PikoFollowDb.Change) item;
+                    SpookdFollowDb.Change change = (SpookdFollowDb.Change) item;
                     bindUser(views, change.user, usernames.get(change.userId));
                     String key = historyKey(change.kind, change.oldValue, change.newValue);
                     views.change.setText(key == null ? change.kind
                             : str(key, change.oldValue, change.newValue));
                     views.change.setVisibility(View.VISIBLE);
-                    views.note.setVisibility(PikoFollowDb.LOST_FOLLOWER.equals(change.kind)
+                    views.note.setVisibility(SpookdFollowDb.LOST_FOLLOWER.equals(change.kind)
                             ? View.VISIBLE : View.GONE);
                     views.date.setText(dateFormat.format(new Date(change.seenAt)));
                     views.date.setVisibility(View.VISIBLE);
