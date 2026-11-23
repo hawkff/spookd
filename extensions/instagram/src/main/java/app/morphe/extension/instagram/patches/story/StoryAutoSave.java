@@ -20,7 +20,6 @@ import app.morphe.extension.crimera.legacydownloader.StorageUtils;
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.entity.UserData;
-import app.morphe.extension.instagram.patches.download.DownloadFileNameFormatter;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.instagram.patches.download.gallery.GalleryStore;
 import app.morphe.extension.instagram.settings.Settings;
@@ -52,14 +51,11 @@ public final class StoryAutoSave {
     }
 
     /**
-     * The template auto-save names files with: {@code template} as downloads use it, with the media id
-     * added when it has none, so distinct media never share a name and a taken name is the same media.
+     * What auto-save ends every file name with; it survives the length limit whole, so distinct media
+     * never share a name and a taken name is the same media.
      */
-    static String uniqueTemplate(String template) {
-        String effective = DownloadFileNameFormatter.isValidTemplate(template)
-                ? template : DownloadFileNameFormatter.DEFAULT_TEMPLATE;
-        String mediaId = DownloadFileNameFormatter.Token.MEDIA_ID.placeholder();
-        return effective.contains(mediaId) ? effective : effective + "_" + mediaId;
+    static String nameSuffix(String mediaId) {
+        return "_" + mediaId;
     }
 
     /** False when media {@code mediaId} is unknown or was already taken in this process. */
@@ -98,7 +94,7 @@ public final class StoryAutoSave {
             if (GalleryStore.get().hasMedia(mediaId)) return;
             // Names are unique per media, so skipping a taken name never drops or replaces other media.
             DownloadRequest request = DownloadUtils.storyRequest(media, reel, session,
-                    uniqueTemplate(Pref.downloadFileNameTemplate()), DownloadRequest.ConflictPolicy.SKIP);
+                    nameSuffix(mediaId), DownloadRequest.ConflictPolicy.SKIP);
             request.quiet = true;
             // Without the folder grant the downloader would open the folder picker; a later view tries again.
             if (!Utils.isNetworkConnected()

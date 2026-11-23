@@ -37,6 +37,11 @@ public final class DownloadFileNameFormatter {
     }
 
     public static String format(String template, Values values, String extension, ZoneId zoneId) {
+        return format(template, values, "", extension, zoneId);
+    }
+
+    /** {@link #format} with {@code suffix} kept whole before the extension; only the rendered name is shortened to fit. */
+    public static String format(String template, Values values, String suffix, String extension, ZoneId zoneId) {
         Values safeValues = values == null ? Values.EMPTY : values;
         ZoneId safeZoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
         String effectiveTemplate = isValidTemplate(template)
@@ -51,7 +56,7 @@ public final class DownloadFileNameFormatter {
             filename = "download";
         }
 
-        return limitFilenameLength(filename, normalizeExtension(extension));
+        return limitFilenameLength(filename, sanitize(suffix) + normalizeExtension(extension));
     }
 
     public static boolean isValidTemplate(String template) {

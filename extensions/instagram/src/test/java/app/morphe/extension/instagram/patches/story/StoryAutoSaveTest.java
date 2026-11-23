@@ -7,7 +7,9 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 
 import app.morphe.extension.instagram.patches.download.DownloadFileNameFormatter;
 
@@ -58,37 +60,27 @@ public class StoryAutoSaveTest {
     }
 
     @Test
-    public void templatesWithTheMediaIdAreKept() {
-        assertEquals(DownloadFileNameFormatter.DEFAULT_TEMPLATE,
-                StoryAutoSave.uniqueTemplate(DownloadFileNameFormatter.DEFAULT_TEMPLATE));
-        assertEquals("{media_id}", StoryAutoSave.uniqueTemplate("{media_id}"));
-    }
-
-    @Test
-    public void templatesWithoutTheMediaIdGetIt() {
-        assertEquals("{username}_{media_id}", StoryAutoSave.uniqueTemplate("{username}"));
-        assertEquals("{shortcode}_{media_id}", StoryAutoSave.uniqueTemplate("{shortcode}"));
-        assertEquals("{username}_{upload_date}_{media_id}", StoryAutoSave.uniqueTemplate("{username}_{upload_date}"));
-    }
-
-    @Test
-    public void anInvalidTemplateFallsBackToTheDefault() {
-        assertEquals(DownloadFileNameFormatter.DEFAULT_TEMPLATE, StoryAutoSave.uniqueTemplate(null));
-        assertEquals(DownloadFileNameFormatter.DEFAULT_TEMPLATE, StoryAutoSave.uniqueTemplate(""));
-        assertEquals(DownloadFileNameFormatter.DEFAULT_TEMPLATE, StoryAutoSave.uniqueTemplate("{unknown_token}"));
-    }
-
-    @Test
     public void distinctMediaOfOneOwnerGetDistinctNamesFromANonUniqueTemplate() {
-        String template = StoryAutoSave.uniqueTemplate("{username}");
-        String first = name(template, "101");
-        String second = name(template, "102");
+        String first = name("{username}", "101");
+        String second = name("{username}", "102");
 
         // GalleryStoreTest publishes these names under every conflict policy.
         assertEquals("alice_101.jpg", first);
         assertEquals("alice_102.jpg", second);
+        assertEquals(first, name("{username}", "101"));
+    }
+
+    @Test
+    public void theMediaIdSurvivesTheLengthLimitWhole() {
+        String template = repeat('a', 121) + "{media_id}" + repeat('b', 121);
+        String first = name(template, "1234567890123456789");
+        String second = name(template, "1234567891123456789");
+
         assertNotEquals(first, second);
-        assertEquals(first, name(template, "101"));
+        assertTrue(first, first.endsWith("_1234567890123456789.jpg"));
+        assertTrue(second, second.endsWith("_1234567891123456789.jpg"));
+        assertTrue(first.getBytes(StandardCharsets.UTF_8).length <= 255);
+        assertTrue(second.getBytes(StandardCharsets.UTF_8).length <= 255);
     }
 
     @Test
@@ -99,9 +91,16 @@ public class StoryAutoSaveTest {
         assertFalse(StoryAutoSave.firstView(null));
     }
 
+    // The file name auto-save gives a story of alice.
     private static String name(String template, String mediaId) {
         return DownloadFileNameFormatter.format(template,
                 new DownloadFileNameFormatter.Values("alice", mediaId, "", null, "image", 0, ""),
-                ".jpg", ZoneOffset.UTC);
+                StoryAutoSave.nameSuffix(mediaId), ".jpg", ZoneOffset.UTC);
+    }
+
+    private static String repeat(char c, int count) {
+        char[] chars = new char[count];
+        Arrays.fill(chars, c);
+        return new String(chars);
     }
 }
