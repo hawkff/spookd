@@ -17,6 +17,7 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.mutableClassDefBy
 import app.morphe.patcher.patch.patch
@@ -37,6 +38,11 @@ private const val OBJECT = "Ljava/lang/Object;"
 private const val STRING = "Ljava/lang/String;"
 private const val USER_SESSION = "Lcom/instagram/common/session/UserSession;"
 private const val TAP_DECISION = "android_purge_26_q3_ClipsGestureNavigator_enableAudioToggleOnSingleTap"
+
+private val BRANCHES = setOf(
+    Opcode.IF_EQ, Opcode.IF_NE, Opcode.IF_LT, Opcode.IF_GE, Opcode.IF_GT, Opcode.IF_LE,
+    Opcode.IF_EQZ, Opcode.IF_NEZ, Opcode.IF_LTZ, Opcode.IF_GEZ, Opcode.IF_GTZ, Opcode.IF_LEZ,
+)
 
 private fun MethodReference.parameters() = parameterTypes.map(CharSequence::toString)
 
@@ -273,15 +279,24 @@ private fun hookReelTap(controller: String) {
             it.definingClass == controller && it.parameters() == listOf("I") && it.returnType == "V"
         } == true
     }
-    val controllerRead = code[shortcut - 2]
-    val flagCheck = code[shortcut - 3] as? BuilderOffsetInstruction
-    val shortcutScratch = controllerRead.registersUsed.first()
-    val decision = flagCheck?.let { code[it.target.location.index] }
+    // The toggle's controller is read from the navigator right after the flag test that skips the toggle.
+    val controllerRead = (shortcut - 1 downTo maxOf(1, shortcut - 4)).firstOrNull { index ->
+        code[index].opcode == Opcode.IGET_OBJECT &&
+            code[index].registersUsed.first() == code[shortcut].registersUsed.first() &&
+            code[index].getReference<FieldReference>()?.toString() == controllerField.toString()
+    } ?: throw PatchException("Missing controller read in the Reels tap sound shortcut")
+    val flagCheck = (controllerRead - 1 downTo maxOf(1, controllerRead - 3)).firstOrNull { index ->
+        code[index].opcode in BRANCHES && code[index - 1].opcode == Opcode.IGET_BOOLEAN
+    } ?: throw PatchException("Missing flag test in the Reels tap sound shortcut")
+    val shortcutScratch = code[flagCheck].registersUsed.first()
+    val insertAt = flagCheck + 1
+    val decision = code[(code[flagCheck] as BuilderOffsetInstruction).target.location.index]
+    // The flag register must be dead on both paths, so it can hold the extension's answer.
     require(
-        flagCheck != null && flagCheck.opcode.name.startsWith("IF_") && decision != null &&
-            controllerRead.opcode == Opcode.IGET_OBJECT && controllerRead.location.labels.isEmpty() &&
-            controllerRead.getReference<FieldReference>() == controllerField &&
-            decision.opcode.setsRegister() && decision.registersUsed.first() == shortcutScratch,
+        code[insertAt].location.labels.isEmpty() &&
+            code[insertAt].opcode.setsRegister() && code[insertAt].registersUsed.first() == shortcutScratch &&
+            decision.opcode.setsRegister() && decision.registersUsed.first() == shortcutScratch &&
+            (insertAt..shortcut).none { code[it].opcode in BRANCHES },
     ) { "Unexpected Reels tap sound shortcut" }
 
     for (site in sites.sortedByDescending { it.start }) {
@@ -295,11 +310,11 @@ private fun hookReelTap(controller: String) {
             if-nez v${site.scratch}, :spookd_tap_done
         """, ExternalLabel("spookd_tap_done", done))
     }
-    tap.addInstructionsWithLabels(shortcut - 2, """
+    tap.addInstructionsWithLabels(insertAt, """
         invoke-static {}, $OPTIONS->skipsTapSoundShortcut()Z
         move-result v$shortcutScratch
         if-nez v$shortcutScratch, :spookd_tap_decision
-    """, ExternalLabel("spookd_tap_decision", decision!!))
+    """, ExternalLabel("spookd_tap_decision", decision))
 }
 
 @Suppress("unused")
