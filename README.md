@@ -1,4 +1,5 @@
 > spookd is a fork of [Piko](https://github.com/crimera/piko) focused on Instagram. It tracks Piko's `dev` branch.
+> On the Instagram side, the settings screen, patch descriptions and clone defaults use the spookd name. The clone patch now defaults to package `com.instagram.android.spookd` and label `spookd Instagram`. A clone re-patched with these defaults installs as a new app, so export its settings in the old clone and import them in the new one. Twitter/X keeps Piko's names.
 > The rest of this file is Piko's README, and its links point to Piko.
 > Patched clients may violate Instagram's terms of use.
 
