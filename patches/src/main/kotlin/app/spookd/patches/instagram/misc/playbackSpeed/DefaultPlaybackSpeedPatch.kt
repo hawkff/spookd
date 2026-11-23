@@ -41,7 +41,7 @@ private const val PLAYBACK_SPEED_CLASS = "$PATCHES_DESCRIPTOR/PlaybackSpeed;"
 private const val OBJECT = "Ljava/lang/Object;"
 
 // IgVideoPlayerImpl's prepared callback; its parameter is the player that owns the speed.
-private object VideoPreparedFingerprint : Fingerprint(
+internal object VideoPreparedFingerprint : Fingerprint(
     returnType = "V",
     parameters = listOf("L"),
     filters = listOf(string("IgVideoPlayerImpl.onPreparedInternal")),
@@ -57,7 +57,7 @@ private object ReelSetSpeedFingerprint : Fingerprint(
 )
 
 // The Reels player's listener, which IgVideoPlayerImpl notifies.
-private object ReelPreparedListenerFingerprint : Fingerprint(
+internal object ReelPreparedListenerFingerprint : Fingerprint(
     returnType = "V",
     filters = listOf(string("android_purge_26_q3_ClipsVideoPlayer_onVideoPrepared")),
 )
