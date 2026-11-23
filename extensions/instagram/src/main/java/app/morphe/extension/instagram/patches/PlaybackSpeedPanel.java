@@ -243,6 +243,7 @@ final class PlaybackSpeedPanel {
     private void pickSpeed(float speed) {
         try {
             PlaybackSpeed.setSpeed(player, speed);
+            PlaybackSpeed.onPanelSpeedPicked(player, speed);
             for (int i = 0; i < speeds.length; i++) {
                 style(speeds[i], PlaybackSpeed.PRESETS[i] == speed);
             }

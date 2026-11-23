@@ -2,6 +2,7 @@ package app.morphe.extension.instagram.patches;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -31,6 +32,23 @@ public class PlaybackSpeedTest {
         assertEquals(1f, PlaybackSpeed.parseSpeed("NaN"), 0f);
         assertEquals(1f, PlaybackSpeed.parseSpeed("0.1"), 0f);
         assertEquals(1f, PlaybackSpeed.parseSpeed("5"), 0f);
+    }
+
+    @Test
+    public void untouchedReelGetsTheDefaultWhenInstagramRestoresSpeeds() {
+        float defaultSpeed = 1.5f;
+        // A Reel with a speed picked in Instagram's menu keeps it, including an explicit 1x.
+        assertEquals(Float.valueOf(2f), PlaybackSpeed.resolveReelSpeed(2f, null, true, defaultSpeed));
+        assertEquals(Float.valueOf(1f), PlaybackSpeed.resolveReelSpeed(1f, null, true, defaultSpeed));
+        // The next, untouched Reel: Instagram restores 1x, which becomes the default.
+        assertEquals(Float.valueOf(1.5f), PlaybackSpeed.resolveReelSpeed(1f, null, false, defaultSpeed));
+        // Instagram's own session-wide speeds stay.
+        assertEquals(Float.valueOf(0.5f), PlaybackSpeed.resolveReelSpeed(0.5f, null, false, defaultSpeed));
+        // A panel pick wins on resume, and nothing is applied where Instagram applies nothing.
+        assertEquals(Float.valueOf(1.25f), PlaybackSpeed.resolveReelSpeed(1f, 1.25f, false, defaultSpeed));
+        assertNull(PlaybackSpeed.resolveReelSpeed(null, 1.25f, false, defaultSpeed));
+        // With the default at 1x nothing changes.
+        assertEquals(Float.valueOf(1f), PlaybackSpeed.resolveReelSpeed(1f, null, false, 1f));
     }
 
     @Test

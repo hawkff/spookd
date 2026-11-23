@@ -13,22 +13,29 @@ import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
 import app.spookd.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.InstructionLocation.MatchAfterImmediately
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.extensions.InstructionExtensions.removeInstructions
+import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.methodCall
+import app.morphe.patcher.opcode
 import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.string
 import app.morphe.patcher.util.getReference
+import app.morphe.patcher.util.registersUsed
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.WideLiteralInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 
 private const val PLAYBACK_SPEED_CLASS = "$PATCHES_DESCRIPTOR/PlaybackSpeed;"
 private const val OBJECT = "Ljava/lang/Object;"
@@ -60,7 +67,77 @@ private object FeedVideoControllerFingerprint : Fingerprint(
     filters = listOf(string("feed_video_crash_when_adjusting_volume")),
 )
 
+// Reels resume: Instagram asks its speed resolver for the item and applies the result to the player.
+private object ReelResumeSpeedFingerprint : Fingerprint(
+    returnType = "V",
+    filters = listOf(
+        string("android_purge_26_q3_ClipsVideoPlayerController_maybeResumePlayer"),
+        fieldAccess(opcode = Opcode.IGET_OBJECT, type = "Lkotlin/jvm/functions/Function1;"),
+        opcode(Opcode.IF_EQZ, MatchAfterImmediately()),
+        methodCall(smali = "Lkotlin/jvm/functions/Function1;->invoke(Ljava/lang/Object;)Ljava/lang/Object;",
+            location = MatchAfterImmediately()),
+        opcode(Opcode.MOVE_RESULT_OBJECT, MatchAfterImmediately()),
+        opcode(Opcode.CHECK_CAST, MatchAfterImmediately()),
+        opcode(Opcode.IF_EQZ, MatchAfterImmediately()),
+        methodCall(smali = "Ljava/lang/Number;->floatValue()F", location = MatchAfterImmediately()),
+        opcode(Opcode.MOVE_RESULT, MatchAfterImmediately()),
+        methodCall(parameters = listOf("F"), returnType = "V", location = MatchAfterImmediately()),
+    ),
+)
+
+// Instagram's Reels menu handler for a picked speed: (speed, menu helper).
+private object ReelMenuSpeedPickedFingerprint : Fingerprint(
+    returnType = "V",
+    parameters = listOf("L", "L"),
+    filters = listOf(string("android_purge_26_q3_ClipsOrganicMoreOptionsHelper_handlePlaybackSpeedChanged")),
+)
+
 private fun MethodReference.parameters() = parameterTypes.map(CharSequence::toString)
+
+private fun hookReelSpeedRestore() {
+    val menu = ReelMenuSpeedPickedFingerprint.method
+    val (speedEnum, helper) = menu.parameters()
+    val menuFields = menu.implementation!!.instructions.mapNotNull { it.getReference<FieldReference>() }.distinct()
+    // The helper's per-media playback state is the object that stores the picked speed.
+    val helperState = menuFields.single { field ->
+        field.definingClass == helper && menuFields.any { it.definingClass == field.type && it.type == speedEnum }
+    }
+
+    val resume = ReelResumeSpeedFingerprint.instructionMatches
+    val code = ReelResumeSpeedFingerprint.method.implementation!!.instructions
+    val call = resume[3].instruction.registersUsed
+    val speed = resume[5].instruction.registersUsed.single()
+    val stateRead = code[resume[1].index - 2] as TwoRegisterInstruction
+    val stateField = stateRead.getReference<FieldReference>()
+    val state = stateRead.registerB
+    val item = call[1]
+    require(
+        stateRead.opcode == Opcode.IGET_OBJECT && stateField?.type == "Ljava/lang/String;" &&
+            code[resume[1].index - 1].opcode == Opcode.IF_NEZ &&
+            resume[5].instruction.getReference<TypeReference>()?.type == "Ljava/lang/Float;" &&
+            resume[1].instruction.registersUsed.first() == call[0] && call[0] == speed &&
+            listOf(speed, item, state).all { it in 0..15 } && setOf(speed, item, state).size == 3 &&
+            (resume[1].index..resume[6].index).all { code[it].location.labels.isEmpty() },
+    ) { "Unexpected Reels resume speed path" }
+    val itemStateMedia = classDefBy(stateField!!.definingClass).fields.single { it.type == helperState.type }
+
+    ReelResumeSpeedFingerprint.method.addInstructions(resume[5].index + 1, """
+        invoke-static {v$speed, v$item, v$state}, $PLAYBACK_SPEED_CLASS->reelResumeSpeed(Ljava/lang/Float;${OBJECT}${OBJECT})Ljava/lang/Float;
+        move-result-object v$speed
+    """)
+    menu.addInstruction(0, "invoke-static/range {p1 .. p1}, $PLAYBACK_SPEED_CLASS->onMenuSpeedPicked($OBJECT)V")
+
+    replaceStub("menuMediaState", """
+        check-cast p0, $helper
+        iget-object p0, p0, $helperState
+        return-object p0
+    """)
+    replaceStub("itemMediaState", """
+        check-cast p0, ${stateField.definingClass}
+        iget-object p0, p0, $itemStateMedia
+        return-object p0
+    """)
+}
 
 private fun replaceStub(name: String, smali: String) =
     Fingerprint(definingClass = PLAYBACK_SPEED_CLASS, name = name).method.apply {
@@ -187,6 +264,7 @@ val defaultPlaybackSpeedPatch =
                 :none
                 return-void
             """)
+            hookReelSpeedRestore()
 
             enableSettings("defaultPlaybackSpeed")
         }

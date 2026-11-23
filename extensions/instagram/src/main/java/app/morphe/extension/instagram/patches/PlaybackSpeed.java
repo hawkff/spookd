@@ -14,6 +14,7 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Locale;
+import java.util.WeakHashMap;
 
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.settings.Settings;
@@ -29,6 +30,10 @@ public final class PlaybackSpeed {
     private static final float MAX_SPEED = 4f;
 
     private static volatile WeakReference<Object> startedReel = new WeakReference<>(null);
+    // Instagram's per-media playback state of Reels whose speed was picked in Instagram's menu.
+    private static final WeakHashMap<Object, Boolean> menuPicks = new WeakHashMap<>();
+    // Speeds picked in the panel, by the Reel item the player plays.
+    private static final WeakHashMap<Object, Float> panelPicks = new WeakHashMap<>();
 
     // A holder, so the pure helpers below load without the settings classes.
     private static final class DefaultSpeed {
@@ -54,6 +59,58 @@ public final class PlaybackSpeed {
         if (startedReel.get() != player) startedReel = new WeakReference<>(player);
     }
 
+    /** Called on the main thread when a speed is picked in Instagram's Reels menu. */
+    public static void onMenuSpeedPicked(Object menuHelper) {
+        try {
+            Object state = menuMediaState(menuHelper);
+            synchronized (PlaybackSpeed.class) {
+                // The menu pick is the latest choice, so earlier panel picks no longer apply.
+                panelPicks.clear();
+                if (state != null) menuPicks.put(state, Boolean.TRUE);
+            }
+        } catch (Throwable t) {
+            Logger.printException(() -> "Failed to note a Reels menu speed", t);
+        }
+    }
+
+    /** Called on the main thread when the panel sets a speed. */
+    static void onPanelSpeedPicked(Object player, float speed) {
+        Object item = playingContent(player);
+        if (item == null) return;
+        synchronized (PlaybackSpeed.class) {
+            panelPicks.put(item, speed);
+        }
+    }
+
+    /**
+     * Called on the main thread with the speed Instagram restores when a Reel starts or resumes.
+     * Returns the speed to apply instead.
+     */
+    public static Float reelResumeSpeed(Float nativeSpeed, Object item, Object itemState) {
+        if (nativeSpeed == null) return null;
+        try {
+            Float panelSpeed;
+            boolean menuPick;
+            synchronized (PlaybackSpeed.class) {
+                panelSpeed = panelPicks.get(item);
+                Object state = itemMediaState(itemState);
+                menuPick = state != null && menuPicks.containsKey(state);
+            }
+            return resolveReelSpeed(nativeSpeed, panelSpeed, menuPick, defaultSpeed());
+        } catch (Throwable t) {
+            Logger.printException(() -> "Failed to resolve the Reel speed", t);
+            return nativeSpeed;
+        }
+    }
+
+    // Instagram restores 1x for a Reel nobody picked a speed for; that is where the default applies.
+    static Float resolveReelSpeed(Float nativeSpeed, Float panelSpeed, boolean menuPick, float defaultSpeed) {
+        if (nativeSpeed == null) return null;
+        if (panelSpeed != null) return panelSpeed;
+        if (menuPick || nativeSpeed != 1f) return nativeSpeed;
+        return defaultSpeed;
+    }
+
     /** Opens the panel for the reel whose menu row was tapped. Runs on the main thread. */
     public static void openPanel(Context context, Object media) {
         try {
@@ -70,6 +127,14 @@ public final class PlaybackSpeed {
 
     // The bodies below are replaced at patch time with calls into Instagram's video player.
     static Object playingContent(Object player) {
+        return null;
+    }
+
+    private static Object menuMediaState(Object menuHelper) {
+        return null;
+    }
+
+    private static Object itemMediaState(Object itemState) {
         return null;
     }
 
