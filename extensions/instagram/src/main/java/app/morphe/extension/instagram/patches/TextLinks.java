@@ -11,7 +11,6 @@ import android.text.Spannable;
 import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.style.ClickableSpan;
-import android.text.style.URLSpan;
 import android.view.View;
 
 import java.util.regex.Matcher;
@@ -111,15 +110,9 @@ public final class TextLinks {
                 || (Character.isLetter(next) && Character.UnicodeScript.of(next) == Character.UnicodeScript.LATIN);
     }
 
-    /** True when Instagram or this class already linked part of the range; a larger span around it does not count. */
+    // Instagram's own links are not all URLSpans, so any tappable span over the range counts as linked.
     private static boolean isLinked(Spanned text, int start, int end) {
-        for (ClickableSpan span : text.getSpans(start, end, ClickableSpan.class)) {
-            int spanStart = text.getSpanStart(span);
-            int spanEnd = text.getSpanEnd(span);
-            boolean around = spanStart <= start && spanEnd >= end && spanEnd - spanStart > end - start;
-            if (!around || span instanceof URLSpan) return true;
-        }
-        return false;
+        return text.getSpans(start, end, ClickableSpan.class).length > 0;
     }
 
     static final class LinkSpan extends ClickableSpan {

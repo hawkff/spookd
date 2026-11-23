@@ -65,9 +65,15 @@ public class TextLinksTest {
     }
 
     @Test
-    public void linksInsideACaptionWideTapSpanAndAdjacentMention() {
-        SpannableStringBuilder text = new SpannableStringBuilder("@user https://example.com");
+    public void skipsLinkInsideAnEnclosingCustomLinkSpan() {
+        SpannableStringBuilder text = new SpannableStringBuilder("visit https://example.com now");
         text.setSpan(new Tap(), 0, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        assertLinks(text);
+    }
+
+    @Test
+    public void linksNextToAnAdjacentMention() {
+        SpannableStringBuilder text = new SpannableStringBuilder("@user https://example.com");
         text.setSpan(new Tap(), 0, 5, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         assertLinks(text, "https://example.com");
     }
