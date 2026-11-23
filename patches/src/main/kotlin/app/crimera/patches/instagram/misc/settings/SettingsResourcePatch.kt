@@ -19,7 +19,7 @@ val settingsResourcePatch =
         description = "Settings resource patch.",
     ) {
         execute {
-            // Add piko settings to the launcher icon long-press shortcuts
+            // Add spookd settings to the launcher icon long-press shortcuts
             document("res/xml/shortcuts.xml").use {
                 val existing = it.getElementsByTagName("shortcut")
                 for (index in 0 until existing.length) {
@@ -27,7 +27,8 @@ val settingsResourcePatch =
                     if (sc.getAttribute("android:shortcutId") == "piko_settings") return@use
                 }
 
-                val pikoExtra =
+                // Legacy stored names: launchers keep this shortcut id and these extras for pinned shortcuts.
+                val spookdExtra =
                     it.createElement("extra").apply {
                         setAttribute("android:name", "piko")
                         setAttribute("android:value", "true")
@@ -47,7 +48,7 @@ val settingsResourcePatch =
                         setAttribute("android:targetPackage", packageMetadata.packageName)
                         setAttribute("android:action", "android.intent.action.VIEW")
                         setAttribute("android:targetClass", "com.instagram.modal.ModalActivity")
-                        appendChild(pikoExtra)
+                        appendChild(spookdExtra)
                         appendChild(launchTypeExtra)
                         appendChild(shortcutExtra)
                     }

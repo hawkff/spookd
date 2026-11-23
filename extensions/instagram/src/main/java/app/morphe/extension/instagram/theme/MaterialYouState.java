@@ -113,10 +113,10 @@ final class MaterialYouState {
 
     static Boolean updateObservedInstagramDark(
             Boolean observedInstagramDark,
-            boolean pikoSettingsActivity,
+            boolean spookdSettingsActivity,
             boolean activityDark
     ) {
-        if (pikoSettingsActivity) {
+        if (spookdSettingsActivity) {
             return observedInstagramDark;
         }
         return activityDark;
@@ -208,7 +208,7 @@ final class MaterialYouState {
         return cachedNightMask;
     }
 
-    static boolean shouldPikoRecreate(
+    static boolean shouldSpookdRecreate(
             ThemeMode previousMode,
             ThemeMode requestedMode,
             boolean hasNativeAction,

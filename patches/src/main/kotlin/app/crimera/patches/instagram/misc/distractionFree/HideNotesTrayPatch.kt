@@ -55,11 +55,11 @@ val hideNotesTrayPatch =
                         """
                         ${PREF_CALL_DESCRIPTOR}->hideNotesTray()Z
                         move-result v$freeRegister
-                        if-eqz v$freeRegister, :piko
+                        if-eqz v$freeRegister, :spookd
                         const/16 v$freeRegister, 0x8
                         invoke-virtual {v$notesTrayRegister, v$freeRegister}, Landroid/view/View;->setVisibility(I)V
                         """.trimIndent(),
-                        ExternalLabel("piko", iPutObjectInstruction),
+                        ExternalLabel("spookd", iPutObjectInstruction),
                     )
 
                     enableSettings("hideNotesTray")

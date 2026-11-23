@@ -27,7 +27,7 @@ val externalDownloaderPatch =
         dependsOn(settingsPatch, mediaDataEntity, hookOverflowMenuButton, debugOverflowMenuButtonPatch, hookReelOverflowMenuButton)
         execute {
 
-            addOverflowMenuButtonAttributes("PIKO_EXTERNAL_DOWNLOADER", "externalDownloaderOverflowButton")
+            addOverflowMenuButtonAttributes("SPOOKD_EXTERNAL_DOWNLOADER", "externalDownloaderOverflowButton")
 
             enableSettings("downloadWithExternalDownloader")
         }

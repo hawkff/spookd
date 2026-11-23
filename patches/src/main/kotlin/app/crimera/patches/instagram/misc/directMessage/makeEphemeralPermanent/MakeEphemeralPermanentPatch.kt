@@ -102,7 +102,7 @@ val makeEphemeralPermanentPatch =
                 it.method.addInstructionsWithLabels(
                     ifEq.index,
                     """
-                    if-ne v$registerA, v$registerB, :piko
+                    if-ne v$registerA, v$registerB, :spookd
 
                     iget-object v0, v$ephemeralMediaRegister, $expireAtField
                     iget-object v1, v$ephemeralMediaRegister, $viewModeField
@@ -113,7 +113,7 @@ val makeEphemeralPermanentPatch =
                     iput-object v1, v$ephemeralMediaRegister, $viewModeField
                     return-object v$ephemeralMediaRegister
                     """.trimIndent(),
-                    ExternalLabel("piko", it.method.getInstruction(ifEq.index)),
+                    ExternalLabel("spookd", it.method.getInstruction(ifEq.index)),
                 )
             }
             // The parameters sit above v15, so they are copied to v0 and v1 (unused at the start) to be passed on.
@@ -204,11 +204,11 @@ private fun suppressEphemeralMediaReceipts() {
         """
         invoke-static {p0, p1}, $EXTENSION->wasEphemeralMediaViewed(Ljava/lang/Object;Ljava/lang/Object;)Z
         move-result v$unreadRegister
-        if-eqz v$unreadRegister, :piko_native_unread
+        if-eqz v$unreadRegister, :spookd_native_unread
         const/4 v$unreadRegister, 0x0
         return v$unreadRegister
         """.trimIndent(),
-        ExternalLabel("piko_native_unread", unseen.getInstruction(0)),
+        ExternalLabel("spookd_native_unread", unseen.getInstruction(0)),
     )
 
     val register = producer.getFreeRegisterProvider(
@@ -222,9 +222,9 @@ private fun suppressEphemeralMediaReceipts() {
         """
         invoke-static {v$sessionRegister, v$itemRegister}, $EXTENSION->shouldSuppressEphemeralMediaReceipt(${USER_SESSION_CLASS}Ljava/lang/Object;)Z
         move-result v$register
-        if-eqz v$register, :piko_send_receipt
+        if-eqz v$register, :spookd_send_receipt
         return-void
         """.trimIndent(),
-        ExternalLabel("piko_send_receipt", producer.getInstruction(index)),
+        ExternalLabel("spookd_send_receipt", producer.getInstruction(index)),
     )
 }

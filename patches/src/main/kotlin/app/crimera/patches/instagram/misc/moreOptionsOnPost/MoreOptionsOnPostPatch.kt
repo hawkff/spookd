@@ -35,7 +35,7 @@ val moreOptionsOnPostPatch =
         )
         execute {
 
-            addOverflowMenuButtonAttributes("PIKO_MORE_POST_OPTION", "morePostOptionOverflowButton")
+            addOverflowMenuButtonAttributes("SPOOKD_MORE_POST_OPTION", "morePostOptionOverflowButton")
 
             enableSettings("moreOptionsOnPost")
         }

@@ -24,7 +24,7 @@ import app.morphe.extension.instagram.settings.preference.widgets.RecommendedFla
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
 public final class RecommendedFlagsScreen {
-    private static final String PREFIX = Constants.PIKO_FRAGMENT_REC_FLAGS + "_";
+    private static final String PREFIX = Constants.SPOOKD_FRAGMENT_REC_FLAGS + "_";
     public static final String MODIFIED = PREFIX + "modified";
 
     private RecommendedFlagsScreen() {}
@@ -34,7 +34,7 @@ public final class RecommendedFlagsScreen {
     }
 
     public static boolean isFlagsScreen(String name) {
-        if (Constants.PIKO_FRAGMENT_REC_FLAGS.equals(name) || MODIFIED.equals(name)) return true;
+        if (Constants.SPOOKD_FRAGMENT_REC_FLAGS.equals(name) || MODIFIED.equals(name)) return true;
         for (Flag.Category category : Flag.Category.values()) {
             if (fragmentName(category).equals(name)) return true;
         }
@@ -52,7 +52,7 @@ public final class RecommendedFlagsScreen {
     public static void build(Context context, PreferenceScreen screen, String name, boolean forSearch,
                              List<Flag> flags) {
         Helper helper = new Helper(context);
-        if (Constants.PIKO_FRAGMENT_REC_FLAGS.equals(name)) {
+        if (Constants.SPOOKD_FRAGMENT_REC_FLAGS.equals(name)) {
             if (!forSearch) {
                 for (Flag flag : flags) {
                     if (flag.isModified()) {

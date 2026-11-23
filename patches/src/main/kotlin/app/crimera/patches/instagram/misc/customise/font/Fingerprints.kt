@@ -110,7 +110,7 @@ internal object PlatformTextWidgetFingerprint : Fingerprint(
     },
 )
 
-internal object PikoWidgetCreatorFingerprint : Fingerprint(
+internal object SpookdWidgetCreatorFingerprint : Fingerprint(
     filters = listOf(
         anyInstruction(
             newInstance("Landroid/widget/TextView;"),

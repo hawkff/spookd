@@ -11,7 +11,7 @@ import android.graphics.Typeface;
 import android.util.AttributeSet;
 import android.widget.Button;
 
-/** Replaces the platform {@link Button} in piko's own code. */
+/** Replaces the platform {@link Button} in spookd's own code. */
 @SuppressWarnings("unused")
 public final class CustomFontButton extends Button {
     public CustomFontButton(Context context) {
@@ -24,6 +24,6 @@ public final class CustomFontButton extends Button {
 
     @Override
     public void setTypeface(Typeface typeface) {
-        super.setTypeface(CustomFont.forPikoView(typeface));
+        super.setTypeface(CustomFont.forSpookdView(typeface));
     }
 }

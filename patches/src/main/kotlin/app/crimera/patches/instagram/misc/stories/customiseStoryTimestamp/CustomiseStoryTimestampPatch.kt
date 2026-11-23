@@ -48,10 +48,10 @@ val customiseStoryTimestampPatch =
                     """
                     invoke-static/range {v$postedTimestampRegister .. v${postedTimestampRegister + 1}}, ${PATCHES_DESCRIPTOR}/story/StoryTimestamp;->customiseStoryTimestamp(J)Ljava/lang/String;
                     move-result-object v$dummyRegister
-                    if-eqz v$dummyRegister, :piko
+                    if-eqz v$dummyRegister, :spookd
                     return-object v$dummyRegister
                     """.trimIndent(),
-                    ExternalLabel("piko", longToDoubleInstruction),
+                    ExternalLabel("spookd", longToDoubleInstruction),
                 )
 
                 enableSettings("customiseStoryTimestamp")

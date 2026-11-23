@@ -16,7 +16,7 @@ import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 
-private const val RESULT_METHOD = "pikoStorySeenSucceeded"
+private const val RESULT_METHOD = "spookdStorySeenSucceeded"
 
 /**
  * Adds a method to the story request, which returns if the completed request succeeded,
@@ -58,12 +58,12 @@ internal fun addStorySeenResultHooks(
         0,
         """
         instance-of p1, p0, $requestType
-        if-eqz p1, :piko_story_result_unavailable
+        if-eqz p1, :spookd_story_result_unavailable
         check-cast p0, $requestType
         invoke-virtual {p0}, $requestType->$RESULT_METHOD()Z
         move-result p1
         return p1
-        :piko_story_result_unavailable
+        :spookd_story_result_unavailable
         const/4 p1, 0x0
         return p1
         """.trimIndent(),

@@ -181,7 +181,7 @@ public class UI {
         return null;
     }
 
-    public static void pikoSettingsGear(ViewGroup viewGroup) {
+    public static void spookdSettingsGear(ViewGroup viewGroup) {
         try {
             if (viewGroup == null) {
                 return;
@@ -193,13 +193,13 @@ public class UI {
             }
 
             Context context = viewGroup.getContext();
-            boolean isFirstTime = Pref.firstTimePiko();
+            boolean isFirstTime = Pref.firstTimeSpookd();
             if(isFirstTime) {
                 TooltipHelper.showPersistentTooltip(context, imageView, str("spookd_tap_here"));
-                Pref.setFirstTimePiko(false);
+                Pref.setFirstTimeSpookd(false);
             }
         } catch (Exception e) {
-            Logger.printException(() -> "Failed pikoSettingsGear: ", e);
+            Logger.printException(() -> "Failed spookdSettingsGear: ", e);
         }
     }
 
@@ -254,7 +254,7 @@ public class UI {
 
                     if (selectedOption.equals(str("spookd_goto_spookd_settings"))) {
                         if (homeLongPress) {
-                            Pref.setFirstTimePiko(false);
+                            Pref.setFirstTimeSpookd(false);
                             FragmentHook.startSettings();
                         } else {
                             PikoUtils.openUrl("instagram://profile",true);
@@ -277,8 +277,8 @@ public class UI {
         dlg.show();
     }
 
-    public static void pikoSettingsButton(ViewGroup viewGroup, int bottomMargin) throws Exception {
-        boolean isFirstTime = Pref.firstTimePiko();
+    public static void spookdSettingsButton(ViewGroup viewGroup, int bottomMargin) throws Exception {
+        boolean isFirstTime = Pref.firstTimeSpookd();
 
         Context context = viewGroup.getContext();
         InstagramButton button = new InstagramButton(context);
@@ -292,7 +292,7 @@ public class UI {
         viewGroup.addView(button.getIgdsButton());
         if(isFirstTime){
             button.startPulseAnimation();
-            Pref.setFirstTimePiko(false);
+            Pref.setFirstTimeSpookd(false);
         }
     }
 }

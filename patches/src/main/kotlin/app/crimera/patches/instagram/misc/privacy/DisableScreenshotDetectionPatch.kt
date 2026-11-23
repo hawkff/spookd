@@ -91,9 +91,9 @@ val disableScreenshotDetection =
                         index,
                         """
                         $PREF_CALL v$freeRegister
-                        if-nez v$freeRegister, :piko
+                        if-nez v$freeRegister, :spookd
                         """.trimIndent(),
-                        ExternalLabel("piko", nextConstInstruction),
+                        ExternalLabel("spookd", nextConstInstruction),
                     )
 
                     val secureWindowState = AddFlagsToWindowFingerprint.method
@@ -105,7 +105,7 @@ val disableScreenshotDetection =
                             0,
                             """
                             ${PREF_CALL} v0
-                            if-eqz v0, :piko
+                            if-eqz v0, :spookd
                             move-object/from16 v0, p1
                             if-eqz v0, :return
                             const/16 v1, 0x2000
@@ -113,7 +113,7 @@ val disableScreenshotDetection =
                             :return
                             return-void
                             """.trimIndent(),
-                            ExternalLabel("piko", secureMethod.getInstruction(0)),
+                            ExternalLabel("spookd", secureMethod.getInstruction(0)),
                         )
                     }
 
@@ -123,10 +123,10 @@ val disableScreenshotDetection =
                             0,
                             """
                             $PREF_CALL v0
-                            if-eqz v0, :piko
+                            if-eqz v0, :spookd
                             return-void
                             """.trimIndent(),
-                            ExternalLabel("piko", getInstruction(0)),
+                            ExternalLabel("spookd", getInstruction(0)),
                         )
                     }
 
@@ -140,9 +140,9 @@ val disableScreenshotDetection =
                             flagIntIndex,
                             """
                             $PREF_CALL v$freeRegister
-                            if-nez v$freeRegister, :piko
+                            if-nez v$freeRegister, :spookd
                             """.trimIndent(),
-                            ExternalLabel("piko", getInstruction(firstIGetObjectAfterFlagIntIndex)),
+                            ExternalLabel("spookd", getInstruction(firstIGetObjectAfterFlagIntIndex)),
                         )
                     }
 

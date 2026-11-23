@@ -169,7 +169,7 @@ private fun rememberScrolledOutPosition(stoppedField: FieldReference) {
     val isVideo = MediaIsVideoFingerprint.instructionMatches.first().methodReference
     val getDuration = VideoDurationSeconds.originalMethod
     val eligible = addReelMethod(
-        pause.method.definingClass, "pikoIsResumeVideo", listOf(itemClass.type), "Z", registers = 4,
+        pause.method.definingClass, "spookdIsResumeVideo", listOf(itemClass.type), "Z", registers = 4,
         instructions = """
             $PREF_CALL_DESCRIPTOR->resumeReelsAfterScrolling()Z
             move-result v0
@@ -188,7 +188,7 @@ private fun rememberScrolledOutPosition(stoppedField: FieldReference) {
         """,
     )
     val stop = addReelMethod(
-        pause.method.definingClass, "pikoScrolledOutPosition",
+        pause.method.definingClass, "spookdScrolledOutPosition",
         listOf(matches[6].methodReference.definingClass, itemClass.type, BOXED_INT), BOXED_INT, registers = 11,
         instructions = """
             invoke-direct {p0, p2}, $eligible

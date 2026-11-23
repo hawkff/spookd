@@ -91,7 +91,7 @@ public final class FollowScan {
         stopped = false;
         committed = false;
         worker = new Thread(() -> run(accountId, followerCount, followingCount, listener),
-                "piko-follow-scan");
+                "spookd-follow-scan");
         worker.start();
         return null;
     }

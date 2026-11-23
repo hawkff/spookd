@@ -306,15 +306,15 @@ private fun fetchBody(
         iget-object v1, v0, $operation
         invoke-virtual {v1}, $failed
         move-result v2
-        if-nez v2, :piko_no_page
+        if-nez v2, :spookd_no_page
         invoke-virtual {v1}, $result
         move-result-object v1
         instance-of v2, v1, $successType
-        if-eqz v2, :piko_no_page
+        if-eqz v2, :spookd_no_page
         check-cast v1, $successType
         iget-object v1, v1, $successValue
         return-object v1
-        :piko_no_page
+        :spookd_no_page
         const/4 v1, 0x0
         return-object v1
     """

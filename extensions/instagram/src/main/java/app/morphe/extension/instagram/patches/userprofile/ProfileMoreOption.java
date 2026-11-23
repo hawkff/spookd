@@ -36,7 +36,7 @@ public class ProfileMoreOption {
     private static boolean DEBUG;
 
     static {
-        DEBUG = Pref.pikoDebug();
+        DEBUG = Pref.spookdDebug();
     }
 
     public static void moreOptionsDailogueBox(Context context, UserData userData, Callable<String> refreshUrl) {

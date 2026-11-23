@@ -56,10 +56,10 @@ val disableOnboardingPermissionPromptsPatch = patch(
                 iget-object v0, v0, $appIdField
                 invoke-static {v0}, $LINKS_DESCRIPTOR->shouldBlockOnboardingScreen(Ljava/lang/String;)Z
                 move-result v0
-                if-eqz v0, :piko_continue
+                if-eqz v0, :spookd_continue
                 return-void
                 """.trimIndent(),
-                ExternalLabel("piko_continue", method.getInstruction(0)),
+                ExternalLabel("spookd_continue", method.getInstruction(0)),
             )
         }
     }

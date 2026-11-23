@@ -58,7 +58,7 @@ public final class InboxLock {
     // A chat opened from a notification skips the inbox, so its own screen needs the same cover.
     private static final String THREAD_ID = "thread_view_root";
     private static final String THREAD_CONTAINER_ID = "thread_fragment_container";
-    private static final String COVER_TAG = "piko_inbox_lock_cover";
+    private static final String COVER_TAG = "spookd_inbox_lock_cover";
     private static final String MESSAGE_CHANNEL = "ig_direct";
 
     private static boolean initialized;

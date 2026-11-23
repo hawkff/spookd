@@ -33,7 +33,7 @@ public class Block {
             if (SUGGESTED_CONTENT_KEY.contains(key)) condition = true;
         }
 
-        return condition ? Constants.PIKO : key;
+        return condition ? Constants.SPOOKD : key;
     }
 
 }

@@ -61,7 +61,7 @@ val downloadMediaPatch =
 
         execute {
 
-            addOverflowMenuButtonAttributes("PIKO_DOWNLOAD", "downloadOverflowButton")
+            addOverflowMenuButtonAttributes("SPOOKD_DOWNLOAD", "downloadOverflowButton")
 
             // DM media downloader.
             val appActivityField =
@@ -81,10 +81,10 @@ val downloadMediaPatch =
                     move-object/from16 v1, p2
                     invoke-static {v0, v1}, $DOWNLOAD_DESCRIPTOR/MessageUtils;->messageDownloadCheck(Landroid/content/Context;Ljava/lang/Object;)Z
                     move-result v1
-                    if-nez v1, :piko
+                    if-nez v1, :spookd
                     return-void
                     """.trimIndent(),
-                    ExternalLabel("piko", getInstruction(0)),
+                    ExternalLabel("spookd", getInstruction(0)),
                 )
             }
 

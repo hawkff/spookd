@@ -38,7 +38,7 @@ internal fun addStoryAggregateBridge(
 ): MethodReference {
     val bridge = ImmutableMethod(
         owner.type,
-        "pikoAddStorySeen",
+        "spookdAddStorySeen",
         listOf(rawMediaType, USER_SESSION_CLASS, owner.type, STRING_CLASS).map {
             ImmutableMethodParameter(it, emptySet(), null)
         },
@@ -102,17 +102,17 @@ internal fun addStoryProgressBridgeHook(
         check-cast p0, $controllerClass
         iget-object p1, p0, $sessionField
         iget-object p2, p0, $itemField
-        if-eqz p2, :piko_story_progress_unavailable
+        if-eqz p2, :spookd_story_progress_unavailable
         iget-object p3, p0, $reelField
-        if-eqz p3, :piko_story_progress_unavailable
+        if-eqz p3, :spookd_story_progress_unavailable
         iget-object p4, p3, $reelModelField
-        if-eqz p4, :piko_story_progress_unavailable
+        if-eqz p4, :spookd_story_progress_unavailable
         iget-object p4, p4, $reelTypeField
         iget-object p0, p0, $rootViewField
-        if-eqz p0, :piko_story_progress_unavailable
+        if-eqz p0, :spookd_story_progress_unavailable
         invoke-static {p1, p2, p3, p4, p0}, $STORY_SEEN_BUTTON_DESCRIPTOR->captureCurrentStoryFromProgress(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V
         return-void
-        :piko_story_progress_unavailable
+        :spookd_story_progress_unavailable
         invoke-static {}, $STORY_SEEN_BUTTON_DESCRIPTOR->invalidateCurrentStory()V
         return-void
         """.trimIndent(),
@@ -150,18 +150,18 @@ internal fun addStoryHeaderBridgeHook(
         """
         check-cast p2, ${reelModelField.definingClass}
         check-cast p3, $holderClass
-        if-eqz p1, :piko_story_header_unavailable
-        if-eqz p2, :piko_story_header_unavailable
-        if-eqz p3, :piko_story_header_unavailable
+        if-eqz p1, :spookd_story_header_unavailable
+        if-eqz p2, :spookd_story_header_unavailable
+        if-eqz p3, :spookd_story_header_unavailable
         iget-object p4, p3, $rootViewField
-        if-eqz p4, :piko_story_header_unavailable
+        if-eqz p4, :spookd_story_header_unavailable
         iget-object p5, p2, $reelModelField
-        if-eqz p5, :piko_story_header_unavailable
+        if-eqz p5, :spookd_story_header_unavailable
         iget-object p5, p5, $reelTypeField
         move-object p3, p5
         invoke-static/range {p0 .. p4}, $STORY_SEEN_BUTTON_DESCRIPTOR->captureCurrentStoryFromHeader(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V
         return-void
-        :piko_story_header_unavailable
+        :spookd_story_header_unavailable
         invoke-static {}, $STORY_SEEN_BUTTON_DESCRIPTOR->invalidateCurrentStory()V
         return-void
         """.trimIndent(),

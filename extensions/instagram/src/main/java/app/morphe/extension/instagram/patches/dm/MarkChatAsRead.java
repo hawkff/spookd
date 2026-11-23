@@ -108,7 +108,7 @@ public class MarkChatAsRead {
 
     public static List addButton(List buttonList){
         try{
-            if(Pref.pikoDebug()){
+            if(Pref.spookdDebug()){
                 buttonList.add(getButton("THREAD_LEVEL_DEBUG"));
             }
             if(Pref.enableMarkChatAsReadOption()){

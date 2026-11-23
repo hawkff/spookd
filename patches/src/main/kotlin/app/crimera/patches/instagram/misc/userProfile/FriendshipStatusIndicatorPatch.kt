@@ -126,13 +126,13 @@ val friendshipStatusIndicatorPatch =
                     """
                     invoke-virtual/range {p$viewParameter .. p$viewParameter}, $viewType->getTag()Ljava/lang/Object;
                     move-result-object v1
-                    if-eqz v1, :cond_piko
+                    if-eqz v1, :cond_spookd
                     check-cast v1, ${internalBadgeField.definingClass}
                     iget-object v2, v1, $internalBadgeField
                     move-object/from16 v0, p$profileInfoParameter
                     invoke-static {v0, v2}, ${PATCHES_DESCRIPTOR}/userprofile/FriendshipStatusIndicator;->addFriendshipIndicator(Ljava/lang/Object;Ljava/lang/Object;)V
                     """.trimIndent(),
-                    ExternalLabel("cond_piko", it.method.getInstruction(0)),
+                    ExternalLabel("cond_spookd", it.method.getInstruction(0)),
                 )
 
                 enableSettings("followBackIndicator")

@@ -82,7 +82,7 @@ import app.morphe.extension.shared.ui.SelectionCheck;
 /**
  * "Saved Instants" screen: shows every instant captured by {@link InstantsDownloadHook} as a grid of
  * thumbnails grouped by the sender (keyed on a stable user id, labelled by username). Tap a tile for
- * download / open / copy (reusing piko's download pipeline); long-press to select items. Plain
+ * download / open / copy (reusing spookd's download pipeline); long-press to select items. Plain
  * programmatic UI so it has no layout-resource dependency, mirroring DeletedMessagesActivity.
  */
 import android.app.Application;

@@ -40,10 +40,10 @@ val viewDmAnonymouslyPatch =
                     """
                     invoke-static {}, $PREF_DESCRIPTOR->viewDmAnonymously()Z
                     move-result v$shouldDisableRegister
-                    if-eqz v$shouldDisableRegister, :piko_continue
+                    if-eqz v$shouldDisableRegister, :spookd_continue
                     return-void
                     """.trimIndent(),
-                    ExternalLabel("piko_continue", getInstruction(1)),
+                    ExternalLabel("spookd_continue", getInstruction(1)),
                 )
             }
             enableSettings("viewDmAnonymously")

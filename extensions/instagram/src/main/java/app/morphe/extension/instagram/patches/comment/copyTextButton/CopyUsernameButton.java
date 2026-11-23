@@ -22,7 +22,7 @@ public final class CopyUsernameButton {
     }
 
     public static String getLabel(Context context, int resourceId) {
-        // Instagram's downloaded translations can reuse IDs assigned to added Piko strings.
+        // Instagram's downloaded translations can reuse IDs assigned to added Spookd strings.
         if (resourceId == getLabelResourceId()) {
             return str("spookd_copy_username");
         }

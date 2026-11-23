@@ -33,10 +33,10 @@ val commentButtonClickCheckPatch =
                     move-object/from16 v$freeRegister, p1
                     invoke-static {v$freeRegister, v$arrayListRegister},${HANDLE_COMMENT_BUTTON_EXTENSION_CLASS}->checkOnCommentButtonClick(Ljava/lang/Object;Ljava/util/List;)Z
                     move-result v$freeRegister
-                    if-eqz v$freeRegister, :piko
+                    if-eqz v$freeRegister, :spookd
                     return-void
                     """.trimIndent(),
-                    ExternalLabel("piko", it.method.getInstruction(arrayListIndex + 1)),
+                    ExternalLabel("spookd", it.method.getInstruction(arrayListIndex + 1)),
                 )
             }
         }

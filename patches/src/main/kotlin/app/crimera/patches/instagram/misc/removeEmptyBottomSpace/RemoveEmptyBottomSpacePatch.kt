@@ -57,9 +57,9 @@ val removeEmptyBottomSpacePatch =
                         """
                         invoke-static {}, $PREF_DESCRIPTOR->removeEmptyBottomSpace()Z
                         move-result v$freeRegister
-                        if-nez v$freeRegister, :piko
+                        if-nez v$freeRegister, :spookd
                         """.trimIndent(),
-                        ExternalLabel("piko", getInstruction(firstSPutIndexAfterStr)),
+                        ExternalLabel("spookd", getInstruction(firstSPutIndexAfterStr)),
                     )
                     enableSettings("removeEmptyBottomSpace")
                 }

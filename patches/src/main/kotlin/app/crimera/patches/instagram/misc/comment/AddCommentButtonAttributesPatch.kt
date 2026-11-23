@@ -43,7 +43,7 @@ fun addButtonAttribute(
         val isEqualsClass = matches[1].methodReference.definingClass
         val compareButtonRegister = isEqualsInstruction.registersUsed[0]
         val ourButtonRegister = isEqualsInstruction.registersUsed[1]
-        // Added Piko strings receive their resource IDs when the APK resources are rebuilt.
+        // Added Spookd strings receive their resource IDs when the APK resources are rebuilt.
         val loadStringId = stringIdMethod?.let {
             "invoke-static {}, $it\nmove-result v$ourButtonRegister"
         } ?: "const v$ourButtonRegister, $stringLateral"

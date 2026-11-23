@@ -37,8 +37,8 @@ public class SavedMessagesHook {
     private static android.os.HandlerThread sWorkerThread;
     private static android.os.Handler sWorker;
 
-    private static void piko(String message) {
-        android.util.Log.e("piko", message);
+    private static void spookd(String message) {
+        android.util.Log.e("spookd", message);
     }
 
     public static void openDeletedMessages(Context context) {
@@ -47,7 +47,7 @@ public class SavedMessagesHook {
             if (context == null) return;
             ActivityHook.startDeletedMessagesActivity(context);
         } catch (Exception e) {
-            piko("SavedMessagesHook.openDeletedMessages: " + e);
+            spookd("SavedMessagesHook.openDeletedMessages: " + e);
         }
     }
 
@@ -127,7 +127,7 @@ public class SavedMessagesHook {
 
     private static synchronized android.os.Handler getWorker() {
         if (sWorker == null) {
-            sWorkerThread = new android.os.HandlerThread("piko-dm-hook");
+            sWorkerThread = new android.os.HandlerThread("spookd-dm-hook");
             sWorkerThread.start();
             sWorker = new android.os.Handler(sWorkerThread.getLooper());
             sWorker.post(SavedMessagesHook::startMediaVault);
@@ -175,7 +175,7 @@ public class SavedMessagesHook {
                     directItem.getItemId(), directItem.getClientContext());
             if (saved != null) antiRevokeItem(directItem, saved.content);
         } catch (Exception e) {
-            piko("SavedMessagesHook.restoreRevokedItem: " + e);
+            spookd("SavedMessagesHook.restoreRevokedItem: " + e);
         }
         return hidden;
     }
@@ -185,7 +185,7 @@ public class SavedMessagesHook {
         try {
             if (Pref.dmMediaVault()) MediaVault.get().start();
         } catch (Exception e) {
-            piko("SavedMessagesHook.startMediaVault: " + e);
+            spookd("SavedMessagesHook.startMediaVault: " + e);
         }
     }
 
@@ -208,7 +208,7 @@ public class SavedMessagesHook {
                 c.close();
             }
         } catch (Exception e) {
-            piko("SavedMessagesHook.warmUpRevokeCache: " + e);
+            spookd("SavedMessagesHook.warmUpRevokeCache: " + e);
         }
     }
 
@@ -317,7 +317,7 @@ public class SavedMessagesHook {
                 if (Pref.dmMediaVault()) captureMedia(item, directItem, serverId, viewerId, type, timestamp);
             }
         } catch (Exception e) {
-            piko("SavedMessagesHook.processReceivedItem: " + e);
+            spookd("SavedMessagesHook.processReceivedItem: " + e);
         }
     }
 
@@ -398,7 +398,7 @@ public class SavedMessagesHook {
             manager.notify((int) (System.currentTimeMillis() & Integer.MAX_VALUE),
                     InboxLock.hideNotification(notification));
         } catch (Exception e) {
-            piko("SavedMessagesHook.notifyDeletion: " + e);
+            spookd("SavedMessagesHook.notifyDeletion: " + e);
         }
     }
 
@@ -464,7 +464,7 @@ public class SavedMessagesHook {
             if (!shouldCaptureStored(db.getSenderId(messageId), myUserId())) return;
             markDeletedAndNotify(db, messageId);
         } catch (Exception e) {
-            piko("SavedMessagesHook.processMessageHiddenFromDb: " + e);
+            spookd("SavedMessagesHook.processMessageHiddenFromDb: " + e);
         }
     }
 }

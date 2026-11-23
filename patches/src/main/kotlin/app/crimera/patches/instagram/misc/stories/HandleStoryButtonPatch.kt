@@ -147,10 +147,10 @@ val handleStoryButtonPatch =
                         :other_buttons
                         invoke-static {v0,v1,v3}, $STORY_BUTTON_EXTENSION_CLASS->storyButtonAction($charSequence Landroid/content/Context;Ljava/lang/Object;)Z
                         move-result v0
-                        if-eqz v0, :piko
+                        if-eqz v0, :spookd
                         return-void
                         """.trimIndent(),
-                        ExternalLabel("piko", getInstruction(0)),
+                        ExternalLabel("spookd", getInstruction(0)),
                     )
                 }
             }

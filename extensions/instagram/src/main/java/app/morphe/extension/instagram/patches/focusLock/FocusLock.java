@@ -66,7 +66,7 @@ public class FocusLock {
      * Whether the running lock was written before this layout existed.
      *
      * Such a lock is still honoured, through the keys it was written with. Releasing it on update
-     * would turn updating piko into a way out of a lock, which is the one thing the feature is
+     * would turn updating spookd into a way out of a lock, which is the one thing the feature is
      * supposed to prevent. It is read rather than rewritten, so nothing is persisted behind the
      * user's back; the next lock they set is written in the current layout.
      */

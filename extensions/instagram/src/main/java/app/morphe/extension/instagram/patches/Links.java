@@ -157,8 +157,8 @@ public class Links {
             Logger.printException(() -> "intercept URI failed: ", ex);
         }
         // Exception is hanndled at call.
-        if (shouldBlockUri && Pref.pikoDebug()) {
-            Log.d("piko", "blocked uri: " + uri);
+        if (shouldBlockUri && Pref.spookdDebug()) {
+            Log.d("spookd", "blocked uri: " + uri);
         }
         if(shouldBlockUri) {
             throw new IOException("Block uri");

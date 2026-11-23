@@ -49,7 +49,7 @@ import com.instagram.common.session.UserSession;
 
 public class FriendshipStatusIndicator {
 
-    private static final String STATUS_TAG = "piko_friendship_status_textview";
+    private static final String STATUS_TAG = "spookd_friendship_status_textview";
     private static final Map<TextView, Integer> INDICATOR_COLORS = new WeakHashMap<>();
 
     private static void friendshipStatusDialogBox(Context context, UserFriendshipStatus userFriendshipStatus) {

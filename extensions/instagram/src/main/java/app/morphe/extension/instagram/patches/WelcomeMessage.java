@@ -19,7 +19,7 @@ public class WelcomeMessage {
 
     public static void openWelcomeMessage(Context context) {
         try {
-            if(Pref.firstTimePiko()) {
+            if(Pref.firstTimeSpookd()) {
                 UI.welcomeDialogBox(context);
             }
         } catch (Exception ex) {

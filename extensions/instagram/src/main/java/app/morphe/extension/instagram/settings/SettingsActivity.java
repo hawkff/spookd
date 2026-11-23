@@ -64,12 +64,12 @@ public final class SettingsActivity {
     }
 
     private static final int FRAGMENT_CONTAINER_ID = 1001;
-    private static final String STATE_FRAGMENT_NAME = "piko_settings_fragment_name";
-    private static final String STATE_FRAGMENT_STATE = "piko_settings_fragment_state";
-    private static final String STATE_DISPLAY_TITLE = "piko_settings_display_title";
-    private static final String STATE_SEARCH_QUERY = "piko_settings_search_query";
-    private static final String STATE_SEARCH_MODE = "piko_settings_search_mode";
-    private static final String STATE_TARGET_PREFERENCE_KEY = "piko_settings_target_preference_key";
+    private static final String STATE_FRAGMENT_NAME = "spookd_settings_fragment_name";
+    private static final String STATE_FRAGMENT_STATE = "spookd_settings_fragment_state";
+    private static final String STATE_DISPLAY_TITLE = "spookd_settings_display_title";
+    private static final String STATE_SEARCH_QUERY = "spookd_settings_search_query";
+    private static final String STATE_SEARCH_MODE = "spookd_settings_search_mode";
+    private static final String STATE_TARGET_PREFERENCE_KEY = "spookd_settings_target_preference_key";
 
     private static final Map<Activity, Controller> sControllers = new WeakHashMap<>();
 
@@ -162,13 +162,13 @@ public final class SettingsActivity {
             Bundle intentExtras = activity.getIntent() == null ? null : activity.getIntent().getExtras();
             String requestedFragmentName = intentExtras == null
                     ? null
-                    : intentExtras.getString(Constants.PIKO_FRAGMENT_NAME);
+                    : intentExtras.getString(Constants.SPOOKD_FRAGMENT_NAME);
             String requestedTitle = intentExtras == null
                     ? null
-                    : intentExtras.getString(Constants.PIKO_FRAGMENT_TITLE);
+                    : intentExtras.getString(Constants.SPOOKD_FRAGMENT_TITLE);
             targetPreferenceKey = intentExtras == null
                     ? null
-                    : intentExtras.getString(Constants.PIKO_SEARCH_TARGET_PREFERENCE_KEY);
+                    : intentExtras.getString(Constants.SPOOKD_SEARCH_TARGET_PREFERENCE_KEY);
 
             if (savedInstanceState != null) {
                 requestedFragmentName = savedInstanceState.getString(STATE_FRAGMENT_NAME, requestedFragmentName);
@@ -189,9 +189,9 @@ public final class SettingsActivity {
             }
 
             rootSettings = requestedFragmentName == null
-                    || Constants.PIKO_FRAGMENT_SETTINGS.equals(requestedFragmentName);
+                    || Constants.SPOOKD_FRAGMENT_SETTINGS.equals(requestedFragmentName);
             fragmentName = requestedFragmentName == null
-                    ? Constants.PIKO_FRAGMENT_SETTINGS
+                    ? Constants.SPOOKD_FRAGMENT_SETTINGS
                     : requestedFragmentName;
             createLayout(displayTitle, rootSettings);
 
@@ -251,11 +251,11 @@ public final class SettingsActivity {
 
         private Bundle createFragmentArguments() {
             Bundle arguments = new Bundle();
-            arguments.putString(Constants.PIKO_FRAGMENT_NAME, fragmentName);
-            arguments.putString(Constants.PIKO_FRAGMENT_TITLE, displayTitle);
+            arguments.putString(Constants.SPOOKD_FRAGMENT_NAME, fragmentName);
+            arguments.putString(Constants.SPOOKD_FRAGMENT_TITLE, displayTitle);
             if (targetPreferenceKey != null && !targetPreferenceKey.isEmpty()) {
                 arguments.putString(
-                        Constants.PIKO_SEARCH_TARGET_PREFERENCE_KEY,
+                        Constants.SPOOKD_SEARCH_TARGET_PREFERENCE_KEY,
                         targetPreferenceKey
                 );
             }
@@ -545,7 +545,7 @@ public final class SettingsActivity {
             );
             outState.putString(STATE_TARGET_PREFERENCE_KEY, targetPreferenceKey);
 
-            // Instagram removes android:fragments during host creation, so keep our state under a Piko key.
+            // Instagram removes android:fragments during host creation, so keep our state under a Spookd key.
             android.app.Fragment fragment = activity.getFragmentManager()
                     .findFragmentById(FRAGMENT_CONTAINER_ID);
             if (fragment instanceof SettingsFragment) {
@@ -591,7 +591,7 @@ public final class SettingsActivity {
                                 return proxy == (args == null ? null : args[0]);
                             }
                             if ("toString".equals(methodName) && parameterCount == 0) {
-                                return "PikoInstagramSettingsSearchBackCallback";
+                                return "SpookdInstagramSettingsSearchBackCallback";
                             }
                             if ("onBackInvoked".equals(methodName)) {
                                 exitSearchIfActive();
@@ -663,7 +663,7 @@ public final class SettingsActivity {
         Context context;
         private PreferenceManager preferenceManager;
         private Helper helper;
-        private String fragmentName = Constants.PIKO_FRAGMENT_SETTINGS;
+        private String fragmentName = Constants.SPOOKD_FRAGMENT_SETTINGS;
         private String targetPreferenceKey;
         private ListView listView;
         private View searchEntryView;
@@ -682,7 +682,7 @@ public final class SettingsActivity {
             Controller controller = getController(getActivity());
             if (controller != null && controller.searchController != null && listView != null
                     && !controller.searchController.state().searchMode
-                    && (Constants.PIKO_FRAGMENT_REC_FLAGS.equals(fragmentName)
+                    && (Constants.SPOOKD_FRAGMENT_REC_FLAGS.equals(fragmentName)
                     || RecommendedFlagsScreen.MODIFIED.equals(fragmentName))) {
                 runPreservingScrollPosition(() -> renderSearchState(controller.searchController.state()));
             }
@@ -705,18 +705,18 @@ public final class SettingsActivity {
 
         void updateNavigationArguments(String fragmentName, String targetPreferenceKey) {
             this.fragmentName = fragmentName == null
-                    ? Constants.PIKO_FRAGMENT_SETTINGS
+                    ? Constants.SPOOKD_FRAGMENT_SETTINGS
                     : fragmentName;
             this.targetPreferenceKey = targetPreferenceKey;
 
             Bundle arguments = getArguments();
             if (arguments != null) {
-                arguments.putString(Constants.PIKO_FRAGMENT_NAME, this.fragmentName);
+                arguments.putString(Constants.SPOOKD_FRAGMENT_NAME, this.fragmentName);
                 if (targetPreferenceKey == null || targetPreferenceKey.isEmpty()) {
-                    arguments.remove(Constants.PIKO_SEARCH_TARGET_PREFERENCE_KEY);
+                    arguments.remove(Constants.SPOOKD_SEARCH_TARGET_PREFERENCE_KEY);
                 } else {
                     arguments.putString(
-                            Constants.PIKO_SEARCH_TARGET_PREFERENCE_KEY,
+                            Constants.SPOOKD_SEARCH_TARGET_PREFERENCE_KEY,
                             targetPreferenceKey
                     );
                 }
@@ -776,11 +776,11 @@ public final class SettingsActivity {
 
             if (getArguments() != null) {
                 fragmentName = getArguments().getString(
-                        Constants.PIKO_FRAGMENT_NAME,
-                        Constants.PIKO_FRAGMENT_SETTINGS
+                        Constants.SPOOKD_FRAGMENT_NAME,
+                        Constants.SPOOKD_FRAGMENT_SETTINGS
                 );
                 targetPreferenceKey = getArguments().getString(
-                        Constants.PIKO_SEARCH_TARGET_PREFERENCE_KEY
+                        Constants.SPOOKD_SEARCH_TARGET_PREFERENCE_KEY
                 );
             }
 
@@ -845,7 +845,7 @@ public final class SettingsActivity {
 
         private boolean isRootFragment() {
             return fragmentName == null
-                    || Constants.PIKO_FRAGMENT_SETTINGS.equals(fragmentName);
+                    || Constants.SPOOKD_FRAGMENT_SETTINGS.equals(fragmentName);
         }
 
         private void renderSearchState(SettingsSearchController.State state) {

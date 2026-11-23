@@ -131,7 +131,7 @@ internal fun hookReelReattach(start: ReelStartPosition) {
     ) throw PatchException("Unexpected Reels player, item or snapshot in the resume path")
 
     val helper = addReelMethod(
-        resume.definingClass, "pikoRestoreReattachedReel", listOf("Ljava/lang/Object;", item, "Ljava/lang/String;"),
+        resume.definingClass, "spookdRestoreReattachedReel", listOf("Ljava/lang/Object;", item, "Ljava/lang/String;"),
         "V", registers = 9, flags = AccessFlags.PRIVATE.value,
         instructions = """
             invoke-virtual {v0, p3}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z

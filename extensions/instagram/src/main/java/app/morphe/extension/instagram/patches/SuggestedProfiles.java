@@ -25,7 +25,7 @@ public final class SuggestedProfiles {
                 || "follow_back".equals(key)
                 || "from_your_school".equals(key))) {
             // Both response parsers skip unrecognized keys without dropping follow requests.
-            return Constants.PIKO;
+            return Constants.SPOOKD;
         }
         return key;
     }

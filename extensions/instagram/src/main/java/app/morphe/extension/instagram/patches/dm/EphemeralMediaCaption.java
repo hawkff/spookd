@@ -65,7 +65,7 @@ public final class EphemeralMediaCaption {
         try {
             if (expireAt == null || viewMode == null) return;
             if (expireAt * 1000 < System.currentTimeMillis()) return;
-            // Local message JSON may already contain Piko's replacement value.
+            // Local message JSON may already contain Spookd's replacement value.
             if (MODE_PERMANENT.equals(viewMode) && SERVER_PARSERS.contains(parser)) {
                 viewMode = MODE_KEEP_IN_CHAT;
             }

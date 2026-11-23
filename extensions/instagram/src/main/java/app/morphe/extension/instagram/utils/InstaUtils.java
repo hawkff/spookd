@@ -55,7 +55,7 @@ public class InstaUtils {
             fileName += ".txt";
             data = developerOptions.toString();
         }
-        fileDone = PikoUtils.pikoWriteFile(fileName, Constants.DEFAULT_PIKO_FOLDER, data, false);
+        fileDone = PikoUtils.pikoWriteFile(fileName, Constants.DEFAULT_SPOOKD_FOLDER, data, false);
         fileDoneTxt = fileDone ? " created" : fileDoneTxt;
         PikoUtils.toast(fileName + fileDoneTxt);
     }

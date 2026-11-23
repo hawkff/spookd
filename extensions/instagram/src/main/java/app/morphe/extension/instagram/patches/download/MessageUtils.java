@@ -24,7 +24,7 @@ import app.morphe.extension.crimera.legacydownloader.MediaType;
 public class MessageUtils {
     private static boolean DEBUG;
     static {
-        DEBUG = Pref.pikoDebug();
+        DEBUG = Pref.spookdDebug();
     }
 
     public static boolean messageDownloadCheck(Context context, Object messageInfoObject){

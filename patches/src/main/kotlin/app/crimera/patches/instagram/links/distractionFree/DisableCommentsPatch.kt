@@ -67,9 +67,9 @@ val disableCommentsPatch =
                 """
                 $HIDE_COMMENT_BUTTONS
                 move-result v$scratch
-                if-eqz v$scratch, :piko_comments_original
+                if-eqz v$scratch, :spookd_comments_original
                 sget-object v$stateRegister, $hiddenField
-                :piko_comments_original
+                :spookd_comments_original
                 nop
                 """.trimIndent(),
             )

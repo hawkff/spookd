@@ -60,11 +60,11 @@ val hideReshareButtonPatch =
                     """
                     $PREF_CALL
                     move-result v0
-                    if-eqz v0, :piko
+                    if-eqz v0, :spookd
                     sget-object v0, Ljava/lang/Boolean;->FALSE:Ljava/lang/Boolean;
                     return-object v0
                     """.trimMargin(),
-                    ExternalLabel("piko", getInstruction(0)),
+                    ExternalLabel("spookd", getInstruction(0)),
                 )
             }
 

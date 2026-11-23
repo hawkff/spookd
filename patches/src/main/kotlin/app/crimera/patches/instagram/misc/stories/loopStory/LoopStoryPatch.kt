@@ -162,7 +162,7 @@ val loopStoryPatch =
                             """
                             invoke-virtual {v$reelItemRegister}, $restriction
                             move-result v1
-                            if-nez v1, :piko
+                            if-nez v1, :spookd
                             """.trimIndent()
                         }.orEmpty()
                         Fingerprint(
@@ -178,20 +178,20 @@ val loopStoryPatch =
 
                     """
                     instance-of v1, v0, $playerType
-                    if-eqz v1, :piko_next_player_$index
+                    if-eqz v1, :spookd_next_player_$index
                     check-cast v0, $playerType
                     iget-object v1, v0, $currentItem
                     invoke-virtual {v$reelItemRegister, v1}, Ljava/lang/Object;->equals(Ljava/lang/Object;)Z
                     move-result v1
-                    if-eqz v1, :piko_photo
+                    if-eqz v1, :spookd_photo
                     $seekGuard
                     const/4 v1, 0x0
                     $seekOpcode {v0, v1}, $absoluteSeek
                     const-string v1, "resume"
                     const/4 v2, 0x0
                     invoke-interface {v0, v1, v2}, $resume
-                    goto :piko_photo
-                    :piko_next_player_$index
+                    goto :spookd_photo
+                    :spookd_next_player_$index
                     """.trimIndent()
                 }.joinToString("\n")
 
@@ -209,18 +209,18 @@ val loopStoryPatch =
                         """
                         ${PREF_CALL_DESCRIPTOR}->loopStory()Z
                         move-result v0
-                        if-eqz v0, :piko
+                        if-eqz v0, :spookd
                         check-cast v$reelItemRegister, $reelItemType
                         iget-object v0, p0, $playerField
-                        if-eqz v0, :piko_photo
+                        if-eqz v0, :spookd_photo
                         $videoRestart
-                        goto :piko
-                        :piko_photo
+                        goto :spookd
+                        :spookd_photo
                         const/4 v3, 0x1
-                        goto :piko_loop
+                        goto :spookd_loop
                         """.trimIndent(),
-                        ExternalLabel("piko", getInstruction(0)),
-                        ExternalLabel("piko_loop", getInstruction(photoRestart.index)),
+                        ExternalLabel("spookd", getInstruction(0)),
+                        ExternalLabel("spookd_loop", getInstruction(photoRestart.index)),
                     )
                 }
             }

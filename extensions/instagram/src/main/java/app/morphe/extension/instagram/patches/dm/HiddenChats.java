@@ -65,7 +65,7 @@ public final class HiddenChats {
     private static final String[] HIDE_BUTTONS = {"HIDE_FROM_PRIMARY", "HIDE_FROM_MESSAGES"};
     private static final String[] UNHIDE_BUTTONS = {"SHOW_IN_PRIMARY", "SHOW_IN_MESSAGES"};
     // The incognito icon next to the account name tells that the hidden chats are open.
-    private static final String ICON_TAG = "piko_hidden_chats_icon";
+    private static final String ICON_TAG = "spookd_hidden_chats_icon";
     private static final String TITLE_BOX_ID = "action_bar_title_notifications_container";
     private static final String TITLE_ID = "igds_action_bar_title";
     private static final Map<View, Boolean> watchedWindows = new WeakHashMap<>();

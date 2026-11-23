@@ -105,7 +105,7 @@ public final class MediaVault {
         ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(2, task -> new Thread(() -> {
             Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
             task.run();
-        }, "piko-vault"));
+        }, "spookd-vault"));
         ConnectionOpener network = new ConnectionOpener() {
             @Override
             public boolean isOnline() {

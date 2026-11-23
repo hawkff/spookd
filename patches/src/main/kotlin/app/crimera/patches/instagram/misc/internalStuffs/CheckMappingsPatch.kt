@@ -50,9 +50,9 @@ val checkMappingsPatch =
                     targetIndex,
                     """ 
                     invoke-static {v$fragmentRegister}, $DOWNLOAD_DESCRIPTOR/DownloadMapping;->checkMappings(Landroidx/fragment/app/Fragment;)V
-                    goto: piko
+                    goto: spookd
                     """.trimIndent(),
-                    ExternalLabel("piko", firstGoto16),
+                    ExternalLabel("spookd", firstGoto16),
                 )
             }
         }

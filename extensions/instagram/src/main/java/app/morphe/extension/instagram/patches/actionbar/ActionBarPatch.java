@@ -157,7 +157,7 @@ public class ActionBarPatch {
             }
 
             if(pref.contains(Constants.AB_SETTINGS_ICON)) {
-                UI.pikoSettingsGear(viewGroup);
+                UI.spookdSettingsGear(viewGroup);
             }
 
             HomeActionBarLayout.observe(
@@ -203,7 +203,7 @@ public class ActionBarPatch {
             Boolean isSelfProfile = userData.getUserId().equals(userSession.getUserId());
 
             if(pref.contains(Constants.AB_SETTINGS_ICON) && isSelfProfile) {
-                UI.pikoSettingsGear(viewGroup);
+                UI.spookdSettingsGear(viewGroup);
             }
 
             if(pref.contains(Constants.AB_GHOST_MODE_ICON) && isSelfProfile) {
@@ -231,7 +231,7 @@ public class ActionBarPatch {
             Set<String> pref = Pref.chatActionBarButtons();
 
             if(pref.contains(Constants.AB_SETTINGS_ICON)) {
-                UI.pikoSettingsGear(viewGroup);
+                UI.spookdSettingsGear(viewGroup);
             }
 
             if(pref.contains(Constants.AB_GHOST_MODE_ICON)) {
@@ -257,7 +257,7 @@ public class ActionBarPatch {
             Set<String> pref = Pref.inboxActionBarButtons();
 
             if(pref.contains(Constants.AB_SETTINGS_ICON)) {
-                UI.pikoSettingsGear(viewGroup);
+                UI.spookdSettingsGear(viewGroup);
             }
 
             if(pref.contains(Constants.AB_GHOST_MODE_ICON)) {

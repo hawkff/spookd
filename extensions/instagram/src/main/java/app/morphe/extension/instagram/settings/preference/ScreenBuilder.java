@@ -52,41 +52,41 @@ public class ScreenBuilder {
     }
 
     public void buildFragment(String fragmentName) {
-        if (Constants.PIKO_FRAGMENT_SETTINGS.equals(fragmentName)) {
+        if (Constants.SPOOKD_FRAGMENT_SETTINGS.equals(fragmentName)) {
             buildSettingsPage();
-        } else if (Constants.PIKO_FRAGMENT_ADS.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_ADS.equals(fragmentName)) {
             buildAdsSection();
-        } else if (Constants.PIKO_FRAGMENT_GHOST.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_GHOST.equals(fragmentName)) {
             ghostSection();
-        } else if (Constants.PIKO_FRAGMENT_STORY.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_STORY.equals(fragmentName)) {
             storySection();
-        } else if (Constants.PIKO_FRAGMENT_LINKS.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_LINKS.equals(fragmentName)) {
             linksSection();
-        } else if (Constants.PIKO_FRAGMENT_DISTRACTION_FREE.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_DISTRACTION_FREE.equals(fragmentName)) {
             distractionFreeSection();
-        } else if (Constants.PIKO_FRAGMENT_MISC.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_MISC.equals(fragmentName)) {
             buildMiscSection();
-        } else if (Constants.PIKO_FRAGMENT_DOWNLOAD_MEDIA.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_DOWNLOAD_MEDIA.equals(fragmentName)) {
             buildDownloadSection();
-        } else if (Constants.PIKO_FRAGMENT_NAV_BTNS.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_NAV_BTNS.equals(fragmentName)) {
             buildNavigationSection();
-        } else if (Constants.PIKO_FRAGMENT_DEV_OPTIONS.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_DEV_OPTIONS.equals(fragmentName)) {
             buildDeveloperSection();
-        } else if (Constants.PIKO_FRAGMENT_ABOUT.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_ABOUT.equals(fragmentName)) {
             aboutSection(SettingsStatus.FLAGS);
-        } else if (Constants.PIKO_FRAGMENT_ACTION_BAR.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_ACTION_BAR.equals(fragmentName)) {
             buildActionBarSection();
-        } else if (Constants.PIKO_FRAGMENT_DM.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_DM.equals(fragmentName)) {
             dmSection();
-        } else if (Constants.PIKO_FRAGMENT_FILTER_CONTENT.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_FILTER_CONTENT.equals(fragmentName)) {
             filterContentSection();
         } else if (RecommendedFlagsScreen.isFlagsScreen(fragmentName)) {
             RecommendedFlagsScreen.build(context, screen, fragmentName, false, RecommendedFlags.getFlags(false));
-        } else if (Constants.PIKO_FRAGMENT_FOCUS_LOCK.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_FOCUS_LOCK.equals(fragmentName)) {
             buildFocusLockSection();
-        } else if (Constants.PIKO_FRAGMENT_INSTANTS.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_INSTANTS.equals(fragmentName)) {
             buildInstantsSection();
-        } else if (Constants.PIKO_FRAGMENT_FONT.equals(fragmentName)) {
+        } else if (Constants.SPOOKD_FRAGMENT_FONT.equals(fragmentName)) {
             buildFontSection();
         }
     }
@@ -191,7 +191,7 @@ public class ScreenBuilder {
                     helper.buttonPreference(
                             str("spookd_category_rec_flags"),
                             str("spookd_category_rec_flags_desc"),
-                            Constants.PIKO_FRAGMENT_REC_FLAGS
+                            Constants.SPOOKD_FRAGMENT_REC_FLAGS
                     )
             );
         }
@@ -243,7 +243,7 @@ public class ScreenBuilder {
                     )
             );
 
-            if(Pref.pikoDebug()) {
+            if(Pref.spookdDebug()) {
                 addPreference(
                         helper.buttonPreference(
                                 str("spookd_export_experiment_list"),
@@ -511,7 +511,7 @@ public class ScreenBuilder {
                     helper.buttonPreference(
                             str("spookd_focus_lock"),
                             FocusLock.statusSummary(),
-                            Constants.PIKO_FRAGMENT_FOCUS_LOCK
+                            Constants.SPOOKD_FRAGMENT_FOCUS_LOCK
                     )
             );
         }
@@ -719,7 +719,7 @@ public class ScreenBuilder {
                 helper.buttonPreference(
                         FocusLock.buttonTitle(),
                         FocusLock.statusSummary(),
-                        "piko_focus_lock_action"
+                        "spookd_focus_lock_action"
                 )
         );
 
@@ -772,7 +772,7 @@ public class ScreenBuilder {
                     helper.buttonPreference(
                             str("spookd_category_font"),
                             "",
-                            Constants.PIKO_FRAGMENT_FONT
+                            Constants.SPOOKD_FRAGMENT_FONT
                     )
             );
         }
@@ -1228,7 +1228,7 @@ public class ScreenBuilder {
                 helper.buttonPreference(
                         appVersionText,
                         "",
-                        Constants.PIKO_APP_VERSION_PREFERENCE
+                        Constants.SPOOKD_APP_VERSION_PREFERENCE
                 )
         );
 
@@ -1236,7 +1236,7 @@ public class ScreenBuilder {
                 helper.buttonPreference(
                         patchVersionText,
                         "",
-                        Constants.PIKO_PATCH_VERSION_PREFERENCE
+                        Constants.SPOOKD_PATCH_VERSION_PREFERENCE
                 )
         );
 
@@ -1268,12 +1268,12 @@ public class ScreenBuilder {
                 helper.switchPreference(
                         str("spookd_debug"),
                         str("spookd_debug_desc"),
-                        Settings.PIKO_DEBUG
+                        Settings.SPOOKD_DEBUG
                 )
         );
 
         PreferenceCategory category = addCategory(str("spookd_patch_info_title"));
-        category.setKey(Constants.PIKO_PATCH_INFO_PREFERENCE_CATEGORY);
+        category.setKey(Constants.SPOOKD_PATCH_INFO_PREFERENCE_CATEGORY);
         String enabledStr = str("spookd_patch_enabled");
         String disabledStr = str("spookd_patch_disabled");
 
@@ -1358,7 +1358,7 @@ public class ScreenBuilder {
                     helper.categoryPreference(
                             str("spookd_category_ads"),
                             "",
-                            Constants.PIKO_FRAGMENT_ADS
+                            Constants.SPOOKD_FRAGMENT_ADS
                     )
             );
         }
@@ -1368,7 +1368,7 @@ public class ScreenBuilder {
                     helper.categoryPreference(
                             str("spookd_category_filter_content"),
                             "",
-                            Constants.PIKO_FRAGMENT_FILTER_CONTENT
+                            Constants.SPOOKD_FRAGMENT_FILTER_CONTENT
                     )
             );
         }
@@ -1378,7 +1378,7 @@ public class ScreenBuilder {
                     helper.categoryPreference(
                             str("spookd_category_ghost"),
                             "",
-                            Constants.PIKO_FRAGMENT_GHOST
+                            Constants.SPOOKD_FRAGMENT_GHOST
                     )
             );
         }
@@ -1388,7 +1388,7 @@ public class ScreenBuilder {
                     helper.categoryPreference(
                             str("spookd_category_dm"),
                             "",
-                            Constants.PIKO_FRAGMENT_DM
+                            Constants.SPOOKD_FRAGMENT_DM
                     )
             );
         }
@@ -1398,7 +1398,7 @@ public class ScreenBuilder {
                     helper.categoryPreference(
                             str("spookd_category_story"),
                             "",
-                            Constants.PIKO_FRAGMENT_STORY
+                            Constants.SPOOKD_FRAGMENT_STORY
                     )
             );
         }
@@ -1408,7 +1408,7 @@ public class ScreenBuilder {
                     helper.categoryPreference(
                             str("spookd_category_links"),
                             "",
-                            Constants.PIKO_FRAGMENT_LINKS
+                            Constants.SPOOKD_FRAGMENT_LINKS
                     )
             );
         }
@@ -1418,7 +1418,7 @@ public class ScreenBuilder {
                     helper.categoryPreference(
                             str("spookd_category_distraction_free"),
                             "",
-                            Constants.PIKO_FRAGMENT_DISTRACTION_FREE
+                            Constants.SPOOKD_FRAGMENT_DISTRACTION_FREE
                     )
             );
         }
@@ -1428,7 +1428,7 @@ public class ScreenBuilder {
                     helper.categoryPreference(
                             str("spookd_category_misc"),
                             "",
-                            Constants.PIKO_FRAGMENT_MISC
+                            Constants.SPOOKD_FRAGMENT_MISC
                     )
             );
         }
@@ -1438,7 +1438,7 @@ public class ScreenBuilder {
                     helper.categoryPreference(
                             str("spookd_category_downloads"),
                             "",
-                            Constants.PIKO_FRAGMENT_DOWNLOAD_MEDIA
+                            Constants.SPOOKD_FRAGMENT_DOWNLOAD_MEDIA
                     )
             );
         }
@@ -1448,7 +1448,7 @@ public class ScreenBuilder {
                     helper.categoryPreference(
                             str("spookd_instants_title"),
                             "",
-                            Constants.PIKO_FRAGMENT_INSTANTS
+                            Constants.SPOOKD_FRAGMENT_INSTANTS
                     )
             );
         }
@@ -1457,7 +1457,7 @@ public class ScreenBuilder {
                 helper.categoryPreference(
                         str("spookd_category_action_bar"),
                         "",
-                        Constants.PIKO_FRAGMENT_ACTION_BAR
+                        Constants.SPOOKD_FRAGMENT_ACTION_BAR
                 )
         );
 
@@ -1466,7 +1466,7 @@ public class ScreenBuilder {
                     helper.categoryPreference(
                             str("spookd_category_navigation_tabs"),
                             "",
-                            Constants.PIKO_FRAGMENT_NAV_BTNS
+                            Constants.SPOOKD_FRAGMENT_NAV_BTNS
                     )
             );
         }
@@ -1476,7 +1476,7 @@ public class ScreenBuilder {
                     helper.categoryPreference(
                             str("spookd_category_dev_options"),
                             "",
-                            Constants.PIKO_FRAGMENT_DEV_OPTIONS
+                            Constants.SPOOKD_FRAGMENT_DEV_OPTIONS
                     )
             );
         }
@@ -1485,7 +1485,7 @@ public class ScreenBuilder {
                 helper.categoryPreference(
                         str("spookd_category_about"),
                         "",
-                        Constants.PIKO_FRAGMENT_ABOUT
+                        Constants.SPOOKD_FRAGMENT_ABOUT
                 )
         );
 

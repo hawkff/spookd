@@ -36,11 +36,11 @@ val disableReelsScrollingPatch = patch(
             """
                 ${PREF_CALL_DESCRIPTOR}->disableReelsScrolling()Z
                 move-result v0
-                if-eqz v0, :piko
+                if-eqz v0, :spookd
                 iget-object v0, p0, $viewPagerField
                 const/4 v1, 0x0
                 invoke-virtual { v0, v1 }, Landroidx/viewpager2/widget/ViewPager2;->setUserInputEnabled(Z)V
-                :piko
+                :spookd
                 nop
             """
         )
@@ -51,10 +51,10 @@ val disableReelsScrollingPatch = patch(
             """
                 ${PREF_CALL_DESCRIPTOR}->disableReelsScrolling()Z
                 move-result v0
-                if-eqz v0, :piko
+                if-eqz v0, :spookd
                 const/4 v0, 0x0
                 return v0
-                :piko
+                :spookd
                 nop
             """
         )

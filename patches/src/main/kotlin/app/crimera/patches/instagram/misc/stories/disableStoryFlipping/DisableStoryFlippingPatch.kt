@@ -40,10 +40,10 @@ val disableStoryFlippingPatch =
                     """
                     ${PREF_CALL_DESCRIPTOR}->disableStoryFlipping()Z
                     move-result v0
-                    if-eqz v0, :piko
+                    if-eqz v0, :spookd
                     return-void
                     """.trimIndent(),
-                    ExternalLabel("piko", getInstruction(0)),
+                    ExternalLabel("spookd", getInstruction(0)),
                 )
             }
             enableSettings("disableStoryFlipping")

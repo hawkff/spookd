@@ -479,8 +479,8 @@ public class DownloadUtils {
                 boolean extracted = false;
                 try {
                     try {
-                        source = File.createTempFile("piko-cover-", ".mp4", context.getCacheDir());
-                        picture = File.createTempFile("piko-cover-", ".jpg", context.getCacheDir());
+                        source = File.createTempFile("spookd-cover-", ".mp4", context.getCacheDir());
+                        picture = File.createTempFile("spookd-cover-", ".jpg", context.getCacheDir());
                         try (OutputStream cached = new FileOutputStream(source)) {
                             super.download(video.getUrl(), cached, builder, notificationId);
                         }

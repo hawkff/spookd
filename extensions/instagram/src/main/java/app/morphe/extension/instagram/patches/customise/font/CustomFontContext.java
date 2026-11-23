@@ -16,8 +16,8 @@ import android.view.View;
 import android.widget.TextView;
 
 /**
- * A themed context whose inflater applies the custom font, for the platform dialogs piko shows:
- * their text views are inflated by the framework rather than created in piko's code.
+ * A themed context whose inflater applies the custom font, for the platform dialogs spookd shows:
+ * their text views are inflated by the framework rather than created in spookd's code.
  */
 public final class CustomFontContext extends ContextThemeWrapper {
     private LayoutInflater inflater;
@@ -66,7 +66,7 @@ public final class CustomFontContext extends ContextThemeWrapper {
             if (view instanceof TextView) {
                 TextView textView = (TextView) view;
                 Typeface current = textView.getTypeface();
-                Typeface replacement = CustomFont.forPikoView(current);
+                Typeface replacement = CustomFont.forSpookdView(current);
                 if (replacement != current) {
                     textView.setTypeface(replacement);
                 }

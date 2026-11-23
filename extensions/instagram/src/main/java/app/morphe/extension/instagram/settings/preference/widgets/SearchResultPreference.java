@@ -28,7 +28,7 @@ public final class SearchResultPreference extends Preference {
         setOnPreferenceClickListener(new OnPreferenceClickListener() {
             @Override
             public boolean onPreferenceClick(Preference preference) {
-                ActivityHook.startPikoActivity(
+                ActivityHook.startSpookdActivity(
                         SearchResultPreference.this.result.fragmentName,
                         SearchResultPreference.this.result.parentTitle,
                         SearchResultPreference.this.result.preferenceKey

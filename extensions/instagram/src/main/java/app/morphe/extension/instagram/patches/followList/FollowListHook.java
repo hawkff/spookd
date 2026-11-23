@@ -35,7 +35,7 @@ import com.instagram.common.session.UserSession;
 /** Runtime hook for "Show non-followers in Following list". Field names resolved at patch time. */
 public class FollowListHook {
 
-    private static final String BADGE_TAG = "piko_follow_list_badge";
+    private static final String BADGE_TAG = "spookd_follow_list_badge";
     private static int avatarId;
 
     // Parameter order matches bindView(int, View, Object, Object) exactly, since it's called with
