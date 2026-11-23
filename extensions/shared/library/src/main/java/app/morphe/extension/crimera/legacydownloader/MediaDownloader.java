@@ -107,6 +107,8 @@ public class MediaDownloader {
         boolean replacing = false;
         String activeDestination = null;
         File replacement = null;
+        Throwable failure = null;
+        if (request.tracker != null) request.tracker.started();
         try {
             Notification.Builder builder;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -119,7 +121,7 @@ public class MediaDownloader {
                     .setOngoing(true) // Keeps notification un-swipable during download execution.
                     .setProgress(100, 0, false);
             if (request.privateTarget != null) {
-                savePrivately(request, builder, notificationId);
+                downloadCompleted = savePrivately(request, builder, notificationId);
                 return;
             }
 
@@ -192,6 +194,7 @@ public class MediaDownloader {
                 } catch (Exception ignored) {}
             });
         } catch (Exception | LinkageError e) {
+            failure = e;
             if (!downloadCompleted && !replacing && outputDocumentUri != null) {
                 try {
                     DocumentsContract.deleteDocument(context.getContentResolver(), outputDocumentUri);
@@ -210,16 +213,19 @@ public class MediaDownloader {
             }
             if (replacement != null) replacement.delete();
             if (request.onFinished != null) request.onFinished.accept(downloadCompleted);
+            if (request.tracker != null) {
+                request.tracker.ended(downloadCompleted, downloadCompleted ? outputDocumentUri : null, failure);
+            }
         }
     }
 
-    /** Downloads into the request's private target; a part that is not published is deleted. */
-    private void savePrivately(DownloadRequest request, Notification.Builder builder, int notificationId)
+    /** Downloads into the request's private target and returns whether it was saved; a part that is not published is deleted. */
+    private boolean savePrivately(DownloadRequest request, Notification.Builder builder, int notificationId)
             throws Exception {
         DownloadRequest.PrivateTarget target = request.privateTarget;
         if (request.conflictPolicy == DownloadRequest.ConflictPolicy.SKIP && target.exists()) {
             showToast(ExtensionStrings.DOWNLOAD_MEDIA_EXISTS);
-            return;
+            return false;
         }
         String downloadStartString = ExtensionStrings.DOWNLOAD_ONGOING + request.fileName;
         builder.setContentTitle(downloadStartString);
@@ -237,7 +243,7 @@ public class MediaDownloader {
         if (!published) {
             notificationManager.cancel(notificationId);
             showToast(ExtensionStrings.DOWNLOAD_MEDIA_EXISTS);
-            return;
+            return false;
         }
         String downloadCompletedString = ExtensionStrings.DOWNLOAD_COMPLETED + request.fileName;
         // No tap action: a private file cannot be handed to another app's viewer.
@@ -254,6 +260,7 @@ public class MediaDownloader {
                 PikoUtils.toast(downloadCompletedString);
             } catch (Exception ignored) {}
         });
+        return true;
     }
 
     private void replaceDocument(File replacement, Uri destination) throws IOException {

@@ -42,6 +42,7 @@ import java.util.TreeSet;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.constants.PostType;
 import app.morphe.extension.instagram.constants.UI;
+import app.morphe.extension.instagram.patches.download.gallery.DownloadHistory;
 import app.morphe.extension.instagram.patches.download.gallery.Gallery;
 import app.morphe.extension.instagram.patches.download.gallery.GalleryItem;
 import app.morphe.extension.instagram.patches.download.gallery.GalleryKind;
@@ -747,8 +748,8 @@ public class DownloadUtils {
     /** {@code ownerUsername} is whose media it is, kept in the private gallery; null when unknown. */
     public static void downloadMediaUrl(Context context, String mediaUrl, String subFolder, String fileName,
                                         String ownerUsername) throws Exception {
-        GalleryItem item = Gallery.enabled() ? new GalleryItem(GalleryTab.of(null, null, subFolder),
-                GalleryKind.of(fileName), ownerUsername, null, null, null, Gallery.accountId(), null) : null;
+        GalleryItem item = new GalleryItem(GalleryTab.of(null, null, subFolder),
+                GalleryKind.of(fileName), ownerUsername, null, null, null, Gallery.accountId(), null);
         enqueueDownload(context, createDownloadRequest(mediaUrl, subFolder, fileName, item));
     }
 
@@ -989,7 +990,10 @@ public class DownloadUtils {
         throw new IllegalStateException("No activity found above the story download button");
     }
 
-    /** A null {@code item} saves to the download folder; otherwise the request saves into the private gallery. */
+    /**
+     * {@code item} is what the download history and, while it is enabled, the private gallery keep;
+     * a null one saves to the download folder without a history row.
+     */
     public static DownloadRequest createDownloadRequest(String url, String subFolder, String fileName, GalleryItem item) {
         DownloadRequest request = new DownloadRequest(url, subFolder, fileName);
         String policy = SharedPref.getStringPref(Settings.DOWNLOAD_CONFLICT_POLICY);
@@ -999,15 +1003,18 @@ public class DownloadUtils {
             request.conflictPolicy = DownloadRequest.ConflictPolicy.OVERWRITE;
         }
         if (item != null) {
-            request.privateTarget = Gallery.target(item, subFolder, fileName, request.conflictPolicy);
+            DownloadHistory.Row history = DownloadHistory.track(request, item);
+            if (Gallery.enabled()) {
+                request.privateTarget = Gallery.target(item, subFolder, fileName, request.conflictPolicy,
+                        history::savedToGallery);
+            }
         }
         return request;
     }
 
-    /** What the gallery keeps about one media of a post, or null when downloads go to phone storage. */
+    /** What the gallery and the download history keep about one media of a post. */
     private static GalleryItem galleryItem(MediaData root, MediaData child, int postPosition, PostType hint,
                                            String kind) {
-        if (!Gallery.enabled()) return null;
         PostType type = root.getPostType();
         String username = null, userId = null, mediaId = null, link = null;
         Long takenAt = null;

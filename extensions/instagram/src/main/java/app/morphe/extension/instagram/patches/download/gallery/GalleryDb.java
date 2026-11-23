@@ -8,7 +8,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 public final class GalleryDb extends SQLiteOpenHelper {
 
     static final String DB_NAME = "piko_gallery.db";
-    private static final int DB_VERSION = 1;
+    private static final int DB_VERSION = 2;
 
     private static GalleryDb instance;
 
@@ -44,9 +44,11 @@ public final class GalleryDb extends SQLiteOpenHelper {
                 + ")");
         db.execSQL("CREATE INDEX idx_gallery_tab_time ON gallery_items(tab, saved_at)");
         db.execSQL("CREATE INDEX idx_gallery_name ON gallery_items(sub_folder, file_name)");
+        DownloadHistory.createTable(db);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        if (oldVersion < 2) DownloadHistory.createTable(db);
     }
 }

@@ -6,6 +6,7 @@ import android.os.Build;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.function.LongConsumer;
 
 import app.morphe.extension.crimera.legacydownloader.DownloadRequest;
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
@@ -48,9 +49,10 @@ public final class Gallery {
         return id.isEmpty() ? null : id;
     }
 
-    /** Saves a download as a gallery item; its calls run on the download thread. */
+    /** Saves a download as a gallery item, telling {@code published} its id; its calls run on the download thread. */
     public static DownloadRequest.PrivateTarget target(GalleryItem item, String subFolder, String fileName,
-                                                       DownloadRequest.ConflictPolicy policy) {
+                                                       DownloadRequest.ConflictPolicy policy,
+                                                       LongConsumer published) {
         GalleryStore.Conflict conflict = policy == DownloadRequest.ConflictPolicy.SKIP ? GalleryStore.Conflict.SKIP
                 : policy == DownloadRequest.ConflictPolicy.OVERWRITE ? GalleryStore.Conflict.OVERWRITE
                 : GalleryStore.Conflict.RENAME;
@@ -67,7 +69,9 @@ public final class Gallery {
 
             @Override
             public boolean publish(File part) throws IOException {
-                if (GalleryStore.get().publish(part, item, subFolder, fileName, conflict) == -1) return false;
+                long id = GalleryStore.get().publish(part, item, subFolder, fileName, conflict);
+                if (id == -1) return false;
+                published.accept(id);
                 prune();
                 return true;
             }
