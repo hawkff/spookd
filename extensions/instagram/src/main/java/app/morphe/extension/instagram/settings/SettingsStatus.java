@@ -214,8 +214,19 @@ public class SettingsStatus {
     public static void hideReshareButton() {
         hideReshareButton = true;
     }
+    public static boolean hideCommentEmojiBar = false;
+    public static void hideCommentEmojiBar() { hideCommentEmojiBar = true; }
+    public static boolean hideReelsVisualSearch = false;
+    public static void hideReelsVisualSearch() { hideReelsVisualSearch = true; }
+    public static boolean hideProfileNotesBubble = false;
+    public static void hideProfileNotesBubble() { hideProfileNotesBubble = true; }
+    public static boolean hideThreadsButton = false;
+    public static void hideThreadsButton() { hideThreadsButton = true; }
+    public static boolean hideFriendsMap = false;
+    public static void hideFriendsMap() { hideFriendsMap = true; }
     public static boolean distractionFreeSection() {
-        return (hideReelsFollowButton || disableDoubleTapLike || hideHiddenRequests || hideNotesTray || disableHighlights || disableStories || disableExplore || disableComments || hideStoriesTray || limitFollowingFeed || hideFeedPosts || disableVideoAutoplay || disableDiscoverPeople || hideGroupCreationOnSharesheet || hideReshareButton || hideSaveButtons || hideLikes || hideShareButton || disableReelsScrolling || disableSwipeToCreate || focusLock);
+        return (hideReelsFollowButton || disableDoubleTapLike || hideHiddenRequests || hideNotesTray || disableHighlights || disableStories || disableExplore || disableComments || hideStoriesTray || limitFollowingFeed || hideFeedPosts || disableVideoAutoplay || disableDiscoverPeople || hideGroupCreationOnSharesheet || hideReshareButton || hideSaveButtons || hideLikes || hideShareButton || disableReelsScrolling || disableSwipeToCreate || focusLock
+                || hideCommentEmojiBar || hideReelsVisualSearch || hideProfileNotesBubble || hideThreadsButton || hideFriendsMap);
     }
 
     //Misc section.
@@ -407,6 +418,11 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_disable_stories"),SettingsStatus.disableStories);
         FLAGS.put(str("spookd_disable_swipe_to_create"), SettingsStatus.disableSwipeToCreate);
         FLAGS.put(str("spookd_focus_lock"), SettingsStatus.focusLock);
+        FLAGS.put(str("spookd_hide_comment_emoji_bar"), SettingsStatus.hideCommentEmojiBar);
+        FLAGS.put(str("spookd_hide_reels_visual_search"), SettingsStatus.hideReelsVisualSearch);
+        FLAGS.put(str("spookd_hide_profile_notes_bubble"), SettingsStatus.hideProfileNotesBubble);
+        FLAGS.put(str("spookd_hide_threads_button"), SettingsStatus.hideThreadsButton);
+        FLAGS.put(str("spookd_hide_friends_map"), SettingsStatus.hideFriendsMap);
 
         FLAGS.put(str("spookd_view_dm_anonymously"),SettingsStatus.viewDmAnonymously);
         FLAGS.put(str("spookd_mark_as_read_after_reply"), SettingsStatus.markAsReadAfterReply);

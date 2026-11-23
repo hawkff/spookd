@@ -699,6 +699,21 @@ public class ScreenBuilder {
                     Settings.DISABLE_DOUBLE_TAP_LIKE_MESSAGE
             );
         }
+        if (SettingsStatus.hideCommentEmojiBar) {
+            addPreference(helper.switchPreference(str("spookd_hide_comment_emoji_bar"), str("spookd_hide_comment_emoji_bar_desc"), Settings.HIDE_COMMENT_EMOJI_BAR));
+        }
+        if (SettingsStatus.hideReelsVisualSearch) {
+            addPreference(helper.switchPreference(str("spookd_hide_reels_visual_search"), str("spookd_hide_reels_visual_search_desc"), Settings.HIDE_REELS_VISUAL_SEARCH));
+        }
+        if (SettingsStatus.hideProfileNotesBubble) {
+            addPreference(helper.switchPreference(str("spookd_hide_profile_notes_bubble"), str("spookd_hide_profile_notes_bubble_desc"), Settings.HIDE_PROFILE_NOTES_BUBBLE));
+        }
+        if (SettingsStatus.hideThreadsButton) {
+            addPreference(helper.switchPreference(str("spookd_hide_threads_button"), str("spookd_hide_threads_button_desc"), Settings.HIDE_THREADS_BUTTON));
+        }
+        if (SettingsStatus.hideFriendsMap) {
+            addPreference(helper.switchPreference(str("spookd_hide_friends_map"), str("spookd_hide_friends_map_desc"), Settings.HIDE_FRIENDS_MAP));
+        }
     }
 
     /** Adds a Distraction free switch, shown forced on while Focus Lock holds it. */
