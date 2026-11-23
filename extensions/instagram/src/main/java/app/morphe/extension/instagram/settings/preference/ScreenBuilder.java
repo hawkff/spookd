@@ -914,13 +914,29 @@ public class ScreenBuilder {
                 addPreference(confirmations, helper.switchPreference(
                         str("spookd_confirm_follow"), str("spookd_confirm_follow_desc"), Settings.CONFIRM_FOLLOW));
             }
-            if (SettingsStatus.confirmReelRepost) {
+            if (SettingsStatus.confirmReelRepost || SettingsStatus.confirmFeedRepost) {
                 addPreference(confirmations, helper.switchPreference(
                         str("spookd_confirm_repost"), str("spookd_confirm_repost_desc"), Settings.CONFIRM_REPOST));
             }
             if (SettingsStatus.confirmComment || SettingsStatus.confirmCommentSheet) {
                 addPreference(confirmations, helper.switchPreference(
                         str("spookd_confirm_comment"), str("spookd_confirm_comment_desc"), Settings.CONFIRM_COMMENT));
+            }
+            if (SettingsStatus.confirmUnfollow) {
+                addPreference(confirmations, helper.switchPreference(
+                        str("spookd_confirm_unfollow"), str("spookd_confirm_unfollow_desc"), Settings.CONFIRM_UNFOLLOW));
+            }
+            if (SettingsStatus.confirmStoryLike || SettingsStatus.confirmStoryReaction) {
+                addPreference(confirmations, helper.switchPreference(
+                        str("spookd_confirm_story_like"), str("spookd_confirm_story_like_desc"), Settings.CONFIRM_STORY_LIKE));
+            }
+            if (SettingsStatus.confirmCall) {
+                addPreference(confirmations, helper.switchPreference(
+                        str("spookd_confirm_call"), str("spookd_confirm_call_desc"), Settings.CONFIRM_CALL));
+            }
+            if (SettingsStatus.confirmFollowRequest) {
+                addPreference(confirmations, helper.switchPreference(
+                        str("spookd_confirm_follow_request"), str("spookd_confirm_follow_request_desc"), Settings.CONFIRM_FOLLOW_REQUEST));
             }
         }
     }
