@@ -24,6 +24,7 @@ import app.morphe.patcher.util.registersUsed
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.builder.BuilderOffsetInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
@@ -234,6 +235,23 @@ private fun hookReelTap(controller: String) {
             return v0
         """,
     )
+    // Before those sites, a pending flag can send the tap straight to the sound toggle.
+    val shortcut = (0 until sites.minOf { it.start }).single { index ->
+        code[index].getReference<MethodReference>()?.let {
+            it.definingClass == controller && it.parameters() == listOf("I") && it.returnType == "V"
+        } == true
+    }
+    val controllerRead = code[shortcut - 2]
+    val flagCheck = code[shortcut - 3] as? BuilderOffsetInstruction
+    val shortcutScratch = controllerRead.registersUsed.first()
+    val decision = flagCheck?.let { code[it.target.location.index] }
+    require(
+        flagCheck != null && flagCheck.opcode.name.startsWith("IF_") && decision != null &&
+            controllerRead.opcode == Opcode.IGET_OBJECT && controllerRead.location.labels.isEmpty() &&
+            controllerRead.getReference<FieldReference>() == controllerField &&
+            decision.opcode.setsRegister() && decision.registersUsed.first() == shortcutScratch,
+    ) { "Unexpected Reels tap sound shortcut" }
+
     for (site in sites.sortedByDescending { it.start }) {
         tap.addInstructions(site.tapPausesIndex, """
             invoke-static {v${site.tapPauses}}, $OPTIONS->tapPausesReel(Z)Z
@@ -245,6 +263,11 @@ private fun hookReelTap(controller: String) {
             if-nez v${site.scratch}, :spookd_tap_done
         """, ExternalLabel("spookd_tap_done", done))
     }
+    tap.addInstructionsWithLabels(shortcut - 2, """
+        invoke-static {}, $OPTIONS->skipsTapSoundShortcut()Z
+        move-result v$shortcutScratch
+        if-nez v$shortcutScratch, :spookd_tap_decision
+    """, ExternalLabel("spookd_tap_decision", decision!!))
 }
 
 @Suppress("unused")

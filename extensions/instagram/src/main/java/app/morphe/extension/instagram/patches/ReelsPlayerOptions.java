@@ -83,6 +83,11 @@ public final class ReelsPlayerOptions {
         return endedItem.get() != null && takeEndedReel(item, stopLooping());
     }
 
+    /** Called on the main thread before Instagram's one-tap sound shortcut on a Reel. Returns whether to skip it. */
+    public static boolean skipsTapSoundShortcut() {
+        return tapPausesReel(false) || (endedItem.get() != null && hasEndedReel(stopLooping()));
+    }
+
     // A Reel recorded while Stop looping was on is dropped once the switch is off.
     static boolean takeEndedReel(Object item, boolean stopLooping) {
         Object ended = hasEndedReel(stopLooping) ? endedItem.get() : null;
