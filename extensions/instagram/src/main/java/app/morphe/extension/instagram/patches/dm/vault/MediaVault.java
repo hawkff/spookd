@@ -124,18 +124,23 @@ public final class MediaVault {
 
     /**
      * Queues the media of a received item ({@code kind} photo, video or voice) for download.
+     * {@code viewMode} is the item's original view mode, or null when unknown; once and
+     * replayable media is kept until the user deletes it.
      * Runs on the caller's thread and never throws. Skips items whose link is missing or
      * expired, and messages already older than the retention.
      */
-    public void enqueue(String itemId, String accountId, String kind, String url, long msgTimestamp) {
+    public void enqueue(String itemId, String accountId, String kind, String url, long msgTimestamp,
+                        String viewMode) {
         try {
             start();
             long now = clock.getAsLong();
             long expiresAt = MediaUrls.expiresAt(url);
+            // A later receipt can know the view-once mode an earlier one lacked; the download is not repeated.
+            if (markResource(viewMode) != null && itemId != null) store.promoteViewMode(itemId, viewMode);
             if (itemId == null || itemId.isEmpty() || expiresAt <= now
                     || msgTimestamp < now - RETENTION_MS
                     || !("photo".equals(kind) || "video".equals(kind) || "voice".equals(kind))) return;
-            long id = store.insertQueued(itemId, accountId, kind, url, expiresAt, msgTimestamp);
+            long id = store.insertQueued(itemId, accountId, kind, url, expiresAt, msgTimestamp, viewMode);
             if (id != -1) schedule(id, 0);
         } catch (Exception e) {
             Logger.printException(() -> "MediaVault.enqueue failed", e);
@@ -208,9 +213,18 @@ public final class MediaVault {
         return new Stored(VaultFile.open(file(row.id, PKV), kek), row.kind);
     }
 
-    /** Ids of unsent saved messages whose media is stored. Runs on the caller's background thread. */
-    public Set<String> storedMessageIds() {
-        return store.storedMessageIds();
+    /**
+     * Ids of unsent or view-once saved messages whose media is stored, each with its view mode (null when
+     * unknown). Runs on the caller's background thread.
+     */
+    public Map<String, String> storedMessages() {
+        return store.storedMessages();
+    }
+
+    /** The string resource of the mark shown on stored media of this view mode, or null for none. */
+    public static String markResource(String viewMode) {
+        return "once".equals(viewMode) ? "spookd_media_view_once"
+                : "replayable".equals(viewMode) ? "spookd_media_view_twice" : null;
     }
 
     /** One stored media row; the sender is null when its message is not saved. */
@@ -225,9 +239,11 @@ public final class MediaVault {
         public final String senderId;
         /** The DM item id the media belongs to. */
         public final String itemId;
+        /** The item's original view mode, such as once or replayable; null when unknown. */
+        public final String viewMode;
 
         Item(long id, String kind, String mime, long sizeBytes, long msgTimestamp, String accountId,
-             String senderUsername, String senderId, String itemId) {
+             String senderUsername, String senderId, String itemId, String viewMode) {
             this.id = id;
             this.kind = kind;
             this.mime = mime;
@@ -237,6 +253,7 @@ public final class MediaVault {
             this.senderUsername = senderUsername;
             this.senderId = senderId;
             this.itemId = itemId;
+            this.viewMode = viewMode;
         }
     }
 

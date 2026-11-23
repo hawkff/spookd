@@ -107,7 +107,7 @@ val makeEphemeralPermanentPatch =
                     iget-object v0, v$ephemeralMediaRegister, $expireAtField
                     iget-object v1, v$ephemeralMediaRegister, $viewModeField
 
-                    invoke-static {v0, v1, p1}, $EXTENSION->makeEphemeralMediaPermanent(Ljava/lang/Long;Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/String;
+                    invoke-static {v0, v1, p1, v$ephemeralMediaRegister}, $EXTENSION->makeEphemeralMediaPermanent(Ljava/lang/Long;Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/String;
                     move-result-object v1
 
                     iput-object v1, v$ephemeralMediaRegister, $viewModeField

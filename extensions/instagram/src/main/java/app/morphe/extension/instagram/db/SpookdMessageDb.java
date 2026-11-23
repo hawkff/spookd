@@ -19,7 +19,7 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
 
     // Legacy stored name: existing installs keep their database under it.
     private static final String DB_NAME = "piko_dm_vault.db";
-    static final int DB_VERSION = 5;
+    static final int DB_VERSION = 6;
     private static final String TABLE = "saved_messages";
     // sender_id → username directory. MQTT-delivered items carry only a numeric sender_id;
     // the REST path occasionally carries a full UserInfo. Every time we resolve a username we
@@ -69,6 +69,9 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         };
     }
 
+    // Version 6: the original view mode of the item (once, replayable, ...); NULL when unknown.
+    static final String SAVED_MEDIA_VIEW_MODE = "ALTER TABLE saved_media ADD COLUMN view_mode TEXT";
+
     static String[] upgradeStatements(int oldVersion) {
         List<String> statements = new ArrayList<>();
         if (oldVersion < 3) {
@@ -80,6 +83,9 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         }
         if (oldVersion < 5) {
             java.util.Collections.addAll(statements, savedMediaStatements());
+        }
+        if (oldVersion < 6) {
+            statements.add(SAVED_MEDIA_VIEW_MODE);
         }
         return statements.toArray(new String[0]);
     }
@@ -123,6 +129,7 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         for (String statement : savedMediaStatements()) {
             db.execSQL(statement);
         }
+        db.execSQL(SAVED_MEDIA_VIEW_MODE);
     }
 
     private void createDirTable(SQLiteDatabase db) {
@@ -504,7 +511,10 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         // that lacks a stored username fall back to its own query - this list can grow to
         // hundreds/thousands of rows over time, which turned that fallback into an N+1 query.
         java.util.Map<String, String> directory = loadUsernameDirectory(db);
-        Cursor c = db.query(TABLE, null, "is_deleted = 1" + HAS_CONTENT, null, null, null, "timestamp DESC");
+        // Stored view-once and view-twice media is listed too, whether or not its message was unsent.
+        Cursor c = db.query(TABLE, null, "(is_deleted = 1 OR server_id IN (SELECT item_id FROM saved_media"
+                + " WHERE state = 'stored' AND view_mode IN ('once', 'replayable')))" + HAS_CONTENT,
+                null, null, null, "timestamp DESC");
         while (c.moveToNext()) {
             result.add(rowToStringArray(c, directory));
         }

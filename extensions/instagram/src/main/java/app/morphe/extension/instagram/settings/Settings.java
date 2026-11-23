@@ -42,6 +42,7 @@ public class Settings {
     public static final BooleanSetting INSTANTS_DOWNLOAD = new BooleanSetting("instants_download", false, NOT_REQUIRED);
     public static final BooleanSetting SAVE_DELETED_MESSAGES = new BooleanSetting("save_deleted_messages", false, NOT_REQUIRED);
     public static final BooleanSetting DM_MEDIA_VAULT = new BooleanSetting("dm_media_vault", false, NOT_REQUIRED);
+    public static final BooleanSetting DM_MEDIA_VAULT_VIEW_ONCE = new BooleanSetting("dm_media_vault_view_once", true, NOT_REQUIRED);
     public static final BooleanSetting DISABLE_STORIES = new BooleanSetting("disable_stories", false, REQUIRED);
     public static final BooleanSetting DISABLE_HIGHLIGHTS = new BooleanSetting("disable_highlights", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_STORIES_TRAY = new BooleanSetting("hide_stories_tray", false, REQUIRED);

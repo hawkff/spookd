@@ -229,7 +229,7 @@ public final class MediaVaultLifecycleTest {
 
     /** A queued row with the complete file a crash after the rename leaves; recovery publishes it. */
     private long queuedWithFile(String itemId) throws IOException {
-        long id = new VaultStore(db).insertQueued(itemId, "acct", "photo", LIVE, NOW + 3_600_000, NOW - 1000);
+        long id = new VaultStore(db).insertQueued(itemId, "acct", "photo", LIVE, NOW + 3_600_000, NOW - 1000, null);
         writePkv(pkv(id), body(1000));
         return id;
     }
@@ -313,18 +313,18 @@ public final class MediaVaultLifecycleTest {
         assertTrue(connection.getRequestProperties().isEmpty());
         assertTrue(connection.disconnected);
 
-        assertTrue(vault.storedMessageIds().isEmpty());
+        assertTrue(vault.storedMessages().isEmpty());
         unsend("100");
-        assertEquals(Collections.singleton("100"), vault.storedMessageIds());
+        assertEquals(Collections.singleton("100"), vault.storedMessages().keySet());
 
         vault.deleteForMessages(Collections.singletonList("100"));
         assertEquals("dropped", column("state", id));
         assertFalse(pkv(id).exists());
         assertEquals(0, vault.storedBytes);
-        assertTrue(vault.storedMessageIds().isEmpty());
+        assertTrue(vault.storedMessages().isEmpty());
 
         // The tombstone blocks a second capture.
-        vault.enqueue("100", "acct", "photo", LIVE, NOW - 1000);
+        vault.enqueue("100", "acct", "photo", LIVE, NOW - 1000, null);
         assertEquals(1, count());
         assertEquals("dropped", column("state", id));
     }
@@ -333,7 +333,7 @@ public final class MediaVaultLifecycleTest {
     public void opensOnlyStoredMediaOfAMessageWithItsKind() throws IOException {
         byte[] body = body(100_000);
         network.respond = url -> new FakeConnection(url, 200, body);
-        vault.enqueue("stored", "acct", "video", LIVE, NOW - 1000);
+        vault.enqueue("stored", "acct", "video", LIVE, NOW - 1000, null);
         enqueue("dropped");
         executor.runAll();
         enqueue("queued");
@@ -416,7 +416,7 @@ public final class MediaVaultLifecycleTest {
         assertFalse(pkv(id).exists());
         assertEquals(5000, vault.storedBytes);
         assertNull(vault.open(id));
-        assertTrue(vault.storedMessageIds().isEmpty());
+        assertTrue(vault.storedMessages().isEmpty());
         assertEquals(1, vault.storedItems().size());
         assertEquals(other, vault.storedItems().get(0).id);
 
@@ -467,7 +467,7 @@ public final class MediaVaultLifecycleTest {
                 "https://scontent.fbcdn.net:8443" + path,
         };
         for (int i = 0; i < urls.length; i++) {
-            vault.enqueue("item" + i, "acct", "photo", urls[i], NOW - 1000);
+            vault.enqueue("item" + i, "acct", "photo", urls[i], NOW - 1000, null);
         }
         executor.runAll();
 
@@ -510,11 +510,11 @@ public final class MediaVaultLifecycleTest {
 
     @Test
     public void expiredLinkIsNeverRequested() {
-        vault.enqueue("expired", "acct", "photo", url(NOW - 1000), NOW - 1000);
-        vault.enqueue("ancient", "acct", "photo", LIVE, NOW - MediaVault.RETENTION_MS - 1);
+        vault.enqueue("expired", "acct", "photo", url(NOW - 1000), NOW - 1000, null);
+        vault.enqueue("ancient", "acct", "photo", LIVE, NOW - MediaVault.RETENTION_MS - 1, null);
         assertEquals(0, count());
 
-        vault.enqueue("soon", "acct", "photo", url(NOW + 600_000), NOW - 1000);
+        vault.enqueue("soon", "acct", "photo", url(NOW + 600_000), NOW - 1000, null);
         long id = id("soon");
         clock[0] = NOW + 600_000;
         executor.runAll();
@@ -767,6 +767,190 @@ public final class MediaVaultLifecycleTest {
     }
 
     @Test
+    public void ordinaryAndMigratedMediaWithoutAModeIsSweptAndEvicted() throws Exception {
+        // A version 5 saved_media table, upgraded to version 6 as an app update does.
+        db.execSQL("DROP TABLE saved_media");
+        java.lang.reflect.Method v5 = SpookdMessageDb.class.getDeclaredMethod("savedMediaStatements");
+        v5.setAccessible(true);
+        for (String statement : (String[]) v5.invoke(null)) db.execSQL(statement);
+        long migratedOld = storedRow("migratedOld", 1000, NOW - MediaVault.RETENTION_MS - 1);
+        long migrated = storedRow("migrated", 60_000, NOW - 3000);
+        db.setVersion(5);
+        messages.close();
+        Constructor<SpookdMessageDb> constructor = SpookdMessageDb.class.getDeclaredConstructor(Context.class);
+        constructor.setAccessible(true);
+        messages = constructor.newInstance(RuntimeEnvironment.getApplication());
+        db = messages.getWritableDatabase();
+        assertEquals(6, db.getVersion());
+        assertNull(column("view_mode", migrated));
+        restart();
+
+        long ordinaryOld = storedRow("ordinaryOld", 1000, NOW - MediaVault.RETENTION_MS - 1);
+        long ordinary = storedRow("ordinary", 60_000, NOW - 2500);
+        storedRow("kept", CAP - 150_000, NOW - 1000);
+        unsend("kept");
+        vault.recover();
+        vault.sweep();
+        assertEquals(0, count("migratedOld"));
+        assertEquals(0, count("ordinaryOld"));
+        assertFalse(pkv(migratedOld).exists());
+        assertFalse(pkv(ordinaryOld).exists());
+
+        network.respond = url -> new FakeConnection(url, 200, body(100_000));
+        long id = enqueue("new");
+        executor.runAll();
+        assertEquals("stored", column("state", id));
+        assertEquals("dropped", column("state", migrated));
+        assertEquals("dropped", column("state", ordinary));
+        assertFalse(pkv(migrated).exists());
+        assertFalse(pkv(ordinary).exists());
+        assertEquals(CAP - 150_000 + VaultFile.fileSize(100_000), vault.storedBytes);
+    }
+
+    @Test
+    public void laterReceiptPromotesTheViewModeWithoutRefetching() throws IOException {
+        messages.upsertMessage("item", null, "thread", "42", "bob", "", "visual_media", NOW - 1000);
+        vault.enqueue("item", "acct", "photo", LIVE, NOW - 1000, "permanent");
+        executor.runAll();
+        long id = id("item");
+        assertEquals("stored", column("state", id));
+        assertTrue(messages.getDeletedMessages().isEmpty());
+
+        vault.enqueue("item", "acct", "photo", LIVE, NOW - 1000, "once");
+        vault.enqueue("item", "acct", "photo", LIVE, NOW - 1000, "replayable");
+        vault.enqueue("item", "acct", "photo", LIVE, NOW - 1000, null);
+        executor.runAll();
+        assertEquals("once", column("view_mode", id));
+        assertEquals("stored", column("state", id));
+        assertEquals("1", column("attempts", id));
+        assertEquals(1, network.opened.size());
+        assertEquals("spookd_media_view_once", MediaVault.markResource(vault.storedItems().get(0).viewMode));
+        assertEquals("item", messages.getDeletedMessages().get(0)[0]);
+        assertEquals("once", vault.storedMessages().get("item"));
+
+        long queued = enqueue("queued");
+        vault.enqueue("queued", "acct", "photo", LIVE, NOW - 1000, "replayable");
+        assertEquals("replayable", column("view_mode", queued));
+        assertEquals("queued", column("state", queued));
+        long deleted = enqueue("deleted");
+        vault.delete(deleted);
+        vault.enqueue("deleted", "acct", "photo", LIVE, NOW - 1000, "once");
+        assertEquals("dropped", column("state", deleted));
+        assertNull(column("view_mode", deleted));
+        executor.runAll();
+        assertEquals("stored", column("state", queued));
+        assertEquals(2, network.opened.size());
+
+        clock[0] = NOW + MediaVault.RETENTION_MS;
+        vault.sweep();
+        assertEquals("stored", column("state", id));
+        assertEquals("stored", column("state", queued));
+        assertTrue(pkv(id).exists());
+        assertTrue(pkv(queued).exists());
+    }
+
+    @Test
+    public void viewOnceMediaIsNeverEvictedButFillsTheCap() throws IOException {
+        long once = storedRow("once", CAP - 150_000, NOW - 4000);
+        long twice = storedRow("twice", 10_000, NOW - 3500);
+        long oldest = storedRow("oldest", 60_000, NOW - 3000);
+        viewMode(once, "once");
+        viewMode(twice, "replayable");
+        vault.recover();
+        network.respond = url -> new FakeConnection(url, 200, body(100_000));
+        long fits = enqueue("fits");
+        executor.runAll();
+
+        assertEquals("stored", column("state", fits));
+        assertEquals("dropped", column("state", oldest));
+        assertEquals("stored", column("state", once));
+        assertEquals("stored", column("state", twice));
+        assertTrue(pkv(once).exists());
+        assertTrue(pkv(twice).exists());
+        assertEquals(CAP - 140_000 + VaultFile.fileSize(100_000), vault.storedBytes);
+
+        // Only view-once media and the new item are left, so the next item cannot make room.
+        viewMode(fits, "once");
+        long big = enqueue("big");
+        executor.runAll();
+        assertEquals("failed", column("state", big));
+        assertEquals("stored", column("state", fits));
+        assertEquals(CAP - 140_000 + VaultFile.fileSize(100_000), vault.storedBytes);
+        assertEquals(0, vault.reservations);
+    }
+
+    @Test
+    public void retentionKeepsViewOnceMediaAndStoresItsMode() throws IOException {
+        long tenDaysAgo = NOW - TimeUnit.DAYS.toMillis(10);
+        long once = storedRow("once", 1000, tenDaysAgo);
+        long twice = storedRow("twice", 2000, tenDaysAgo + 1);
+        long other = storedRow("other", 4000, tenDaysAgo);
+        viewMode(once, "once");
+        viewMode(twice, "replayable");
+        viewMode(other, "keep_in_chat");
+        vault.recover();
+        long queued = new VaultStore(db).insertQueued("queued", "acct", "photo", LIVE, NOW + 3_600_000,
+                tenDaysAgo, "once");
+        vault.enqueue("new", "acct", "voice", LIVE, NOW - 1000, "replayable");
+        assertEquals("replayable", column("view_mode", id("new")));
+
+        clock[0] = NOW + MediaVault.RETENTION_MS;
+        vault.sweep();
+
+        assertEquals("stored", column("state", once));
+        assertEquals("stored", column("state", twice));
+        assertTrue(pkv(once).exists());
+        assertTrue(pkv(twice).exists());
+        assertEquals("queued", column("state", queued));
+        assertEquals(0, count("other"));
+        assertFalse(pkv(other).exists());
+        assertEquals(3000, vault.storedBytes);
+        List<MediaVault.Item> items = vault.storedItems();
+        assertEquals(2, items.size());
+        assertEquals("replayable", items.get(0).viewMode);
+        assertEquals("once", items.get(1).viewMode);
+
+        // A user delete still removes it.
+        vault.delete(once);
+        assertEquals("dropped", column("state", once));
+        assertFalse(pkv(once).exists());
+        assertEquals(2000, vault.storedBytes);
+    }
+
+    @Test
+    public void deletedListShowsUnsentAndStoredViewOnceMessagesOnce() throws IOException {
+        for (String item : new String[]{"once", "twice", "queuedOnce", "keep", "plain", "droppedOnce"}) {
+            messages.upsertMessage(item, null, "thread", "42", "bob", "", "visual_media", NOW - 1000);
+        }
+        unsend("unsent");
+        unsend("unsentOnce");
+        viewMode(storedRow("once", 1000, NOW - 1000), "once");
+        viewMode(storedRow("twice", 1000, NOW - 1000), "replayable");
+        viewMode(storedRow("unsentOnce", 1000, NOW - 1000), "once");
+        viewMode(storedRow("keep", 1000, NOW - 1000), "keep_in_chat");
+        long dropped = storedRow("droppedOnce", 1000, NOW - 1000);
+        viewMode(dropped, "once");
+        new VaultStore(db).insertQueued("queuedOnce", "acct", "photo", LIVE, NOW + 3_600_000, NOW - 1000, "once");
+        vault.recover();
+        vault.delete(dropped);
+
+        List<String> listed = new ArrayList<>();
+        for (String[] row : messages.getDeletedMessages()) listed.add(row[0]);
+        Collections.sort(listed);
+        assertEquals(Arrays.asList("once", "twice", "unsent", "unsentOnce"), listed);
+
+        java.util.Map<String, String> stored = vault.storedMessages();
+        assertEquals(3, stored.size());
+        assertEquals("once", stored.get("once"));
+        assertEquals("replayable", stored.get("twice"));
+        assertEquals("once", stored.get("unsentOnce"));
+        assertEquals("spookd_media_view_once", MediaVault.markResource(stored.get("once")));
+        assertEquals("spookd_media_view_twice", MediaVault.markResource(stored.get("twice")));
+        assertNull(MediaVault.markResource("keep_in_chat"));
+        assertNull(MediaVault.markResource(null));
+    }
+
+    @Test
     public void retentionSweepDuringAWriteLeavesItsPartFile() throws IOException {
         long tenDaysAgo = NOW - TimeUnit.DAYS.toMillis(10);
         long kept = storedRow("kept", 1000, tenDaysAgo);
@@ -870,7 +1054,7 @@ public final class MediaVaultLifecycleTest {
     }
 
     private long enqueue(String itemId) {
-        vault.enqueue(itemId, "acct", "photo", LIVE, NOW - 1000);
+        vault.enqueue(itemId, "acct", "photo", LIVE, NOW - 1000, null);
         return id(itemId);
     }
 
@@ -905,6 +1089,10 @@ public final class MediaVaultLifecycleTest {
         long id = db.insertOrThrow("saved_media", null, values);
         assertTrue(pkv(id).createNewFile());
         return id;
+    }
+
+    private void viewMode(long id, String mode) {
+        db.execSQL("UPDATE saved_media SET view_mode = ? WHERE id = ?", new Object[]{mode, id});
     }
 
     private void unsend(String itemId) {

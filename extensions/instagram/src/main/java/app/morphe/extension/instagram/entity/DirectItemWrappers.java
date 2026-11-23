@@ -6,6 +6,7 @@
 
 package app.morphe.extension.instagram.entity;
 
+import app.morphe.extension.instagram.patches.dm.vault.MediaEligibility;
 import app.morphe.extension.instagram.patches.dm.vault.MediaEligibility.Kind;
 import app.morphe.extension.instagram.patches.dm.vault.MediaEligibility.WrapperField;
 import app.morphe.extension.shared.Logger;
@@ -50,9 +51,11 @@ public class DirectItemWrappers extends Entity {
         for (String name : fieldNames.split(",")) {
             try {
                 Object wrapper = super.getField(itemClass, this.obj, name);
+                String original = wrapper == null ? null : MediaEligibility.originalMode(wrapper);
                 out.add(wrapper == null
                         ? WrapperField.absent(kind)
-                        : WrapperField.present(kind, (String) super.getField(wrapper.getClass(), wrapper, modeField)));
+                        : WrapperField.present(kind, original != null ? original
+                                : (String) super.getField(wrapper.getClass(), wrapper, modeField)));
             } catch (Exception e) {
                 Logger.printDebug(() -> "DirectItemWrappers: cannot read " + kind + " field " + name, e);
                 out.add(WrapperField.unreadable(kind));

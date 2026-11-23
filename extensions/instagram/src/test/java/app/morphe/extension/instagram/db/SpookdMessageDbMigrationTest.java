@@ -35,9 +35,9 @@ public final class SpookdMessageDbMigrationTest {
 
         SpookdMessageDb helper = newHelper(context);
         SQLiteDatabase db = helper.getWritableDatabase();
-        assertEquals(5, db.getVersion());
+        assertEquals(6, db.getVersion());
         assertEquals(Arrays.asList("id", "item_id", "account_id", "kind", "url", "url_expires_at",
-                "msg_timestamp", "state", "attempts", "next_attempt_at", "size_bytes", "mime"),
+                "msg_timestamp", "state", "attempts", "next_attempt_at", "size_bytes", "mime", "view_mode"),
                 columns(db, "saved_media"));
         assertTrue(hasIndex(db, "idx_media_state_time"));
         helper.close();
@@ -64,7 +64,40 @@ public final class SpookdMessageDbMigrationTest {
     }
 
     @Test
-    public void v5FileOpenedAtV4ThrowsAndStaysUnchanged() throws Exception {
+    public void upgradesV5WithRowsIntactAndNoViewMode() throws Exception {
+        Context context = RuntimeEnvironment.getApplication();
+        createV4(context, false);
+        SQLiteDatabase v5 = context.openOrCreateDatabase(DB_NAME, Context.MODE_PRIVATE, null);
+        for (String statement : SpookdMessageDb.savedMediaStatements()) v5.execSQL(statement);
+        v5.execSQL("INSERT INTO saved_media (item_id, account_id, kind, url, url_expires_at, msg_timestamp,"
+                + " state, attempts, next_attempt_at, size_bytes, mime) VALUES"
+                + " ('31000000000000000000000000001', '99', 'photo', NULL, 1700000000000, 1690000000000,"
+                + " 'stored', 1, 1690000060000, 5000, 'image/jpeg'),"
+                + " ('31000000000000000000000000003', NULL, 'voice', 'https://x.fbcdn.net/a.m4a?oe=65A1B2C3',"
+                + " 1700000000000, 1690000002000, 'queued', 0, 0, 0, NULL)");
+        v5.setVersion(5);
+        v5.close();
+        List<String> expected = new ArrayList<>();
+        for (String line : dump(context)) {
+            if (line.startsWith("table saved_media ")) continue;
+            expected.add(line.startsWith("saved_media|") ? line + "|NULL" : line);
+        }
+
+        SpookdMessageDb helper = newHelper(context);
+        SQLiteDatabase db = helper.getWritableDatabase();
+        assertEquals(6, db.getVersion());
+        List<String> media = columns(db, "saved_media");
+        assertEquals("view_mode", media.get(media.size() - 1));
+        helper.close();
+
+        List<String> after = dump(context);
+        after.removeIf(line -> line.startsWith("table saved_media "));
+        assertEquals(expected, after);
+        assertEquals(2, after.stream().filter(line -> line.startsWith("saved_media|")).count());
+    }
+
+    @Test
+    public void v6FileOpenedAtV5ThrowsAndStaysUnchanged() throws Exception {
         Context context = RuntimeEnvironment.getApplication();
         SpookdMessageDb current = newHelper(context);
         SQLiteDatabase created = current.getWritableDatabase();
@@ -74,7 +107,7 @@ public final class SpookdMessageDbMigrationTest {
         current.close();
         List<String> before = dump(context);
 
-        SQLiteOpenHelper older = new SQLiteOpenHelper(context, DB_NAME, null, 4) {
+        SQLiteOpenHelper older = new SQLiteOpenHelper(context, DB_NAME, null, 5) {
             @Override
             public void onCreate(SQLiteDatabase db) {
             }
@@ -87,7 +120,7 @@ public final class SpookdMessageDbMigrationTest {
         older.close();
 
         SQLiteDatabase db = context.openOrCreateDatabase(DB_NAME, Context.MODE_PRIVATE, null);
-        assertEquals(5, db.getVersion());
+        assertEquals(6, db.getVersion());
         db.close();
         assertEquals(before, dump(context));
     }

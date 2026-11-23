@@ -7,18 +7,20 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 /** All SQL on the saved_media table. Every state change is one conditional statement. */
 final class VaultStore {
     static final String QUEUED = "queued";
     static final String STORED = "stored";
 
-    // Kept media: its message was unsent, so neither eviction nor retention may drop it.
-    private static final String KEPT = "EXISTS (SELECT 1 FROM saved_messages s"
-            + " WHERE s.server_id = saved_media.item_id AND s.server_id != '' AND s.is_deleted = 1)";
+    // Kept media: view-once or view-twice, or its message was unsent, so neither eviction nor retention may drop it.
+    // Never NULL, so NOT stays true for rows whose mode is unknown.
+    private static final String VIEW_ONCE = "COALESCE(saved_media.view_mode IN ('once', 'replayable'), 0)";
+    private static final String KEPT = "(" + VIEW_ONCE + " OR EXISTS (SELECT 1 FROM saved_messages s"
+            + " WHERE s.server_id = saved_media.item_id AND s.server_id != '' AND s.is_deleted = 1))";
     private static final String COLUMNS = "saved_media.id, saved_media.state, saved_media.url,"
             + " saved_media.url_expires_at, saved_media.attempts, saved_media.size_bytes, saved_media.kind";
 
@@ -51,7 +53,7 @@ final class VaultStore {
 
     /** Inserts a queued row; returns its id, or -1 when the item already has a row. */
     long insertQueued(String itemId, String accountId, String kind, String url, long expiresAt,
-                      long msgTimestamp) {
+                      long msgTimestamp, String viewMode) {
         ContentValues values = new ContentValues();
         values.put("item_id", itemId);
         values.put("account_id", accountId);
@@ -60,7 +62,14 @@ final class VaultStore {
         values.put("url_expires_at", expiresAt);
         values.put("msg_timestamp", msgTimestamp);
         values.put("state", QUEUED);
+        values.put("view_mode", viewMode);
         return db.insertWithOnConflict("saved_media", null, values, SQLiteDatabase.CONFLICT_IGNORE);
+    }
+
+    /** Sets a newly known once or replayable mode on the item's queued or stored row; never on a dropped one. */
+    int promoteViewMode(String itemId, String viewMode) {
+        return update("UPDATE saved_media SET view_mode = ? WHERE item_id = ?"
+                + " AND state IN ('queued', 'stored') AND NOT " + VIEW_ONCE, viewMode, itemId);
     }
 
     Media row(long id) {
@@ -146,28 +155,29 @@ final class VaultStore {
                 + " WHERE state = 'stored' AND " + KEPT, null);
     }
 
-    /** Ids of unsent saved messages whose media is stored. */
-    Set<String> storedMessageIds() {
-        Set<String> ids = new HashSet<>();
-        try (Cursor cursor = db.rawQuery("SELECT s.message_id FROM saved_messages s"
+    /** Ids of unsent or view-once saved messages whose media is stored, each with its view mode. */
+    Map<String, String> storedMessages() {
+        Map<String, String> modes = new HashMap<>();
+        try (Cursor cursor = db.rawQuery("SELECT s.message_id, m.view_mode FROM saved_messages s"
                 + " JOIN saved_media m ON m.item_id = s.server_id"
-                + " WHERE s.server_id != '' AND s.is_deleted = 1 AND m.state = 'stored'", null)) {
-            while (cursor.moveToNext()) ids.add(cursor.getString(0));
+                + " WHERE s.server_id != '' AND m.state = 'stored'"
+                + " AND (s.is_deleted = 1 OR m.view_mode IN ('once', 'replayable'))", null)) {
+            while (cursor.moveToNext()) modes.put(cursor.getString(0), cursor.getString(1));
         }
-        return ids;
+        return modes;
     }
 
     /** Every stored row with its message's sender, kept or not, newest first. */
     List<MediaVault.Item> storedItems() {
         List<MediaVault.Item> items = new ArrayList<>();
         try (Cursor cursor = db.rawQuery("SELECT m.id, m.kind, m.mime, m.size_bytes, m.msg_timestamp,"
-                + " m.account_id, s.sender_username, s.sender_id, m.item_id FROM saved_media m"
+                + " m.account_id, s.sender_username, s.sender_id, m.item_id, m.view_mode FROM saved_media m"
                 + " LEFT JOIN saved_messages s ON s.server_id = m.item_id AND s.server_id != ''"
                 + " WHERE m.state = 'stored' ORDER BY m.msg_timestamp DESC", null)) {
             while (cursor.moveToNext()) {
                 items.add(new MediaVault.Item(cursor.getLong(0), cursor.getString(1), cursor.getString(2),
                         cursor.getLong(3), cursor.getLong(4), cursor.getString(5), cursor.getString(6),
-                        cursor.getString(7), cursor.getString(8)));
+                        cursor.getString(7), cursor.getString(8), cursor.getString(9)));
             }
         }
         return items;
