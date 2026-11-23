@@ -208,6 +208,18 @@ public class Pref {
         return lockable(Settings.HIDE_NOTES_TRAY) && SettingsStatus.hideNotesTray;
     }
 
+    public static boolean hideProfileNotesBubble() {
+        return SharedPref.getBooleanPref(Settings.HIDE_PROFILE_NOTES_BUBBLE) && SettingsStatus.hideProfileNotesBubble;
+    }
+
+    public static boolean hideThreadsButton() {
+        return SharedPref.getBooleanPref(Settings.HIDE_THREADS_BUTTON) && SettingsStatus.hideThreadsButton;
+    }
+
+    public static boolean hideFriendsMap() {
+        return SharedPref.getBooleanPref(Settings.HIDE_FRIENDS_MAP) && SettingsStatus.hideFriendsMap;
+    }
+
     public static boolean disableReelsScrolling() {
         return lockable(Settings.DISABLE_REELS_SCROLLING) && SettingsStatus.disableReelsScrolling;
     }

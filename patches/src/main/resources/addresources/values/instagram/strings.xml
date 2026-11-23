@@ -116,6 +116,12 @@
     <string name="spookd_disable_double_tap_like_comment">Disable double tap like on comment</string>
     <string name="spookd_disable_double_tap_like_message">Disable double tap like on message</string>
     <string name="spookd_disable_double_tap_to_like">Disable double tap to like</string>
+    <string name="spookd_hide_profile_notes_bubble">Hide profile notes bubble</string>
+    <string name="spookd_hide_profile_notes_bubble_desc">Hides the note bubble on profile pictures, including the add note bubble on your own profile</string>
+    <string name="spookd_hide_threads_button">Hide Threads button</string>
+    <string name="spookd_hide_threads_button_desc">Removes the Threads button from the profile header</string>
+    <string name="spookd_hide_friends_map">Hide Friends Map</string>
+    <string name="spookd_hide_friends_map_desc">Turns off Instagram\'s Friends Map, including its entry in the inbox notes tray. Stop sharing your location in the map before you turn this on</string>
 
     <!-- Miscellaneous Section -->
     <string name="spookd_category_misc">Misc</string>

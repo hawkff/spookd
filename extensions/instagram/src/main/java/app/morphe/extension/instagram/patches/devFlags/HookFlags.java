@@ -201,6 +201,25 @@ public class HookFlags {
         }
     }
 
+    private static void hideProfileNotesBubbleFlags() {
+        if (Pref.hideProfileNotesBubble()) {
+            BOOL_FLAGS.put("135922::0", true); //ig4a_profile_unship_direct_notes::is_creation_disabled
+            BOOL_FLAGS.put("135922::1", true); //ig4a_profile_unship_direct_notes::is_consumption_disabled
+        }
+    }
+
+    private static void hideThreadsButtonFlags() {
+        if (Pref.hideThreadsButton()) {
+            BOOL_FLAGS.put("139714::0", true); //ig_profile_header_bar_cleanup::force_hide_threads_icon
+        }
+    }
+
+    private static void hideFriendsMapFlags() {
+        if (Pref.hideFriendsMap()) {
+            BOOL_FLAGS.put("65057::0", false); //ig_android_nsx_nearby_spaces::enabled
+        }
+    }
+
     private static void addRecommendedFlags(){
         if(SettingsStatus.recommendedFlags) {
             Map<String, Boolean> recFlags = FlagsSharedPref.getAll();
