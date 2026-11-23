@@ -70,10 +70,11 @@ val confirmFollowRequestPatch =
                     ((it as? ReferenceInstruction)?.reference as? MethodReference)?.definingClass == CONFIRM_FOLLOWER_UTIL
                 }
             }?.addConfirmGate(
-                1,
+                2,
                 """
                 move-object/from16 v0, p1
-                invoke-static {v0}, $ACTION_CONFIRM->allowFollowRequestClick(Landroid/view/View;)Z
+                move-object/from16 v1, p0
+                invoke-static {v0, v1}, $ACTION_CONFIRM->allowFollowRequestClick(Landroid/view/View;Ljava/lang/Object;)Z
                 move-result v0
                 """,
             )

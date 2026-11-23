@@ -63,6 +63,21 @@ public class ActionConfirmTest {
     }
 
     @Test
+    public void followRequestReplayIsDroppedWhenTheRowIsReboundToAnotherRequester() {
+        Object acceptButton = new Object();
+        Object requesterA = new Object();
+        Object requesterB = new Object();
+        List<Boolean> seen = new ArrayList<>();
+
+        ActionConfirm.runConfirmed(acceptButton, Arrays.asList(requesterA), () -> {
+            seen.add(ActionConfirm.replayVerdict(acceptButton, Arrays.asList(requesterA)));
+            seen.add(ActionConfirm.replayVerdict(acceptButton, Arrays.asList(requesterB)));
+        });
+
+        assertEquals(Arrays.asList(true, false), seen);
+    }
+
+    @Test
     public void otherPresentersAreNotTracked() throws Exception {
         Object presenter = new Object();
         ActionConfirm.onStoryItemBound(presenter, new Object());

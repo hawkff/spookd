@@ -313,12 +313,15 @@ public final class ActionConfirm {
         }
     }
 
-    /** From the follow requests list's row click; only its Accept button is asked. */
-    public static boolean allowFollowRequestClick(View button) {
+    /**
+     * From the follow requests list's row click; only its Accept button is asked. Each bind installs a
+     * new {@code listener} holding its requester, so a recycled row no longer matches the prompt.
+     */
+    public static boolean allowFollowRequestClick(View button, Object listener) {
         try {
             if (followRequestAcceptId == 0) followRequestAcceptId = idOf(button, "row_requested_user_accept");
             if (button.getId() != followRequestAcceptId) return true;
-            List<Object> state = Arrays.asList(button.isEnabled());
+            List<Object> state = Arrays.asList(listener);
             Boolean replay = replayVerdict(button, state);
             if (replay != null) return replay;
             if (!Pref.confirmFollowRequest()) return true;
