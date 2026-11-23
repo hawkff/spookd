@@ -1,9 +1,13 @@
 package app.morphe.extension.instagram.patches.story;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+
+import java.time.ZoneOffset;
 
 import app.morphe.extension.instagram.patches.download.DownloadFileNameFormatter;
 
@@ -54,22 +58,50 @@ public class StoryAutoSaveTest {
     }
 
     @Test
-    public void namesWithTheMediaIdOrShortcodeAreUnique() {
-        assertTrue(StoryAutoSave.namesAreUnique(DownloadFileNameFormatter.DEFAULT_TEMPLATE));
-        assertTrue(StoryAutoSave.namesAreUnique("{username}_{media_id}"));
-        assertTrue(StoryAutoSave.namesAreUnique("{shortcode}"));
+    public void templatesWithTheMediaIdAreKept() {
+        assertEquals(DownloadFileNameFormatter.DEFAULT_TEMPLATE,
+                StoryAutoSave.uniqueTemplate(DownloadFileNameFormatter.DEFAULT_TEMPLATE));
+        assertEquals("{media_id}", StoryAutoSave.uniqueTemplate("{media_id}"));
     }
 
     @Test
-    public void namesWithoutAnItemIdMayRepeat() {
-        assertFalse(StoryAutoSave.namesAreUnique("{username}"));
-        assertFalse(StoryAutoSave.namesAreUnique("{username}_{upload_date}"));
+    public void templatesWithoutTheMediaIdGetIt() {
+        assertEquals("{username}_{media_id}", StoryAutoSave.uniqueTemplate("{username}"));
+        assertEquals("{shortcode}_{media_id}", StoryAutoSave.uniqueTemplate("{shortcode}"));
+        assertEquals("{username}_{upload_date}_{media_id}", StoryAutoSave.uniqueTemplate("{username}_{upload_date}"));
     }
 
     @Test
-    public void anInvalidTemplateFallsBackToTheUniqueDefault() {
-        assertTrue(StoryAutoSave.namesAreUnique(null));
-        assertTrue(StoryAutoSave.namesAreUnique(""));
-        assertTrue(StoryAutoSave.namesAreUnique("{unknown_token}"));
+    public void anInvalidTemplateFallsBackToTheDefault() {
+        assertEquals(DownloadFileNameFormatter.DEFAULT_TEMPLATE, StoryAutoSave.uniqueTemplate(null));
+        assertEquals(DownloadFileNameFormatter.DEFAULT_TEMPLATE, StoryAutoSave.uniqueTemplate(""));
+        assertEquals(DownloadFileNameFormatter.DEFAULT_TEMPLATE, StoryAutoSave.uniqueTemplate("{unknown_token}"));
+    }
+
+    @Test
+    public void distinctMediaOfOneOwnerGetDistinctNamesFromANonUniqueTemplate() {
+        String template = StoryAutoSave.uniqueTemplate("{username}");
+        String first = name(template, "101");
+        String second = name(template, "102");
+
+        // GalleryStoreTest publishes these names under every conflict policy.
+        assertEquals("alice_101.jpg", first);
+        assertEquals("alice_102.jpg", second);
+        assertNotEquals(first, second);
+        assertEquals(first, name(template, "101"));
+    }
+
+    @Test
+    public void aMediaIdIsTakenOncePerProcess() {
+        assertTrue(StoryAutoSave.firstView("first-view-201"));
+        assertFalse(StoryAutoSave.firstView("first-view-201"));
+        assertTrue(StoryAutoSave.firstView("first-view-202"));
+        assertFalse(StoryAutoSave.firstView(null));
+    }
+
+    private static String name(String template, String mediaId) {
+        return DownloadFileNameFormatter.format(template,
+                new DownloadFileNameFormatter.Values("alice", mediaId, "", null, "image", 0, ""),
+                ".jpg", ZoneOffset.UTC);
     }
 }

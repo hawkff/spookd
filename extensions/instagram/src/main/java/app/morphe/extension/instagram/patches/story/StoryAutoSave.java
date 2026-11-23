@@ -22,6 +22,7 @@ import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.instagram.patches.download.DownloadFileNameFormatter;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
+import app.morphe.extension.instagram.patches.download.gallery.GalleryStore;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.utils.Pref;
@@ -36,7 +37,7 @@ public final class StoryAutoSave {
     static final String MODE_EVERYONE = "everyone";
     static final String MODE_LISTED = "listed";
 
-    // Media ids handed to the downloader in this process; the gallery's skip check covers earlier ones.
+    // Media ids taken in this process; the gallery's media id check covers earlier ones.
     private static final Set<String> handled = ConcurrentHashMap.newKeySet();
     private static MediaDownloader downloader;
 
@@ -50,12 +51,20 @@ public final class StoryAutoSave {
         return MODE_LISTED.equals(mode) && listed;
     }
 
-    /** Whether every item gets its own download name, so a taken name means the item was saved before. */
-    static boolean namesAreUnique(String template) {
+    /**
+     * The template auto-save names files with: {@code template} as downloads use it, with the media id
+     * added when it has none, so distinct media never share a name and a taken name is the same media.
+     */
+    static String uniqueTemplate(String template) {
         String effective = DownloadFileNameFormatter.isValidTemplate(template)
                 ? template : DownloadFileNameFormatter.DEFAULT_TEMPLATE;
-        return effective.contains(DownloadFileNameFormatter.Token.MEDIA_ID.placeholder())
-                || effective.contains(DownloadFileNameFormatter.Token.SHORTCODE.placeholder());
+        String mediaId = DownloadFileNameFormatter.Token.MEDIA_ID.placeholder();
+        return effective.contains(mediaId) ? effective : effective + "_" + mediaId;
+    }
+
+    /** False when media {@code mediaId} is unknown or was already taken in this process. */
+    static boolean firstView(String mediaId) {
+        return mediaId != null && handled.add(mediaId);
     }
 
     /**
@@ -76,7 +85,7 @@ public final class StoryAutoSave {
                 return;
             }
             String mediaId = new MediaData(media, session).getMediaPkId();
-            if (mediaId == null || !handled.add(mediaId)) return;
+            if (!firstView(mediaId)) return;
             Utils.runOnBackgroundThread(() -> save(media, reel, session, mediaId));
         } catch (Throwable throwable) {
             Logger.printException(() -> "Failed to auto-save a story", throwable);
@@ -86,15 +95,11 @@ public final class StoryAutoSave {
     // Background thread. Skips without a history row what was saved before or cannot be saved now.
     private static void save(Object media, Object reel, UserSession session, String mediaId) {
         try {
-            DownloadRequest request = DownloadUtils.storyRequest(media, reel, session);
+            if (GalleryStore.get().hasMedia(mediaId)) return;
+            // Names are unique per media, so skipping a taken name never drops or replaces other media.
+            DownloadRequest request = DownloadUtils.storyRequest(media, reel, session,
+                    uniqueTemplate(Pref.downloadFileNameTemplate()), DownloadRequest.ConflictPolicy.SKIP);
             request.quiet = true;
-            if (namesAreUnique(Pref.downloadFileNameTemplate())) {
-                request.conflictPolicy = DownloadRequest.ConflictPolicy.SKIP;
-            }
-            if (request.privateTarget != null && request.conflictPolicy == DownloadRequest.ConflictPolicy.SKIP
-                    && request.privateTarget.exists()) {
-                return;
-            }
             // Without the folder grant the downloader would open the folder picker; a later view tries again.
             if (!Utils.isNetworkConnected()
                     || (request.privateTarget == null && !StorageUtils.checkStoragePermissions())) {

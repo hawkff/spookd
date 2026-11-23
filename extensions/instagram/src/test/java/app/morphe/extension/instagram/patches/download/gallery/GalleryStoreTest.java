@@ -470,6 +470,54 @@ public final class GalleryStoreTest {
         assertTrue(thumb.exists());
     }
 
+    @Test
+    public void hasMediaFindsAnItemByItsMediaIdWhateverItsName() throws Exception {
+        // Saved earlier by a manual download under another name.
+        store.publish(part("manual"), story("101"), null, "alice_101_1080p.jpg", GalleryStore.Conflict.RENAME);
+
+        assertTrue(store.hasMedia("101"));
+        assertFalse(store.hasMedia("102"));
+        assertFalse(store.hasMedia(null));
+        restart();
+        assertTrue(store.hasMedia("101"));
+    }
+
+    @Test
+    public void distinctStoriesWithAutoSaveNamesAreNeverSkippedOrReplacedUnderAnyPolicy() throws Exception {
+        // StoryAutoSaveTest: the names auto-save gives two stories of one owner under the template {username}.
+        for (GalleryStore.Conflict conflict : GalleryStore.Conflict.values()) {
+            String subFolder = conflict.name();
+            long first = store.publish(part("one"), story("101"), subFolder, "alice_101.jpg", conflict);
+            long second = store.publish(part("two"), story("102"), subFolder, "alice_102.jpg", conflict);
+
+            assertTrue(conflict + " kept the first", first != -1);
+            assertTrue(conflict + " kept the second", second != -1 && second != first);
+        }
+        List<GalleryStore.Entry> entries = store.list(GalleryTab.STORIES);
+        assertEquals(6, entries.size());
+        for (GalleryStore.Entry entry : entries) {
+            assertEquals("101".equals(entry.item.mediaId) ? "one" : "two", read(entry.file));
+        }
+    }
+
+    @Test
+    public void aRepeatedStoryIsSkippedByItsMediaIdAndItsName() throws Exception {
+        long id = store.publish(part("one"), story("101"), null, "alice_101.jpg", GalleryStore.Conflict.SKIP);
+        File again = part("again");
+
+        assertTrue(store.hasMedia("101"));
+        assertEquals(-1, store.publish(again, story("101"), null, "alice_101.jpg", GalleryStore.Conflict.SKIP));
+        assertFalse(again.exists());
+        List<GalleryStore.Entry> entries = store.list(GalleryTab.STORIES);
+        assertEquals(1, entries.size());
+        assertEquals(id, entries.get(0).id);
+        assertEquals("one", read(entries.get(0).file));
+    }
+
+    private static GalleryItem story(String mediaId) {
+        return new GalleryItem(GalleryTab.STORIES, GalleryItem.PHOTO, "alice", "11", mediaId, null, "33", 5000L);
+    }
+
     private File thumb(File file) {
         return new File(thumbs, file.getName() + ".jpg");
     }
