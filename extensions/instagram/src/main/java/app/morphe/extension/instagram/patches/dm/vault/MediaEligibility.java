@@ -7,9 +7,12 @@
 package app.morphe.extension.instagram.patches.dm.vault;
 
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
- * Decides whether a received DM item may be saved. Anything unknown, unreadable or unresolved skips it.
+ * Decides whether a received DM item may be saved and with which view mode. Unless view-once media is
+ * saved too, anything unknown, unreadable or unresolved skips it.
  */
 public final class MediaEligibility {
     public enum Kind { VISUAL, VOICE }
@@ -41,7 +44,47 @@ public final class MediaEligibility {
         }
     }
 
+    // Wrappers do not override equals, so this keeps one entry per wrapper object while it is alive.
+    private static final Map<Object, String> ORIGINAL_MODES = new WeakHashMap<>();
+
     private MediaEligibility() {
+    }
+
+    /** Records a wrapper's view mode before "Make ephemeral media permanent" rewrites it; the first value stays. */
+    public static void recordOriginalMode(Object wrapper, String viewMode) {
+        synchronized (ORIGINAL_MODES) {
+            ORIGINAL_MODES.putIfAbsent(wrapper, viewMode);
+        }
+    }
+
+    /** The view mode recorded for this wrapper object before the rewrite, or null. */
+    public static String originalMode(Object wrapper) {
+        synchronized (ORIGINAL_MODES) {
+            return ORIGINAL_MODES.get(wrapper);
+        }
+    }
+
+    /**
+     * With {@code viewOnce} every received photo, video and voice item is saved whatever its wrappers say;
+     * without it the fail-closed rule below decides.
+     */
+    public static boolean shouldCapture(String itemType, List<WrapperField> wrappers, boolean rewriteActive,
+                                        boolean viewOnce) {
+        if (!viewOnce) return shouldCapture(itemType, wrappers, rewriteActive);
+        return "media".equals(itemType) || "visual_media".equals(itemType) || "raven_media".equals(itemType)
+                || "voice_media".equals(itemType);
+    }
+
+    /** The item's view mode: once or replayable when any wrapper has it, else the first known mode, else null. */
+    public static String viewMode(List<WrapperField> wrappers) {
+        if (wrappers == null) return null;
+        String first = null;
+        for (WrapperField field : wrappers) {
+            if (field == null || field.viewMode == null) continue;
+            if ("once".equals(field.viewMode) || "replayable".equals(field.viewMode)) return field.viewMode;
+            if (first == null) first = field.viewMode;
+        }
+        return first;
     }
 
     /**

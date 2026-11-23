@@ -2,6 +2,7 @@ package app.morphe.extension.instagram.patches.dm.vault;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import app.morphe.extension.instagram.patches.dm.vault.MediaEligibility.Kind;
@@ -69,6 +70,10 @@ public class MediaEligibilityTest {
                             if (expected) captured++;
                             assertEquals(itemType + " " + rewriteActive + " " + Arrays.toString(picked),
                                     expected, MediaEligibility.shouldCapture(itemType, fields, rewriteActive));
+                            assertEquals(expected, MediaEligibility.shouldCapture(itemType, fields, rewriteActive, false));
+                            assertEquals(itemType + " " + rewriteActive + " " + Arrays.toString(picked) + " view once",
+                                    capturedType(itemType),
+                                    MediaEligibility.shouldCapture(itemType, fields, rewriteActive, true));
                         }
                     }
                 }
@@ -118,6 +123,43 @@ public class MediaEligibilityTest {
         assertFalse(capture("voice_media", WrapperField.unreadable(Kind.VOICE), false));
         assertFalse(MediaEligibility.shouldCapture("voice_media", Arrays.asList(
                 WrapperField.present(Kind.VOICE, "permanent"), WrapperField.unreadable(Kind.VISUAL)), false));
+    }
+
+    @Test
+    public void viewOnceSavesTheFourMediaTypesWhateverTheWrappers() {
+        for (String itemType : ITEM_TYPES) {
+            for (List<WrapperField> fields : Arrays.<List<WrapperField>>asList(null,
+                    Collections.<WrapperField>emptyList(), Collections.<WrapperField>singletonList(null))) {
+                assertEquals(String.valueOf(itemType), capturedType(itemType),
+                        MediaEligibility.shouldCapture(itemType, fields, true, true));
+            }
+        }
+    }
+
+    @Test
+    public void viewModePrefersViewOnceModes() {
+        assertNull(MediaEligibility.viewMode(null));
+        assertNull(MediaEligibility.viewMode(Arrays.asList(null, WrapperField.absent(Kind.VISUAL),
+                WrapperField.unreadable(Kind.VOICE), WrapperField.present(Kind.VISUAL, null))));
+        assertEquals("keep_in_chat", MediaEligibility.viewMode(Arrays.asList(
+                WrapperField.present(Kind.VISUAL, "keep_in_chat"), WrapperField.present(Kind.VOICE, "permanent"))));
+        assertEquals("replayable", MediaEligibility.viewMode(Arrays.asList(
+                WrapperField.present(Kind.VISUAL, "permanent"), WrapperField.present(Kind.VISUAL, "replayable"))));
+        assertEquals("once", MediaEligibility.viewMode(Arrays.asList(
+                WrapperField.absent(Kind.VISUAL), WrapperField.present(Kind.VOICE, "once"))));
+    }
+
+    @Test
+    public void originalModeBelongsToItsWrapperObjectAndKeepsTheFirstValue() {
+        Object wrapper = new Object();
+        Object other = new Object();
+        MediaEligibility.recordOriginalMode(wrapper, "once");
+        MediaEligibility.recordOriginalMode(wrapper, "replayable");
+        assertEquals("once", MediaEligibility.originalMode(wrapper));
+        assertNull(MediaEligibility.originalMode(other));
+        MediaEligibility.recordOriginalMode(other, "keep_in_chat");
+        assertEquals("keep_in_chat", MediaEligibility.originalMode(other));
+        assertEquals("once", MediaEligibility.originalMode(wrapper));
     }
 
     private static boolean capture(String itemType, WrapperField field, boolean rewriteActive) {

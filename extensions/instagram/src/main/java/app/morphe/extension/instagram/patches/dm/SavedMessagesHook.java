@@ -17,6 +17,7 @@ import java.lang.reflect.Modifier;
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import app.morphe.extension.crimera.PikoUtils;
+import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.db.SpookdMessageDb;
 import app.morphe.extension.instagram.entity.DirectItem;
 import app.morphe.extension.instagram.entity.DirectItemWrappers;
@@ -24,6 +25,7 @@ import app.morphe.extension.instagram.patches.dm.vault.MediaEligibility;
 import app.morphe.extension.instagram.patches.dm.vault.MediaVault;
 import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.instagram.settings.ActivityHook;
+import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.utils.MediaUrls;
 import app.morphe.extension.instagram.utils.Pref;
 
@@ -321,15 +323,17 @@ public class SavedMessagesHook {
         }
     }
 
-    /** Queues the media of an ordinary received photo, video or voice item for the vault. */
+    /** Queues the media of a received photo, video or voice item for the vault, view-once too when that is on. */
     private static void captureMedia(Object item, DirectItem directItem, String serverId,
                                      String viewerId, String type, long timestamp) {
-        if (isBlank(serverId) || !MediaEligibility.shouldCapture(type, new DirectItemWrappers(item).read(),
-                EphemeralMediaPatch.isMakeEphemeralMediaPermanent())) return;
+        if (isBlank(serverId)) return;
+        java.util.List<MediaEligibility.WrapperField> wrappers = new DirectItemWrappers(item).read();
+        if (!MediaEligibility.shouldCapture(type, wrappers, EphemeralMediaPatch.isMakeEphemeralMediaPermanent(),
+                SharedPref.getBooleanPref(Settings.DM_MEDIA_VAULT_VIEW_ONCE))) return;
         String url = directItem.getMediaUrl();
         if (url == null) return;
         String kind = "voice_media".equals(type) ? "voice" : MediaUrls.isVideo(url) ? "video" : "photo";
-        MediaVault.get().enqueue(serverId, viewerId, kind, url, timestamp, null);
+        MediaVault.get().enqueue(serverId, viewerId, kind, url, timestamp, MediaEligibility.viewMode(wrappers));
     }
 
     private static void antiRevokeItem(DirectItem directItem, String restoredContent) {

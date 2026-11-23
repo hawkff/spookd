@@ -12,6 +12,7 @@ import android.content.SharedPreferences;
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.entity.DirectItem;
 import app.morphe.extension.instagram.entity.UserData;
+import app.morphe.extension.instagram.patches.dm.vault.MediaEligibility;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
 import com.instagram.common.session.UserSession;
@@ -60,8 +61,10 @@ public class EphemeralMediaPatch {
         return context == null ? null : context.getSharedPreferences("piko_ephemeral_media_viewed", Context.MODE_PRIVATE);
     }
 
-    public static String makeEphemeralMediaPermanent(Long expireAt, String viewMode, Object parser) {
+    /** Runs on the thread of Instagram's visual media parser, at the end of each parse. */
+    public static String makeEphemeralMediaPermanent(Long expireAt, String viewMode, Object parser, Object wrapper) {
         EphemeralMediaCaption.record(expireAt, viewMode, parser);
+        String original = viewMode;
         try {
             if (expireAt == null || !MAKE_EPHEMERAL_MEDIA_PERMANENT) return viewMode;
 
@@ -71,6 +74,10 @@ public class EphemeralMediaPatch {
             // If current time is less than expire at time and the view mode isn't permanent
             // change the view mode to permanent.
             viewMode = currentTime <= expireAtConv && !viewMode.equals(PERMA_KEY) ? PERMA_KEY : viewMode;
+            // Only rewritten items take the lock; the vault reads the mode for its marks and retention.
+            if (wrapper != null && original != null && !original.equals(viewMode)) {
+                MediaEligibility.recordOriginalMode(wrapper, original);
+            }
 
         } catch (Exception e) {
             Logger.printException(() -> "error makeEphemeralMediaPermanent: " + e);

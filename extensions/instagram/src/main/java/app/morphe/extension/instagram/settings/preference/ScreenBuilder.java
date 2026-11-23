@@ -391,6 +391,17 @@ public class ScreenBuilder {
                             () -> SharedPref.getBooleanPref(Settings.SAVE_DELETED_MESSAGES)
                     )
             );
+            addPreference(
+                    helper.availableWhen(
+                            helper.switchPreference(
+                                    str("spookd_dm_media_vault_view_once"),
+                                    str("spookd_dm_media_vault_view_once_desc"),
+                                    Settings.DM_MEDIA_VAULT_VIEW_ONCE
+                            ),
+                            () -> SharedPref.getBooleanPref(Settings.SAVE_DELETED_MESSAGES)
+                                    && SharedPref.getBooleanPref(Settings.DM_MEDIA_VAULT)
+                    )
+            );
         }
     }
 
