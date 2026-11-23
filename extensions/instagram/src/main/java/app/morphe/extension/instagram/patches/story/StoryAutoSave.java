@@ -10,8 +10,10 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.content.Context;
 import android.content.DialogInterface;
+import android.net.Uri;
 
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
 import app.morphe.extension.crimera.legacydownloader.DownloadRequest;
@@ -93,9 +95,11 @@ public final class StoryAutoSave {
         try {
             if (GalleryStore.get().hasMedia(mediaId)) return;
             // Names are unique per media, so skipping a taken name never drops or replaces other media.
-            DownloadRequest request = DownloadUtils.storyRequest(media, reel, session,
-                    nameSuffix(mediaId), DownloadRequest.ConflictPolicy.SKIP);
+            DownloadRequest request = buildOrRelease(mediaId, () -> DownloadUtils.storyRequest(media, reel, session,
+                    nameSuffix(mediaId), DownloadRequest.ConflictPolicy.SKIP));
+            if (request == null) return;
             request.quiet = true;
+            request.tracker = releaseOnFailure(request.tracker, mediaId);
             // Without the folder grant the downloader would open the folder picker; a later view tries again.
             if (!Utils.isNetworkConnected()
                     || (request.privateTarget == null && !StorageUtils.checkStoragePermissions())) {
@@ -104,8 +108,44 @@ public final class StoryAutoSave {
             }
             downloader().enqueue(request);
         } catch (Exception | LinkageError e) {
+            handled.remove(mediaId);
             Logger.printException(() -> "Failed to auto-save a story", e);
         }
+    }
+
+    /** The built request, or null with the media id released, so a later view tries again, when building throws. */
+    static DownloadRequest buildOrRelease(String mediaId, Callable<DownloadRequest> build) {
+        try {
+            return build.call();
+        } catch (Exception | LinkageError e) {
+            handled.remove(mediaId);
+            Logger.printException(() -> "Failed to build a story auto-save", e);
+            return null;
+        }
+    }
+
+    /**
+     * {@code history} that also releases the media id when the download fails, so a later view tries again;
+     * a skip because the name is taken keeps it. Runs on the download thread.
+     */
+    static DownloadRequest.Tracker releaseOnFailure(DownloadRequest.Tracker history, String mediaId) {
+        return new DownloadRequest.Tracker() {
+            @Override
+            public void started() {
+                if (history != null) history.started();
+            }
+
+            @Override
+            public void ended(boolean saved, Uri document, Throwable error) {
+                if (error != null) handled.remove(mediaId);
+                if (history != null) history.ended(saved, document, error);
+            }
+
+            @Override
+            public void alreadyDownloading() {
+                if (history != null) history.alreadyDownloading();
+            }
+        };
     }
 
     // One downloader, so auto-saves download one at a time on its executor.

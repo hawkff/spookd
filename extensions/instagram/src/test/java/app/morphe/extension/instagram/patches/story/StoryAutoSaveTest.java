@@ -3,14 +3,19 @@ package app.morphe.extension.instagram.patches.story;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+
+import android.net.Uri;
 
 import org.junit.Test;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 
+import app.morphe.extension.crimera.legacydownloader.DownloadRequest;
 import app.morphe.extension.instagram.patches.download.DownloadFileNameFormatter;
 
 public class StoryAutoSaveTest {
@@ -89,6 +94,43 @@ public class StoryAutoSaveTest {
         assertFalse(StoryAutoSave.firstView("first-view-201"));
         assertTrue(StoryAutoSave.firstView("first-view-202"));
         assertFalse(StoryAutoSave.firstView(null));
+    }
+
+    @Test
+    public void aFailedDownloadReleasesItsMediaIdAndASkipKeepsIt() {
+        int[] historyEnded = {0};
+        DownloadRequest.Tracker history = new DownloadRequest.Tracker() {
+            @Override
+            public void started() {
+            }
+
+            @Override
+            public void ended(boolean saved, Uri document, Throwable error) {
+                historyEnded[0]++;
+            }
+
+            @Override
+            public void alreadyDownloading() {
+            }
+        };
+        assertTrue(StoryAutoSave.firstView("release-301"));
+
+        StoryAutoSave.releaseOnFailure(history, "release-301").ended(false, null, null);
+        assertFalse(StoryAutoSave.firstView("release-301"));
+
+        StoryAutoSave.releaseOnFailure(history, "release-301").ended(false, null, new IOException("offline"));
+        assertTrue(StoryAutoSave.firstView("release-301"));
+        assertEquals(2, historyEnded[0]);
+    }
+
+    @Test
+    public void aRequestThatCannotBeBuiltReleasesItsMediaId() {
+        assertTrue(StoryAutoSave.firstView("release-302"));
+
+        assertNull(StoryAutoSave.buildOrRelease("release-302", () -> {
+            throw new IllegalStateException("No media");
+        }));
+        assertTrue(StoryAutoSave.firstView("release-302"));
     }
 
     // The file name auto-save gives a story of alice.
