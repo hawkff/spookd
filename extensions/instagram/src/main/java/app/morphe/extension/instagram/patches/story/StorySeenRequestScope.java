@@ -67,10 +67,6 @@ public final class StorySeenRequestScope {
         return REGISTRY.isActive();
     }
 
-    static boolean isFull() {
-        return REGISTRY.isFull();
-    }
-
     public static boolean resolveSeenStatus(boolean seenStatus, boolean anonymousStories) {
         return anonymousStories && !isActive() ? true : seenStatus;
     }
@@ -236,11 +232,6 @@ final class RequestRegistry {
     boolean isActive() {
         ScopeFrame current = scope.get();
         return current != null && current.permitted;
-    }
-
-    synchronized boolean isFull() {
-        removeExpired(clock.getAsLong());
-        return pendingPermits.size() + activePermits.size() >= maxPendingPermits;
     }
 
     synchronized boolean isPending(StorySeenKey storyKey) {
