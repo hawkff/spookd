@@ -23,6 +23,26 @@ public class ActionConfirmTest {
     }
 
     @Test
+    public void onlyDirectUnfollowsAndWithdrawnRequestsAreAsked() {
+        assertEquals(ActionConfirm.UNFOLLOW, ActionConfirm.unfollowAction("FOLLOWSTATUSFOLLOWING", "PrivacyStatusPublic"));
+        assertEquals(ActionConfirm.WITHDRAW, ActionConfirm.unfollowAction("FOLLOWSTATUSREQUESTED", "PrivacyStatusPrivate"));
+        assertNull(ActionConfirm.unfollowAction("FOLLOWSTATUSFOLLOWING", "PrivacyStatusPrivate"));
+        assertNull(ActionConfirm.unfollowAction("FOLLOWSTATUSFOLLOWING", "PrivacyStatusUnknown"));
+        assertNull(ActionConfirm.unfollowAction("FOLLOWSTATUSNOTFOLLOWING", "PrivacyStatusPublic"));
+        assertNull(ActionConfirm.unfollowAction(null, null));
+    }
+
+    @Test
+    public void onlyStandaloneCallButtonsAreAsked() {
+        assertEquals("spookd_confirm_audio_call_title", ActionConfirm.callTitle("AUDIO_CALL"));
+        assertEquals("spookd_confirm_video_call_title", ActionConfirm.callTitle("VIDEO_CALL"));
+        assertNull(ActionConfirm.callTitle("COMBINED_CALL_V1"));
+        assertNull(ActionConfirm.callTitle("ONGOING_AUDIO_CALL"));
+        assertNull(ActionConfirm.callTitle("INFO"));
+        assertNull(ActionConfirm.callTitle(null));
+    }
+
+    @Test
     public void reelLikesWithAStoredReactionAreNotAsked() {
         Object[] plainTap = new Object[10];
         Object[] reaction = new Object[10];

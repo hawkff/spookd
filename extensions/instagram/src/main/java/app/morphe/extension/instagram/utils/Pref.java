@@ -420,6 +420,22 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.CONFIRM_COMMENT);
     }
 
+    public static boolean confirmUnfollow() {
+        return SharedPref.getBooleanPref(Settings.CONFIRM_UNFOLLOW);
+    }
+
+    public static boolean confirmStoryLike() {
+        return SharedPref.getBooleanPref(Settings.CONFIRM_STORY_LIKE);
+    }
+
+    public static boolean confirmCall() {
+        return SharedPref.getBooleanPref(Settings.CONFIRM_CALL);
+    }
+
+    public static boolean confirmFollowRequest() {
+        return SharedPref.getBooleanPref(Settings.CONFIRM_FOLLOW_REQUEST);
+    }
+
     public static boolean disableStoryFlipping() {
         return SharedPref.getBooleanPref(Settings.DISABLE_STORY_FLIPPING);
     }

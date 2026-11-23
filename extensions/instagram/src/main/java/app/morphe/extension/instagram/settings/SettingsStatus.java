@@ -245,8 +245,21 @@ public class SettingsStatus {
     public static void confirmComment() { confirmComment = true; }
     public static boolean confirmCommentSheet = false;
     public static void confirmCommentSheet() { confirmCommentSheet = true; }
+    public static boolean confirmUnfollow = false;
+    public static void confirmUnfollow() { confirmUnfollow = true; }
+    public static boolean confirmFeedRepost = false;
+    public static void confirmFeedRepost() { confirmFeedRepost = true; }
+    public static boolean confirmStoryLike = false;
+    public static void confirmStoryLike() { confirmStoryLike = true; }
+    public static boolean confirmStoryReaction = false;
+    public static void confirmStoryReaction() { confirmStoryReaction = true; }
+    public static boolean confirmCall = false;
+    public static void confirmCall() { confirmCall = true; }
+    public static boolean confirmFollowRequest = false;
+    public static void confirmFollowRequest() { confirmFollowRequest = true; }
     public static boolean confirmationsSection() {
-        return confirmFollow || confirmFeedLike || confirmReelLike || confirmReelRepost || confirmComment || confirmCommentSheet;
+        return confirmFollow || confirmFeedLike || confirmReelLike || confirmReelRepost || confirmComment || confirmCommentSheet
+                || confirmUnfollow || confirmFeedRepost || confirmStoryLike || confirmStoryReaction || confirmCall || confirmFollowRequest;
     }
     public static boolean resumeReelsAfterScrolling = false;
     public static void resumeReelsAfterScrolling() { resumeReelsAfterScrolling = true; }
@@ -367,6 +380,12 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_patch_confirm_reel_repost"), SettingsStatus.confirmReelRepost);
         FLAGS.put(str("spookd_patch_confirm_comment_box"), SettingsStatus.confirmComment);
         FLAGS.put(str("spookd_patch_confirm_comment_sheet"), SettingsStatus.confirmCommentSheet);
+        FLAGS.put(str("spookd_confirm_unfollow"), SettingsStatus.confirmUnfollow);
+        FLAGS.put(str("spookd_patch_confirm_feed_repost"), SettingsStatus.confirmFeedRepost);
+        FLAGS.put(str("spookd_patch_confirm_story_like"), SettingsStatus.confirmStoryLike);
+        FLAGS.put(str("spookd_patch_confirm_story_reaction"), SettingsStatus.confirmStoryReaction);
+        FLAGS.put(str("spookd_confirm_call"), SettingsStatus.confirmCall);
+        FLAGS.put(str("spookd_confirm_follow_request"), SettingsStatus.confirmFollowRequest);
         FLAGS.put(str("spookd_disable_discover_people"),SettingsStatus.disableDiscoverPeople);
         FLAGS.put(str("spookd_customise_story_ring_size"),SettingsStatus.customiseStoryRingSize);
 

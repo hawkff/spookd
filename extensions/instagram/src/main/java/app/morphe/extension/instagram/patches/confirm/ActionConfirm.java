@@ -25,11 +25,14 @@ import java.util.WeakHashMap;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
+import app.morphe.extension.shared.ResourceType;
+import app.morphe.extension.shared.ResourceUtils;
 import app.morphe.extension.shared.Utils;
 
 /**
- * Asks before a like, follow, repost or comment goes through. Every entry point runs on the main
- * thread from Instagram's own click handlers and returns true, letting the action run, on any failure.
+ * Asks before a like, follow, unfollow, repost, comment, reaction, call or follow request approval goes
+ * through. Every entry point runs on the main thread from Instagram's own click handlers and returns
+ * true, letting the action run, on any failure.
  */
 @SuppressWarnings("unused")
 public final class ActionConfirm {
@@ -37,6 +40,11 @@ public final class ActionConfirm {
     static final String FOLLOW = "follow";
     static final String REPOST = "repost";
     static final String COMMENT = "comment";
+    static final String UNFOLLOW = "unfollow";
+    static final String WITHDRAW = "withdraw";
+    static final String REACTION = "reaction";
+    static final String CALL = "call";
+    static final String FOLLOW_REQUEST = "follow_request";
 
     // Set only while an approved action runs again: what it was about, and how it looked when asked.
     private static Object pendingToken;
@@ -45,6 +53,9 @@ public final class ActionConfirm {
     // Counts click listener changes, so a rebound button no longer matches an earlier prompt.
     private static final WeakHashMap<View, Integer> bindCounts = new WeakHashMap<>();
     private static boolean stagedFeedLiked;
+    private static int repostsUfiId;
+    private static int storyLikeId;
+    private static int followRequestAcceptId;
 
     private ActionConfirm() {
     }
@@ -80,7 +91,7 @@ public final class ActionConfirm {
     public static void onClickListenerSet(View button) {
         try {
             // Counts only tell a prompt from a later bind, so none are needed while nothing can ask.
-            if (bindCounts.isEmpty() && !Pref.confirmFollow()) return;
+            if (bindCounts.isEmpty() && !Pref.confirmFollow() && !Pref.confirmRepost() && !Pref.confirmStoryLike()) return;
             bindCounts.put(button, bindCount(button) + 1);
         } catch (Throwable t) {
             Logger.printException(() -> "onClickListenerSet failure", t);
@@ -188,6 +199,132 @@ public final class ActionConfirm {
             Logger.printException(() -> "allowCommentSend failure", t);
             return true;
         }
+    }
+
+    /** From the follow button's click handler, once it knows the account's follow status and privacy. */
+    public static boolean allowUnfollow(Object[] refs, Object status, Object privacy, String name) {
+        try {
+            Object controller = refs[2];
+            List<Object> state = Arrays.asList(status, privacy);
+            Boolean replay = replayVerdict(controller, state);
+            if (replay != null) return replay;
+            String action = unfollowAction(enumName(status), enumName(privacy));
+            if (controller == null || action == null || !Pref.confirmUnfollow()) return true;
+            return !ask(null, action, str("spookd_confirm_" + action + "_title"), controller, state,
+                    invoker(controller.getClass(), name, null, refs));
+        } catch (Throwable t) {
+            Logger.printException(() -> "allowUnfollow failure", t);
+            return true;
+        }
+    }
+
+    /** From the bouncy UFI button's click, which the feed repost button and the story heart share. */
+    public static boolean allowUfiClick(View button) {
+        try {
+            if (repostsUfiId == 0) repostsUfiId = idOf(button, "reposts_ufi_icon");
+            if (storyLikeId == 0) storyLikeId = idOf(button, "toolbar_like_button");
+            int id = button.getId();
+            boolean repost = id == repostsUfiId;
+            if (!repost && id != storyLikeId) return true;
+            // Selected means reposted or liked already, so the tap undoes it.
+            List<Object> state = Arrays.asList(bindCount(button), button.isSelected());
+            Boolean replay = replayVerdict(button, state);
+            if (replay != null) return replay;
+            if (button.isSelected() || !(repost ? Pref.confirmRepost() : Pref.confirmStoryLike())) return true;
+            String title = str(repost ? "spookd_confirm_repost_title" : "spookd_confirm_story_like_title");
+            return !ask(button, repost ? REPOST : LIKE, title, button, state, button::performClick);
+        } catch (Throwable t) {
+            Logger.printException(() -> "allowUfiClick failure", t);
+            return true;
+        }
+    }
+
+    /** From the story reply bar's quick reaction send; {@code refs} holds the handler and its six arguments. */
+    public static boolean allowStoryReaction(Object[] refs, Class<?> owner, String name) {
+        try {
+            Object emoji = refs[5];
+            List<Object> state = Arrays.asList(emoji, refs[4]);
+            Boolean replay = replayVerdict(refs[0], state);
+            if (replay != null) return replay;
+            if (refs[0] == null || !(emoji instanceof String) || ((String) emoji).isEmpty() || !Pref.confirmStoryLike()) return true;
+            return !ask(null, REACTION, str("spookd_confirm_reaction_title", emoji), refs[0], state,
+                    invoker(owner, name, refs[0], Arrays.copyOfRange(refs, 1, refs.length)));
+        } catch (Throwable t) {
+            Logger.printException(() -> "allowStoryReaction failure", t);
+            return true;
+        }
+    }
+
+    /** From the chat header's static button click; {@code refs} holds the view, the button and the header. */
+    public static boolean allowCall(Object[] refs, Object type, Class<?> owner, String name) {
+        try {
+            View view = (View) refs[0];
+            List<Object> state = Arrays.asList(type);
+            Boolean replay = replayVerdict(view, state);
+            if (replay != null) return replay;
+            String title = callTitle(enumName(type));
+            if (view == null || title == null || !Pref.confirmCall()) return true;
+            return !ask(view, CALL, str(title), view, state, invoker(owner, name, null, refs));
+        } catch (Throwable t) {
+            Logger.printException(() -> "allowCall failure", t);
+            return true;
+        }
+    }
+
+    /** From the follow requests list's row click; only its Accept button is asked. */
+    public static boolean allowFollowRequestClick(View button) {
+        try {
+            if (followRequestAcceptId == 0) followRequestAcceptId = idOf(button, "row_requested_user_accept");
+            if (button.getId() != followRequestAcceptId) return true;
+            List<Object> state = Arrays.asList(button.isEnabled());
+            Boolean replay = replayVerdict(button, state);
+            if (replay != null) return replay;
+            if (!Pref.confirmFollowRequest()) return true;
+            return !ask(button, FOLLOW_REQUEST, str("spookd_confirm_follow_request_title"), button, state, button::performClick);
+        } catch (Throwable t) {
+            Logger.printException(() -> "allowFollowRequestClick failure", t);
+            return true;
+        }
+    }
+
+    /** From the static accept of a follow request; {@code refs} holds the activity and the next four arguments. */
+    public static boolean allowFollowRequest(Object[] refs, boolean last, Class<?> owner, String name) {
+        try {
+            // An approved replay, such as the requests list's Accept button, was asked already.
+            if (pendingToken != null || !Pref.confirmFollowRequest()) return true;
+            Object[] args = Arrays.copyOf(refs, refs.length + 1);
+            args[refs.length] = last;
+            Runnable accept = invoker(owner, name, null, args);
+            Activity activity = refs[0] instanceof Activity ? (Activity) refs[0] : null;
+            return !ask(null, FOLLOW_REQUEST, str("spookd_confirm_follow_request_title"), refs[4], Arrays.asList(refs[4]), () -> {
+                if (activity == null || !activity.isFinishing()) accept.run();
+            });
+        } catch (Throwable t) {
+            Logger.printException(() -> "allowFollowRequest failure", t);
+            return true;
+        }
+    }
+
+    /** What a tap on a follow button with this status asks, or null when it follows or Instagram asks itself. */
+    static String unfollowAction(String status, String privacy) {
+        if ("FOLLOWSTATUSREQUESTED".equals(status)) return WITHDRAW;
+        // Instagram shows its own dialog before unfollowing an account that is not public.
+        return "FOLLOWSTATUSFOLLOWING".equals(status) && "PrivacyStatusPublic".equals(privacy) ? UNFOLLOW : null;
+    }
+
+    /** The dialog title for a chat header button type, or null when the button starts no call. */
+    static String callTitle(String buttonType) {
+        if ("AUDIO_CALL".equals(buttonType)) return "spookd_confirm_audio_call_title";
+        if ("VIDEO_CALL".equals(buttonType)) return "spookd_confirm_video_call_title";
+        return null;
+    }
+
+    private static String enumName(Object value) {
+        return value instanceof Enum ? ((Enum<?>) value).name() : null;
+    }
+
+    private static int idOf(View view, String name) {
+        return ResourceUtils.getIdentifier(view.getContext(), ResourceType.ID, name);
     }
 
     static boolean isFollow(String textType) {
