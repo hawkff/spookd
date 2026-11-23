@@ -45,6 +45,10 @@ public class SettingsStatus {
     public static void viewStoriesAnonymously() {
         viewStoriesAnonymously = true;
     }
+    public static boolean markStorySeenOnInteraction = false;
+    public static void markStorySeenOnInteraction() {
+        markStorySeenOnInteraction = true;
+    }
     public static boolean viewLiveAnonymously = false;
     public static void viewLiveAnonymously() {
         viewLiveAnonymously = true;

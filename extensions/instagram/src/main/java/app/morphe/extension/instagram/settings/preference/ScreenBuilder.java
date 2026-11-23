@@ -449,6 +449,19 @@ public class ScreenBuilder {
             });
             addPreference(storyGhostUsers);
         }
+        if (SettingsStatus.markStorySeenOnInteraction) {
+            addPreference(
+                    helper.availableWhen(
+                            helper.switchPreference(
+                                    str("spookd_mark_story_seen_on_interaction"),
+                                    str("spookd_mark_story_seen_on_interaction_desc"),
+                                    Settings.MARK_STORY_SEEN_ON_INTERACTION
+                            ),
+                            () -> SharedPref.getBooleanPref(Settings.VIEW_STORIES_ANONYMOUSLY)
+                                    || SharedPref.getBooleanPref(Settings.TURN_ON_ALL_GHOST_MODES)
+                    )
+            );
+        }
         if (SettingsStatus.viewLiveAnonymously) {
             addPreference(
                     helper.switchPreference(

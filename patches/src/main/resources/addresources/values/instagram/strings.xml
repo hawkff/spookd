@@ -47,6 +47,8 @@
     <string name="spookd_story_ghost_already_added">@%1$s is already on the story ghost list</string>
     <string name="spookd_story_ghost_remove_confirm">Remove %1$s from the story ghost list?</string>
     <string name="spookd_story_ghost_remove">Remove</string>
+    <string name="spookd_mark_story_seen_on_interaction">Mark seen on like or reply</string>
+    <string name="spookd_mark_story_seen_on_interaction_desc">When a story is viewed anonymously, liking it, replying to it or sending a quick reaction marks it as seen</string>
     <string name="spookd_view_live_anonymously">View live anonymously</string>
     <string name="spookd_disable_typing_status">Disable typing status</string>
     <string name="spookd_disable_screenshot_detection">Disable screenshot detection</string>
