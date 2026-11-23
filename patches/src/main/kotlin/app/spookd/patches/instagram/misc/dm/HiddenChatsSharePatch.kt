@@ -13,7 +13,11 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.instructions
+import app.morphe.patcher.extensions.InstructionExtensions.removeInstructions
 import app.morphe.patcher.fieldAccess
+import app.morphe.patcher.methodCall
+import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.string
 import app.morphe.patcher.util.getReference
@@ -57,6 +61,20 @@ private object RecipientAddFingerprint : Fingerprint(
     parameters = listOf("Lcom/instagram/model/direct/DirectShareTarget;", "Z"),
 )
 
+// Instagram's chat store returns its cached chat for a chat id here.
+private object ThreadStoreGetThreadFingerprint : Fingerprint(
+    returnType = "L",
+    parameters = listOf("Ljava/lang/String;"),
+    filters = listOf(string("DirectThreadStoreImpl.getThread")),
+)
+
+private object CachedThreadExtensionFingerprint : Fingerprint(
+    definingClass = EXTENSION_CLASS,
+    name = "cachedThread",
+    parameters = listOf(USER_SESSION_CLASS, "Ljava/lang/String;"),
+    returnType = "Ljava/lang/Object;",
+)
+
 @Suppress("unused")
 val hiddenChatsSharePatch =
     patch(
@@ -84,6 +102,34 @@ val hiddenChatsSharePatch =
                 move-result-object v0
                 """.trimIndent() + "\n" + lists,
             )
+
+            // Chats hidden before their people were kept are looked up once per account in the store's cache.
+            val getThread = ThreadStoreGetThreadFingerprint.originalMethod
+            val store = ThreadStoreGetThreadFingerprint.classDef.interfaces.first { type ->
+                classDefBy(type).methods.any {
+                    it.name == getThread.name && it.returnType == getThread.returnType &&
+                        it.parameters.map { parameter -> parameter.type } == listOf("Ljava/lang/String;")
+                }
+            }
+            val storeOf = Fingerprint(
+                isStatic = true,
+                returnType = store,
+                parameters = listOf(USER_SESSION_CLASS),
+                filters = listOf(methodCall(name = "getScopedLazy")),
+            ).originalMethod
+            CachedThreadExtensionFingerprint.method.apply {
+                removeInstructions(0, instructions.size)
+                addInstructions(
+                    0,
+                    """
+                    invoke-static/range {p0 .. p0}, $storeOf
+                    move-result-object p0
+                    invoke-interface/range {p0 .. p1}, $store->${getThread.name}(Ljava/lang/String;)${getThread.returnType}
+                    move-result-object p0
+                    return-object p0
+                    """.trimIndent(),
+                )
+            }
 
             val session = RecipientRowsFingerprint.classDef.fields.first { it.type == USER_SESSION_CLASS }
             RecipientAddFingerprint.method.apply {

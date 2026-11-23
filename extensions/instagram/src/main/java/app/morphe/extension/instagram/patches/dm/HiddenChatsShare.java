@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
@@ -28,6 +29,7 @@ import com.instagram.model.direct.DirectThreadKey;
 public final class HiddenChatsShare {
     private static final Method[] NO_METHODS = new Method[0];
     private static final Map<Class<?>, Method[]> keyMethods = new ConcurrentHashMap<>();
+    private static final Set<String> backfilled = ConcurrentHashMap.newKeySet();
 
     private HiddenChatsShare() { }
 
@@ -86,7 +88,38 @@ public final class HiddenChatsShare {
         if (!Pref.hiddenChats() || !(session instanceof UserSession)) return null;
         String account = ((UserSession) session).getUserId();
         if (account == null || HiddenChats.isOpenFor(account) || HiddenChatsPref.ids(account).isEmpty()) return null;
+        if (backfilled.add(account)) backfill((UserSession) session, account);
         return account;
+    }
+
+    /** Once per account and process, keeps the other person of hidden chats that have none yet, from Instagram's chat store. */
+    private static void backfill(UserSession session, String account) {
+        Function<String, Object> threads = chatId -> {
+            try {
+                return cachedThread(session, chatId);
+            } catch (Throwable t) {
+                return null;
+            }
+        };
+        for (DirectThreadKey key : keysToBackfill(HiddenChatsPref.ids(account), HiddenChatsPref.hiddenUsers(account), threads)) {
+            rememberUser(account, key);
+        }
+    }
+
+    /** The keys of the cached chats behind the hidden chats that have no person kept yet. */
+    static List<DirectThreadKey> keysToBackfill(Set<String> chats, Map<String, String> users, Function<String, Object> threads) {
+        List<DirectThreadKey> keys = new ArrayList<>();
+        for (String chat : chats) {
+            if (users.containsKey(chat)) continue;
+            DirectThreadKey key = keyOf(threads.apply(chat));
+            if (key != null) keys.add(key);
+        }
+        return keys;
+    }
+
+    private static Object cachedThread(UserSession session, String chatId) {
+        // Replaced at patch time with Instagram's chat store lookup by chat id.
+        return null;
     }
 
     /** The targets that are not hidden chats, or the same list when none is. */
