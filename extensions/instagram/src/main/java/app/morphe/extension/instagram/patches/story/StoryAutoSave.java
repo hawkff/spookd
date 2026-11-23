@@ -11,9 +11,17 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 import android.content.Context;
 import android.content.DialogInterface;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+import app.morphe.extension.crimera.legacydownloader.DownloadRequest;
+import app.morphe.extension.crimera.legacydownloader.MediaDownloader;
+import app.morphe.extension.crimera.legacydownloader.StorageUtils;
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.entity.UserData;
+import app.morphe.extension.instagram.patches.download.DownloadFileNameFormatter;
+import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.utils.Pref;
@@ -24,9 +32,84 @@ import com.instagram.common.session.UserSession;
 
 /** Auto-save stories: saves viewed story items of everyone or of the listed owners. */
 public final class StoryAutoSave {
+    static final String MODE_OFF = "off";
+    static final String MODE_EVERYONE = "everyone";
     static final String MODE_LISTED = "listed";
 
+    // Media ids handed to the downloader in this process; the gallery's skip check covers earlier ones.
+    private static final Set<String> handled = ConcurrentHashMap.newKeySet();
+    private static MediaDownloader downloader;
+
     private StoryAutoSave() {
+    }
+
+    /** Whether a story of {@code ownerId}, watched by {@code viewerId}, is saved in this mode; own stories never are. */
+    static boolean savesOwner(String mode, String ownerId, String viewerId, boolean listed) {
+        if (ownerId == null || ownerId.isEmpty() || ownerId.equals(viewerId)) return false;
+        if (MODE_EVERYONE.equals(mode)) return true;
+        return MODE_LISTED.equals(mode) && listed;
+    }
+
+    /** Whether every item gets its own download name, so a taken name means the item was saved before. */
+    static boolean namesAreUnique(String template) {
+        String effective = DownloadFileNameFormatter.isValidTemplate(template)
+                ? template : DownloadFileNameFormatter.DEFAULT_TEMPLATE;
+        return effective.contains(DownloadFileNameFormatter.Token.MEDIA_ID.placeholder())
+                || effective.contains(DownloadFileNameFormatter.Token.SHORTCODE.placeholder());
+    }
+
+    /**
+     * Instagram marking a regular story item viewed, on the main thread. Ads never get here. Only
+     * in-memory checks run here; the request is built and queued on a background thread.
+     */
+    public static void onStoryViewed(Object logger, Object item, Object reel) {
+        try {
+            String mode = SharedPref.getStringPref(Settings.STORY_AUTO_SAVE);
+            if (MODE_OFF.equals(mode) || !Pref.enableDownload()) return;
+            UserSession session = (UserSession) sessionNative(logger);
+            String ownerId = ownerIdNative(reel);
+            if (session == null || !savesOwner(mode, ownerId, session.getUserId(),
+                    StoryUserList.AUTO_SAVE.all().containsKey(ownerId))) {
+                return;
+            }
+            Object media = mediaNative(item);
+            if (media == null) return;
+            String mediaId = new MediaData(media, session).getMediaPkId();
+            if (mediaId == null || !handled.add(mediaId)) return;
+            Utils.runOnBackgroundThread(() -> save(media, reel, session, mediaId));
+        } catch (Throwable throwable) {
+            Logger.printException(() -> "Failed to auto-save a story", throwable);
+        }
+    }
+
+    // Background thread. Skips without a history row what was saved before or cannot be saved now.
+    private static void save(Object media, Object reel, UserSession session, String mediaId) {
+        try {
+            DownloadRequest request = DownloadUtils.storyRequest(media, reel, session);
+            request.quiet = true;
+            if (namesAreUnique(Pref.downloadFileNameTemplate())) {
+                request.conflictPolicy = DownloadRequest.ConflictPolicy.SKIP;
+            }
+            if (request.privateTarget != null && request.conflictPolicy == DownloadRequest.ConflictPolicy.SKIP
+                    && request.privateTarget.exists()) {
+                return;
+            }
+            // Without the folder grant the downloader would open the folder picker; a later view tries again.
+            if (!Utils.isNetworkConnected()
+                    || (request.privateTarget == null && !StorageUtils.checkStoragePermissions())) {
+                handled.remove(mediaId);
+                return;
+            }
+            downloader().enqueue(request);
+        } catch (Exception | LinkageError e) {
+            Logger.printException(() -> "Failed to auto-save a story", e);
+        }
+    }
+
+    // One downloader, so auto-saves download one at a time on its executor.
+    private static synchronized MediaDownloader downloader() {
+        if (downloader == null) downloader = new MediaDownloader(Utils.getContext());
+        return downloader;
     }
 
     // Only the listed mode uses the list, so the menu stays short otherwise.
@@ -57,5 +140,18 @@ public final class StoryAutoSave {
     /** The list screen in the Story settings. */
     public static void showList(Context context) {
         StoryUserList.AUTO_SAVE.showList(context);
+    }
+
+    // The patch replaces these bodies with reads from Instagram's story objects.
+    public static Object sessionNative(Object logger) {
+        return null;
+    }
+
+    public static String ownerIdNative(Object reel) {
+        return null;
+    }
+
+    public static Object mediaNative(Object item) {
+        return null;
     }
 }

@@ -974,6 +974,19 @@ public class DownloadUtils {
         }
     }
 
+    /** The request a direct story download makes for this story item; reads Instagram's objects on the caller's thread. */
+    public static DownloadRequest storyRequest(Object media, Object reel, UserSession userSession) throws Exception {
+        MediaData current = new MediaData(media, userSession);
+        String template = Pref.downloadFileNameTemplate();
+        int filenameIndex = template != null && template.contains(DownloadFileNameFormatter.Token.CAROUSEL_INDEX.placeholder())
+                ? DownloadMediaGroup.stories(current, reel, userSession).currentFilenameIndex(0)
+                : 0;
+        MediaData item = current.getMediaAt(0);
+        String username = current.getUserData().getUsername();
+        return buildMediaRequest(current, item, 0, filenameIndex, MediaType.ANY, item.getMediaLink(),
+                getSubfolderName(username), username + "_" + item.getDownloadFilename(MediaType.ANY), null, PostType.STORY);
+    }
+
     // The toolbar uses an application context wrapper; its ancestors carry the hosting Activity.
     private static Activity storyActivity(View view) {
         for (View current = view; current != null; ) {
