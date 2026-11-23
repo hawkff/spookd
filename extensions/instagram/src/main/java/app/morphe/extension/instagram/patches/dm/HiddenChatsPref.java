@@ -124,11 +124,21 @@ public class HiddenChatsPref extends BaseSharedPref {
     }
 
     /** Keeps the other person of a hidden one-to-one chat; writes only when the chat is hidden and the person is new. */
-    public static synchronized void addUser(String userId, String chatId, String otherUser) {
-        if (!ids(userId).contains(chatId) || otherUser.equals(hiddenUsers(userId).get(chatId))) return;
-        Map<String, String> users = new HashMap<>(hiddenUsers(userId));
-        users.put(chatId, otherUser);
-        saveUsers(userId, users);
+    public static void addUser(String userId, String chatId, String otherUser) {
+        addUsers(userId, Collections.singletonMap(chatId, otherUser));
+    }
+
+    /** Keeps the other person of several hidden chats, by chat id, with a single write for those that are new. */
+    public static synchronized void addUsers(String userId, Map<String, String> found) {
+        Map<String, String> users = null;
+        for (Map.Entry<String, String> entry : found.entrySet()) {
+            String chatId = entry.getKey();
+            String otherUser = entry.getValue();
+            if (otherUser == null || !ids(userId).contains(chatId) || otherUser.equals(hiddenUsers(userId).get(chatId))) continue;
+            if (users == null) users = new HashMap<>(hiddenUsers(userId));
+            users.put(chatId, otherUser);
+        }
+        if (users != null) saveUsers(userId, users);
     }
 
     private static void saveUsers(String userId, Map<String, String> users) {

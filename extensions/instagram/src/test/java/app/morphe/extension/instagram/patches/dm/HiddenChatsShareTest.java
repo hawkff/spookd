@@ -16,7 +16,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
+import org.junit.After;
 import org.junit.Test;
 
 public class HiddenChatsShareTest {
@@ -65,37 +67,63 @@ public class HiddenChatsShareTest {
         assertSame(first, HiddenChatsShare.keep(first, CHATS, USERS));
     }
 
-    @Test
-    public void chatsHiddenBeforePeopleWereKeptGetTheirPersonFromTheCachedChat() {
-        // An account upgraded with hidden chats and no users_<account> key yet.
-        Set<String> hidden = new HashSet<>(Arrays.asList("direct", "group", "uncached"));
-        Map<String, Target> store = new HashMap<>();
-        store.put("direct", Target.cached("direct", "me", "friend"));
-        store.put("group", Target.cached("group", "friend", "stranger"));
-        List<String> asked = new ArrayList<>();
+    @After
+    public void restoreBackfill() {
+        HiddenChatsShare.backfillCooldownMs = 30_000;
+        HiddenChatsShare.backfillExecutor = task -> new Thread(task).start();
+    }
 
-        List<DirectThreadKey> keys = HiddenChatsShare.keysToBackfill(hidden, Collections.emptyMap(), chat -> {
+    @Test
+    public void aChatTheStoreDoesNotHoldYetIsLookedUpAgainOnALaterRun() {
+        // An account upgraded with hidden chats and no users_<account> key yet.
+        HiddenChatsShare.backfillCooldownMs = 0;
+        HiddenChatsShare.backfillExecutor = Runnable::run;
+        Set<String> hidden = new HashSet<>(Arrays.asList("direct", "group"));
+        Map<String, Target> store = new HashMap<>();
+        Map<String, String> people = new HashMap<>();
+        List<String> asked = new ArrayList<>();
+        Function<String, Object> threads = chat -> {
             asked.add(chat);
             return store.get(chat);
-        });
+        };
 
+        HiddenChatsShare.requestBackfill("me", hidden, people, threads, people::putAll);
         assertEquals(new HashSet<>(hidden), new HashSet<>(asked));
-        assertEquals(2, keys.size());
-        Map<String, String> people = new HashMap<>();
-        for (DirectThreadKey key : keys) {
-            String other = HiddenChatsShare.otherUser(key.A02, "me");
-            if (other != null) people.put(key.A00, other);
-        }
+        assertTrue(people.isEmpty());
+
+        store.put("direct", Target.cached("direct", "me", "friend"));
+        store.put("group", Target.cached("group", "friend", "stranger"));
+        HiddenChatsShare.requestBackfill("me", hidden, people, threads, people::putAll);
         assertEquals(Collections.singletonMap("direct", "friend"), people);
         assertTrue(HiddenChatsShare.isHidden(null, Collections.singletonList("friend"), hidden, people));
 
-        // A chat whose person is already kept is not looked up again.
+        // Both are settled now: the group by its chat id and the person by the kept map.
         asked.clear();
-        HiddenChatsShare.keysToBackfill(hidden, people, chat -> {
+        HiddenChatsShare.requestBackfill("me", hidden, people, threads, people::putAll);
+        assertTrue(asked.isEmpty());
+    }
+
+    @Test
+    public void theCallerNeverTouchesTheStoreAndOnlyOneRunIsQueued() {
+        HiddenChatsShare.backfillCooldownMs = 0;
+        List<Runnable> queued = new ArrayList<>();
+        HiddenChatsShare.backfillExecutor = queued::add;
+        List<String> asked = new ArrayList<>();
+        Map<String, String> people = new HashMap<>();
+        Set<String> hidden = Collections.singleton("direct");
+        Function<String, Object> threads = chat -> {
             asked.add(chat);
-            return null;
-        });
-        assertFalse(asked.contains("direct"));
+            return Target.cached("direct", "friend");
+        };
+
+        HiddenChatsShare.requestBackfill("busy", hidden, people, threads, people::putAll);
+        HiddenChatsShare.requestBackfill("busy", hidden, people, threads, people::putAll);
+        assertTrue(asked.isEmpty());
+        assertEquals(1, queued.size());
+
+        queued.get(0).run();
+        assertEquals(Collections.singletonList("direct"), asked);
+        assertEquals(Collections.singletonMap("direct", "friend"), people);
     }
 
     /** A recipient that makes its key on demand, like Instagram's share targets. */

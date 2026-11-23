@@ -9,10 +9,13 @@ package app.morphe.extension.instagram.patches.dm;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import app.morphe.extension.instagram.utils.Pref;
@@ -29,7 +32,13 @@ import com.instagram.model.direct.DirectThreadKey;
 public final class HiddenChatsShare {
     private static final Method[] NO_METHODS = new Method[0];
     private static final Map<Class<?>, Method[]> keyMethods = new ConcurrentHashMap<>();
-    private static final Set<String> backfilled = ConcurrentHashMap.newKeySet();
+    private static final Set<String> running = ConcurrentHashMap.newKeySet();
+    private static final Map<String, Long> lastBackfill = new ConcurrentHashMap<>();
+    // The chats of each account whose cached chat was found, so they are not looked up again.
+    private static final Map<String, Set<String>> settled = new ConcurrentHashMap<>();
+    // Replaced in tests.
+    static long backfillCooldownMs = 30_000;
+    static Executor backfillExecutor = task -> new Thread(task, "spookd-hidden-chats-share").start();
 
     private HiddenChatsShare() { }
 
@@ -88,33 +97,63 @@ public final class HiddenChatsShare {
         if (!Pref.hiddenChats() || !(session instanceof UserSession)) return null;
         String account = ((UserSession) session).getUserId();
         if (account == null || HiddenChats.isOpenFor(account) || HiddenChatsPref.ids(account).isEmpty()) return null;
-        if (backfilled.add(account)) backfill((UserSession) session, account);
+        UserSession user = (UserSession) session;
+        requestBackfill(account, HiddenChatsPref.ids(account), HiddenChatsPref.hiddenUsers(account),
+                chatId -> cachedThread(user, chatId), found -> HiddenChatsPref.addUsers(account, found));
         return account;
     }
 
-    /** Once per account and process, keeps the other person of hidden chats that have none yet, from Instagram's chat store. */
-    private static void backfill(UserSession session, String account) {
-        Function<String, Object> threads = chatId -> {
-            try {
-                return cachedThread(session, chatId);
-            } catch (Throwable t) {
-                return null;
-            }
-        };
-        for (DirectThreadKey key : keysToBackfill(HiddenChatsPref.ids(account), HiddenChatsPref.hiddenUsers(account), threads)) {
-            rememberUser(account, key);
+    /**
+     * Looks the hidden chats that have no person kept yet up in Instagram's chat store, off the main thread, at most one
+     * run per account at a time and once per cooldown; chats the store does not hold yet are tried again on a later run.
+     * Until a run finds a person, suggestions are filtered with what is already known.
+     */
+    static void requestBackfill(String account, Set<String> chats, Map<String, String> users,
+                                Function<String, Object> threads, Consumer<Map<String, String>> save) {
+        Set<String> done = settled.computeIfAbsent(account, a -> ConcurrentHashMap.newKeySet());
+        List<String> pending = new ArrayList<>();
+        for (String chat : chats) {
+            if (!users.containsKey(chat) && !done.contains(chat)) pending.add(chat);
+        }
+        if (pending.isEmpty()) return;
+        long now = System.currentTimeMillis();
+        Long last = lastBackfill.get(account);
+        if ((last != null && now - last < backfillCooldownMs) || !running.add(account)) return;
+        lastBackfill.put(account, now);
+        try {
+            backfillExecutor.execute(() -> backfill(account, pending, done, threads, save));
+        } catch (Throwable t) {
+            running.remove(account);
+            Logger.printException(() -> "HiddenChatsShare backfill not started", t);
         }
     }
 
-    /** The keys of the cached chats behind the hidden chats that have no person kept yet. */
-    static List<DirectThreadKey> keysToBackfill(Set<String> chats, Map<String, String> users, Function<String, Object> threads) {
-        List<DirectThreadKey> keys = new ArrayList<>();
-        for (String chat : chats) {
-            if (users.containsKey(chat)) continue;
-            DirectThreadKey key = keyOf(threads.apply(chat));
-            if (key != null) keys.add(key);
+    private static void backfill(String account, List<String> pending, Set<String> done,
+                                 Function<String, Object> threads, Consumer<Map<String, String>> save) {
+        try {
+            Map<String, String> found = new HashMap<>();
+            for (String chat : pending) {
+                DirectThreadKey key = keyOf(lookUp(threads, chat));
+                if (key == null) continue;
+                // A group is settled too: it is left out by its chat id and never gets a person.
+                done.add(chat);
+                String other = otherUser(key.A02, account);
+                if (other != null) found.put(chat, other);
+            }
+            if (!found.isEmpty()) save.accept(found);
+        } catch (Throwable t) {
+            Logger.printException(() -> "HiddenChatsShare backfill failed", t);
+        } finally {
+            running.remove(account);
         }
-        return keys;
+    }
+
+    private static Object lookUp(Function<String, Object> threads, String chat) {
+        try {
+            return threads.apply(chat);
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     private static Object cachedThread(UserSession session, String chatId) {
