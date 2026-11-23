@@ -29,6 +29,8 @@
     <string name="spookd_sanitize_share_links">Sanitize share links</string>
     <string name="spookd_custom_sharing_domain">Custom sharing domain</string>
     <string name="spookd_custom_sharing_domain_desc">Domain to use when sharing links</string>
+    <string name="spookd_detect_links_in_text">Tappable links in captions</string>
+    <string name="spookd_detect_links_in_text_desc">Underlines plain http, https and www. addresses in feed captions. Tapping one opens it in your external browser, without trackers when Sanitize share links is on</string>
 
     <!-- Ghost Section -->
     <string name="spookd_category_ghost">Ghost</string>
