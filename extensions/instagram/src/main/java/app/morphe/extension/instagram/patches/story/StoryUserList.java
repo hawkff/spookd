@@ -56,7 +56,12 @@ final class StoryUserList {
     static String ownerId(Object media, Object session) throws Exception {
         if (media == null || !(session instanceof UserSession)) return null;
         UserData owner = new MediaData(media, (UserSession) session).getUserData();
-        return owner == null ? null : owner.getUserId();
+        return owner == null ? null : userId(owner.getUserId());
+    }
+
+    /** {@code id}, or null when it is missing or empty. */
+    static String userId(String id) {
+        return id == null || id.isEmpty() ? null : id;
     }
 
     /** Parsed again only after the stored list changes, so story paths stay in memory. */

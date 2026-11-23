@@ -11,6 +11,8 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 import android.content.Context;
 import android.content.DialogInterface;
 
+import java.util.Map;
+
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.entity.UserData;
@@ -37,6 +39,11 @@ public final class StoryGhostList {
         return true;
     }
 
+    /** Whether a story of {@code ownerId} sends no automatic receipt; an unknown (null) owner never does. */
+    static boolean staysAnonymous(String mode, String ownerId, Map<String, String> listed) {
+        return ownerId == null || appliesTo(mode, listed.containsKey(ownerId));
+    }
+
     /** Instagram queuing a consumed item for its receipt, on the main thread: owners the mode leaves out get it sent. */
     public static void onStoryConsumed(Object logger, Object item, Object reel) {
         try {
@@ -44,8 +51,7 @@ public final class StoryGhostList {
             String mode = SharedPref.getStringPref(Settings.STORY_GHOST_MODE);
             Object session = loggerSessionNative(logger);
             String ownerId = StoryUserList.ownerId(mediaNative(item), session);
-            // An unknown owner stays anonymous.
-            if (ownerId == null || appliesTo(mode, StoryUserList.GHOST.all().containsKey(ownerId))) return;
+            if (staysAnonymous(mode, ownerId, StoryUserList.GHOST.all())) return;
             markSeen(session, item, reel);
         } catch (Throwable throwable) {
             Logger.printException(() -> "Failed to apply the story ghost list", throwable);

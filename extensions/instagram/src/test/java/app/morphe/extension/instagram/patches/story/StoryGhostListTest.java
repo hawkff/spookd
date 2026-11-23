@@ -45,6 +45,24 @@ public class StoryGhostListTest {
     }
 
     @Test
+    public void anUnknownOrEmptyOwnerStaysAnonymousInEveryMode() {
+        // A damaged list may even hold an empty id.
+        Map<String, String> listed = StoryUserList.parse("{\"\":\"\",\"1\":\"first\"}");
+        assertNull(StoryUserList.userId(null));
+        assertNull(StoryUserList.userId(""));
+        assertEquals("1", StoryUserList.userId("1"));
+
+        for (String mode : Arrays.asList(StoryGhostList.MODE_EVERYONE, StoryGhostList.MODE_EXCEPT_LISTED,
+                StoryGhostList.MODE_ONLY_LISTED)) {
+            assertTrue(mode, StoryGhostList.staysAnonymous(mode, StoryUserList.userId(null), listed));
+            assertTrue(mode, StoryGhostList.staysAnonymous(mode, StoryUserList.userId(""), listed));
+        }
+        // Known owners still follow the mode.
+        assertFalse(StoryGhostList.staysAnonymous(StoryGhostList.MODE_ONLY_LISTED, "2", listed));
+        assertFalse(StoryGhostList.staysAnonymous(StoryGhostList.MODE_EXCEPT_LISTED, "1", listed));
+    }
+
+    @Test
     public void addingKeepsTheOrderAndRefusesDuplicates() {
         String one = StoryUserList.withUser("{}", "1", "first");
         String two = StoryUserList.withUser(one, "2", "second");
