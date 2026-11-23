@@ -35,7 +35,11 @@ public class HomeLongPress {
             return false;
         }
         try {
-            showChoiceDialog(view);
+            if (Pref.enableDevOptions()) {
+                showChoiceDialog(view);
+            } else {
+                FragmentHook.startSettings();
+            }
             return true;
         } catch (Throwable t) {
             logFailure("Home long-press failed", t);
@@ -44,20 +48,15 @@ public class HomeLongPress {
     }
 
     private static void showChoiceDialog(View view) {
-        Activity activity = activityOf(view.getContext());
-        InstagramDialogBox dialog = new InstagramDialogBox(activity);
+        InstagramDialogBox dialog = new InstagramDialogBox(activityOf(view.getContext()));
 
-        CharSequence[] items = Pref.enableDevOptions()
-                ? new CharSequence[]{str("spookd_title_settings"), str("spookd_open_copied_link"), str("spookd_category_dev_options")}
-                : new CharSequence[]{str("spookd_title_settings"), str("spookd_open_copied_link")};
+        CharSequence[] items = {str("spookd_title_settings"), str("spookd_category_dev_options")};
         dialog.addDialogMenuItems(items, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface d, int which) {
                 try {
                     if (which == 0) {
                         FragmentHook.startSettings();
-                    } else if (which == 1) {
-                        CopiedLink.open(activity);
                     } else {
                         replayingLongPress = true;
                         try {

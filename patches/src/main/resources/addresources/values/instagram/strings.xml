@@ -8,7 +8,6 @@
     <string name="spookd_hide_suggested_content_desc">Hides suggested stories, reels, threads (Suggested posts will still be shown).</string>
     <string name="spookd_hide_meta_ai">Hide Meta AI</string>
     <string name="spookd_hide_meta_ai_desc">Removes Meta AI prompts in search, the Meta AI entry in messages and the Reels menu, and AI suggestions. Restart the app to apply.</string>
-    <string name="spookd_open_copied_link">Open copied link</string>
     <string name="spookd_open_copied_link_invalid">Copy an Instagram link or @username first</string>
 
     <!-- Developer Options Section -->
