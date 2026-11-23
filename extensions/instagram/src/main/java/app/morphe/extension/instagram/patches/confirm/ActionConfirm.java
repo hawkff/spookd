@@ -259,7 +259,8 @@ public final class ActionConfirm {
                     repost ? null : storyItemOf(storyLikePresenters.get(button)));
             Boolean replay = replayVerdict(button, state);
             if (replay != null) return replay;
-            if (button.isSelected() || !(repost ? Pref.confirmRepost() : Pref.confirmStoryLike())) return true;
+            // A heart with no story bound yet cannot tell a later story from this one.
+            if (button.isSelected() || (!repost && state.get(2) == null) || !(repost ? Pref.confirmRepost() : Pref.confirmStoryLike())) return true;
             String title = str(repost ? "spookd_confirm_repost_title" : "spookd_confirm_story_like_title");
             return !ask(button, repost ? REPOST : LIKE, title, button, state, button::performClick);
         } catch (Throwable t) {
