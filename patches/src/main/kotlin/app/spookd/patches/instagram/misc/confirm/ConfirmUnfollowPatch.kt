@@ -16,6 +16,7 @@ import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.string
 import app.morphe.patcher.util.smali.ExternalLabel
+import app.morphe.patcher.util.writeRegister
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
@@ -69,7 +70,10 @@ val confirmUnfollowPatch =
             val scratch = (lookup + 2..lookup + 3).mapNotNull { index ->
                 instructions.getOrNull(index)?.takeIf { it.opcode == Opcode.CONST_4 } as? OneRegisterInstruction
             }.map { it.registerA }.distinct()
-            if (scratch.size != 2 || status in scratch || privacy in scratch || status > 15 || privacy > 15) return@execute
+            if (scratch.size != 2 || status in scratch || privacy in scratch || status == privacy || status > 15 || privacy > 15) return@execute
+            // The replay passes the original arguments, so they must still be in place here.
+            val firstParameter = method.implementation!!.registerCount - 4
+            if ((0..lookup + 1).any { (instructions[it].writeRegister ?: -1) >= firstParameter }) return@execute
             val (array, name) = scratch
 
             method.addInstructionsWithLabels(
