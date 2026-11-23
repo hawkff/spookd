@@ -29,7 +29,7 @@ public final class TextLinks {
     // Group 1 is the authority: http(s):// or a scheme-less www. ASCII host and an optional port; then the path up to whitespace.
     private static final Pattern LINK = Pattern.compile(
             "(?<![a-z0-9_@./:-])"
-                    + "((?:https?://(?:[a-z0-9-]+\\.)*[a-z0-9-]+|www\\.(?:[a-z0-9-]+\\.)+[a-z0-9-]{2,})(?::\\d{1,5})?)"
+                    + "((?:https?://(?:[a-z0-9-]+\\.)*[a-z0-9-]+|www\\.(?:[a-z0-9-]+\\.)+[a-z0-9-]{2,})(?::(\\d{1,5}))?)"
                     + "(?:[/?#][^\\s<>\"]*)?",
             Pattern.CASE_INSENSITIVE);
     private static final String TRAILING = ".,;:!?'\"*\u2026";
@@ -65,7 +65,9 @@ public final class TextLinks {
         while (matcher.find()) {
             int start = matcher.start();
             int end = trimEnd(text, start, matcher.end());
-            if (!isWholeAuthority(text, start, matcher.end(1)) || isCut(text, end) || isLinked(text, start, end, captionTapSpans)) {
+            String port = matcher.group(2);
+            if ((port != null && (Integer.parseInt(port) < 1 || Integer.parseInt(port) > 65535))
+                    || !isWholeAuthority(text, start, matcher.end(1)) || isCut(text, end) || isLinked(text, start, end, captionTapSpans)) {
                 continue;
             }
             String link = text.subSequence(start, end).toString();
@@ -135,7 +137,10 @@ public final class TextLinks {
     // Instagram's own links are not all URLSpans, so any tappable span over the range counts, except the caption text-area span around it.
     private static boolean isLinked(Spanned text, int start, int end, Set<String> captionTapSpans) {
         for (ClickableSpan span : text.getSpans(start, end, ClickableSpan.class)) {
-            boolean around = text.getSpanStart(span) <= start && text.getSpanEnd(span) >= end;
+            int spanStart = text.getSpanStart(span);
+            int spanEnd = text.getSpanEnd(span);
+            // Instagram's tap handler picks the shortest span, so an equal-range caption span would win over the link.
+            boolean around = spanStart <= start && spanEnd >= end && spanEnd - spanStart > end - start;
             if (!around || !captionTapSpans.contains(span.getClass().getName())) return true;
         }
         return false;

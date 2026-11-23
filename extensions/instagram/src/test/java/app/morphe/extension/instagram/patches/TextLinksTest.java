@@ -30,6 +30,8 @@ public class TextLinksTest {
     @Test
     public void lowercasesSchemeAndKeepsPort() {
         assertLinks("HTTP://Example.com:8080/Path", "http://Example.com:8080/Path");
+        assertLinks("https://example.com:65535/x", "https://example.com:65535/x");
+        assertLinks("https://example.com:65536/x https://example.com:0/x");
     }
 
     @Test
@@ -90,6 +92,11 @@ public class TextLinksTest {
         text = new SpannableStringBuilder("visit https://example.com now");
         text.setSpan(new CaptionTap(), 0, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         text.setSpan(new Tap(), 0, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        TextLinks.addLinks(text, captionTapSpans);
+        assertEquals(0, text.getSpans(0, text.length(), TextLinks.LinkSpan.class).length);
+
+        text = new SpannableStringBuilder("user https://example.com");
+        text.setSpan(new CaptionTap(), 5, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         TextLinks.addLinks(text, captionTapSpans);
         assertEquals(0, text.getSpans(0, text.length(), TextLinks.LinkSpan.class).length);
 
