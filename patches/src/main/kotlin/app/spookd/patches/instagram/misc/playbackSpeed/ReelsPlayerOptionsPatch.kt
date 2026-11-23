@@ -15,8 +15,10 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.classDefBy
+import app.morphe.patcher.patch.mutableClassDefBy
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.string
 import app.morphe.patcher.util.getReference
@@ -151,6 +153,36 @@ private fun hookStartMuted(controller: String) {
         invoke-direct {p0, v$enabled}, $muted
         move-result v$enabled
     """)
+    guardAutomaticSoundOn(sessionAudio.definingClass)
+}
+
+// The session store turns sound on by itself (other media playing on return to the app, a timer); user choices come from outside it.
+private fun guardAutomaticSoundOn(store: String) {
+    val setter = classDefBy(store).methods.single {
+        it.parameters() == listOf("Z") && it.returnType == "V" && !AccessFlags.STATIC.isSet(it.accessFlags)
+    }
+    val guard = addReelMethod(
+        store, "spookdAutomaticSoundOn", listOf("Z"), "V", registers = 3,
+        instructions = """
+            if-eqz p1, :set
+            invoke-static {}, $OPTIONS->startMuted()Z
+            move-result v0
+            if-nez v0, :skip
+            :set
+            invoke-virtual {p0, p1}, $setter
+            :skip
+            return-void
+        """,
+    )
+    val writes = mutableClassDefBy(store).methods.filter { it.name != guard.name && it != setter }.flatMap { method ->
+        val code = method.implementation?.instructions.orEmpty()
+        code.indices.filter { code[it].getReference<MethodReference>() == setter }.map { method to it }
+    }
+    require(writes.isNotEmpty()) { "Missing automatic session sound writes" }
+    for ((method, index) in writes) {
+        val (receiver, value) = method.implementation!!.instructions[index].registersUsed
+        method.replaceInstruction(index, "invoke-direct {v$receiver, v$value}, $guard")
+    }
 }
 
 // A single tap restarts an ended Reel, and can pause or resume a Reel instead of toggling its sound.
