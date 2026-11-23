@@ -135,6 +135,8 @@ public final class MediaVault {
             start();
             long now = clock.getAsLong();
             long expiresAt = MediaUrls.expiresAt(url);
+            // A later receipt can know the view-once mode an earlier one lacked; the download is not repeated.
+            if (markResource(viewMode) != null && itemId != null) store.promoteViewMode(itemId, viewMode);
             if (itemId == null || itemId.isEmpty() || expiresAt <= now
                     || msgTimestamp < now - RETENTION_MS
                     || !("photo".equals(kind) || "video".equals(kind) || "voice".equals(kind))) return;

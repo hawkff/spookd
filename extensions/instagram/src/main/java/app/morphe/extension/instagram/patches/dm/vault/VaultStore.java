@@ -66,6 +66,12 @@ final class VaultStore {
         return db.insertWithOnConflict("saved_media", null, values, SQLiteDatabase.CONFLICT_IGNORE);
     }
 
+    /** Sets a newly known once or replayable mode on the item's queued or stored row; never on a dropped one. */
+    int promoteViewMode(String itemId, String viewMode) {
+        return update("UPDATE saved_media SET view_mode = ? WHERE item_id = ?"
+                + " AND state IN ('queued', 'stored') AND NOT " + VIEW_ONCE, viewMode, itemId);
+    }
+
     Media row(long id) {
         return first("SELECT " + COLUMNS + " FROM saved_media WHERE saved_media.id = ?",
                 String.valueOf(id));

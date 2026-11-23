@@ -808,6 +808,48 @@ public final class MediaVaultLifecycleTest {
     }
 
     @Test
+    public void laterReceiptPromotesTheViewModeWithoutRefetching() throws IOException {
+        messages.upsertMessage("item", null, "thread", "42", "bob", "", "visual_media", NOW - 1000);
+        vault.enqueue("item", "acct", "photo", LIVE, NOW - 1000, "permanent");
+        executor.runAll();
+        long id = id("item");
+        assertEquals("stored", column("state", id));
+        assertTrue(messages.getDeletedMessages().isEmpty());
+
+        vault.enqueue("item", "acct", "photo", LIVE, NOW - 1000, "once");
+        vault.enqueue("item", "acct", "photo", LIVE, NOW - 1000, "replayable");
+        vault.enqueue("item", "acct", "photo", LIVE, NOW - 1000, null);
+        executor.runAll();
+        assertEquals("once", column("view_mode", id));
+        assertEquals("stored", column("state", id));
+        assertEquals("1", column("attempts", id));
+        assertEquals(1, network.opened.size());
+        assertEquals("spookd_media_view_once", MediaVault.markResource(vault.storedItems().get(0).viewMode));
+        assertEquals("item", messages.getDeletedMessages().get(0)[0]);
+        assertEquals("once", vault.storedMessages().get("item"));
+
+        long queued = enqueue("queued");
+        vault.enqueue("queued", "acct", "photo", LIVE, NOW - 1000, "replayable");
+        assertEquals("replayable", column("view_mode", queued));
+        assertEquals("queued", column("state", queued));
+        long deleted = enqueue("deleted");
+        vault.delete(deleted);
+        vault.enqueue("deleted", "acct", "photo", LIVE, NOW - 1000, "once");
+        assertEquals("dropped", column("state", deleted));
+        assertNull(column("view_mode", deleted));
+        executor.runAll();
+        assertEquals("stored", column("state", queued));
+        assertEquals(2, network.opened.size());
+
+        clock[0] = NOW + MediaVault.RETENTION_MS;
+        vault.sweep();
+        assertEquals("stored", column("state", id));
+        assertEquals("stored", column("state", queued));
+        assertTrue(pkv(id).exists());
+        assertTrue(pkv(queued).exists());
+    }
+
+    @Test
     public void viewOnceMediaIsNeverEvictedButFillsTheCap() throws IOException {
         long once = storedRow("once", CAP - 150_000, NOW - 4000);
         long twice = storedRow("twice", 10_000, NOW - 3500);
