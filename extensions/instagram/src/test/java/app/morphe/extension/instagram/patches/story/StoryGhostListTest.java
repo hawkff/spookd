@@ -46,29 +46,29 @@ public class StoryGhostListTest {
 
     @Test
     public void addingKeepsTheOrderAndRefusesDuplicates() {
-        String one = StoryGhostUsers.withUser("{}", "1", "first");
-        String two = StoryGhostUsers.withUser(one, "2", "second");
-        Map<String, String> users = StoryGhostUsers.parse(two);
+        String one = StoryUserList.withUser("{}", "1", "first");
+        String two = StoryUserList.withUser(one, "2", "second");
+        Map<String, String> users = StoryUserList.parse(two);
 
         assertEquals(Arrays.asList("1", "2"), new ArrayList<>(users.keySet()));
         assertEquals("first", users.get("1"));
         assertEquals("second", users.get("2"));
-        assertNull(StoryGhostUsers.withUser(two, "1", "renamed"));
+        assertNull(StoryUserList.withUser(two, "1", "renamed"));
     }
 
     @Test
     public void removingDropsOnlyThatUser() {
-        String two = StoryGhostUsers.withUser(StoryGhostUsers.withUser("{}", "1", "first"), "2", "second");
+        String two = StoryUserList.withUser(StoryUserList.withUser("{}", "1", "first"), "2", "second");
 
         assertEquals(Collections.singletonMap("2", "second"),
-                StoryGhostUsers.parse(StoryGhostUsers.withoutUser(two, "1")));
-        assertEquals(StoryGhostUsers.parse(two), StoryGhostUsers.parse(StoryGhostUsers.withoutUser(two, "3")));
+                StoryUserList.parse(StoryUserList.withoutUser(two, "1")));
+        assertEquals(StoryUserList.parse(two), StoryUserList.parse(StoryUserList.withoutUser(two, "3")));
     }
 
     @Test
     public void aDamagedListReadsAsEmpty() {
-        assertTrue(StoryGhostUsers.parse("not json").isEmpty());
+        assertTrue(StoryUserList.parse("not json").isEmpty());
         assertEquals(Collections.singletonMap("1", "first"),
-                StoryGhostUsers.parse(StoryGhostUsers.withUser("not json", "1", "first")));
+                StoryUserList.parse(StoryUserList.withUser("not json", "1", "first")));
     }
 }

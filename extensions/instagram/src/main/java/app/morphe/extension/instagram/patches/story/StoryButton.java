@@ -51,6 +51,9 @@ public class StoryButton {
         if(StoryGhostList.showMenuItem()){
             buttonList.add(str("spookd_story_ghost_add"));
         }
+        if(StoryAutoSave.showMenuItem()){
+            buttonList.add(str("spookd_story_auto_save_toggle"));
+        }
 
         return buttonList;
     }
@@ -66,6 +69,9 @@ public class StoryButton {
             return true;
         } else if (buttonText.equals(str("spookd_story_ghost_add"))) {
             StoryGhostList.addStoryOwner(session, mediaObject, onDismiss);
+            return true;
+        } else if (buttonText.equals(str("spookd_story_auto_save_toggle"))) {
+            StoryAutoSave.toggleStoryOwner(session, mediaObject, onDismiss);
             return true;
         }
         return false;

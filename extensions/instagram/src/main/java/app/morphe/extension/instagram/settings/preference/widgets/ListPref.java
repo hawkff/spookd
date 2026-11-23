@@ -81,6 +81,13 @@ public class ListPref extends ListPreference {
                         str("spookd_story_ghost_mode_only_listed")
                 };
                 entriesValues = new CharSequence[]{"everyone", "except_listed", "only_listed"};
+            } else if (Settings.STORY_AUTO_SAVE.key.equals(key)) {
+                entries = new CharSequence[]{
+                        str("spookd_story_auto_save_off"),
+                        str("spookd_story_ghost_mode_everyone"),
+                        str("spookd_story_auto_save_listed")
+                };
+                entriesValues = new CharSequence[]{"off", "everyone", "listed"};
             }
         } else {
             entries = ResourceUtils.getStringArray("spookd_array_recmd_flag_states");

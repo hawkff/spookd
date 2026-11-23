@@ -30,6 +30,7 @@ import app.morphe.extension.instagram.patches.customise.font.FontStorage;
 import app.morphe.extension.instagram.patches.download.gallery.Gallery;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
 import app.morphe.extension.instagram.patches.focusLock.FocusLockTargets;
+import app.morphe.extension.instagram.patches.story.StoryAutoSave;
 import app.morphe.extension.instagram.patches.story.StoryGhostList;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.BooleanSetting;
@@ -1467,6 +1468,25 @@ public class ScreenBuilder {
                             Settings.CUSTOMISE_STORY_RING_SIZE
                     )
             );
+        }
+        if (SettingsStatus.storyAutoSave) {
+            addPreference(
+                    helper.listPreference(
+                            str("spookd_story_auto_save"),
+                            "%s",
+                            Settings.STORY_AUTO_SAVE
+                    )
+            );
+            Preference storyAutoSaveUsers = helper.buttonPreference(
+                    str("spookd_story_auto_save_users"),
+                    str("spookd_story_auto_save_users_desc"),
+                    "spookd_story_auto_save_users"
+            );
+            storyAutoSaveUsers.setOnPreferenceClickListener(preference -> {
+                StoryAutoSave.showList(preference.getContext());
+                return true;
+            });
+            addPreference(storyAutoSaveUsers);
         }
     }
 
