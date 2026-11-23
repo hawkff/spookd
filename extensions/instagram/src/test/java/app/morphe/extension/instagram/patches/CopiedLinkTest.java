@@ -1,19 +1,71 @@
 package app.morphe.extension.instagram.patches;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.robolectric.Shadows.shadowOf;
 
+import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.ContextWrapper;
+import android.content.Intent;
 import android.net.Uri;
+import android.view.View;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 29, manifest = Config.NONE)
 public class CopiedLinkTest {
+
+    @Test
+    public void searchLongClickOpensCopiedLinkInOwnUrlHandler() {
+        Activity activity = Robolectric.buildActivity(Activity.class).create().get();
+        copy(activity, "https://instagram.com/reel/AbC/?igsh=xyz");
+
+        assertTrue(CopiedLink.onSearchLongClick(new View(activity)));
+
+        Intent started = shadowOf(activity).getNextStartedActivity();
+        assertEquals(activity.getPackageName(), started.getComponent().getPackageName());
+        assertEquals("com.instagram.url.UrlHandlerActivity", started.getComponent().getClassName());
+        assertEquals(Intent.ACTION_VIEW, started.getAction());
+        assertEquals(Uri.parse("https://www.instagram.com/reel/AbC/?igsh=xyz"), started.getData());
+    }
+
+    @Test
+    public void searchLongClickFallsThroughForRejectedClipboard() {
+        Activity activity = Robolectric.buildActivity(Activity.class).create().get();
+        copy(activity, "https://example.com/p/AbC/");
+
+        assertFalse(CopiedLink.onSearchLongClick(new View(activity)));
+        assertNull(shadowOf(activity).getNextStartedActivity());
+    }
+
+    @Test
+    public void searchLongClickFallsThroughWhenLaunchThrows() {
+        Activity activity = Robolectric.buildActivity(Activity.class).create().get();
+        copy(activity, "@someuser");
+        ContextWrapper failing = new ContextWrapper(activity) {
+            @Override
+            public void startActivity(Intent intent) {
+                throw new ActivityNotFoundException();
+            }
+        };
+
+        assertFalse(CopiedLink.onSearchLongClick(new View(failing)));
+        assertNull(shadowOf(activity).getNextStartedActivity());
+    }
+
+    private static void copy(Activity activity, String text) {
+        activity.getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText("", text));
+    }
 
     @Test
     public void readsTextElseUriOfFirstClipItem() {
