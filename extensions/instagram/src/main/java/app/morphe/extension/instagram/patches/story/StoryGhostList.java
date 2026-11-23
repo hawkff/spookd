@@ -32,6 +32,13 @@ public final class StoryGhostList {
     static final String MODE_EVERYONE = "everyone";
     static final String MODE_EXCEPT_LISTED = "except_listed";
     static final String MODE_ONLY_LISTED = "only_listed";
+    private static final long RETRY_DELAY_MILLIS = 1_000L;
+    private static final DeferredReceipts<Object[]> DEFERRED = new DeferredReceipts<>(
+            50,
+            () -> StorySeenRequestScope.isFull(),
+            receipt -> StorySeenBridge.markSeenAutomatically(receipt[0], receipt[1], receipt[2], null)
+    );
+    private static boolean retryScheduled;
 
     private StoryGhostList() {
     }
@@ -80,9 +87,26 @@ public final class StoryGhostList {
         return SharedPref.getBooleanPref(Settings.MARK_STORY_SEEN_ON_INTERACTION) && Pref.viewStoriesAnonymously();
     }
 
-    // Already marked or pending stories are skipped by the bridge.
+    // Already marked or pending stories are skipped by the bridge; a full request registry defers the receipt.
     private static void markSeen(Object session, Object item, Object reel) {
-        StorySeenBridge.markSeenAutomatically(session, item, reel, null);
+        if (DEFERRED.submit(new Object[]{session, item, reel})) scheduleRetry();
+    }
+
+    private static synchronized void scheduleRetry() {
+        if (retryScheduled) return;
+        retryScheduled = true;
+        Utils.runOnMainThreadDelayed(StoryGhostList::retryDeferred, RETRY_DELAY_MILLIS);
+    }
+
+    private static void retryDeferred() {
+        synchronized (StoryGhostList.class) {
+            retryScheduled = false;
+        }
+        try {
+            if (DEFERRED.retry()) scheduleRetry();
+        } catch (Throwable throwable) {
+            Logger.printException(() -> "Failed to send deferred story seen receipts", throwable);
+        }
     }
 
     public static boolean showMenuItem() {
