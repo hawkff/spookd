@@ -17,7 +17,9 @@ final class VaultStore {
     static final String STORED = "stored";
 
     // Kept media: view-once or view-twice, or its message was unsent, so neither eviction nor retention may drop it.
-    private static final String KEPT = "(saved_media.view_mode IN ('once', 'replayable') OR EXISTS (SELECT 1 FROM saved_messages s"
+    // Never NULL, so NOT stays true for rows whose mode is unknown.
+    private static final String VIEW_ONCE = "COALESCE(saved_media.view_mode IN ('once', 'replayable'), 0)";
+    private static final String KEPT = "(" + VIEW_ONCE + " OR EXISTS (SELECT 1 FROM saved_messages s"
             + " WHERE s.server_id = saved_media.item_id AND s.server_id != '' AND s.is_deleted = 1))";
     private static final String COLUMNS = "saved_media.id, saved_media.state, saved_media.url,"
             + " saved_media.url_expires_at, saved_media.attempts, saved_media.size_bytes, saved_media.kind";

@@ -767,6 +767,47 @@ public final class MediaVaultLifecycleTest {
     }
 
     @Test
+    public void ordinaryAndMigratedMediaWithoutAModeIsSweptAndEvicted() throws Exception {
+        // A version 5 saved_media table, upgraded to version 6 as an app update does.
+        db.execSQL("DROP TABLE saved_media");
+        java.lang.reflect.Method v5 = SpookdMessageDb.class.getDeclaredMethod("savedMediaStatements");
+        v5.setAccessible(true);
+        for (String statement : (String[]) v5.invoke(null)) db.execSQL(statement);
+        long migratedOld = storedRow("migratedOld", 1000, NOW - MediaVault.RETENTION_MS - 1);
+        long migrated = storedRow("migrated", 60_000, NOW - 3000);
+        db.setVersion(5);
+        messages.close();
+        Constructor<SpookdMessageDb> constructor = SpookdMessageDb.class.getDeclaredConstructor(Context.class);
+        constructor.setAccessible(true);
+        messages = constructor.newInstance(RuntimeEnvironment.getApplication());
+        db = messages.getWritableDatabase();
+        assertEquals(6, db.getVersion());
+        assertNull(column("view_mode", migrated));
+        restart();
+
+        long ordinaryOld = storedRow("ordinaryOld", 1000, NOW - MediaVault.RETENTION_MS - 1);
+        long ordinary = storedRow("ordinary", 60_000, NOW - 2500);
+        storedRow("kept", CAP - 150_000, NOW - 1000);
+        unsend("kept");
+        vault.recover();
+        vault.sweep();
+        assertEquals(0, count("migratedOld"));
+        assertEquals(0, count("ordinaryOld"));
+        assertFalse(pkv(migratedOld).exists());
+        assertFalse(pkv(ordinaryOld).exists());
+
+        network.respond = url -> new FakeConnection(url, 200, body(100_000));
+        long id = enqueue("new");
+        executor.runAll();
+        assertEquals("stored", column("state", id));
+        assertEquals("dropped", column("state", migrated));
+        assertEquals("dropped", column("state", ordinary));
+        assertFalse(pkv(migrated).exists());
+        assertFalse(pkv(ordinary).exists());
+        assertEquals(CAP - 150_000 + VaultFile.fileSize(100_000), vault.storedBytes);
+    }
+
+    @Test
     public void viewOnceMediaIsNeverEvictedButFillsTheCap() throws IOException {
         long once = storedRow("once", CAP - 150_000, NOW - 4000);
         long twice = storedRow("twice", 10_000, NOW - 3500);
