@@ -1074,6 +1074,14 @@ public class ScreenBuilder {
                 )
         );
 
+        addPreference(
+                helper.buttonPreference(
+                        str("spookd_download_history"),
+                        str("spookd_download_history_desc"),
+                        "spookd_download_history"
+                )
+        );
+
         String phoneStorageReason = Build.VERSION.SDK_INT < 30
                 ? str("spookd_save_downloads_to_phone_storage_old_android")
                 : Gallery.canOpen(context) ? null : str("spookd_save_downloads_to_phone_storage_no_lock");

@@ -25,6 +25,7 @@ import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzerActivity;
 import app.morphe.extension.instagram.patches.dm.DeletedMessagesActivity;
 import app.morphe.extension.instagram.patches.dm.InboxLock;
+import app.morphe.extension.instagram.patches.download.gallery.DownloadHistoryActivity;
 import app.morphe.extension.instagram.patches.download.gallery.PrivateGalleryActivity;
 import app.morphe.extension.instagram.patches.instants.InstantsVaultActivity;
 import app.morphe.extension.instagram.settings.preference.fragments.BackupPrefFragment;
@@ -48,6 +49,7 @@ public class ActivityHook {
     static final String LAUNCH_TYPE_INSTANTS_VAULT = "instants_vault";
     static final String LAUNCH_TYPE_PROFILE_ANALYZER = "profile_analyzer";
     static final String LAUNCH_TYPE_PRIVATE_GALLERY = "private_gallery";
+    static final String LAUNCH_TYPE_DOWNLOAD_HISTORY = "download_history";
 
 
     public static void launchActivity(Context context, Class<?> activityClass) {
@@ -179,6 +181,9 @@ public class ActivityHook {
             case LAUNCH_TYPE_PRIVATE_GALLERY:
                 PrivateGalleryActivity.open(activity);
                 break;
+            case LAUNCH_TYPE_DOWNLOAD_HISTORY:
+                DownloadHistoryActivity.open(activity);
+                break;
             case LAUNCH_TYPE_BACKUP:
             case LAUNCH_TYPE_RESTORE:
             case LAUNCH_TYPE_FOLDER_PICKER:
@@ -255,6 +260,12 @@ public class ActivityHook {
     public static void startPrivateGalleryActivity(Context context) {
         Intent intent = createProxyIntent(context);
         intent.putExtra(EXTRA_SPOOKD_LAUNCH_TYPE, LAUNCH_TYPE_PRIVATE_GALLERY);
+        launchActivity(context, intent);
+    }
+
+    public static void startDownloadHistoryActivity(Context context) {
+        Intent intent = createProxyIntent(context);
+        intent.putExtra(EXTRA_SPOOKD_LAUNCH_TYPE, LAUNCH_TYPE_DOWNLOAD_HISTORY);
         launchActivity(context, intent);
     }
 
