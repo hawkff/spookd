@@ -78,6 +78,16 @@ public class ActionConfirmTest {
     }
 
     @Test
+    public void onlyTheAcceptCaseOfAFollowRequestCallbackIsAskedAndOnlyOnce() {
+        assertTrue(ActionConfirm.asksFollowRequestCallback(2, 2));
+        assertFalse(ActionConfirm.asksFollowRequestCallback(1, 2));
+        List<Boolean> seen = new ArrayList<>();
+        ActionConfirm.runConfirmed(new Object(), Arrays.asList("arg"),
+                () -> seen.add(ActionConfirm.asksFollowRequestCallback(2, 2)));
+        assertEquals(Arrays.asList(false), seen);
+    }
+
+    @Test
     public void otherPresentersAreNotTracked() throws Exception {
         Object presenter = new Object();
         ActionConfirm.onStoryItemBound(presenter, new Object());

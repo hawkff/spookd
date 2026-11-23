@@ -332,6 +332,29 @@ public final class ActionConfirm {
         }
     }
 
+    /**
+     * From a callback that accepts a follow request and then raises cached counts itself; it runs for
+     * every {@code callCase} of its class, and only {@code acceptCase} is asked.
+     */
+    public static boolean allowFollowRequestCallback(Object callback, int callCase, int acceptCase, Object arg, String name) {
+        try {
+            List<Object> state = Arrays.asList(arg);
+            Boolean replay = replayVerdict(callback, state);
+            if (replay != null) return replay;
+            if (callback == null || !asksFollowRequestCallback(callCase, acceptCase) || !Pref.confirmFollowRequest()) return true;
+            return !ask(null, FOLLOW_REQUEST, str("spookd_confirm_follow_request_title"), callback, state,
+                    invoker(callback.getClass(), name, callback, new Object[]{arg}));
+        } catch (Throwable t) {
+            Logger.printException(() -> "allowFollowRequestCallback failure", t);
+            return true;
+        }
+    }
+
+    /** Whether a follow request callback case is asked: its accept case, unless an approved action replays. */
+    static boolean asksFollowRequestCallback(int callCase, int acceptCase) {
+        return callCase == acceptCase && pendingToken == null;
+    }
+
     /** From the static accept of a follow request; {@code refs} holds the activity and the next four arguments. */
     public static boolean allowFollowRequest(Object[] refs, boolean last, Class<?> owner, String name) {
         try {
