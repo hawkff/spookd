@@ -13,6 +13,7 @@ import android.content.Context;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.WeakHashMap;
 
@@ -60,13 +61,21 @@ public final class PlaybackSpeed {
     }
 
     /** Called on the main thread when a speed is picked in Instagram's Reels menu. */
-    public static void onMenuSpeedPicked(Object menuHelper) {
+    public static void onMenuSpeedPicked(Object speedOption, Object menuHelper) {
         try {
             Object state = menuMediaState(menuHelper);
+            Object media = menuMedia(menuHelper);
             synchronized (PlaybackSpeed.class) {
-                // The menu pick is the latest choice, so earlier panel picks no longer apply.
-                panelPicks.clear();
                 if (state != null) menuPicks.put(state, Boolean.TRUE);
+                // The menu pick replaces an earlier panel pick for the same Reel.
+                for (Iterator<Object> items = panelPicks.keySet().iterator(); items.hasNext(); ) {
+                    if (holdsMedia(items.next(), media)) items.remove();
+                }
+            }
+            // Instagram skips a pick equal to its stored 1x, while the player runs at the default.
+            if (optionSpeed(speedOption) == 1f && defaultSpeed() != 1f) {
+                Object player = startedReel.get();
+                if (player != null && holdsMedia(playingContent(player), media)) setSpeed(player, 1f);
             }
         } catch (Throwable t) {
             Logger.printException(() -> "Failed to note a Reels menu speed", t);
@@ -103,7 +112,7 @@ public final class PlaybackSpeed {
         }
     }
 
-    // Instagram restores 1x for a Reel nobody picked a speed for; that is where the default applies.
+    // The default replaces only Instagram's 1x for a Reel without a pick; Instagram's session-wide menu speeds stay.
     static Float resolveReelSpeed(Float nativeSpeed, Float panelSpeed, boolean menuPick, float defaultSpeed) {
         if (nativeSpeed == null) return null;
         if (panelSpeed != null) return panelSpeed;
@@ -136,6 +145,14 @@ public final class PlaybackSpeed {
 
     private static Object itemMediaState(Object itemState) {
         return null;
+    }
+
+    private static Object menuMedia(Object menuHelper) {
+        return null;
+    }
+
+    private static float optionSpeed(Object speedOption) {
+        return 0f;
     }
 
     static int positionMs(Object player) {

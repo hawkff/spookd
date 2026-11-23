@@ -187,7 +187,12 @@ final class PlaybackSpeedPanel {
             window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
         if (host != null) host.getApplication().registerActivityLifecycleCallbacks(lifecycle);
-        dialog.show();
+        try {
+            dialog.show();
+        } catch (RuntimeException e) {
+            dispose();
+            throw e;
+        }
         handler.post(refresh);
     }
 

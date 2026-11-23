@@ -125,12 +125,26 @@ private fun hookReelSpeedRestore() {
         invoke-static {v$speed, v$item, v$state}, $PLAYBACK_SPEED_CLASS->reelResumeSpeed(Ljava/lang/Float;${OBJECT}${OBJECT})Ljava/lang/Float;
         move-result-object v$speed
     """)
-    menu.addInstruction(0, "invoke-static/range {p1 .. p1}, $PLAYBACK_SPEED_CLASS->onMenuSpeedPicked($OBJECT)V")
+    menu.addInstruction(0, "invoke-static/range {p0 .. p1}, $PLAYBACK_SPEED_CLASS->onMenuSpeedPicked($OBJECT$OBJECT)V")
+    val helperMedia = classDefBy(helper).fields.single {
+        it.type == "Lcom/instagram/feed/media/Media;" && !AccessFlags.STATIC.isSet(it.accessFlags)
+    }
+    val optionSpeed = classDefBy(speedEnum).fields.single { it.type == "F" && !AccessFlags.STATIC.isSet(it.accessFlags) }
 
     replaceStub("menuMediaState", """
         check-cast p0, $helper
         iget-object p0, p0, $helperState
         return-object p0
+    """)
+    replaceStub("menuMedia", """
+        check-cast p0, $helper
+        iget-object p0, p0, $helperMedia
+        return-object p0
+    """)
+    replaceStub("optionSpeed", """
+        check-cast p0, $speedEnum
+        iget p0, p0, $optionSpeed
+        return p0
     """)
     replaceStub("itemMediaState", """
         check-cast p0, ${stateField.definingClass}
