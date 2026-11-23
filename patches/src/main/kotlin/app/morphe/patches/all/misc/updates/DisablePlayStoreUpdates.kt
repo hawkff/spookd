@@ -26,7 +26,7 @@
 
 package app.morphe.patches.all.misc.updates
 
-import app.crimera.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
+import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.crimera.patches.newx.utils.Constants.COMPATIBILITY_NEW_X
 import app.crimera.patches.twitter.utils.Constants.COMPATIBILITY_X
 import app.morphe.patcher.Fingerprint
