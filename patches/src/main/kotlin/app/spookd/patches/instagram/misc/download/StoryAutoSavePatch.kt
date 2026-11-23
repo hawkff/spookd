@@ -8,6 +8,7 @@ package app.spookd.patches.instagram.misc.download
 
 import app.spookd.patches.instagram.links.privacy.ConsumedStoryFingerprint
 import app.spookd.patches.instagram.links.privacy.REEL_ITEM_CLASS
+import app.spookd.patches.instagram.links.privacy.ReelTypeFingerprint
 import app.spookd.patches.instagram.misc.extension.sharedExtensionPatch
 import app.spookd.patches.instagram.misc.settings.settingsPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
@@ -17,6 +18,7 @@ import app.spookd.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.patch
 
 private const val STORY_AUTO_SAVE_DESCRIPTOR = "$PATCHES_DESCRIPTOR/story/StoryAutoSave;"
@@ -39,6 +41,13 @@ val storyAutoSavePatch = patch {
         val consumed = ConsumedStoryFingerprint.instructionMatches
         val loggerClass = ConsumedStoryFingerprint.originalClassDef
         val loggerSessionField = loggerClass.fields.single { it.type == USER_SESSION_CLASS }
+        val reelParentClass = ConsumedStoryFingerprint.originalMethod.parameterTypes[1].toString()
+        val reelModelField = consumed[6].fieldReference
+        // Ads come as their own reel type, which the extension tells apart from user stories.
+        if (ReelTypeFingerprint.matchOrNull() == null) return@execute
+        val reelTypeField = classDefBy(reelModelField.type).fields.singleOrNull {
+            it.type == ReelTypeFingerprint.originalClassDef.type
+        } ?: return@execute
 
         storyAutoSaveFingerprint("sessionNative").method.addInstructions(
             0,
@@ -56,7 +65,16 @@ val storyAutoSavePatch = patch {
             return-object p0
             """.trimIndent(),
         )
-        // Only regular story items reach the receipt queue, so ads are never saved; the story ghost list hooks here too.
+        storyAutoSaveFingerprint("reelTypeNative").method.addInstructions(
+            0,
+            """
+            check-cast p0, $reelParentClass
+            iget-object p0, p0, $reelModelField
+            iget-object p0, p0, $reelTypeField
+            return-object p0
+            """.trimIndent(),
+        )
+        // Before Instagram queues the item for its receipt; the story ghost list hooks here too.
         ConsumedStoryFingerprint.method.addInstruction(
             consumed[24].index,
             "invoke-static/range {p0 .. p2}, $STORY_AUTO_SAVE_DESCRIPTOR->" +

@@ -8,6 +8,18 @@ import org.junit.Test;
 import app.morphe.extension.instagram.patches.download.DownloadFileNameFormatter;
 
 public class StoryAutoSaveTest {
+    // Names of Instagram's reel types.
+    private enum ReelType { USER_REEL, PRIVATE_STORY_REEL, ADS_REEL, HIGHLIGHT_REEL, SUGGESTED_USER_REEL }
+
+    @Test
+    public void onlyUserStoryReelsAreSaved() {
+        assertTrue(StorySeenBridge.isSupportedSource(ReelType.USER_REEL));
+        assertTrue(StorySeenBridge.isSupportedSource(ReelType.PRIVATE_STORY_REEL));
+        assertFalse(StorySeenBridge.isSupportedSource(ReelType.ADS_REEL));
+        assertFalse(StorySeenBridge.isSupportedSource(ReelType.HIGHLIGHT_REEL));
+        assertFalse(StorySeenBridge.isSupportedSource(ReelType.SUGGESTED_USER_REEL));
+        assertFalse(StorySeenBridge.isSupportedSource(null));
+    }
 
     @Test
     public void offSavesNoOne() {

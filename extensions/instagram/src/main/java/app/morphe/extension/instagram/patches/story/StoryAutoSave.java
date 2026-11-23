@@ -59,13 +59,15 @@ public final class StoryAutoSave {
     }
 
     /**
-     * Instagram marking a regular story item viewed, on the main thread. Ads never get here. Only
-     * in-memory checks run here; the request is built and queued on a background thread.
+     * Instagram marking a story item viewed, on the main thread. Only in-memory checks run here;
+     * the request is built and queued on a background thread.
      */
     public static void onStoryViewed(Object logger, Object item, Object reel) {
         try {
             String mode = SharedPref.getStringPref(Settings.STORY_AUTO_SAVE);
             if (MODE_OFF.equals(mode) || !Pref.enableDownload()) return;
+            // Only user story reels: ads (ADS_REEL), highlights and suggested reels are never saved.
+            if (!StorySeenBridge.isSupportedSource(reelTypeNative(reel))) return;
             UserSession session = (UserSession) sessionNative(logger);
             Object media = mediaNative(item);
             if (session == null || media == null) return;
@@ -147,6 +149,10 @@ public final class StoryAutoSave {
     }
 
     public static Object mediaNative(Object item) {
+        return null;
+    }
+
+    public static Object reelTypeNative(Object reel) {
         return null;
     }
 }
