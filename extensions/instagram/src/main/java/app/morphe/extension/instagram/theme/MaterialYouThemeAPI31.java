@@ -34,12 +34,12 @@ import java.util.WeakHashMap;
 @RequiresApi(31)
 final class MaterialYouThemeAPI31 {
     private static final String MATERIAL_YOU_LIGHT_OVERLAY_ASSET =
-            "piko/material_you_light.arsc";
+            "spookd/material_you_light.arsc";
     private static final String MATERIAL_YOU_DARK_OVERLAY_ASSET =
-            "piko/material_you_dark.arsc";
-    private static final String AMOLED_OVERLAY_ASSET = "piko/amoled.arsc";
+            "spookd/material_you_dark.arsc";
+    private static final String AMOLED_OVERLAY_ASSET = "spookd/amoled.arsc";
     private static final String AMOLED_MATERIAL_YOU_OVERLAY_ASSET =
-            "piko/amoled_material_you.arsc";
+            "spookd/amoled_material_you.arsc";
     private static final Map<Resources, OverlayMode> APPLIED_MODES = new WeakHashMap<>();
     private static final Map<OverlayMode, ResourcesProvider> PROVIDERS =
             new EnumMap<>(OverlayMode.class);
@@ -209,13 +209,13 @@ final class MaterialYouThemeAPI31 {
     private static String overlayFileName(OverlayMode mode) {
         switch (mode) {
             case MATERIAL_YOU_LIGHT:
-                return "piko-material-you-light.arsc";
+                return "spookd-material-you-light.arsc";
             case MATERIAL_YOU_DARK:
-                return "piko-material-you-dark.arsc";
+                return "spookd-material-you-dark.arsc";
             case AMOLED:
-                return "piko-amoled.arsc";
+                return "spookd-amoled.arsc";
             case AMOLED_MATERIAL_YOU:
-                return "piko-amoled-material-you.arsc";
+                return "spookd-amoled-material-you.arsc";
             default:
                 throw new IllegalArgumentException("No overlay for " + mode);
         }

@@ -17,16 +17,16 @@ import java.io.FileWriter
 import java.nio.file.Files
 
 private const val STOCK_PRISM_OVERFLOW_STAMP_BACKGROUND =
-    "piko_stock_prism_overflow_stamp_background"
+    "spookd_stock_prism_overflow_stamp_background"
 private const val STOCK_LEGACY_OVERFLOW_STAMP_BACKGROUND =
-    "piko_stock_legacy_overflow_stamp_background"
+    "spookd_stock_legacy_overflow_stamp_background"
 private const val CREATION_BUTTON_BACKGROUND =
-    "piko_creation_button_background"
+    "spookd_creation_button_background"
 private const val STOCK_CREATION_BUTTON_BACKGROUND = "#ff191c1f"
 private const val STOCK_CLIPS_COMPOSER_BACKGROUND =
-    "piko_stock_clips_composer_background"
+    "spookd_stock_clips_composer_background"
 private const val STOCK_CLIPS_COMPOSER_BACKGROUND_COLOR = "#ff25292e"
-private const val STORY_LOADING_BACKGROUND = "piko_story_loading_background"
+private const val STORY_LOADING_BACKGROUND = "spookd_story_loading_background"
 // This GM3 elevation color and its consumers were removed in newer Instagram resources.
 private const val LEGACY_SURFACE_TINT = "baseline_neutral_10_with_surface_tint_dark_alpha_14"
 
@@ -306,9 +306,9 @@ internal fun writeMaterialYouOverlay(night: Boolean): File =
         outputFile =
             resourceFile(
                 if (night) {
-                    "assets/piko/material_you_dark.arsc"
+                    "assets/spookd/material_you_dark.arsc"
                 } else {
-                    "assets/piko/material_you_light.arsc"
+                    "assets/spookd/material_you_light.arsc"
                 },
                 copy = false,
             ),
@@ -322,7 +322,7 @@ internal fun writeAmoledOverlay(
         sourceManifest = resourceFile("AndroidManifest.xml"),
         sourcePublic = resourceFile("res/values/public.xml"),
         packageName = packageMetadata.packageName,
-        outputFile = resourceFile("assets/piko/amoled.arsc", copy = false),
+        outputFile = resourceFile("assets/spookd/amoled.arsc", copy = false),
         values = supportedOverlayValues(amoledOverlayValues(snapshot)),
     )
 
@@ -366,7 +366,7 @@ internal fun writeAmoledMaterialYouOverlay(): File =
         sourceManifest = resourceFile("AndroidManifest.xml"),
         sourcePublic = resourceFile("res/values/public.xml"),
         packageName = packageMetadata.packageName,
-        outputFile = resourceFile("assets/piko/amoled_material_you.arsc", copy = false),
+        outputFile = resourceFile("assets/spookd/amoled_material_you.arsc", copy = false),
         values = supportedOverlayValues(amoledMaterialYouOverlayValues()),
     )
 

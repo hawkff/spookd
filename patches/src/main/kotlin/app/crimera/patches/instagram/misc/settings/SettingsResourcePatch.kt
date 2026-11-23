@@ -53,7 +53,7 @@ val settingsResourcePatch =
                     }
                 val shortcutElement =
                     it.createElement("shortcut").apply {
-                        setAttribute("android:icon", "@drawable/piko_settings_shortcut_icon")
+                        setAttribute("android:icon", "@drawable/spookd_settings_shortcut_icon")
                         setAttribute("android:enabled", "true")
                         setAttribute("android:shortcutId", "piko_settings")
                         setAttribute("android:shortcutShortLabel", "@string/spookd_title_settings")
@@ -67,13 +67,13 @@ val settingsResourcePatch =
                 "instagram/settings",
                 ResourceGroup(
                     "drawable",
-                    "piko_settings_shortcut_icon.xml",
-                    "piko_settings_shortcut_foreground.xml",
-                    "piko_ghost_icon.xml",
+                    "spookd_settings_shortcut_icon.xml",
+                    "spookd_settings_shortcut_foreground.xml",
+                    "spookd_ghost_icon.xml",
                 ),
                 ResourceGroup(
                     "raw",
-                    "piko_tabler_icons_license.txt",
+                    "spookd_tabler_icons_license.txt",
                 ),
             )
         }
