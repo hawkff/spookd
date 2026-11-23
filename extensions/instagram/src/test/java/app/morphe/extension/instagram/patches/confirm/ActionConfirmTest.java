@@ -23,6 +23,24 @@ public class ActionConfirmTest {
     }
 
     @Test
+    public void followApprovalSurvivesARebindForTheSameAccountOnly() {
+        Object button = new Object();
+        List<Object> asked = ActionConfirm.followState("17841400000000001", 2, "alice", "FOLLOW");
+        List<Boolean> seen = new ArrayList<>();
+
+        boolean done = ActionConfirm.runConfirmed(button, asked, () -> seen.add(ActionConfirm.replayVerdict(button,
+                ActionConfirm.followState("17841400000000001", 4, "alice", "FOLLOW"))));
+        boolean dropped = ActionConfirm.runConfirmed(button, asked, () -> seen.add(ActionConfirm.replayVerdict(button,
+                ActionConfirm.followState("17841400000000002", 2, "alice", "FOLLOW"))));
+
+        assertEquals(Arrays.asList(true, false), seen);
+        assertTrue(done);
+        assertFalse(dropped);
+        assertFalse(ActionConfirm.sameState(ActionConfirm.followState(null, 2, "alice", "FOLLOW"),
+                ActionConfirm.followState(null, 4, "alice", "FOLLOW")));
+    }
+
+    @Test
     public void onlyDirectUnfollowsAndWithdrawnRequestsAreAsked() {
         assertEquals(ActionConfirm.UNFOLLOW, ActionConfirm.unfollowAction("FOLLOWSTATUSFOLLOWING", "PrivacyStatusPublic"));
         assertEquals(ActionConfirm.WITHDRAW, ActionConfirm.unfollowAction("FOLLOWSTATUSREQUESTED", "PrivacyStatusPrivate"));

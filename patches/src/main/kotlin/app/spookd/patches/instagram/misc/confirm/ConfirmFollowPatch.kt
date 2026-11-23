@@ -147,10 +147,14 @@ val confirmFollowPatch =
             if (!added) return@execute
 
             // Without it the dialog names no account.
-            FollowButtonBindFingerprint.matchOrNull()?.method?.addInstruction(
-                0,
-                "invoke-static/range {p0 .. p3}, $ACTION_CONFIRM->rememberFollowName(Landroid/view/View;Ljava/lang/Object;Ljava/lang/Object;$STRING)V",
-            )
+            FollowButtonBindFingerprint.matchOrNull()?.method?.let { bind ->
+                bind.addInstruction(
+                    0,
+                    "invoke-static/range {p0 .. p3}, $ACTION_CONFIRM->rememberFollowName(Landroid/view/View;Ljava/lang/Object;Ljava/lang/Object;$STRING)V",
+                )
+                // Without it any rebind while the dialog is open drops an approved follow.
+                bind.addFollowAccountHook(FOLLOW_BUTTON)
+            }
 
             enableSettings("confirmFollow")
         }

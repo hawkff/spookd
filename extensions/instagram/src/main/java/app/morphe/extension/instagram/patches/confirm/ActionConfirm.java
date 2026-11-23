@@ -51,6 +51,10 @@ public final class ActionConfirm {
     private static Object pendingToken;
     private static List<Object> pendingState;
     private static final WeakHashMap<View, String> followNames = new WeakHashMap<>();
+    // The account id each follow button was last bound to.
+    private static final WeakHashMap<View, String> followAccounts = new WeakHashMap<>();
+    // Set when the running replay was dropped because what it was about changed.
+    private static boolean pendingDropped;
     // Counts click listener changes, so a rebound button no longer matches an earlier prompt.
     private static final WeakHashMap<View, Integer> bindCounts = new WeakHashMap<>();
     private static boolean stagedFeedLiked;
@@ -71,7 +75,7 @@ public final class ActionConfirm {
         try {
             String type = textType instanceof Enum ? ((Enum<?>) textType).name() : null;
             String name = followNames.get(button);
-            List<Object> state = Arrays.asList(bindCount(button), name, type);
+            List<Object> state = followState(followAccounts.get(button), bindCount(button), name, type);
             Boolean replay = replayVerdict(button, state);
             if (replay != null) return replay;
             if (!isFollow(type) || !Pref.confirmFollow()) return true;
@@ -82,6 +86,23 @@ public final class ActionConfirm {
             Logger.printException(() -> "allowFollowClick failure", t);
             return true;
         }
+    }
+
+    /** From the follow button's bind, before {@link #rememberFollowName}: the account id its helper holds. */
+    public static void rememberFollowAccount(View button, String userId) {
+        try {
+            followAccounts.put(button, userId);
+        } catch (Throwable t) {
+            Logger.printException(() -> "rememberFollowAccount failure", t);
+        }
+    }
+
+    /**
+     * What a follow approval is about: the account when known, so a rebind for the same account keeps
+     * it (the feed rebinds its headers while the dialog is open), else the bind count.
+     */
+    static List<Object> followState(String account, int bindCount, String name, String textType) {
+        return Arrays.asList(account != null ? account : bindCount, name, textType);
     }
 
     /** From the follow button's bind; {@code name} is the account it follows. */
@@ -430,7 +451,9 @@ public final class ActionConfirm {
      */
     static Boolean replayVerdict(Object token, List<Object> state) {
         if (token == null || token != pendingToken) return null;
-        return sameState(pendingState, state);
+        boolean same = sameState(pendingState, state);
+        if (!same) pendingDropped = true;
+        return same;
     }
 
     /** Text, flags and counters compare by value; accounts, posts and views by identity. */
@@ -446,14 +469,20 @@ public final class ActionConfirm {
         return true;
     }
 
-    /** Runs {@code action} once, letting {@code token} through only while it matches {@code state}. */
-    static void runConfirmed(Object token, List<Object> state, Runnable action) {
+    /**
+     * Runs {@code action} once, letting {@code token} through only while it matches {@code state}.
+     * False when the replay was dropped because that changed, or when it failed.
+     */
+    static boolean runConfirmed(Object token, List<Object> state, Runnable action) {
         pendingToken = token;
         pendingState = state;
+        pendingDropped = false;
         try {
             action.run();
+            return !pendingDropped;
         } catch (Throwable t) {
             Logger.printException(() -> "Confirmed action failed", t);
+            return false;
         } finally {
             pendingToken = null;
             pendingState = null;
@@ -474,7 +503,8 @@ public final class ActionConfirm {
                 .setNegativeButton(str("spookd_cancel"), null)
                 .setPositiveButton(str("spookd_confirm_" + action + "_action"), (shown, which) -> {
                     // A recycled or closed screen means the prompt no longer matches what is shown.
-                    if (anchor == null || anchor.isAttachedToWindow()) runConfirmed(token, state, rerun);
+                    boolean done = (anchor == null || anchor.isAttachedToWindow()) && runConfirmed(token, state, rerun);
+                    if (!done) Utils.showToastShort(str("spookd_confirm_not_done"));
                 })
                 .create();
         // Leaving the screen, where Reels and the comment sheet may move on, withdraws the question.

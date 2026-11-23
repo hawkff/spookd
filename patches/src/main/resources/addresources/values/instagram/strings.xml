@@ -222,6 +222,7 @@
     <string name="spookd_confirm_call_action">Call</string>
     <string name="spookd_confirm_follow_request_title">Accept this follow request?</string>
     <string name="spookd_confirm_follow_request_action">Accept</string>
+    <string name="spookd_confirm_not_done">Nothing was done: it changed while you were deciding. Try again.</string>
     <string name="spookd_resume_reels_after_scrolling">Resume Reels after scrolling</string>
     <string name="spookd_resume_reels_after_scrolling_desc">Continue a Reel from where you left off when you scroll back to it</string>
     <string name="spookd_playback_speed_controls">Playback speed controls</string>
