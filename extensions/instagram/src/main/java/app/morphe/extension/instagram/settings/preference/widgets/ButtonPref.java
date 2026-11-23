@@ -100,6 +100,9 @@ public class ButtonPref extends Preference {
                     } else if (key.equals("spookd_private_gallery")) {
                         ActivityHook.startPrivateGalleryActivity(context);
 
+                    } else if (key.equals("spookd_download_history")) {
+                        ActivityHook.startDownloadHistoryActivity(context);
+
                     } else if (key.equals("view_deleted_messages")) {
                         SavedMessagesHook.openDeletedMessages(context);
 
@@ -175,6 +178,7 @@ public class ButtonPref extends Preference {
                 || key.equals("spookd_rec_flags_refresh_file")
                 || key.equals("spookd_view_saved_instants")
                 || key.equals("spookd_private_gallery")
+                || key.equals("spookd_download_history")
                 || key.equals("spookd_pref_add_font")
                 || key.equals("spookd_pref_delete_font")
                 || key.equals("view_deleted_messages")

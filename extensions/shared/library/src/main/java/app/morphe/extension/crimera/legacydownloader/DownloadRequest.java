@@ -7,6 +7,8 @@
 
 package app.morphe.extension.crimera.legacydownloader;
 
+import android.net.Uri;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,6 +52,24 @@ public class DownloadRequest {
     public Callable<InputStream> localSource;
     /** Runs on the download thread when the request ends, with whether its file was saved; null for none. */
     public Consumer<Boolean> onFinished;
+    /** Told when this request starts and ends; null for none. */
+    public Tracker tracker;
+
+    /** Follows one request; its calls run on the download thread and must not throw. */
+    public interface Tracker {
+        /** It starts saving, after it claimed its file in the download folder, if it saves there. */
+        void started();
+
+        /**
+         * {@code document} is the download folder file it saved, null otherwise; {@code error} is why it
+         * failed, null when it was saved or skipped because the name was taken. Comes without
+         * {@link #started} when it failed or was skipped before claiming its file.
+         */
+        void ended(boolean saved, Uri document, Throwable error);
+
+        /** Instead of the other calls: another request is saving the same file, so this one did nothing. */
+        void alreadyDownloading();
+    }
 
     /** An app-private destination; every call runs on the download thread. */
     public interface PrivateTarget {

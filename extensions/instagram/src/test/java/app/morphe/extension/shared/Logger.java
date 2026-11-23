@@ -2,7 +2,8 @@ package app.morphe.extension.shared;
 
 /**
  * Test-source stand-in for {@code app.morphe.extension.shared.Logger} from the {@code compileOnly}
- * morphe-extensions-library artifact, which is absent from the unit-test runtime classpath.
+ * morphe-extensions-library artifact. Test classes come first on the unit-test classpath, so this
+ * shadows the real one, which reads app settings.
  */
 public final class Logger {
 
