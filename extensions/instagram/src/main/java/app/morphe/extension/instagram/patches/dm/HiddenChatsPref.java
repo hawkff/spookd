@@ -95,5 +95,54 @@ public class HiddenChatsPref extends BaseSharedPref {
         String id = idOf(chat);
         if (chats.removeIf(saved -> idOf(saved).equals(id))) save(userId, chats);
         idsByUser.remove(userId);
+        if (hiddenUsers(userId).containsKey(id)) {
+            Map<String, String> users = new HashMap<>(hiddenUsers(userId));
+            users.remove(id);
+            saveUsers(userId, users);
+        }
+    }
+
+    // The other person of each hidden one-to-one chat, by chat id: suggestions name only that person, not the chat.
+    private static final String USERS_PREFIX = "users_";
+    private static final Map<String, Map<String, String>> usersByAccount = new HashMap<>();
+
+    /** The other person of each hidden one-to-one chat of an account, by chat id; read from disk once per account. */
+    public static synchronized Map<String, String> hiddenUsers(String userId) {
+        Map<String, String> users = usersByAccount.get(userId);
+        if (users != null) return users;
+        users = new HashMap<>();
+        try {
+            JSONObject saved = new JSONObject(INSTANCE.getString(USERS_PREFIX + userId, "{}"));
+            for (Iterator<String> chats = saved.keys(); chats.hasNext(); ) {
+                String chat = chats.next();
+                users.put(chat, saved.getString(chat));
+            }
+        } catch (Exception ignored) { }
+        users = Collections.unmodifiableMap(users);
+        usersByAccount.put(userId, users);
+        return users;
+    }
+
+    /** Keeps the other person of a hidden one-to-one chat; writes only when the chat is hidden and the person is new. */
+    public static void addUser(String userId, String chatId, String otherUser) {
+        addUsers(userId, Collections.singletonMap(chatId, otherUser));
+    }
+
+    /** Keeps the other person of several hidden chats, by chat id, with a single write for those that are new. */
+    public static synchronized void addUsers(String userId, Map<String, String> found) {
+        Map<String, String> users = null;
+        for (Map.Entry<String, String> entry : found.entrySet()) {
+            String chatId = entry.getKey();
+            String otherUser = entry.getValue();
+            if (otherUser == null || !ids(userId).contains(chatId) || otherUser.equals(hiddenUsers(userId).get(chatId))) continue;
+            if (users == null) users = new HashMap<>(hiddenUsers(userId));
+            users.put(chatId, otherUser);
+        }
+        if (users != null) saveUsers(userId, users);
+    }
+
+    private static void saveUsers(String userId, Map<String, String> users) {
+        INSTANCE.setString(USERS_PREFIX + userId, new JSONObject(users).toString());
+        usersByAccount.put(userId, Collections.unmodifiableMap(users));
     }
 }
