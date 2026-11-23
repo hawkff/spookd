@@ -31,19 +31,25 @@ public final class HiddenChatsShare {
 
     private HiddenChatsShare() { }
 
-    /** Called on the main thread with the share sheet's default recipients; returns them without the hidden chats. */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public static List filterTargets(List targets, Object session) {
+    /**
+     * Called on the main thread when the share sheet fills its rows, with the query it shows; returns the account whose
+     * hidden chats are left out of those lists, or null for a search or when nothing has to be left out.
+     */
+    public static String defaultListAccount(Object adapter, String query) {
         try {
-            String account = accountToFilter(session);
+            return query == null || query.isEmpty() ? accountToFilter(HiddenChats.sessionOf(adapter)) : null;
+        } catch (Throwable t) {
+            Logger.printException(() -> "HiddenChatsShare.defaultListAccount failed", t);
+            return null;
+        }
+    }
+
+    /** Called on the main thread with each finished list of the share sheet; returns it without the hidden chats of the account. */
+    @SuppressWarnings("rawtypes")
+    public static List filterTargets(List targets, String account) {
+        try {
             if (account == null || targets == null || targets.isEmpty()) return targets;
-            Set<String> chats = HiddenChatsPref.ids(account);
-            Map<String, String> users = HiddenChatsPref.hiddenUsers(account);
-            List kept = new ArrayList(targets.size());
-            for (Object target : targets) {
-                if (!isHidden(target, chats, users)) kept.add(target);
-            }
-            return kept.size() == targets.size() ? targets : kept;
+            return keep(targets, HiddenChatsPref.ids(account), HiddenChatsPref.hiddenUsers(account));
         } catch (Throwable t) {
             Logger.printException(() -> "HiddenChatsShare.filterTargets failed", t);
             return targets;
@@ -81,6 +87,16 @@ public final class HiddenChatsShare {
         String account = ((UserSession) session).getUserId();
         if (account == null || HiddenChats.isOpenFor(account) || HiddenChatsPref.ids(account).isEmpty()) return null;
         return account;
+    }
+
+    /** The targets that are not hidden chats, or the same list when none is. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    static List keep(List targets, Set<String> chats, Map<String, String> users) {
+        List kept = new ArrayList(targets.size());
+        for (Object target : targets) {
+            if (!isHidden(target, chats, users)) kept.add(target);
+        }
+        return kept.size() == targets.size() ? targets : kept;
     }
 
     private static boolean isHidden(Object target, Set<String> chats, Map<String, String> users) {

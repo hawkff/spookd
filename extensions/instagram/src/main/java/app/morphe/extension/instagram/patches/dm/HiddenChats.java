@@ -589,6 +589,24 @@ public final class HiddenChats {
         }
     }
 
+    /** The session an Instagram object reaches through its fields, found once per class; null when none is reachable. */
+    static Object sessionOf(Object owner) {
+        try {
+            Field[] path = ownerPaths.get(owner.getClass());
+            if (path == null) {
+                path = pathTo(owner, UserSession.class);
+                // Only a found path is kept, so a miss is searched again on the next call.
+                if (path != NO_PATH) ownerPaths.put(owner.getClass(), path);
+            }
+            if (path == NO_PATH) return null;
+            Object value = owner;
+            for (Field field : path) value = value == null ? null : field.get(value);
+            return value instanceof UserSession ? value : null;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     /** True while the hidden chats of the account are open, so they are shown everywhere like in the inbox. */
     static boolean isOpenFor(String userId) {
         return hiddenMode && userId.equals(modeUser);

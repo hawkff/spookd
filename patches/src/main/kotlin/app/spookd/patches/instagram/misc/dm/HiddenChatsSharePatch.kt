@@ -13,23 +13,34 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
+import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.string
+import app.morphe.patcher.util.getReference
 import app.morphe.patcher.util.smali.ExternalLabel
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 
 private const val EXTENSION_CLASS = "$PATCHES_DESCRIPTOR/dm/HiddenChatsShare;"
-private const val SHARE_SHEET_CLASS = "Linstagram/features/direct/fragment/sharesheet/DirectShareSheetFragment;"
 
-// Gives the share sheet the recipients it shows before anything is typed; search results take another path.
-private object ShareSheetDefaultRecipientsFingerprint : Fingerprint(
-    definingClass = SHARE_SHEET_CLASS,
-    isStatic = true,
+// The share sheet's recipient adapter; the only class that tags the new group button this way.
+private object ShareSheetAdapterFingerprint : Fingerprint(
+    filters = listOf(string("direct_share_sheet_new_group_pog_view")),
+)
+
+// Fills the share sheet's rows from its finished lists, after Instagram's late additions like the media author.
+private object ShareSheetListsFingerprint : Fingerprint(
+    classFingerprint = ShareSheetAdapterFingerprint,
     returnType = "V",
-    parameters = listOf(SHARE_SHEET_CLASS, "Ljava/lang/String;", "Ljava/util/List;"),
-    filters = listOf(
-        string("reshare_share_sheet"),
-        string("add_to_channel_button"),
-    ),
+    parameters = List(6) { "Ljava/util/List;" } + "Z",
+)
+
+// Stores the query the share sheet shows; it is set before the rows of a search are filled.
+private object ShareSheetQueryFingerprint : Fingerprint(
+    classFingerprint = ShareSheetAdapterFingerprint,
+    returnType = "V",
+    parameters = listOf("Ljava/lang/String;", "Z", "Z"),
+    filters = listOf(fieldAccess(opcode = Opcode.IPUT_OBJECT, type = "Ljava/lang/String;")),
 )
 
 // Builds the rows of the recipient pickers, like the new message screen; its class is the only one with this row key.
@@ -57,17 +68,21 @@ val hiddenChatsSharePatch =
         compatibleWith(COMPATIBILITY_INSTAGRAM)
 
         execute {
-            // The parameters are above v15 and nothing is live yet, so v0 and v1 carry them.
-            ShareSheetDefaultRecipientsFingerprint.method.addInstructions(
+            val query = ShareSheetQueryFingerprint.instructionMatches.first().instruction.getReference<FieldReference>()!!
+            // Each of the six lists is replaced by its filtered copy; the selected recipients are kept apart and stay.
+            val lists = (1..6).joinToString("\n") {
+                """
+                invoke-static {p$it, v0}, $EXTENSION_CLASS->filterTargets(Ljava/util/List;Ljava/lang/String;)Ljava/util/List;
+                move-result-object p$it
+                """.trimIndent()
+            }
+            ShareSheetListsFingerprint.method.addInstructions(
                 0,
                 """
-                invoke-virtual/range {p0 .. p0}, $SHARE_SHEET_CLASS->getSession()$USER_SESSION_CLASS
+                iget-object v0, p0, $query
+                invoke-static {p0, v0}, $EXTENSION_CLASS->defaultListAccount(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/String;
                 move-result-object v0
-                move-object/from16 v1, p2
-                invoke-static {v1, v0}, $EXTENSION_CLASS->filterTargets(Ljava/util/List;Ljava/lang/Object;)Ljava/util/List;
-                move-result-object v1
-                move-object/from16 p2, v1
-                """.trimIndent(),
+                """.trimIndent() + "\n" + lists,
             )
 
             val session = RecipientRowsFingerprint.classDef.fields.first { it.type == USER_SESSION_CLASS }
