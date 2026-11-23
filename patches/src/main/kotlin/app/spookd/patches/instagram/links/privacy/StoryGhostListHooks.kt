@@ -55,7 +55,6 @@ internal fun addStoryGhostListHooks(
     reelParentClass: String,
     reelModelField: FieldReference,
     reelOwnerIdField: FieldReference,
-    reelTypeField: FieldReference,
 ) {
     val loggerClass = ConsumedStoryFingerprint.originalClassDef
     val loggerSessionField = loggerClass.fields.single { it.type == USER_SESSION_CLASS }
@@ -66,15 +65,6 @@ internal fun addStoryGhostListHooks(
         check-cast p0, $reelParentClass
         iget-object p0, p0, $reelModelField
         iget-object p0, p0, $reelOwnerIdField
-        return-object p0
-        """.trimIndent(),
-    )
-    storyGhostListFingerprint("sourceNative").method.addInstructions(
-        0,
-        """
-        check-cast p0, $reelParentClass
-        iget-object p0, p0, $reelModelField
-        iget-object p0, p0, $reelTypeField
         return-object p0
         """.trimIndent(),
     )

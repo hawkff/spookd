@@ -82,7 +82,7 @@ public final class StoryGhostList {
 
     // Already marked or pending stories are skipped by the bridge.
     private static void markSeen(Object session, Object item, Object reel) {
-        StorySeenBridge.markSeen(session, item, reel, sourceNative(reel), null);
+        StorySeenBridge.markSeenAutomatically(session, item, reel, null);
     }
 
     public static boolean showMenuItem() {
@@ -140,10 +140,6 @@ public final class StoryGhostList {
 
     // The patch replaces these bodies with reads from Instagram's story objects.
     public static String ownerIdNative(Object reel) {
-        return null;
-    }
-
-    public static Object sourceNative(Object reel) {
         return null;
     }
 
