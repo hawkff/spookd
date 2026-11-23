@@ -67,13 +67,12 @@ public final class StoryAutoSave {
             String mode = SharedPref.getStringPref(Settings.STORY_AUTO_SAVE);
             if (MODE_OFF.equals(mode) || !Pref.enableDownload()) return;
             UserSession session = (UserSession) sessionNative(logger);
-            String ownerId = ownerIdNative(reel);
-            if (session == null || !savesOwner(mode, ownerId, session.getUserId(),
-                    StoryUserList.AUTO_SAVE.all().containsKey(ownerId))) {
+            Object media = mediaNative(item);
+            if (session == null || media == null) return;
+            String ownerId = StoryUserList.ownerId(media, session);
+            if (!savesOwner(mode, ownerId, session.getUserId(), StoryUserList.AUTO_SAVE.all().containsKey(ownerId))) {
                 return;
             }
-            Object media = mediaNative(item);
-            if (media == null) return;
             String mediaId = new MediaData(media, session).getMediaPkId();
             if (mediaId == null || !handled.add(mediaId)) return;
             Utils.runOnBackgroundThread(() -> save(media, reel, session, mediaId));
@@ -144,10 +143,6 @@ public final class StoryAutoSave {
 
     // The patch replaces these bodies with reads from Instagram's story objects.
     public static Object sessionNative(Object logger) {
-        return null;
-    }
-
-    public static String ownerIdNative(Object reel) {
         return null;
     }
 

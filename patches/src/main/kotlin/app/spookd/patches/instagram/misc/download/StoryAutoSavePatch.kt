@@ -39,22 +39,12 @@ val storyAutoSavePatch = patch {
         val consumed = ConsumedStoryFingerprint.instructionMatches
         val loggerClass = ConsumedStoryFingerprint.originalClassDef
         val loggerSessionField = loggerClass.fields.single { it.type == USER_SESSION_CLASS }
-        val reelParentClass = ConsumedStoryFingerprint.originalMethod.parameterTypes[1].toString()
 
         storyAutoSaveFingerprint("sessionNative").method.addInstructions(
             0,
             """
             check-cast p0, ${loggerClass.type}
             iget-object p0, p0, $loggerSessionField
-            return-object p0
-            """.trimIndent(),
-        )
-        storyAutoSaveFingerprint("ownerIdNative").method.addInstructions(
-            0,
-            """
-            check-cast p0, $reelParentClass
-            iget-object p0, p0, ${consumed[6].fieldReference}
-            iget-object p0, p0, ${consumed[16].fieldReference}
             return-object p0
             """.trimIndent(),
         )

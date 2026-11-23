@@ -22,9 +22,13 @@ import java.util.List;
 import java.util.Map;
 
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
+import app.morphe.extension.instagram.entity.MediaData;
+import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.settings.StringSetting;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
+
+import com.instagram.common.session.UserSession;
 
 /**
  * A list of story owners: usernames by user id, oldest first. It lives in the settings file,
@@ -46,6 +50,13 @@ final class StoryUserList {
         this.setting = setting;
         this.titleKey = titleKey;
         this.removeConfirmKey = removeConfirmKey;
+    }
+
+    /** The user id of a story media's owner, which the lists are keyed by; null when unknown. */
+    static String ownerId(Object media, Object session) throws Exception {
+        if (media == null || !(session instanceof UserSession)) return null;
+        UserData owner = new MediaData(media, (UserSession) session).getUserData();
+        return owner == null ? null : owner.getUserId();
     }
 
     /** Parsed again only after the stored list changes, so story paths stay in memory. */

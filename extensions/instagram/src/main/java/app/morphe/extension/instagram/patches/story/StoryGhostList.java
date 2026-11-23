@@ -42,8 +42,11 @@ public final class StoryGhostList {
         try {
             if (!Pref.viewStoriesAnonymously()) return;
             String mode = SharedPref.getStringPref(Settings.STORY_GHOST_MODE);
-            if (appliesTo(mode, StoryUserList.GHOST.all().containsKey(ownerIdNative(reel)))) return;
-            markSeen(loggerSessionNative(logger), item, reel);
+            Object session = loggerSessionNative(logger);
+            String ownerId = StoryUserList.ownerId(mediaNative(item), session);
+            // An unknown owner stays anonymous.
+            if (ownerId == null || appliesTo(mode, StoryUserList.GHOST.all().containsKey(ownerId))) return;
+            markSeen(session, item, reel);
         } catch (Throwable throwable) {
             Logger.printException(() -> "Failed to apply the story ghost list", throwable);
         }
@@ -109,7 +112,7 @@ public final class StoryGhostList {
     }
 
     // The patch replaces these bodies with reads from Instagram's story objects.
-    public static String ownerIdNative(Object reel) {
+    public static Object mediaNative(Object item) {
         return null;
     }
 
