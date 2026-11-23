@@ -645,6 +645,8 @@
     <string name="spookd_dm_media_vault_view_once">Also save view-once media</string>
     <string name="spookd_dm_media_vault_view_once_desc">Saves view-once and view-twice photos, videos and voice messages as they arrive, without opening them, so the sender is not told. They stay until you delete them and count toward the 8 GB; when they fill it, nothing new is saved. When off, view-once media is not saved, and camera photos and videos may be skipped while Make ephemeral media permanent is on.</string>
     <string name="spookd_media_saved">saved</string>
+    <string name="spookd_media_view_once">View once</string>
+    <string name="spookd_media_view_twice">View twice</string>
     <string name="spookd_media_unreadable">This saved media can\'t be read</string>
     <string name="spookd_vault_finish_unlocking">Finish unlocking, then tap the item again</string>
     <string name="spookd_vault_needs_screen_lock">Saved media opens only after you confirm your screen lock. This needs Android 11 or newer with a screen lock set.</string>

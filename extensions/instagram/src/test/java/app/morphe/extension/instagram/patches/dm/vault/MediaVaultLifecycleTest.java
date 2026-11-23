@@ -313,15 +313,15 @@ public final class MediaVaultLifecycleTest {
         assertTrue(connection.getRequestProperties().isEmpty());
         assertTrue(connection.disconnected);
 
-        assertTrue(vault.storedMessageIds().isEmpty());
+        assertTrue(vault.storedMessages().isEmpty());
         unsend("100");
-        assertEquals(Collections.singleton("100"), vault.storedMessageIds());
+        assertEquals(Collections.singleton("100"), vault.storedMessages().keySet());
 
         vault.deleteForMessages(Collections.singletonList("100"));
         assertEquals("dropped", column("state", id));
         assertFalse(pkv(id).exists());
         assertEquals(0, vault.storedBytes);
-        assertTrue(vault.storedMessageIds().isEmpty());
+        assertTrue(vault.storedMessages().isEmpty());
 
         // The tombstone blocks a second capture.
         vault.enqueue("100", "acct", "photo", LIVE, NOW - 1000, null);
@@ -416,7 +416,7 @@ public final class MediaVaultLifecycleTest {
         assertFalse(pkv(id).exists());
         assertEquals(5000, vault.storedBytes);
         assertNull(vault.open(id));
-        assertTrue(vault.storedMessageIds().isEmpty());
+        assertTrue(vault.storedMessages().isEmpty());
         assertEquals(1, vault.storedItems().size());
         assertEquals(other, vault.storedItems().get(0).id);
 
@@ -832,6 +832,39 @@ public final class MediaVaultLifecycleTest {
         assertEquals("dropped", column("state", once));
         assertFalse(pkv(once).exists());
         assertEquals(2000, vault.storedBytes);
+    }
+
+    @Test
+    public void deletedListShowsUnsentAndStoredViewOnceMessagesOnce() throws IOException {
+        for (String item : new String[]{"once", "twice", "queuedOnce", "keep", "plain", "droppedOnce"}) {
+            messages.upsertMessage(item, null, "thread", "42", "bob", "", "visual_media", NOW - 1000);
+        }
+        unsend("unsent");
+        unsend("unsentOnce");
+        viewMode(storedRow("once", 1000, NOW - 1000), "once");
+        viewMode(storedRow("twice", 1000, NOW - 1000), "replayable");
+        viewMode(storedRow("unsentOnce", 1000, NOW - 1000), "once");
+        viewMode(storedRow("keep", 1000, NOW - 1000), "keep_in_chat");
+        long dropped = storedRow("droppedOnce", 1000, NOW - 1000);
+        viewMode(dropped, "once");
+        new VaultStore(db).insertQueued("queuedOnce", "acct", "photo", LIVE, NOW + 3_600_000, NOW - 1000, "once");
+        vault.recover();
+        vault.delete(dropped);
+
+        List<String> listed = new ArrayList<>();
+        for (String[] row : messages.getDeletedMessages()) listed.add(row[0]);
+        Collections.sort(listed);
+        assertEquals(Arrays.asList("once", "twice", "unsent", "unsentOnce"), listed);
+
+        java.util.Map<String, String> stored = vault.storedMessages();
+        assertEquals(3, stored.size());
+        assertEquals("once", stored.get("once"));
+        assertEquals("replayable", stored.get("twice"));
+        assertEquals("once", stored.get("unsentOnce"));
+        assertEquals("spookd_media_view_once", MediaVault.markResource(stored.get("once")));
+        assertEquals("spookd_media_view_twice", MediaVault.markResource(stored.get("twice")));
+        assertNull(MediaVault.markResource("keep_in_chat"));
+        assertNull(MediaVault.markResource(null));
     }
 
     @Test

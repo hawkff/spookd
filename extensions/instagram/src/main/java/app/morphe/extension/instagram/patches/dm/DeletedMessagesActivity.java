@@ -49,7 +49,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -201,7 +200,7 @@ public final class DeletedMessagesActivity {
     private static class Controller {
         private final Activity activity;
         private List<String[]> messages;
-        private Set<String> storedIds = Collections.emptySet();
+        private Map<String, String> storedModes = Collections.emptyMap();
         private ListView messageList;
         private MessageAdapter adapter;
         private SimpleDateFormat timestampFormatter;
@@ -316,7 +315,7 @@ public final class DeletedMessagesActivity {
                 String messageId = message[0];
                 String body = message[3];
                 String type = message[4];
-                if (storedIds.contains(messageId)) {
+                if (storedModes.containsKey(messageId)) {
                     VaultViewer.open(activity, messageId);
                 } else if (body != null && body.startsWith("http")) {
                     showMediaOptions(messageId, body, type);
@@ -414,18 +413,18 @@ public final class DeletedMessagesActivity {
             loading = true;
             sDbJobs.execute(() -> {
                 List<String[]> loaded = null;
-                Set<String> stored = Collections.emptySet();
+                Map<String, String> stored = Collections.emptyMap();
                 try {
                     SpookdMessageDb db = SpookdMessageDb.getInstance(activity);
                     if (deleteIds != null) SavedMessagesHook.deleteSavedMessages(deleteIds);
                     loaded = db.getDeletedMessages();
                     if (Pref.dmMediaVault()) MediaVault.get().start();
-                    stored = MediaVault.get().storedMessageIds();
+                    stored = MediaVault.get().storedMessages();
                 } catch (Exception e) {
                     Logger.printException(() -> "loadMessages: ", e);
                 }
                 List<String[]> result = loaded;
-                Set<String> storedResult = stored;
+                Map<String, String> storedResult = stored;
                 Utils.runOnMainThread(() -> {
                     loading = false;
                     if (activity.isFinishing() || activity.isDestroyed()) return;
@@ -434,12 +433,19 @@ public final class DeletedMessagesActivity {
                         return;
                     }
                     messages = result;
-                    storedIds = storedResult;
+                    storedModes = storedResult;
                     adapter.notifyDataSetChanged();
                     if (empty != null) messageList.setEmptyView(empty);
                     cancelSelection();
                 });
             });
+        }
+
+        /** The saved label of a message whose media is stored, with its view-once mark; null when none is stored. */
+        private String savedLabel(String messageId) {
+            if (!storedModes.containsKey(messageId)) return null;
+            String mark = MediaVault.markResource(storedModes.get(messageId));
+            return (mark != null ? str(mark) + "  ·  " : "") + str("spookd_media_saved");
         }
 
         boolean isSelecting() {
@@ -710,15 +716,14 @@ public final class DeletedMessagesActivity {
                 }
                 senderView.setText(who);
                 boolean isMediaUrl = content != null && content.startsWith("http");
+                String saved = savedLabel(msg[0]);
                 if (isMediaUrl) {
-                    contentView.setText(mediaLabel(type, content) + "  ·  "
-                            + str(storedIds.contains(msg[0]) ? "spookd_media_saved"
-                                    : isExpiredMediaUrl(content) ? "spookd_media_expired" : "spookd_tap_to_view"));
+                    contentView.setText(mediaLabel(type, content) + "  ·  " + (saved != null ? saved
+                            : str(isExpiredMediaUrl(content) ? "spookd_media_expired" : "spookd_tap_to_view")));
                 } else {
                     String text = content != null && !content.isEmpty() ? content
                             : (type != null ? "[" + type + "]" : str("spookd_media_deleted_generic"));
-                    contentView.setText(storedIds.contains(msg[0])
-                            ? text + "  ·  " + str("spookd_media_saved") : text);
+                    contentView.setText(saved != null ? text + "  ·  " + saved : text);
                 }
                 metaView.setText(timestampFormatter.format(new Date(timestamp)));
                 boolean checked = messageList.isItemChecked(position);

@@ -7,9 +7,9 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteStatement;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 /** All SQL on the saved_media table. Every state change is one conditional statement. */
 final class VaultStore {
@@ -147,15 +147,16 @@ final class VaultStore {
                 + " WHERE state = 'stored' AND " + KEPT, null);
     }
 
-    /** Ids of unsent saved messages whose media is stored. */
-    Set<String> storedMessageIds() {
-        Set<String> ids = new HashSet<>();
-        try (Cursor cursor = db.rawQuery("SELECT s.message_id FROM saved_messages s"
+    /** Ids of unsent or view-once saved messages whose media is stored, each with its view mode. */
+    Map<String, String> storedMessages() {
+        Map<String, String> modes = new HashMap<>();
+        try (Cursor cursor = db.rawQuery("SELECT s.message_id, m.view_mode FROM saved_messages s"
                 + " JOIN saved_media m ON m.item_id = s.server_id"
-                + " WHERE s.server_id != '' AND s.is_deleted = 1 AND m.state = 'stored'", null)) {
-            while (cursor.moveToNext()) ids.add(cursor.getString(0));
+                + " WHERE s.server_id != '' AND m.state = 'stored'"
+                + " AND (s.is_deleted = 1 OR m.view_mode IN ('once', 'replayable'))", null)) {
+            while (cursor.moveToNext()) modes.put(cursor.getString(0), cursor.getString(1));
         }
-        return ids;
+        return modes;
     }
 
     /** Every stored row with its message's sender, kept or not, newest first. */

@@ -511,7 +511,10 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         // that lacks a stored username fall back to its own query - this list can grow to
         // hundreds/thousands of rows over time, which turned that fallback into an N+1 query.
         java.util.Map<String, String> directory = loadUsernameDirectory(db);
-        Cursor c = db.query(TABLE, null, "is_deleted = 1" + HAS_CONTENT, null, null, null, "timestamp DESC");
+        // Stored view-once and view-twice media is listed too, whether or not its message was unsent.
+        Cursor c = db.query(TABLE, null, "(is_deleted = 1 OR server_id IN (SELECT item_id FROM saved_media"
+                + " WHERE state = 'stored' AND view_mode IN ('once', 'replayable')))" + HAS_CONTENT,
+                null, null, null, "timestamp DESC");
         while (c.moveToNext()) {
             result.add(rowToStringArray(c, directory));
         }

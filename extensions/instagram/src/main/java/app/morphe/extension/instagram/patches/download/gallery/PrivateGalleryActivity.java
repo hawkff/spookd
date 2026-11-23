@@ -117,6 +117,8 @@ public final class PrivateGalleryActivity {
         final String subFolder;
         final String link;
         final String ownerUsername;
+        /** String resource of the view-once or view-twice mark; null for none. */
+        final String mark;
 
         Item(GalleryStore.Entry entry) {
             id = entry.id;
@@ -130,6 +132,7 @@ public final class PrivateGalleryActivity {
             subFolder = entry.subFolder;
             link = entry.item.link;
             ownerUsername = entry.item.ownerUsername;
+            mark = null;
         }
 
         Item(MediaVault.Item stored) {
@@ -144,6 +147,7 @@ public final class PrivateGalleryActivity {
             subFolder = Constants.DEFAULT_DM_FOLDER;
             link = null;
             ownerUsername = stored.senderUsername;
+            mark = MediaVault.markResource(stored.viewMode);
         }
 
         /** Includes the download's file, which an overwrite replaces, so a cached thumbnail never outlives it. */
@@ -480,11 +484,13 @@ public final class PrivateGalleryActivity {
             }
 
             void bind(Item item) {
-                setContentDescription(str(item.photo() ? "spookd_media_photo"
-                        : item.video() ? "spookd_media_video" : "spookd_gallery_audio"));
+                String what = str(item.photo() ? "spookd_media_photo"
+                        : item.video() ? "spookd_media_video" : "spookd_gallery_audio");
+                setContentDescription(item.mark == null ? what : what + ", " + str(item.mark));
                 note.setVisibility(item.photo() || item.video() ? View.GONE : View.VISIBLE);
                 String duration = item.durationMs == null ? "" : DateUtils.formatElapsedTime(item.durationMs / 1000);
                 String badgeText = item.video() ? ("▶ " + duration).trim() : duration;
+                if (item.mark != null) badgeText = (str(item.mark) + " " + badgeText).trim();
                 badge.setText(badgeText);
                 badge.setVisibility(badgeText.isEmpty() ? View.GONE : View.VISIBLE);
                 image.setImageBitmap(null);

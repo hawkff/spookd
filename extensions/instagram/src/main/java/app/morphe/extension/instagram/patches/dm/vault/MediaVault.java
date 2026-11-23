@@ -211,9 +211,18 @@ public final class MediaVault {
         return new Stored(VaultFile.open(file(row.id, PKV), kek), row.kind);
     }
 
-    /** Ids of unsent saved messages whose media is stored. Runs on the caller's background thread. */
-    public Set<String> storedMessageIds() {
-        return store.storedMessageIds();
+    /**
+     * Ids of unsent or view-once saved messages whose media is stored, each with its view mode (null when
+     * unknown). Runs on the caller's background thread.
+     */
+    public Map<String, String> storedMessages() {
+        return store.storedMessages();
+    }
+
+    /** The string resource of the mark shown on stored media of this view mode, or null for none. */
+    public static String markResource(String viewMode) {
+        return "once".equals(viewMode) ? "spookd_media_view_once"
+                : "replayable".equals(viewMode) ? "spookd_media_view_twice" : null;
     }
 
     /** One stored media row; the sender is null when its message is not saved. */
