@@ -30,6 +30,7 @@ import app.morphe.extension.instagram.patches.customise.font.FontStorage;
 import app.morphe.extension.instagram.patches.download.gallery.Gallery;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
 import app.morphe.extension.instagram.patches.focusLock.FocusLockTargets;
+import app.morphe.extension.instagram.patches.story.StoryGhostList;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.BooleanSetting;
 import app.morphe.extension.instagram.settings.Settings;
@@ -426,6 +427,27 @@ public class ScreenBuilder {
                             Settings.VIEW_STORIES_ANONYMOUSLY
                     )
             );
+            addPreference(
+                    helper.availableWhen(
+                            helper.listPreference(
+                                    str("spookd_story_ghost_mode"),
+                                    "%s",
+                                    Settings.STORY_GHOST_MODE
+                            ),
+                            () -> SharedPref.getBooleanPref(Settings.VIEW_STORIES_ANONYMOUSLY)
+                                    || SharedPref.getBooleanPref(Settings.TURN_ON_ALL_GHOST_MODES)
+                    )
+            );
+            Preference storyGhostUsers = helper.buttonPreference(
+                    str("spookd_story_ghost_users"),
+                    str("spookd_story_ghost_users_desc"),
+                    "spookd_story_ghost_users"
+            );
+            storyGhostUsers.setOnPreferenceClickListener(preference -> {
+                StoryGhostList.showList(preference.getContext());
+                return true;
+            });
+            addPreference(storyGhostUsers);
         }
         if (SettingsStatus.viewLiveAnonymously) {
             addPreference(

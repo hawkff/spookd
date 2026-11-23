@@ -36,6 +36,8 @@ public class Settings {
     public static final BooleanSetting HIDE_FEED_POSTS = new BooleanSetting("hide_feed_posts", false, REQUIRED);
     public static final BooleanSetting TURN_ON_ALL_GHOST_MODES = new BooleanSetting("turn_on_all_ghost_modes", false, NOT_REQUIRED);
     public static final BooleanSetting VIEW_STORIES_ANONYMOUSLY = new BooleanSetting("view_stories_anonymously", false, NOT_REQUIRED);
+    public static final StringSetting STORY_GHOST_MODE = new StringSetting("story_ghost_mode", "everyone", NOT_REQUIRED);
+    public static final StringSetting STORY_GHOST_USERS = new StringSetting("story_ghost_users", "{}", NOT_REQUIRED);
     public static final BooleanSetting VIEW_LIVE_ANONYMOUSLY = new BooleanSetting("view_live_anonymously", false, NOT_REQUIRED);
     public static final BooleanSetting DISABLE_SCREENSHOT_DETECTION = new BooleanSetting("disable_screenshot_detection", false, NOT_REQUIRED);
     public static final BooleanSetting VIEW_DM_ANONYMOUSLY = new BooleanSetting("view_dm_anonymously", false, NOT_REQUIRED);

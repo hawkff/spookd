@@ -48,6 +48,9 @@ public class StoryButton {
         if(Pref.downloadWithExternalDownloader()){
             buttonList.add(str("spookd_download_with_external_downloader"));
         }
+        if(StoryGhostList.showMenuItem()){
+            buttonList.add(str("spookd_story_ghost_add"));
+        }
 
         return buttonList;
     }
@@ -60,6 +63,9 @@ public class StoryButton {
             return true;
         } else if (buttonText.equals(str("spookd_download_options")) || buttonText.equals(str("spookd_category_download_media"))) {
             DownloadUtils.showStoryDownloadOptions(ctx, session, mediaObject, reel, onDismiss);
+            return true;
+        } else if (buttonText.equals(str("spookd_story_ghost_add"))) {
+            StoryGhostList.addStoryOwner(session, mediaObject, onDismiss);
             return true;
         }
         return false;

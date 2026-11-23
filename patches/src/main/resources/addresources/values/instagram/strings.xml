@@ -35,6 +35,18 @@
     <!-- Ghost Section -->
     <string name="spookd_category_ghost">Ghost</string>
     <string name="spookd_view_stories_anonymously">View stories anonymously</string>
+    <string name="spookd_story_ghost_mode">Story ghost applies to</string>
+    <string name="spookd_story_ghost_mode_everyone">Everyone</string>
+    <string name="spookd_story_ghost_mode_except_listed">Everyone except listed users</string>
+    <string name="spookd_story_ghost_mode_only_listed">Only listed users</string>
+    <string name="spookd_story_ghost_users">Story ghost list</string>
+    <string name="spookd_story_ghost_users_desc">Add people with Add to story ghost list in the ⋯ menu of their story. Tap a name here to remove it</string>
+    <string name="spookd_story_ghost_users_empty">No one is listed yet</string>
+    <string name="spookd_story_ghost_add">Add to story ghost list</string>
+    <string name="spookd_story_ghost_added">Added @%1$s to the story ghost list</string>
+    <string name="spookd_story_ghost_already_added">@%1$s is already on the story ghost list</string>
+    <string name="spookd_story_ghost_remove_confirm">Remove %1$s from the story ghost list?</string>
+    <string name="spookd_story_ghost_remove">Remove</string>
     <string name="spookd_view_live_anonymously">View live anonymously</string>
     <string name="spookd_disable_typing_status">Disable typing status</string>
     <string name="spookd_disable_screenshot_detection">Disable screenshot detection</string>
