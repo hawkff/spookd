@@ -76,8 +76,9 @@ internal fun addStoryGhostListHooks(
         return-object p0
         """.trimIndent(),
     )
+    // Right before Instagram queues the item for its own receipt, so only items it decided to report get one.
     ConsumedStoryFingerprint.method.addInstruction(
-        0,
+        ConsumedStoryFingerprint.instructionMatches[24].index,
         "invoke-static/range {p0 .. p2}, $STORY_GHOST_LIST_DESCRIPTOR->" +
             "onStoryConsumed(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V",
     )

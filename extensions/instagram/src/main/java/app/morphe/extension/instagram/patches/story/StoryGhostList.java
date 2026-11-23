@@ -42,7 +42,7 @@ public final class StoryGhostList {
         return true;
     }
 
-    /** Start of Instagram's story consumption, on the main thread: owners the mode leaves out get the normal receipt. */
+    /** Instagram queuing a consumed item for its receipt, on the main thread: owners the mode leaves out get it sent. */
     public static void onStoryConsumed(Object logger, Object item, Object reel) {
         try {
             if (!Pref.viewStoriesAnonymously()) return;

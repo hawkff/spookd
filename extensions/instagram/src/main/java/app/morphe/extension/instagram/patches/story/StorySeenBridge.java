@@ -127,7 +127,7 @@ public final class StorySeenBridge {
         return markSeen(session, item, reel, source, listener, false);
     }
 
-    /** Receipts sent without the eye button follow only Instagram's own story checks, whatever the reel source. */
+    /** Receipts sent without the eye button skip its reel source list; Instagram's item and reel checks still apply. */
     public static boolean markSeenAutomatically(
             Object session,
             Object item,
