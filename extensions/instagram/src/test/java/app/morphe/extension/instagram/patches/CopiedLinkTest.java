@@ -3,9 +3,30 @@ package app.morphe.extension.instagram.patches;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-import org.junit.Test;
+import android.content.ClipData;
+import android.net.Uri;
 
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.annotation.Config;
+
+@RunWith(RobolectricTestRunner.class)
+@Config(sdk = 29, manifest = Config.NONE)
 public class CopiedLinkTest {
+
+    @Test
+    public void readsTextElseUriOfFirstClipItem() {
+        assertEquals("https://www.instagram.com/p/AbC/",
+                CopiedLink.fromClip(ClipData.newRawUri("", Uri.parse("https://www.instagram.com/p/AbC/"))));
+        assertNull(CopiedLink.fromClip(ClipData.newRawUri("", Uri.parse("https://example.com/p/AbC/"))));
+        assertNull(CopiedLink.fromClip(ClipData.newRawUri("", Uri.parse("content://media/external/images/1"))));
+        assertEquals("https://www.instagram.com/someuser/",
+                CopiedLink.fromClip(ClipData.newPlainText("", "@someuser")));
+        assertEquals("https://www.instagram.com/someuser/", CopiedLink.fromClip(new ClipData("",
+                new String[]{"text/plain"}, new ClipData.Item("@someuser", null, Uri.parse("https://example.com/")))));
+        assertNull(CopiedLink.fromClip(null));
+    }
 
     @Test
     public void keepsPathAndQueryOfInstagramLinks() {

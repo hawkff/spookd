@@ -37,8 +37,7 @@ public final class CopiedLink {
     /** Main thread: reads the clipboard once and opens its link, or shows a toast when it holds none. */
     static void open(Activity activity) {
         ClipboardManager clipboard = activity.getSystemService(ClipboardManager.class);
-        ClipData clip = clipboard == null ? null : clipboard.getPrimaryClip();
-        String url = toUrl(clip == null || clip.getItemCount() == 0 ? null : clip.getItemAt(0).getText());
+        String url = fromClip(clipboard == null ? null : clipboard.getPrimaryClip());
         if (url == null) {
             Utils.showToastShort(str("spookd_open_copied_link_invalid"));
             return;
@@ -46,6 +45,15 @@ public final class CopiedLink {
         Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
         intent.setClassName(activity.getPackageName(), URL_HANDLER_ACTIVITY);
         activity.startActivity(intent);
+    }
+
+    /** The link for the first item's text, else its URI string; never coerceToText, which can read a content provider. */
+    static String fromClip(ClipData clip) {
+        if (clip == null || clip.getItemCount() == 0) return null;
+        ClipData.Item item = clip.getItemAt(0);
+        CharSequence text = item.getText();
+        if (text == null && item.getUri() != null) text = item.getUri().toString();
+        return toUrl(text);
     }
 
     /** The https://www.instagram.com link for copied text, or null when it is not an Instagram link or username. */
