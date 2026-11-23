@@ -241,6 +241,13 @@
     <string name="spookd_playback_speed_controls_desc">In the feed, hold the left or right edge of a playing video to watch it at 2x. In Reels, a Speed row appears in the More menu and in the menu that opens when you long-press a Reel.</string>
     <string name="spookd_default_playback_speed">Default playback speed</string>
     <string name="spookd_default_playback_speed_desc">Reels and feed videos start at this speed, with normal voice pitch. A speed picked in Speed and seek applies to that Reel only.</string>
+    <string name="spookd_reels_player_options">Reels player options</string>
+    <string name="spookd_reels_start_muted">Start Reels muted</string>
+    <string name="spookd_reels_start_muted_desc">Reels play without sound until you turn sound on. After that, sound stays on the way Instagram normally keeps it.</string>
+    <string name="spookd_reels_stop_looping">Stop looping Reels</string>
+    <string name="spookd_reels_stop_looping_desc">A Reel stops on its last frame instead of starting over. Tap it to watch it again from the start.</string>
+    <string name="spookd_reels_tap_to_pause">Tap to pause Reels</string>
+    <string name="spookd_reels_tap_to_pause_desc">Tap a Reel to pause or play it instead of turning its sound on or off. Double-tap to like and long-press work as before.</string>
     <string name="spookd_speed_and_seek">Speed and seek</string>
     <string name="spookd_speed_panel_back">−10 s</string>
     <string name="spookd_speed_panel_forward">+10 s</string>

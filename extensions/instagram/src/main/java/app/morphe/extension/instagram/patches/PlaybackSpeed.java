@@ -58,6 +58,7 @@ public final class PlaybackSpeed {
     /** Called when a Reels player starts playing. */
     public static void onReelStarted(Object player) {
         if (startedReel.get() != player) startedReel = new WeakReference<>(player);
+        ReelsPlayerOptions.onReelStarted(player);
     }
 
     /** Called on the main thread when a speed is picked in Instagram's Reels menu. */
