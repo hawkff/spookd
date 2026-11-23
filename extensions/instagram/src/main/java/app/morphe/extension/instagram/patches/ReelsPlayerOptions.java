@@ -80,10 +80,20 @@ public final class ReelsPlayerOptions {
      * Returns whether the Reel had ended, in which case the caller restarts it.
      */
     public static boolean takeEndedReel(Object item) {
-        Object ended = endedItem.get();
+        return endedItem.get() != null && takeEndedReel(item, stopLooping());
+    }
+
+    // A Reel recorded while Stop looping was on is dropped once the switch is off.
+    static boolean takeEndedReel(Object item, boolean stopLooping) {
+        Object ended = hasEndedReel(stopLooping) ? endedItem.get() : null;
         if (ended == null || !ended.equals(item)) return false;
         endedItem = NONE;
         return true;
+    }
+
+    static boolean hasEndedReel(boolean stopLooping) {
+        if (!stopLooping) endedItem = NONE;
+        return endedItem.get() != null;
     }
 
     static void markEnded(Object item) {
