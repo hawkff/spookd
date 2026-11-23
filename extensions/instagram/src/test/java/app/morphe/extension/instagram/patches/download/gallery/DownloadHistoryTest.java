@@ -26,6 +26,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import app.morphe.extension.crimera.constants.ExtensionStrings;
@@ -138,6 +140,67 @@ public final class DownloadHistoryTest {
         DownloadHistory.removeListener(listener);
         history.start(GalleryItem.PHOTO, "alice", "c.jpg");
         assertEquals(6, heard[0]);
+    }
+
+    @Test
+    public void aFailedRowIsRetryableWhenTheScreenHearsOfIt() {
+        DownloadHistory.Row row = DownloadHistory.track(new DownloadRequest("https://cdn.example/a.jpg", null, "a.jpg"), POST);
+        row.started();
+        List<Boolean> retryableWhenHeard = new ArrayList<>();
+        DownloadHistory.setListener(() -> {
+            DownloadHistory.Entry entry = history.list().get(0);
+            if (DownloadHistory.FAILED.equals(entry.status)) retryableWhenHeard.add(DownloadHistory.canRetry(entry.id, NOW));
+        });
+
+        row.ended(false, null, new IOException("broken"));
+
+        assertEquals(Collections.singletonList(true), retryableWhenHeard);
+    }
+
+    @Test
+    public void aDuplicateRejectedWhileAnotherSavesTheFileAddsNoRow() {
+        DownloadHistory.Row row = DownloadHistory.track(new DownloadRequest("https://cdn.example/a.jpg", null, "a.jpg"), POST);
+
+        row.alreadyDownloading();
+
+        assertTrue(history.list().isEmpty());
+    }
+
+    @Test
+    public void aRetryRejectedWhileAnotherSavesTheFileStaysFailedAndRetryable() {
+        DownloadHistory.Row row = DownloadHistory.track(new DownloadRequest("https://cdn.example/a.jpg", null, "a.jpg"), POST);
+        row.started();
+        row.ended(false, null, new IOException("broken"));
+
+        row.alreadyDownloading();
+
+        DownloadHistory.Entry entry = only();
+        assertEquals(DownloadHistory.FAILED, entry.status);
+        assertEquals("IOException: broken", entry.error);
+        assertTrue(DownloadHistory.canRetry(entry.id, NOW));
+    }
+
+    @Test
+    public void anExistingFileSkippedBeforeTheStartIsStillRecorded() {
+        DownloadHistory.Row row = DownloadHistory.track(new DownloadRequest("https://cdn.example/a.jpg", null, "a.jpg"), POST);
+
+        row.ended(false, null, null);
+
+        DownloadHistory.Entry entry = only();
+        assertEquals(DownloadHistory.FAILED, entry.status);
+        assertEquals(ExtensionStrings.DOWNLOAD_MEDIA_EXISTS, entry.error);
+        assertFalse(DownloadHistory.canRetry(entry.id, NOW));
+    }
+
+    @Test
+    public void aFailureBeforeTheStartIsRecordedAndRetryable() {
+        DownloadHistory.Row row = DownloadHistory.track(new DownloadRequest("https://cdn.example/a.jpg", null, "a.jpg"), POST);
+
+        row.ended(false, null, new IOException("Download folder access is missing"));
+
+        DownloadHistory.Entry entry = only();
+        assertEquals("IOException: Download folder access is missing", entry.error);
+        assertTrue(DownloadHistory.canRetry(entry.id, NOW));
     }
 
     @Test

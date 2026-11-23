@@ -285,18 +285,28 @@ public final class DownloadHistory {
         @Override
         public void ended(boolean saved, Uri document, Throwable error) {
             try {
-                if (id < 0) return;
+                // Ended before it started: it failed or was skipped while claiming its file.
+                if (id < 0) id = get().start(item.kind, item.ownerUsername, request.fileName);
                 if (saved) {
                     get().saved(id, request.fileName, galleryId < 0 ? null : galleryId,
                             document == null ? null : document.toString());
                 } else {
+                    // Retry is published before the change reaches an open screen.
+                    if (error != null) retryable.put(id, request);
                     // No error means the conflict policy skipped it: retrying would skip it again.
                     get().failed(id, error == null ? ExtensionStrings.DOWNLOAD_MEDIA_EXISTS : reason(error));
-                    if (error != null) retryable.put(id, request);
                 }
             } catch (Exception e) {
                 Logger.printException(() -> "Download history: cannot record an end", e);
             }
+        }
+
+        /** The request that owns the file keeps the row; a rejected retry stays retryable. */
+        @Override
+        public void alreadyDownloading() {
+            if (id < 0) return;
+            retryable.put(id, request);
+            changed();
         }
     }
 }

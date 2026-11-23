@@ -108,7 +108,7 @@ public class MediaDownloader {
         String activeDestination = null;
         File replacement = null;
         Throwable failure = null;
-        if (request.tracker != null) request.tracker.started();
+        boolean alreadyDownloading = false;
         try {
             Notification.Builder builder;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -121,6 +121,7 @@ public class MediaDownloader {
                     .setOngoing(true) // Keeps notification un-swipable during download execution.
                     .setProgress(100, 0, false);
             if (request.privateTarget != null) {
+                if (request.tracker != null) request.tracker.started();
                 downloadCompleted = savePrivately(request, builder, notificationId);
                 return;
             }
@@ -131,6 +132,7 @@ public class MediaDownloader {
                 if (request.conflictPolicy != DownloadRequest.ConflictPolicy.RENAME
                         && ACTIVE_DESTINATIONS.contains(requestedDestination)) {
                     showToast(ExtensionStrings.DOWNLOAD_MEDIA_IN_PROGRESS);
+                    alreadyDownloading = true;
                     return;
                 }
                 Map<String, Uri> children = getChildDocuments(targetDirectoryUri);
@@ -153,6 +155,7 @@ public class MediaDownloader {
                 activeDestination = targetDirectoryUri.buildUpon().appendPath(request.fileName).build().toString();
                 ACTIVE_DESTINATIONS.add(activeDestination);
             }
+            if (request.tracker != null) request.tracker.started();
             if (outputDocumentUri == null) {
                 throw new IOException("Could not create download file");
             }
@@ -213,7 +216,9 @@ public class MediaDownloader {
             }
             if (replacement != null) replacement.delete();
             if (request.onFinished != null) request.onFinished.accept(downloadCompleted);
-            if (request.tracker != null) {
+            if (request.tracker != null && alreadyDownloading) {
+                request.tracker.alreadyDownloading();
+            } else if (request.tracker != null) {
                 request.tracker.ended(downloadCompleted, downloadCompleted ? outputDocumentUri : null, failure);
             }
         }
