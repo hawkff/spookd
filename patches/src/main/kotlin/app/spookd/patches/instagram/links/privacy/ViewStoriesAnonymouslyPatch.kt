@@ -6,10 +6,12 @@
 
 package app.spookd.patches.instagram.links.privacy
 
+import app.spookd.patches.instagram.entity.mediadata.mediaDataEntity
 import app.spookd.patches.instagram.links.interceptUriPatch
 import app.spookd.patches.instagram.misc.actionBar.chatActionBarButton.chatActionBarButtonPatch
 import app.spookd.patches.instagram.misc.actionBar.inboxActionBarButton.inboxActionBarButtonPatch
 import app.spookd.patches.instagram.misc.settings.settingsPatch
+import app.spookd.patches.instagram.misc.stories.handleStoryButtonPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.LINKS_DESCRIPTOR
 import app.spookd.patches.instagram.utils.Constants.USER_SESSION_CLASS
@@ -37,6 +39,9 @@ val viewStoriesAnonymouslyPatch =
             interceptUriPatch,
             chatActionBarButtonPatch,
             inboxActionBarButtonPatch,
+            // The story menu entry that adds owners to the story ghost list.
+            handleStoryButtonPatch,
+            mediaDataEntity,
         )
         compatibleWith(COMPATIBILITY_INSTAGRAM)
 
@@ -279,6 +284,8 @@ val viewStoriesAnonymouslyPatch =
                     "invoke-static {v$requestRegister}, $STORY_SEEN_SCOPE_DESCRIPTOR->complete(Ljava/lang/Object;)V",
                 )
             }
+
+            addStoryGhostListHooks(reelParentClass, reelModelField, reelOwnerIdField)
 
             enableSettings("viewStoriesAnonymously")
         }

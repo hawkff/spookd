@@ -7,6 +7,8 @@
 
 package app.morphe.extension.instagram.settings.preference.widgets;
 
+import static app.morphe.extension.instagram.utils.IgStr.str;
+
 import android.content.Context;
 import android.preference.ListPreference;
 import android.util.AttributeSet;
@@ -72,6 +74,13 @@ public class ListPref extends ListPreference {
             } else if (Settings.DEFAULT_PLAYBACK_SPEED.key.equals(key)) {
                 entries = new CharSequence[]{"1x", "1.25x", "1.5x", "1.75x", "2x"};
                 entriesValues = new CharSequence[]{"1", "1.25", "1.5", "1.75", "2"};
+            } else if (Settings.STORY_GHOST_MODE.key.equals(key)) {
+                entries = new CharSequence[]{
+                        str("spookd_story_ghost_mode_everyone"),
+                        str("spookd_story_ghost_mode_except_listed"),
+                        str("spookd_story_ghost_mode_only_listed")
+                };
+                entriesValues = new CharSequence[]{"everyone", "except_listed", "only_listed"};
             }
         } else {
             entries = ResourceUtils.getStringArray("spookd_array_recmd_flag_states");

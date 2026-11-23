@@ -118,12 +118,31 @@ public final class StorySeenBridge {
         }
     }
 
-    public static synchronized boolean markSeen(
+    public static boolean markSeen(
             Object session,
             Object item,
             Object reel,
             Object source,
             StorySeenRequestScope.Listener listener) {
+        return markSeen(session, item, reel, source, listener, false);
+    }
+
+    /** Receipts sent without the eye button skip its reel source list; Instagram's item and reel checks still apply. */
+    public static boolean markSeenAutomatically(
+            Object session,
+            Object item,
+            Object reel,
+            StorySeenRequestScope.Listener listener) {
+        return markSeen(session, item, reel, null, listener, true);
+    }
+
+    private static synchronized boolean markSeen(
+            Object session,
+            Object item,
+            Object reel,
+            Object source,
+            StorySeenRequestScope.Listener listener,
+            boolean automatic) {
         try {
             StorySeenKey storyKey = storyKey(session, item);
             if (storyKey == null) {
@@ -136,6 +155,7 @@ public final class StorySeenBridge {
                 return false;
             }
             return sendSupportedSource(
+                    automatic,
                     source,
                     session,
                     item,
@@ -178,6 +198,7 @@ public final class StorySeenBridge {
     }
 
     static boolean sendSupportedSource(
+            boolean automatic,
             Object source,
             Object session,
             Object item,
@@ -185,7 +206,7 @@ public final class StorySeenBridge {
             StorySeenKey storyKey,
             Operations operations,
             StorySeenRequestScope.Listener listener) {
-        if (!isSupportedSource(source)) {
+        if (!automatic && !isSupportedSource(source)) {
             return false;
         }
         return send(session, item, reel, storyKey, operations, listener);
