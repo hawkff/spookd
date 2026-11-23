@@ -901,6 +901,13 @@ public class ScreenBuilder {
                     Settings.PLAYBACK_SPEED_CONTROLS
             ));
         }
+        if (SettingsStatus.defaultPlaybackSpeed) {
+            addPreference(helper.listPreference(
+                    str("spookd_default_playback_speed"),
+                    str("spookd_default_playback_speed_desc"),
+                    Settings.DEFAULT_PLAYBACK_SPEED
+            ));
+        }
         if (SettingsStatus.improveImageViewing) {
             addPreference(
                     helper.switchPreference(
