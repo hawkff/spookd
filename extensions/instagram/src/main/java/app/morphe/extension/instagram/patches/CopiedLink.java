@@ -6,21 +6,21 @@
 
 package app.morphe.extension.instagram.patches;
 
-import static app.morphe.extension.instagram.utils.IgStr.str;
-
-import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.view.View;
 
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import app.morphe.extension.shared.Utils;
+import app.morphe.extension.shared.Logger;
 
-/** Opens an Instagram link or username from the clipboard inside this app. */
+/** Opens a copied Instagram link or @username inside this app from a Search tab long-press. */
+@SuppressWarnings("unused")
 public final class CopiedLink {
     // Instagram's own in-app link router; clones keep the class name and change only the package.
     private static final String URL_HANDLER_ACTIVITY = "com.instagram.url.UrlHandlerActivity";
@@ -28,23 +28,35 @@ public final class CopiedLink {
     // The host must end at a path, query, fragment or the end, so "instagram.com.evil.com" and "instagram.com@evil.com" fail.
     private static final Pattern LINK = Pattern.compile(
             "(?i:(?:https?://)?(?:www\\.)?(?:instagram\\.com|instagr\\.am))(/[^\\s?#]*)?(\\?[^\\s#]*)?(#\\S*)?");
-    // Letters, digits, periods and underscores, at most 30, no leading, trailing or double period.
-    private static final Pattern USERNAME = Pattern.compile("@?((?!\\.)(?!.*\\.\\.)[A-Za-z0-9._]{1,30}(?<!\\.))");
+    // "@", then letters, digits, periods and underscores, at most 30, no leading, trailing or double period.
+    private static final Pattern USERNAME = Pattern.compile("@((?!\\.)(?!.*\\.\\.)[A-Za-z0-9._]{1,30}(?<!\\.))");
 
     private CopiedLink() {
     }
 
-    /** Main thread: reads the clipboard once and opens its link, or shows a toast when it holds none. */
-    static void open(Activity activity) {
-        ClipboardManager clipboard = activity.getSystemService(ClipboardManager.class);
-        String url = fromClip(clipboard == null ? null : clipboard.getPrimaryClip());
-        if (url == null) {
-            Utils.showToastShort(str("spookd_open_copied_link_invalid"));
-            return;
+    /**
+     * Called on the main thread at the start of the Search tab's onLongClick.
+     *
+     * @return true when a copied link was opened, false to run Instagram's original handler.
+     */
+    public static boolean onSearchLongClick(View view) {
+        try {
+            Context context = view.getContext();
+            ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
+            String url = fromClip(clipboard == null ? null : clipboard.getPrimaryClip());
+            if (url == null) return false;
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            intent.setClassName(context.getPackageName(), URL_HANDLER_ACTIVITY);
+            context.startActivity(intent);
+            return true;
+        } catch (Throwable t) {
+            try {
+                Logger.printException(() -> "Search long-press failed", t);
+            } catch (Throwable ignored) {
+                // Logging must never throw into Instagram's long-click handling.
+            }
+            return false;
         }
-        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-        intent.setClassName(activity.getPackageName(), URL_HANDLER_ACTIVITY);
-        activity.startActivity(intent);
     }
 
     /** The link for the first item's text, else its URI string; never coerceToText, which can read a content provider. */
@@ -56,7 +68,7 @@ public final class CopiedLink {
         return toUrl(text);
     }
 
-    /** The https://www.instagram.com link for copied text, or null when it is not an Instagram link or username. */
+    /** The https://www.instagram.com link for copied text, or null when it is not an Instagram link or @username. */
     static String toUrl(CharSequence text) {
         if (text == null) return null;
         String value = text.toString().trim();

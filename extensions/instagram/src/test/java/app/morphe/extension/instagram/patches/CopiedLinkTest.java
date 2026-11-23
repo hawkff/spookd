@@ -45,8 +45,8 @@ public class CopiedLinkTest {
     @Test
     public void buildsProfileLinksFromUsernames() {
         assertEquals("https://www.instagram.com/some.user_1/", CopiedLink.toUrl("@Some.User_1"));
-        assertEquals("https://www.instagram.com/someuser/", CopiedLink.toUrl(" someuser "));
-        assertEquals("https://www.instagram.com/" + repeat('a', 30) + "/", CopiedLink.toUrl(repeat('a', 30)));
+        assertEquals("https://www.instagram.com/someuser/", CopiedLink.toUrl(" @someuser "));
+        assertEquals("https://www.instagram.com/" + repeat('a', 30) + "/", CopiedLink.toUrl("@" + repeat('a', 30)));
     }
 
     @Test
@@ -62,11 +62,13 @@ public class CopiedLinkTest {
         assertNull(CopiedLink.toUrl("https://l.instagram.com/?u=https://evil.com"));
         assertNull(CopiedLink.toUrl("javascript:alert(1)"));
         assertNull(CopiedLink.toUrl("look at instagram.com/p/AbC/"));
-        assertNull(CopiedLink.toUrl(".user"));
-        assertNull(CopiedLink.toUrl("user."));
-        assertNull(CopiedLink.toUrl("us..er"));
+        assertNull(CopiedLink.toUrl("someuser"));
+        assertNull(CopiedLink.toUrl("@@someuser"));
+        assertNull(CopiedLink.toUrl("@.user"));
+        assertNull(CopiedLink.toUrl("@user."));
+        assertNull(CopiedLink.toUrl("@us..er"));
         assertNull(CopiedLink.toUrl("@user-name"));
-        assertNull(CopiedLink.toUrl(repeat('a', 31)));
+        assertNull(CopiedLink.toUrl("@" + repeat('a', 31)));
     }
 
     private static String repeat(char c, int count) {
