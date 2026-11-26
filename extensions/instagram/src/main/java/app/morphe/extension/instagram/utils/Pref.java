@@ -486,6 +486,12 @@ public class Pref {
     public static boolean enableDevOptions() {
         return SharedPref.getBooleanPref(Settings.DEVELOPER_OPTIONS);
     }
+
+    // Only while the gallery's settings row is shown, so the entry never leads to a screen that cannot be reached.
+    public static boolean homeLongPressGallery() {
+        return SettingsStatus.homeLongPressSettings && SettingsStatus.downloadSection()
+                && SharedPref.getBooleanPref(Settings.HOME_LONG_PRESS_GALLERY);
+    }
     public static boolean directlyOpenMetaConfig() {
         return SharedPref.getBooleanPref(Settings.DIRECTLY_OPEN_METACONFIG);
     }

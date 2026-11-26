@@ -15,6 +15,7 @@ import android.content.DialogInterface;
 import android.view.View;
 
 import app.morphe.extension.instagram.entity.InstagramDialogBox;
+import app.morphe.extension.instagram.settings.ActivityHook;
 import app.morphe.extension.instagram.settings.preference.fragments.FragmentHook;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
@@ -35,8 +36,10 @@ public class HomeLongPress {
             return false;
         }
         try {
-            if (Pref.enableDevOptions()) {
-                showChoiceDialog(view);
+            boolean devOptions = Pref.enableDevOptions();
+            boolean gallery = Pref.homeLongPressGallery();
+            if (devOptions || gallery) {
+                showChoiceDialog(view, devOptions, gallery);
             } else {
                 FragmentHook.startSettings();
             }
@@ -47,16 +50,21 @@ public class HomeLongPress {
         }
     }
 
-    private static void showChoiceDialog(View view) {
+    private static void showChoiceDialog(View view, boolean devOptions, boolean gallery) {
         InstagramDialogBox dialog = new InstagramDialogBox(activityOf(view.getContext()));
 
-        CharSequence[] items = {str("spookd_title_settings"), str("spookd_category_dev_options")};
+        CharSequence[] items = gallery && devOptions
+                ? new CharSequence[]{str("spookd_title_settings"), str("spookd_private_gallery"), str("spookd_category_dev_options")}
+                : new CharSequence[]{str("spookd_title_settings"), str(gallery ? "spookd_private_gallery" : "spookd_category_dev_options")};
         dialog.addDialogMenuItems(items, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface d, int which) {
                 try {
                     if (which == 0) {
                         FragmentHook.startSettings();
+                    } else if (gallery && which == 1) {
+                        // The gallery screen asks for the screen lock itself before showing anything.
+                        ActivityHook.startPrivateGalleryActivity(view.getContext());
                     } else {
                         replayingLongPress = true;
                         try {

@@ -1290,6 +1290,16 @@ public class ScreenBuilder {
                 )
         );
 
+        if (SettingsStatus.homeLongPressSettings) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_home_long_press_gallery"),
+                            str("spookd_home_long_press_gallery_desc"),
+                            Settings.HOME_LONG_PRESS_GALLERY
+                    )
+            );
+        }
+
         addPreference(
                 helper.buttonPreference(
                         str("spookd_download_history"),
