@@ -27,6 +27,7 @@ import java.util.Set;
 
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
+import app.morphe.extension.instagram.patches.dm.HiddenChatsPref;
 import app.morphe.extension.instagram.patches.dm.InboxLock;
 import app.morphe.extension.instagram.patches.story.StoryUserList;
 import app.morphe.extension.instagram.settings.AccountSettings;
@@ -206,7 +207,7 @@ public final class ActivityAlerts {
      */
     private static void post(String account, String user, String chat, String name, String text) {
         Utils.runOnMainThread(() -> {
-            if (!account.equals(currentAccount())) return;
+            if (!account.equals(currentAccount()) || hiddenAndMuted(account, chat)) return;
             Context context = Utils.getContext();
             NotificationManager manager = context == null ? null
                     : (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -328,6 +329,11 @@ public final class ActivityAlerts {
         } catch (Throwable t) {
             Logger.printException(() -> "ActivityAlerts.onCurrentSession failed", t);
         }
+    }
+
+    // Checked as the notification is posted, so hiding the chat in between still keeps it out.
+    private static boolean hiddenAndMuted(String account, String chat) {
+        return Pref.hiddenChats() && Pref.hiddenChatsMute() && HiddenChatsPref.ids(account).contains(chat);
     }
 
     static String tag(String account, String user) {
