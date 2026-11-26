@@ -9,7 +9,9 @@ package app.morphe.extension.instagram.settings.preference.widgets;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
+import android.content.res.TypedArray;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -139,7 +141,13 @@ public final class SpookdType {
 
     /** As {@link #dialogContext(Context, int)}, with the palette given rather than resolved. */
     static Context dialogContext(Context base, int themeResId, int primary, int secondary, int accent) {
-        return new DialogContext(base, themeResId, new int[]{primary, secondary, accent});
+        return dialogContext(base, themeResId, primary, secondary, accent, 0);
+    }
+
+    /** {@code surface} 0 keeps the theme's own dialog card. */
+    static Context dialogContext(
+            Context base, int themeResId, int primary, int secondary, int accent, int surface) {
+        return new DialogContext(base, themeResId, new int[]{primary, secondary, accent, surface});
     }
 
     /** Styles a text field a preference dialog creates in code, which no inflater sees. */
@@ -154,6 +162,7 @@ public final class SpookdType {
     private static final int PRIMARY_COLOR = 0;
     private static final int SECONDARY_COLOR = 1;
     private static final int ACCENT_COLOR = 2;
+    private static final int SURFACE_COLOR = 3;
 
     private static final class DialogContext extends ContextThemeWrapper {
         private LayoutInflater inflater;
@@ -171,6 +180,8 @@ public final class SpookdType {
                         InstagramPreferenceStyle.primaryTextColor(),
                         InstagramPreferenceStyle.secondaryTextColor(),
                         InstagramPreferenceStyle.selectionColor(),
+                        // The dark dialog card is black on a dimmed black page, so it gets a lifted surface.
+                        InstagramPreferenceStyle.dialogSurfaceColor(),
                 };
             }
             return palette;
@@ -196,6 +207,8 @@ public final class SpookdType {
         };
         private static final int ALERT_TITLE_ID =
                 Resources.getSystem().getIdentifier("alertTitle", "id", "android");
+        private static final int PARENT_PANEL_ID =
+                Resources.getSystem().getIdentifier("parentPanel", "id", "android");
 
         private final LayoutInflater.Factory original;
         private final DialogContext owner;
@@ -218,6 +231,8 @@ public final class SpookdType {
             }
             if (view instanceof TextView) {
                 style((TextView) view);
+            } else if (view != null && PARENT_PANEL_ID != 0 && view.getId() == PARENT_PANEL_ID) {
+                styleSurface(view);
             }
             return view;
         }
@@ -225,6 +240,29 @@ public final class SpookdType {
         @Override
         public View onCreateView(String name, Context context, AttributeSet attrs) {
             return onCreateView(null, name, context, attrs);
+        }
+
+        /** Paints the alert card in the surface color, with the theme's own corner radius. */
+        private void styleSurface(View panel) {
+            try {
+                int surface = owner.palette()[SURFACE_COLOR];
+                if (surface == 0) {
+                    return;
+                }
+                float radius = 0;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    TypedArray attributes = panel.getContext()
+                            .obtainStyledAttributes(new int[]{android.R.attr.dialogCornerRadius});
+                    radius = attributes.getDimension(0, 0);
+                    attributes.recycle();
+                }
+                GradientDrawable card = new GradientDrawable();
+                card.setColor(surface);
+                card.setCornerRadius(radius);
+                panel.setBackground(card);
+            } catch (Exception e) {
+                Logger.printException(() -> "Failed to style the dialog surface", e);
+            }
         }
 
         private void style(TextView view) {

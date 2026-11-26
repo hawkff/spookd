@@ -108,6 +108,30 @@ public final class SpookdTypeTest {
     }
 
     @Test
+    public void darkDialogsGetTheLiftedSurfaceAndLightOnesKeepTheirCard() {
+        int surface = 0xff212328;
+        int panelId = android.content.res.Resources.getSystem()
+                .getIdentifier("parentPanel", "id", "android");
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        AlertDialog dark = new AlertDialog.Builder(SpookdType.dialogContext(activity,
+                android.R.style.Theme_DeviceDefault, PRIMARY, SECONDARY, ACCENT, surface))
+                .setMessage("Message")
+                .create();
+        dark.show();
+        android.view.View panel = dark.findViewById(panelId);
+        assertTrue(panel.getBackground() instanceof android.graphics.drawable.GradientDrawable);
+        assertEquals(surface, ((android.graphics.drawable.GradientDrawable) panel.getBackground())
+                .getColor().getDefaultColor());
+
+        AlertDialog light = builder(android.R.style.Theme_DeviceDefault_Light)
+                .setMessage("Message")
+                .create();
+        light.show();
+        assertFalse(light.findViewById(panelId).getBackground()
+                instanceof android.graphics.drawable.GradientDrawable);
+    }
+
+    @Test
     public void choiceRowsUseTheBodyRoleAndAccent() {
         AlertDialog dialog = builder(android.R.style.Theme_DeviceDefault)
                 .setSingleChoiceItems(new CharSequence[]{"One", "Two"}, 0, null)

@@ -133,7 +133,39 @@ public final class InstagramPreferenceStyle {
         if (luminance < 128000) {
             return Color.rgb(43, 48, 54);
         }
-        return Color.rgb(241, 242, 246);
+        // 7% toward the text color: near Instagram's light field on white, and still visible on a tinted page.
+        return lightSearchFieldColor(themedBackground, primaryTextColor());
+    }
+
+    static int lightSearchFieldColor(int page, int text) {
+        return blend(page, text, 0.07f);
+    }
+
+    static int blend(int base, int over, float ratio) {
+        return Color.rgb(
+                Math.round(Color.red(base) + (Color.red(over) - Color.red(base)) * ratio),
+                Math.round(Color.green(base) + (Color.green(over) - Color.green(base)) * ratio),
+                Math.round(Color.blue(base) + (Color.blue(over) - Color.blue(base)) * ratio)
+        );
+    }
+
+    /**
+     * The card of spookd's dark dialogs: Instagram's elevated background, or its highlight when a
+     * theme flattens elevation into the page. 0 in light theme, which keeps the white card.
+     */
+    public static int dialogSurfaceColor() {
+        if (!UI.isDarkMode()) {
+            return 0;
+        }
+        return elevatedSurface(
+                backgroundColor(),
+                UI.getThemedColour("igds_color_elevated_background"),
+                pressedBackgroundColor()
+        );
+    }
+
+    static int elevatedSurface(int page, int elevated, int highlight) {
+        return elevated != page && elevated != Color.BLACK ? elevated : highlight;
     }
 
     public static int primaryTextColor() {
