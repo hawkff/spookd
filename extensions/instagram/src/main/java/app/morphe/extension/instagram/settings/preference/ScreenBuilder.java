@@ -1023,6 +1023,16 @@ public class ScreenBuilder {
                         str("spookd_confirm_follow_request"), str("spookd_confirm_follow_request_desc"), Settings.CONFIRM_FOLLOW_REQUEST));
             }
         }
+        if (SettingsStatus.refreshControls) {
+            PreferenceCategory refresh = addCategory(str("spookd_category_refresh"));
+            addPreference(refresh, helper.switchPreference(
+                    str("spookd_disable_home_tab_refresh"), str("spookd_disable_home_tab_refresh_desc"), Settings.DISABLE_HOME_TAB_REFRESH));
+            addPreference(refresh, helper.switchPreference(
+                    str("spookd_disable_home_background_refresh"), str("spookd_disable_home_background_refresh_desc"),
+                    Settings.DISABLE_HOME_BACKGROUND_REFRESH));
+            addPreference(refresh, helper.switchPreference(
+                    str("spookd_disable_reels_tab_refresh"), str("spookd_disable_reels_tab_refresh_desc"), Settings.DISABLE_REELS_TAB_REFRESH));
+        }
     }
 
     public void buildInstantsSection() {

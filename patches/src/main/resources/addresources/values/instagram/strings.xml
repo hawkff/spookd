@@ -249,6 +249,14 @@
     <string name="spookd_confirm_follow_request_title">Accept this follow request?</string>
     <string name="spookd_confirm_follow_request_action">Accept</string>
     <string name="spookd_confirm_not_done">Nothing was done: it changed while you were deciding. Try again.</string>
+    <string name="spookd_category_refresh">Refresh</string>
+    <string name="spookd_patch_refresh_controls">Refresh controls</string>
+    <string name="spookd_disable_home_tab_refresh">Don\'t refresh Home on tab tap</string>
+    <string name="spookd_disable_home_tab_refresh_desc">Tapping Home again still scrolls to the top but no longer loads new posts</string>
+    <string name="spookd_disable_home_background_refresh">Don\'t refresh Home in the background</string>
+    <string name="spookd_disable_home_background_refresh_desc">Stops Home from loading new posts while the app is in the background</string>
+    <string name="spookd_disable_reels_tab_refresh">Don\'t refresh Reels on tab tap</string>
+    <string name="spookd_disable_reels_tab_refresh_desc">Tapping Reels again still goes back to the top but no longer loads new Reels</string>
     <string name="spookd_resume_reels_after_scrolling">Resume Reels after scrolling</string>
     <string name="spookd_resume_reels_after_scrolling_desc">Continue a Reel from where you left off when you scroll back to it</string>
     <string name="spookd_playback_speed_controls">Playback speed controls</string>

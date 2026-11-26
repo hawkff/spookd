@@ -276,6 +276,8 @@ public class SettingsStatus {
     public static void confirmCall() { confirmCall = true; }
     public static boolean confirmFollowRequest = false;
     public static void confirmFollowRequest() { confirmFollowRequest = true; }
+    public static boolean refreshControls = false;
+    public static void refreshControls() { refreshControls = true; }
     public static boolean confirmationsSection() {
         return confirmFollow || confirmFeedLike || confirmReelLike || confirmReelRepost || confirmComment || confirmCommentSheet
                 || confirmUnfollow || confirmFeedRepost || confirmStoryLike || confirmStoryReaction || confirmCall || confirmFollowRequest;
@@ -304,7 +306,7 @@ public class SettingsStatus {
     public static void moreOptionsOnPost() { moreOptionsOnPost = true; }
     public static boolean moreOptionsOnProfile = false;
     public static void moreOptionsOnProfile() { moreOptionsOnProfile = true; }
-    public static boolean miscSection() {return ( moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || defaultPlaybackSpeed || reelsPlayerOptions || followBackIndicator || followListNonFollowerBadge || profileAnalyzer || exactProfileCounts || squareProfileGrid || profileSavedTab || confirmationsSection() || customFont);}
+    public static boolean miscSection() {return ( moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || defaultPlaybackSpeed || reelsPlayerOptions || followBackIndicator || followListNonFollowerBadge || profileAnalyzer || exactProfileCounts || squareProfileGrid || profileSavedTab || confirmationsSection() || refreshControls || customFont);}
 
     //Font section.
     public static boolean customFont = false;
@@ -412,6 +414,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_patch_confirm_story_reaction"), SettingsStatus.confirmStoryReaction);
         FLAGS.put(str("spookd_confirm_call"), SettingsStatus.confirmCall);
         FLAGS.put(str("spookd_confirm_follow_request"), SettingsStatus.confirmFollowRequest);
+        FLAGS.put(str("spookd_patch_refresh_controls"), SettingsStatus.refreshControls);
         FLAGS.put(str("spookd_disable_discover_people"),SettingsStatus.disableDiscoverPeople);
         FLAGS.put(str("spookd_customise_story_ring_size"),SettingsStatus.customiseStoryRingSize);
 
