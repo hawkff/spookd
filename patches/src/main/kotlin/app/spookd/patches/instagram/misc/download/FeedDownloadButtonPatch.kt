@@ -166,11 +166,21 @@ private object FeedUfiRendererSelectorFingerprint : Fingerprint(
     ),
 )
 
+/** Shared by the feed hooks that only exist in the view UFI row. */
+internal val pinMainFeedToViewUfiPatch =
+    patch {
+        compatibleWith(COMPATIBILITY_INSTAGRAM)
+        execute {
+            pinMainFeedToViewUfi()
+        }
+    }
+
 val feedDownloadButtonPatch =
     patch {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(
             sharedExtensionPatch,
+            pinMainFeedToViewUfiPatch,
             // The download options dialog is an `InstagramDialogBox` wrapper; without this
             // entity its placeholder names are never resolved.
             instagramDialogBoxEntity,
@@ -192,7 +202,6 @@ val feedDownloadButtonPatch =
             enableSettings("feedDownloadButton")
 
             val stateType = hookFeedRowBinder()
-            pinMainFeedToViewUfi()
             injectLithoDownloadButton(stateType)
         }
     }

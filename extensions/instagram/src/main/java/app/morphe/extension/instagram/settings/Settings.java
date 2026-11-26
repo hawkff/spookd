@@ -196,4 +196,6 @@ public class Settings {
     public static final BooleanSetting HIDE_INBOX_INSTANTS = new BooleanSetting("hide_inbox_instants", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_REELS_TAB_HEADER = new BooleanSetting("hide_reels_tab_header", false, REQUIRED);
     public static final BooleanSetting DISABLE_APP_HAPTICS = new BooleanSetting("disable_app_haptics", false, NOT_REQUIRED);
+    public static final BooleanSetting EXACT_LAST_ACTIVE = new BooleanSetting("exact_last_active", false, NOT_REQUIRED);
+    public static final BooleanSetting HOLD_SEND_COPY_LINK = new BooleanSetting("hold_send_copy_link", false, REQUIRED);
 }

@@ -780,10 +780,14 @@ public class DownloadUtils {
     private static int saveButtonId;
     private static final String MEDIA_CLASS_NAME = "com.instagram.feed.media.Media";
 
-    /** Shared by the injected Litho component and the view holder hook. */
+    private static final Pref.Cached<Boolean> FEED_DOWNLOAD_BUTTON_ENABLED = new Pref.Cached<>(
+            () -> Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.ENABLE_DOWNLOAD))
+                    && Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.FEED_DOWNLOAD_BUTTON)),
+            Settings.ENABLE_DOWNLOAD.key, Settings.FEED_DOWNLOAD_BUTTON.key);
+
+    /** Shared by the injected Litho component and the view holder hook; read on every feed bind. */
     public static boolean isFeedDownloadButtonEnabled() {
-        return Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.ENABLE_DOWNLOAD))
-                && Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.FEED_DOWNLOAD_BUTTON));
+        return FEED_DOWNLOAD_BUTTON_ENABLED.get();
     }
 
     public static String feedDownloadButtonDescription() {

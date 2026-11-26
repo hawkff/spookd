@@ -315,6 +315,16 @@ public class ScreenBuilder {
             );
         }
 
+        if (SettingsStatus.exactLastActive) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_exact_last_active"),
+                            str("spookd_exact_last_active_desc"),
+                            Settings.EXACT_LAST_ACTIVE
+                    )
+            );
+        }
+
         if (SettingsStatus.markChatAsRead) {
             addPreference(
                     helper.switchPreference(
@@ -604,6 +614,15 @@ public class ScreenBuilder {
                             str("spookd_detect_links_in_text"),
                             str("spookd_detect_links_in_text_desc"),
                             Settings.DETECT_LINKS_IN_TEXT
+                    )
+            );
+        }
+        if (SettingsStatus.holdSendCopyLink) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_hold_send_copy_link"),
+                            str("spookd_hold_send_copy_link_desc"),
+                            Settings.HOLD_SEND_COPY_LINK
                     )
             );
         }
