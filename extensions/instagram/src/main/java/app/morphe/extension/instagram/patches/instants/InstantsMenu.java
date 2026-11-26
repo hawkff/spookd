@@ -45,9 +45,12 @@ public final class InstantsMenu {
             actions.add(() -> SharedPref.setBooleanPref(Settings.INSTANTS_DOWNLOAD.key, !saving));
         }
         if (SettingsStatus.instantsSeen) {
-            boolean hidden = SharedPref.getBooleanPref(Settings.INSTANTS_DONT_MARK_SEEN);
-            items.add(str(hidden ? "spookd_instants_menu_start_marking" : "spookd_instants_menu_stop_marking"));
-            actions.add(() -> SharedPref.setBooleanPref(Settings.INSTANTS_DONT_MARK_SEEN.key, !hidden));
+            // Turn on all ghost modes keeps Instants unseen whatever this switch says, so it is not offered then.
+            if (!SharedPref.getBooleanPref(Settings.TURN_ON_ALL_GHOST_MODES)) {
+                boolean hidden = SharedPref.getBooleanPref(Settings.INSTANTS_DONT_MARK_SEEN);
+                items.add(str(hidden ? "spookd_instants_menu_start_marking" : "spookd_instants_menu_stop_marking"));
+                actions.add(() -> SharedPref.setBooleanPref(Settings.INSTANTS_DONT_MARK_SEEN.key, !hidden));
+            }
             items.add(str("spookd_instants_always_seen_users"));
             actions.add(() -> showUserList(context, true));
             items.add(str("spookd_instants_never_seen_users"));
