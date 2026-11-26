@@ -31,10 +31,10 @@ import app.morphe.extension.instagram.settings.preference.widgets.InstagramPrefe
 import com.instagram.common.session.UserSession;
 
 /**
- * A list of story owners: usernames by user id, oldest first. It lives in the settings file,
+ * A list of story owners or Instants senders: usernames by user id, oldest first. It lives in the settings file,
  * so per-account settings give every account its own list.
  */
-final class StoryUserList {
+public final class StoryUserList {
     static final StoryUserList GHOST = new StoryUserList(Settings.STORY_GHOST_USERS,
             "spookd_story_ghost_users", "spookd_story_ghost_remove_confirm");
     static final StoryUserList AUTO_SAVE = new StoryUserList(Settings.STORY_AUTO_SAVE_USERS,
@@ -46,7 +46,7 @@ final class StoryUserList {
     private String cachedJson;
     private Map<String, String> cachedUsers = Collections.emptyMap();
 
-    private StoryUserList(StringSetting setting, String titleKey, String removeConfirmKey) {
+    public StoryUserList(StringSetting setting, String titleKey, String removeConfirmKey) {
         this.setting = setting;
         this.titleKey = titleKey;
         this.removeConfirmKey = removeConfirmKey;
@@ -65,7 +65,7 @@ final class StoryUserList {
     }
 
     /** Parsed again only after the stored list changes, so story paths stay in memory. */
-    synchronized Map<String, String> all() {
+    public synchronized Map<String, String> all() {
         String json = SharedPref.getStringPref(setting);
         if (!json.equals(cachedJson)) {
             cachedUsers = parse(json);
@@ -75,14 +75,14 @@ final class StoryUserList {
     }
 
     /** False when the user is already listed. */
-    synchronized boolean add(String userId, String username) {
+    public synchronized boolean add(String userId, String username) {
         String json = withUser(SharedPref.getStringPref(setting), userId, username);
         if (json == null) return false;
         SharedPref.setStringPref(setting.key, json);
         return true;
     }
 
-    synchronized void remove(String userId) {
+    public synchronized void remove(String userId) {
         SharedPref.setStringPref(setting.key, withoutUser(SharedPref.getStringPref(setting), userId));
     }
 
