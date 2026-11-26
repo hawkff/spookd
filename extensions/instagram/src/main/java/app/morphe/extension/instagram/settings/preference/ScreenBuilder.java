@@ -385,6 +385,16 @@ public class ScreenBuilder {
             );
         }
 
+        if (SettingsStatus.pinRecipients) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_pin_recipients"),
+                            str("spookd_pin_recipients_desc"),
+                            Settings.PIN_RECIPIENTS
+                    )
+            );
+        }
+
         if (SettingsStatus.saveDeletedMessages) {
             addPreference(
                     helper.switchPreference(

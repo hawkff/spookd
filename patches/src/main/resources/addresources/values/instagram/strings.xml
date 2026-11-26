@@ -356,6 +356,12 @@
     <string name="spookd_hidden_chats_closed">Back to your inbox</string>
     <string name="spookd_hidden_chats_mute">Mute hidden chats</string>
     <string name="spookd_hidden_chats_mute_desc">Don\'t show notifications for messages from chats you have hidden</string>
+    <string name="spookd_pin_recipients">Pin recipients</string>
+    <string name="spookd_pin_recipients_desc">Adds Pin to the menu you get by holding a chat in your inbox. Pinned chats come first in the share sheet before you type, and the people of pinned one-to-one chats come first in your recent searches. Each account has its own pins. A pinned chat only moves up when Instagram lists it there.</string>
+    <string name="spookd_pin_recipients_pin">Pin in share sheet and search</string>
+    <string name="spookd_pin_recipients_unpin">Unpin from share sheet and search</string>
+    <string name="spookd_pin_recipients_pinned">Pinned</string>
+    <string name="spookd_pin_recipients_unpinned">Unpinned</string>
     <string name="spookd_hidden_chats_taps">Taps to open hidden chats</string>
     <string name="spookd_hidden_chats_taps_desc">Tap the messages button this many times in a row to switch between your inbox and your hidden chats</string>
 

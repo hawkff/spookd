@@ -94,13 +94,15 @@ public class SettingsStatus {
     public static void inboxLock() { inboxLock = true; }
     public static boolean hiddenChats = false;
     public static void hiddenChats() { hiddenChats = true; }
+    public static boolean pinRecipients = false;
+    public static void pinRecipients() { pinRecipients = true; }
     public static boolean sendKeyboardGifs = false;
     public static void sendKeyboardGifs() { sendKeyboardGifs = true; }
     public static boolean stopVisualMessageAutoAdvance = false;
     public static void stopVisualMessageAutoAdvance() { stopVisualMessageAutoAdvance = true; }
     public static boolean exactLastActive = false;
     public static void exactLastActive() { exactLastActive = true; }
-    public static boolean dmSection(){ return markChatAsRead || unlimitedReplaysOnEphemeralMedia || saveDeletedMessages || dmMediaVault || inboxLock || hiddenChats || disableDisappearingMessagesGesture || sendKeyboardGifs || stopVisualMessageAutoAdvance || exactLastActive ;}
+    public static boolean dmSection(){ return markChatAsRead || unlimitedReplaysOnEphemeralMedia || saveDeletedMessages || dmMediaVault || inboxLock || hiddenChats || pinRecipients || disableDisappearingMessagesGesture || sendKeyboardGifs || stopVisualMessageAutoAdvance || exactLastActive ;}
 
     //Story section
     public static boolean customiseStoryTimestamp = false;
@@ -472,6 +474,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_change_like_animation"),SettingsStatus.changeLikeAnimation);
         FLAGS.put(str("spookd_inbox_lock"),SettingsStatus.inboxLock);
         FLAGS.put(str("spookd_hidden_chats"),SettingsStatus.hiddenChats);
+        FLAGS.put(str("spookd_pin_recipients"), SettingsStatus.pinRecipients);
 
         FLAGS.put(str("spookd_disable_double_tap_to_like"),SettingsStatus.disableDoubleTapLike);
         FLAGS.put(str("spookd_hide_group_creation_button_on_sharesheet"),SettingsStatus.hideGroupCreationOnSharesheet);

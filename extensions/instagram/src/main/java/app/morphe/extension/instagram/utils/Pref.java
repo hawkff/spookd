@@ -896,6 +896,13 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.INBOX_LOCK_NOTIFICATIONS);
     }
 
+    private static final Cached<Boolean> PIN_RECIPIENTS =
+            new Cached<>(() -> SharedPref.getBooleanPref(Settings.PIN_RECIPIENTS), Settings.PIN_RECIPIENTS.key);
+
+    public static boolean pinRecipients() {
+        return SettingsStatus.pinRecipients && PIN_RECIPIENTS.get();
+    }
+
     public static boolean hiddenChats() {
         return SharedPref.getBooleanPref(Settings.HIDDEN_CHATS);
     }

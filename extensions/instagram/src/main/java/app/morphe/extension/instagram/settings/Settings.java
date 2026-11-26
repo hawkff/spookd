@@ -101,6 +101,7 @@ public class Settings {
     public static final BooleanSetting HIDDEN_CHATS = new BooleanSetting("hidden_chats", false, REQUIRED);
     public static final StringSetting HIDDEN_CHATS_TAPS = new StringSetting("hidden_chats_taps", "3", NOT_REQUIRED);
     public static final BooleanSetting HIDDEN_CHATS_MUTE = new BooleanSetting("hidden_chats_mute", true, NOT_REQUIRED);
+    public static final BooleanSetting PIN_RECIPIENTS = new BooleanSetting("pin_recipients", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_REELS_FOLLOW_BUTTON = new BooleanSetting("hide_reels_follow_button", false, NOT_REQUIRED);
     public static final BooleanSetting IMPROVE_IMAGE_VIEWING = new BooleanSetting("improve_image_viewing", false, REQUIRED);
     public static final BooleanSetting RESUME_REELS_AFTER_SCROLLING = new BooleanSetting("resume_reels_after_scrolling", false, NOT_REQUIRED);

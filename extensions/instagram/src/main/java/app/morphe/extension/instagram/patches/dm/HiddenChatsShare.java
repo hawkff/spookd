@@ -195,7 +195,7 @@ public final class HiddenChatsShare {
     }
 
     // A recipient makes its key on demand, from its chat id or from its people; the method names are obfuscated.
-    private static DirectThreadKey keyOf(Object target) {
+    static DirectThreadKey keyOf(Object target) {
         if (target == null) return null;
         for (Method method : keyMethods.computeIfAbsent(target.getClass(), HiddenChatsShare::keyMethodsOf)) {
             try {
