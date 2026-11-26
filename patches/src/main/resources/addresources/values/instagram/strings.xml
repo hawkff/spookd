@@ -786,6 +786,10 @@
     <string name="spookd_media_link">link</string>
     <string name="spookd_media_activity">activity</string>
     <string name="spookd_removed_reaction">Removed %1$s from: %2$s</string>
+    <string name="spookd_refresh_profile_pictures">Refresh profile pictures</string>
+    <string name="spookd_refresh_profile_pictures_started">Refreshing profile pictures…</string>
+    <string name="spookd_refresh_profile_pictures_done">Updated %d profile pictures</string>
+    <string name="spookd_refresh_profile_pictures_unavailable">Profile pictures can\'t be refreshed right now</string>
     <string name="spookd_dm_media_vault">Save DM media</string>
     <string name="spookd_dm_media_vault_desc">Downloads every received DM photo, video and voice message as it arrives, on any network, so it uses mobile data and up to 8 GB of storage. Media of messages that are not unsent is removed after 30 days, except view-once media, which stays until you delete it. After you turn this setting off, nothing new is saved, and once Instagram restarts the cleanup stops too. Saved media opens from View deleted messages after you confirm your screen lock, on Android 11 or newer.</string>
     <string name="spookd_dm_media_vault_view_once">Also save view-once media</string>

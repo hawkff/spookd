@@ -19,7 +19,7 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
 
     // Legacy stored name: existing installs keep their database under it.
     private static final String DB_NAME = "piko_dm_vault.db";
-    static final int DB_VERSION = 7;
+    static final int DB_VERSION = 8;
     /** The message type of a removed reaction row in {@link #getDeletedMessages()}. */
     public static final String REMOVED_REACTION = "removed_reaction";
     /** The id prefix of a removed reaction row in {@link #getDeletedMessages()}. */
@@ -92,6 +92,9 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         };
     }
 
+    // Version 8: the sender's profile picture link, NULL until one is known.
+    static final String USER_DIRECTORY_PIC_URL = "ALTER TABLE user_directory ADD COLUMN pic_url TEXT";
+
     static String[] upgradeStatements(int oldVersion) {
         List<String> statements = new ArrayList<>();
         if (oldVersion < 3) {
@@ -109,6 +112,9 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         }
         if (oldVersion < 7) {
             java.util.Collections.addAll(statements, reactionStatements());
+        }
+        if (oldVersion < 8) {
+            statements.add(USER_DIRECTORY_PIC_URL);
         }
         return statements.toArray(new String[0]);
     }
@@ -156,6 +162,7 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         for (String statement : reactionStatements()) {
             db.execSQL(statement);
         }
+        db.execSQL(USER_DIRECTORY_PIC_URL);
     }
 
     private void createDirTable(SQLiteDatabase db) {
@@ -401,15 +408,41 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         if (senderId == null || senderId.isEmpty() || username == null || username.isEmpty()) return;
         SQLiteDatabase db = getWritableDatabase();
         ContentValues cv = new ContentValues();
-        cv.put("sender_id", senderId);
         cv.put("username", username);
-        db.insertWithOnConflict(DIR_TABLE, null, cv, SQLiteDatabase.CONFLICT_REPLACE);
+        // Update first, since a replace would drop the stored picture.
+        if (db.update(DIR_TABLE, cv, "sender_id = ?", new String[]{senderId}) == 0) {
+            cv.put("sender_id", senderId);
+            db.insertWithOnConflict(DIR_TABLE, null, cv, SQLiteDatabase.CONFLICT_IGNORE);
+        }
         // Backfill any stored messages from this sender that still lack a username.
         ContentValues mv = new ContentValues();
         mv.put("sender_username", username);
         db.update(TABLE, mv,
             "sender_id = ? AND (sender_username IS NULL OR sender_username = '')",
             new String[]{senderId});
+    }
+
+    /** Stores a sender's picture link; the username creates the directory row when there is none. */
+    public boolean putPicture(String senderId, String username, String url) {
+        if (senderId == null || senderId.isEmpty() || url == null || url.isEmpty()) return false;
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put("pic_url", url);
+        if (db.update(DIR_TABLE, cv, "sender_id = ?", new String[]{senderId}) == 1) return true;
+        if (username == null || username.isEmpty()) return false;
+        cv.put("sender_id", senderId);
+        cv.put("username", username);
+        return db.insertWithOnConflict(DIR_TABLE, null, cv, SQLiteDatabase.CONFLICT_IGNORE) != -1;
+    }
+
+    /** sender_id to stored picture link, for every sender that has one. */
+    public java.util.Map<String, String> getPictureUrls() {
+        java.util.Map<String, String> out = new java.util.HashMap<>();
+        Cursor c = getReadableDatabase().query(DIR_TABLE, new String[]{"sender_id", "pic_url"},
+                "pic_url IS NOT NULL AND pic_url != ''", null, null, null, null);
+        while (c.moveToNext()) out.put(c.getString(0), c.getString(1));
+        c.close();
+        return out;
     }
 
     /** Look up a previously-resolved username for a sender_id, or null. */

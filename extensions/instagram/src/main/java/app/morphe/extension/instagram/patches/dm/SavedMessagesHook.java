@@ -36,6 +36,10 @@ public class SavedMessagesHook {
     static final String NOTIFICATION_CHANNEL_ID = "piko_deleted_messages";
 
     private static volatile String sMyUserId;
+    private static volatile java.lang.ref.WeakReference<UserSession> sCurrentSession =
+            new java.lang.ref.WeakReference<>(null);
+    // Senders whose picture was stored in this process; worker thread only.
+    private static final java.util.Set<String> sPictureSaved = new java.util.HashSet<>();
     private static android.os.HandlerThread sWorkerThread;
     private static android.os.Handler sWorker;
 
@@ -51,6 +55,16 @@ public class SavedMessagesHook {
         } catch (Exception e) {
             spookd("SavedMessagesHook.openDeletedMessages: " + e);
         }
+    }
+
+    /** Called just before Instagram's session manager returns the session it made current. */
+    public static void onCurrentSession(UserSession session) {
+        sCurrentSession = new java.lang.ref.WeakReference<>(session);
+    }
+
+    /** The session Instagram made current last, or null when the hook is missing. */
+    static UserSession currentSession() {
+        return sCurrentSession.get();
     }
 
     /** Harvest participant id-to-username mappings from the thread user list. */
@@ -235,6 +249,31 @@ public class SavedMessagesHook {
         return null;
     }
 
+    /** A user from Instagram's in-memory cache of the session's account, or null; no network. */
+    static UserData cachedUser(UserSession session, String userId, String viewerId) throws Exception {
+        if (session == null || isBlank(userId)
+                || isBlank(viewerId) || !viewerId.equals(session.getUserId())) return null;
+        Object user = lookupCachedUser(session, userId);
+        if (user == null) return null;
+        UserData data = new UserData(user);
+        return userId.equals(data.getUserId()) ? data : null;
+    }
+
+    /** Worker thread: stores the sender's picture from the in-memory user cache, once per sender and process. */
+    private static void savePicture(SpookdMessageDb db, String senderId, UserSession session,
+                                    String viewerId) {
+        if (isBlank(senderId) || sPictureSaved.contains(senderId)) return;
+        try {
+            UserData data = cachedUser(session != null ? session : currentSession(), senderId, viewerId);
+            if (data == null) return;
+            String url = data.getProfilePictureUrl();
+            if (url != null && url.startsWith("http") && db.putPicture(senderId, data.getUsername(), url)) {
+                sPictureSaved.add(senderId);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     private static String resolveSenderUsername(SpookdMessageDb db, String senderId,
                                                 String threadId, UserSession session,
                                                 String viewerId) {
@@ -242,11 +281,8 @@ public class SavedMessagesHook {
         if (username == null) username = db.getThreadUsername(threadId, senderId);
         if (username != null || isBlank(senderId) || session == null) return username;
         try {
-            if (isBlank(viewerId) || !viewerId.equals(session.getUserId())) return null;
-            Object user = lookupCachedUser(session, senderId);
-            if (user == null) return null;
-            UserData data = new UserData(user);
-            if (!senderId.equals(data.getUserId())) return null;
+            UserData data = cachedUser(session, senderId, viewerId);
+            if (data == null) return null;
             username = data.getUsername();
             if (!isBlank(username)) {
                 db.putUsername(senderId, username);
@@ -317,6 +353,7 @@ public class SavedMessagesHook {
                 RevokeCache.INSTANCE.put(serverId, clientContext, messageId,
                         db.getStoredContent(messageId));
                 if (Pref.dmMediaVault()) captureMedia(item, directItem, serverId, viewerId, type, timestamp);
+                savePicture(db, senderId, session, viewerId);
                 // Only full REST items are compared, since other payloads may leave the reactions out;
                 // without the viewer id an own removal would look like someone else's.
                 if (restPath && !isBlank(viewerId)) {

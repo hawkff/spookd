@@ -42,13 +42,17 @@ import android.os.Build;
 import android.window.OnBackInvokedDispatcher;
 import androidx.annotation.RequiresApi;
 
+import com.instagram.common.session.UserSession;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -58,6 +62,7 @@ import java.util.regex.Pattern;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.db.SpookdMessageDb;
+import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.instagram.patches.dm.vault.MediaVault;
 import app.morphe.extension.instagram.patches.dm.vault.VaultViewer;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
@@ -75,6 +80,7 @@ public final class DeletedMessagesActivity {
     private static final Map<Activity, Controller> sControllers = new WeakHashMap<>();
     // Serial, so a delete queued by a screen that was closed runs before a reopened screen loads.
     private static final Executor sDbJobs = Executors.newSingleThreadExecutor();
+    private static final long PICTURE_REQUEST_GAP_MS = 1500;
 
     private DeletedMessagesActivity() {}
 
@@ -175,6 +181,7 @@ public final class DeletedMessagesActivity {
                 public void onActivityDestroyed(Activity a) {
                     if (a == activity) {
                         VaultViewer.close(a);
+                        controller.avatars.close();
                         a.getApplication().unregisterActivityLifecycleCallbacks(this);
                         synchronized (sControllers) {
                             sControllers.remove(activity);
@@ -201,6 +208,10 @@ public final class DeletedMessagesActivity {
         private final Activity activity;
         private List<String[]> messages;
         private Map<String, String> storedModes = Collections.emptyMap();
+        private Map<String, String> pictures = Collections.emptyMap();
+        final AvatarLoader avatars = new AvatarLoader();
+        private View moreAction;
+        private boolean refreshingPictures;
         private ListView messageList;
         private MessageAdapter adapter;
         private SimpleDateFormat timestampFormatter;
@@ -284,12 +295,20 @@ public final class DeletedMessagesActivity {
             cancelSelection.setOnClickListener(v -> cancelSelection());
             cancelSelectionAction = cancelSelection;
 
+            ImageView more = new ImageView(activity);
+            UI.setThemedIcon(more, "instagram_more_vertical_outline_24");
+            more.setScaleType(ImageView.ScaleType.CENTER);
+            more.setContentDescription(str("spookd_more_options"));
+            more.setOnClickListener(v -> showMoreOptions());
+            moreAction = more;
+
             toolbar.addView(back);
             toolbar.addView(selectAll, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
             toolbar.addView(toolbarTitle);
             toolbar.addView(cancelSelection, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT, Dim.dp48));
+            toolbar.addView(more, new LinearLayout.LayoutParams(Dim.dp48, Dim.dp48));
             root.addView(toolbar);
 
             FrameLayout content = new FrameLayout(activity);
@@ -415,10 +434,12 @@ public final class DeletedMessagesActivity {
             sDbJobs.execute(() -> {
                 List<String[]> loaded = null;
                 Map<String, String> stored = Collections.emptyMap();
+                Map<String, String> loadedPictures = Collections.emptyMap();
                 try {
                     SpookdMessageDb db = SpookdMessageDb.getInstance(activity);
                     if (deleteIds != null) SavedMessagesHook.deleteSavedMessages(deleteIds);
                     loaded = db.getDeletedMessages();
+                    loadedPictures = db.getPictureUrls();
                     if (Pref.dmMediaVault()) MediaVault.get().start();
                     stored = MediaVault.get().storedMessages();
                 } catch (Exception e) {
@@ -426,6 +447,7 @@ public final class DeletedMessagesActivity {
                 }
                 List<String[]> result = loaded;
                 Map<String, String> storedResult = stored;
+                Map<String, String> picturesResult = loadedPictures;
                 Utils.runOnMainThread(() -> {
                     loading = false;
                     if (activity.isFinishing() || activity.isDestroyed()) return;
@@ -435,6 +457,7 @@ public final class DeletedMessagesActivity {
                     }
                     messages = result;
                     storedModes = storedResult;
+                    pictures = picturesResult;
                     adapter.notifyDataSetChanged();
                     if (empty != null) messageList.setEmptyView(empty);
                     cancelSelection();
@@ -493,6 +516,7 @@ public final class DeletedMessagesActivity {
             selectAllCheck.setChecked(areAllSelected(
                     checkedCount, messages.size()));
             cancelSelectionAction.setVisibility(selecting ? View.VISIBLE : View.GONE);
+            moreAction.setVisibility(selecting ? View.GONE : View.VISIBLE);
             deleteAction.setVisibility(selecting ? View.VISIBLE : View.GONE);
             deleteAction.setEnabled(hasSelection && !loading);
             deleteAction.setAlpha(hasSelection && !loading ? 1f : 0.5f);
@@ -541,6 +565,71 @@ public final class DeletedMessagesActivity {
                     })
                     .setNegativeButton(str("spookd_cancel"), null)
                     .show();
+        }
+
+        private void showMoreOptions() {
+            new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
+                    .setItems(new CharSequence[]{str("spookd_refresh_profile_pictures")},
+                            (dialog, which) -> refreshPictures())
+                    .show();
+        }
+
+        /**
+         * Refreshes the picture of each listed sender once, from Instagram's in-memory user cache when
+         * it has the user, else with one profile request; sequential on a background thread, and it
+         * stops when the screen closes.
+         */
+        private void refreshPictures() {
+            if (refreshingPictures) return;
+            UserSession session = SavedMessagesHook.currentSession();
+            if (session == null) {
+                Toast.makeText(activity, str("spookd_refresh_profile_pictures_unavailable"),
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Set<String> userIds = new LinkedHashSet<>();
+            for (String[] message : messages) {
+                if (message[6] != null && !message[6].isEmpty()) userIds.add(message[6]);
+            }
+            if (userIds.isEmpty()) return;
+            refreshingPictures = true;
+            Toast.makeText(activity, str("spookd_refresh_profile_pictures_started"),
+                    Toast.LENGTH_SHORT).show();
+            String viewerId = session.getUserId();
+            new Thread(() -> {
+                int updated = 0;
+                boolean requested = false;
+                SpookdMessageDb db = SpookdMessageDb.getInstance(activity);
+                for (String userId : userIds) {
+                    if (activity.isFinishing() || activity.isDestroyed()) break;
+                    try {
+                        UserData user = SavedMessagesHook.cachedUser(session, userId, viewerId);
+                        if (user == null) {
+                            // A pause between requests, so a long list is not fetched in a burst.
+                            if (requested) Thread.sleep(PICTURE_REQUEST_GAP_MS);
+                            requested = true;
+                            user = UserData.fetchProfile(session, userId);
+                        }
+                        String url = user == null ? null : user.getProfilePictureUrl();
+                        if (url != null && url.startsWith("http")
+                                && db.putPicture(userId, user.getUsername(), url)) {
+                            updated++;
+                        }
+                    } catch (InterruptedException e) {
+                        break;
+                    } catch (Exception e) {
+                        Logger.printException(() -> "refreshPictures: ", e);
+                    }
+                }
+                int count = updated;
+                Utils.runOnMainThread(() -> {
+                    refreshingPictures = false;
+                    if (activity.isFinishing() || activity.isDestroyed()) return;
+                    Toast.makeText(activity, String.format(Locale.getDefault(),
+                            str("spookd_refresh_profile_pictures_done"), count), Toast.LENGTH_SHORT).show();
+                    loadMessages(null, null);
+                });
+            }, "spookd-picture-refresh").start();
         }
 
         private void showMediaOptions(String messageId, String url, String type) {
@@ -670,6 +759,20 @@ public final class DeletedMessagesActivity {
                     checkParams.setMarginEnd(Dim.dp8);
                     row.addView(selectionView, checkParams);
 
+                    ImageView avatarView = new ImageView(activity);
+                    avatarView.setTag("avatar");
+                    avatarView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    GradientDrawable circle = new GradientDrawable();
+                    circle.setShape(GradientDrawable.OVAL);
+                    circle.setColor(InstagramPreferenceStyle.pressedBackgroundColor());
+                    avatarView.setBackground(circle);
+                    avatarView.setClipToOutline(true);
+                    avatarView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+                    LinearLayout.LayoutParams avatarParams = new LinearLayout.LayoutParams(
+                            Dim.dp40, Dim.dp40);
+                    avatarParams.setMarginEnd(Dim.dp12);
+                    row.addView(avatarView, avatarParams);
+
                     contentColumn = new LinearLayout(activity);
                     contentColumn.setOrientation(LinearLayout.VERTICAL);
 
@@ -703,6 +806,7 @@ public final class DeletedMessagesActivity {
                 }
 
                 String[] msg = messages.get(position);
+                avatars.load(msg[6] != null ? pictures.get(msg[6]) : null, row.findViewWithTag("avatar"));
                 String sender    = msg[2];
                 String content   = msg[3];
                 String type      = msg[4];

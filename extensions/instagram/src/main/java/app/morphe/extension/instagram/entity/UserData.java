@@ -66,6 +66,15 @@ public class UserData extends Entity {
         return userId.equals(refreshed.getUserId()) ? refreshed.getProfilePictureUrl() : null;
     }
 
+    /** The user Instagram's profile request returns for this id, or null; call off the main thread. */
+    public static UserData fetchProfile(UserSession session, String userId) throws Exception {
+        if (session == null || userId == null || userId.isEmpty()) return null;
+        Object result = new UserData(null).fetchProfileUser(session, userId);
+        if (result == null) return null;
+        UserData user = new UserData(result);
+        return userId.equals(user.getUserId()) ? user : null;
+    }
+
     private Object fetchProfileUser(UserSession session, String userId) {
         // Replaced with Instagram's synchronous profile request. Called on the image worker.
         return null;
