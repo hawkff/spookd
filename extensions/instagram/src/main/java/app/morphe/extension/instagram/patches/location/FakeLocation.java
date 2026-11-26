@@ -38,7 +38,7 @@ public final class FakeLocation {
     private static final Map<LocationListener, LocationListener> LISTENERS =
             Collections.synchronizedMap(new IdentityHashMap<>());
     // Listeners whose answered request has not been delivered or removed yet, with that request's token.
-    private static final Map<LocationListener, Object> ANSWERING =
+    static final Map<LocationListener, Object> ANSWERING =
             Collections.synchronizedMap(new IdentityHashMap<>());
     // Plugin listeners and shop finder callbacks waiting for the places, with their request's token.
     static final Map<Object, Object> PLUGIN_ANSWERING = Collections.synchronizedMap(new IdentityHashMap<>());
@@ -139,7 +139,7 @@ public final class FakeLocation {
             Looper looper = Looper.myLooper();
             // Delivered later on the requesting looper, as LocationManager would.
             Handler handler = new Handler(looper != null ? looper : Looper.getMainLooper());
-            handler.post(() -> answer(listener, provider, token, handler));
+            handler.post(() -> answer(listener, provider, token, handler, false));
             return null;
         } catch (Throwable t) {
             Logger.printException(() -> "FakeLocation.requestUpdates failed", t);
@@ -148,17 +148,26 @@ public final class FakeLocation {
         }
     }
 
-    private static void answer(LocationListener listener, String provider, Object token, Handler handler) {
+    private static void answer(LocationListener listener, String provider, Object token, Handler handler,
+                               boolean afterLoad) {
         if (ANSWERING.get(listener) != token) return;
         // Fake location may have been turned off meanwhile, by an account switch.
         if (!switchOn.getAsBoolean()) {
             ANSWERING.remove(listener, token);
             return;
         }
-        Location fix = lastKnown(provider);
+        answerWith(lastKnown(provider), listener, provider, token, handler, afterLoad);
+    }
+
+    /**
+     * Takes the fix already read. Without one, it waits for the places even if they look read by now, since they may
+     * have finished between that read and here; {@code whenLoaded} runs at once for a finished read.
+     */
+    static void answerWith(Location fix, LocationListener listener, String provider, Object token, Handler handler,
+                           boolean afterLoad) {
         if (fix == null) {
-            if (FakePlaces.isLoaded()) ANSWERING.remove(listener, token);
-            else FakePlaces.whenLoaded(() -> handler.post(() -> answer(listener, provider, token, handler)));
+            if (afterLoad) ANSWERING.remove(listener, token);
+            else FakePlaces.whenLoaded(() -> handler.post(() -> answer(listener, provider, token, handler, true)));
             return;
         }
         if (ANSWERING.remove(listener, token)) listener.onLocationChanged(fix);
@@ -185,8 +194,13 @@ public final class FakeLocation {
     }
 
     private static Location nowOrWhenLoaded(Map<Object, Object> pending, Object target, String name, Class<?> parameter) {
-        Location fix = current();
-        if (fix != null || target == null || FakePlaces.isLoaded()) return fix;
+        return nowOrWhenLoaded(current(), pending, target, name, parameter);
+    }
+
+    // Takes the fix already read; without one it always waits, as in answerWith.
+    static Location nowOrWhenLoaded(Location fix, Map<Object, Object> pending, Object target, String name,
+                                    Class<?> parameter) {
+        if (fix != null || target == null) return fix;
         Object token = new Object();
         pending.put(target, token);
         FakePlaces.whenLoaded(() -> deliverLate(pending, target, token, name, parameter));

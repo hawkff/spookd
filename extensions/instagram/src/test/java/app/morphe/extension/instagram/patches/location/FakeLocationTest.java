@@ -9,6 +9,8 @@ import android.content.SharedPreferences;
 import android.location.Location;
 import android.location.LocationListener;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
@@ -157,5 +159,27 @@ public final class FakeLocationTest {
         assertTrue(shopFinder.received.isEmpty());
         assertTrue(FakeLocation.PLUGIN_ANSWERING.isEmpty());
         assertTrue(FakeLocation.SHOP_FINDER_ANSWERING.isEmpty());
+    }
+
+    @Test
+    public void aLoadFinishingRightAfterAnEmptyReadStillGetsAnswered() throws InterruptedException {
+        startBlockedLoad();
+        finishLoad();
+        assertTrue(FakePlaces.isLoaded());
+
+        // Both paths are handed the empty read taken just before the load finished.
+        Recorder plugin = new Recorder();
+        assertNull(FakeLocation.nowOrWhenLoaded(null, FakeLocation.PLUGIN_ANSWERING, plugin,
+                "onLocationChanged", Location.class));
+        Recorder manager = new Recorder();
+        Object token = new Object();
+        FakeLocation.ANSWERING.put(manager, token);
+        FakeLocation.answerWith(null, manager, "gps", token, new Handler(Looper.getMainLooper()), false);
+        ShadowLooper.idleMainLooper();
+
+        assertEquals(1, plugin.received.size());
+        assertEquals(1, manager.received.size());
+        assertTrue(FakeLocation.PLUGIN_ANSWERING.isEmpty());
+        assertTrue(FakeLocation.ANSWERING.isEmpty());
     }
 }
