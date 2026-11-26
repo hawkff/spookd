@@ -49,6 +49,10 @@ public class SettingsStatus {
     public static void markStorySeenOnInteraction() {
         markStorySeenOnInteraction = true;
     }
+    public static boolean markEarlierStoriesSeen = false;
+    public static void markEarlierStoriesSeen() { markEarlierStoriesSeen = true; }
+    public static boolean advanceStory = false;
+    public static void advanceStory() { advanceStory = true; }
     public static boolean viewLiveAnonymously = false;
     public static void viewLiveAnonymously() {
         viewLiveAnonymously = true;

@@ -463,6 +463,48 @@ public class ScreenBuilder {
                     )
             );
         }
+        if (SettingsStatus.markEarlierStoriesSeen) {
+            addPreference(
+                    helper.availableWhen(
+                            helper.switchPreference(
+                                    str("spookd_mark_earlier_stories_seen"),
+                                    str("spookd_mark_earlier_stories_seen_desc"),
+                                    Settings.MARK_EARLIER_STORIES_SEEN
+                            ),
+                            () -> SharedPref.getBooleanPref(Settings.VIEW_STORIES_ANONYMOUSLY)
+                                    || SharedPref.getBooleanPref(Settings.TURN_ON_ALL_GHOST_MODES)
+                    )
+            );
+        }
+        if (SettingsStatus.advanceStory) {
+            addPreference(
+                    helper.availableWhen(
+                            helper.switchPreference(
+                                    str("spookd_advance_story_on_mark_seen"),
+                                    str("spookd_advance_story_on_mark_seen_desc"),
+                                    Settings.ADVANCE_STORY_ON_MARK_SEEN
+                            ),
+                            () -> SharedPref.getBooleanPref(Settings.VIEW_STORIES_ANONYMOUSLY)
+                                    || SharedPref.getBooleanPref(Settings.TURN_ON_ALL_GHOST_MODES)
+                    )
+            );
+            if (SettingsStatus.markStorySeenOnInteraction) {
+                addPreference(
+                        helper.switchPreference(
+                                str("spookd_advance_story_on_like"),
+                                str("spookd_advance_story_on_like_desc"),
+                                Settings.ADVANCE_STORY_ON_LIKE
+                        )
+                );
+                addPreference(
+                        helper.switchPreference(
+                                str("spookd_advance_story_on_reply"),
+                                str("spookd_advance_story_on_reply_desc"),
+                                Settings.ADVANCE_STORY_ON_REPLY
+                        )
+                );
+            }
+        }
         if (SettingsStatus.viewLiveAnonymously) {
             addPreference(
                     helper.switchPreference(
