@@ -18,7 +18,7 @@ public final class SafeStartupTest {
     private final SharedPreferences startup = SafeStartup.prefs(RuntimeEnvironment.getApplication());
 
     private boolean safeMode() {
-        return startup.getBoolean(SafeStartup.SAFE_MODE_KEY, false);
+        return SafeStartup.readBoolean(startup, SafeStartup.SAFE_MODE_KEY);
     }
 
     @Test
@@ -35,14 +35,34 @@ public final class SafeStartupTest {
     }
 
     @Test
-    public void aFinishedStartResetsTheCount() {
+    public void launchesThatReachAScreenAndQuitAtOnceNeverTriggerSafeMode() {
+        for (int launch = 0; launch < 3; launch++) {
+            SafeStartup.openAttempt(startup);
+            SafeStartup.closeAttempt(startup);
+        }
         SafeStartup.openAttempt(startup);
-        SafeStartup.openAttempt(startup);
+
+        assertFalse(safeMode());
+        assertEquals(0, startup.getInt(SafeStartup.FAILED_STARTS_KEY, -1));
+    }
+
+    @Test
+    public void wrongTypedKeysReadAsDefaultsAndAreRewritten() {
+        startup.edit()
+                .putString(SafeStartup.SAFE_MODE_KEY, "yes")
+                .putString(SafeStartup.DISABLE_ALL_KEY, "on")
+                .putString(SafeStartup.ATTEMPT_OPEN_KEY, "1")
+                .putBoolean(SafeStartup.FAILED_STARTS_KEY, true)
+                .commit();
+
+        assertFalse(safeMode());
+        assertFalse(SafeStartup.readBoolean(startup, SafeStartup.DISABLE_ALL_KEY));
         SafeStartup.closeAttempt(startup);
         SafeStartup.openAttempt(startup);
 
-        assertEquals(0, startup.getInt(SafeStartup.FAILED_STARTS_KEY, -1));
+        assertFalse(startup.getBoolean(SafeStartup.SAFE_MODE_KEY, true));
+        assertFalse(startup.getBoolean(SafeStartup.DISABLE_ALL_KEY, true));
         assertTrue(startup.getBoolean(SafeStartup.ATTEMPT_OPEN_KEY, false));
-        assertFalse(safeMode());
+        assertEquals(0, startup.getInt(SafeStartup.FAILED_STARTS_KEY, -1));
     }
 }

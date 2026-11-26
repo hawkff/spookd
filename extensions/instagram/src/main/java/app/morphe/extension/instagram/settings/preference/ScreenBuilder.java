@@ -33,7 +33,9 @@ import app.morphe.extension.instagram.patches.focusLock.FocusLockTargets;
 import app.morphe.extension.instagram.patches.story.StoryAutoSave;
 import app.morphe.extension.instagram.patches.story.StoryGhostList;
 import app.morphe.extension.instagram.settings.SettingsStatus;
+import app.morphe.extension.instagram.settings.RestartPolicy;
 import app.morphe.extension.instagram.settings.SafeStartup;
+import app.morphe.extension.instagram.settings.SettingsRestart;
 import app.morphe.extension.instagram.settings.StorageScreen;
 import app.morphe.extension.instagram.settings.BooleanSetting;
 import app.morphe.extension.instagram.settings.Settings;
@@ -1540,8 +1542,21 @@ public class ScreenBuilder {
         disableAll.setPersistent(false);
         disableAll.setChecked(SafeStartup.disableAllStored());
         disableAll.setOnPreferenceChangeListener((preference, newValue) -> {
-            SafeStartup.setDisableAll(Boolean.TRUE.equals(newValue));
-            return true;
+            boolean enabled = Boolean.TRUE.equals(newValue);
+            boolean previous = disableAll.isChecked();
+            Utils.runOnBackgroundThread(() -> {
+                boolean saved = SafeStartup.setDisableAll(enabled);
+                Utils.runOnMainThread(() -> {
+                    if (!saved) {
+                        Utils.showToastShort(str("spookd_setting_save_failed"));
+                        return;
+                    }
+                    disableAll.setChecked(enabled);
+                    SettingsRestart.markChanged(SafeStartup.DISABLE_ALL_KEY, RestartPolicy.REQUIRED, previous, enabled);
+                });
+            });
+            // Rejected for now; the switch flips once the value is on disk.
+            return false;
         });
         addPreference(disableAll);
 

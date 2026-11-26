@@ -23,9 +23,9 @@ import app.morphe.extension.shared.Utils;
 
 /**
  * Disable all, safe startup mode and the launch-time tools. Their state is device-wide, in
- * {@code spookd_startup}, not in the per-account settings file. A foreground start opens an
- * attempt that closes once an Instagram activity has been resumed for {@link #STARTUP_OK_MS}; a
- * start that finds the previous attempt still open counts it as failed, whatever killed it. After
+ * {@code spookd_startup}, not in the per-account settings file. A foreground cold start opens an
+ * attempt that the first resumed Instagram activity closes; a start that finds the previous
+ * attempt still open counts it as failed, whatever killed it. After
  * {@link #FAILED_STARTS_FOR_SAFE_MODE} in a row the start runs with every feature off.
  */
 public final class SafeStartup {
@@ -36,13 +36,12 @@ public final class SafeStartup {
     /** Also the key of the settings row. */
     public static final String DISABLE_ALL_KEY = "disable_all_features";
     private static final String PREFS_NAME = "spookd_startup";
-    private static final long STARTUP_OK_MS = 5000;
+    private static final long CACHE_CLEANUP_DELAY_MS = 5000;
     private static final String MAIN_ACTIVITY = "com.instagram.mainactivity.InstagramMainActivity";
 
     private static volatile Boolean featuresOff;
     // Guarded by the class lock.
     private static boolean safeModeThisProcess;
-    private static boolean attemptOpened;
     // Main thread only.
     private static boolean anyResumed;
     private static boolean mainResumed;
@@ -63,14 +62,17 @@ public final class SafeStartup {
         if (featuresOff != null) return featuresOff;
         Context context = Utils.getContext();
         if (context == null) return false;
-        boolean off = false;
+        boolean off;
         try {
             SharedPreferences startup = prefs(context);
             if (isForegroundStart()) openAttempt(startup);
-            safeModeThisProcess = startup.getBoolean(SAFE_MODE_KEY, false);
-            off = safeModeThisProcess || startup.getBoolean(DISABLE_ALL_KEY, false);
+            safeModeThisProcess = readBoolean(startup, SAFE_MODE_KEY);
+            off = safeModeThisProcess || readBoolean(startup, DISABLE_ALL_KEY);
         } catch (Throwable t) {
-            Logger.printException(() -> "SafeStartup.featuresOff failure", t);
+            Logger.printException(() -> "SafeStartup: unreadable startup state, starting in safe mode", t);
+            // Starting as safe mode also shows its dialog, which offers a way back.
+            safeModeThisProcess = true;
+            off = true;
         }
         featuresOff = off;
         return off;
@@ -87,9 +89,10 @@ public final class SafeStartup {
             if (activity == null || mainResumed) return;
             if (!anyResumed) {
                 anyResumed = true;
-                // A process started in the background becomes a launch once something is shown.
-                openAttemptOnce(activity);
-                Utils.runOnMainThreadDelayed(SafeStartup::onStartupSucceeded, STARTUP_OK_MS);
+                // The first screen shown ends the start; a process started in the background never opened one.
+                Context context = activity.getApplicationContext();
+                closeAttempt(prefs(context));
+                Utils.runOnMainThreadDelayed(() -> cleanCacheLater(context), CACHE_CLEANUP_DELAY_MS);
             }
             if (!MAIN_ACTIVITY.equals(activity.getClass().getName())) return;
             mainResumed = true;
@@ -103,27 +106,37 @@ public final class SafeStartup {
         }
     }
 
-    /** The stored Disable all switch, for the settings row; main thread. */
+    /** The stored Disable all switch, for the settings row; any thread, never throws. */
     public static boolean disableAllStored() {
-        Context context = Utils.getContext();
-        return context != null && prefs(context).getBoolean(DISABLE_ALL_KEY, false);
-    }
-
-    /** Main thread, from the settings row. Written at once, since a restart may kill the process next. */
-    public static void setDisableAll(boolean enabled) {
-        Context context = Utils.getContext();
-        if (context == null) return;
-        SharedPreferences startup = prefs(context);
-        boolean previous = startup.getBoolean(DISABLE_ALL_KEY, false);
-        if (startup.edit().putBoolean(DISABLE_ALL_KEY, enabled).commit()) {
-            SettingsRestart.markChanged(DISABLE_ALL_KEY, RestartPolicy.REQUIRED, previous, enabled);
+        try {
+            Context context = Utils.getContext();
+            return context != null && readBoolean(prefs(context), DISABLE_ALL_KEY);
+        } catch (Throwable t) {
+            Logger.printException(() -> "SafeStartup.disableAllStored failure", t);
+            return false;
         }
     }
 
-    /** Part of resetting spookd settings: turns Disable all and safe mode off. Any thread. */
-    public static void resetStoredState() {
-        Context context = Utils.getContext();
-        if (context != null) prefs(context).edit().clear().commit();
+    /** Background thread, from the settings row; true once the value is on disk. */
+    public static boolean setDisableAll(boolean enabled) {
+        try {
+            Context context = Utils.getContext();
+            return context != null && prefs(context).edit().putBoolean(DISABLE_ALL_KEY, enabled).commit();
+        } catch (Throwable t) {
+            Logger.printException(() -> "SafeStartup.setDisableAll failure", t);
+            return false;
+        }
+    }
+
+    /** Background thread, part of resetting spookd settings; true once Disable all and safe mode are off on disk. */
+    public static boolean resetStoredState() {
+        try {
+            Context context = Utils.getContext();
+            return context != null && prefs(context).edit().clear().commit();
+        } catch (Throwable t) {
+            Logger.printException(() -> "SafeStartup.resetStoredState failure", t);
+            return false;
+        }
     }
 
     private static synchronized boolean safeModeThisProcess() {
@@ -131,16 +144,12 @@ public final class SafeStartup {
         return safeModeThisProcess;
     }
 
-    private static synchronized void openAttemptOnce(Context context) {
-        featuresOff();
-        if (!attemptOpened) openAttempt(prefs(context));
-    }
-
-    private static void onStartupSucceeded() {
-        Context context = Utils.getContext();
-        if (context == null) return;
-        closeAttempt(prefs(context));
-        if (!featuresOff()) StorageScreen.autoClearCache(context);
+    private static void cleanCacheLater(Context context) {
+        try {
+            if (!featuresOff()) StorageScreen.autoClearCache(context);
+        } catch (Throwable t) {
+            Logger.printException(() -> "SafeStartup: cache cleanup failure", t);
+        }
     }
 
     /** Whether the process was started to show an activity, not for a push, job or other background work. */
@@ -161,10 +170,14 @@ public final class SafeStartup {
                         .putBoolean(DISABLE_ALL_KEY, true).putBoolean(SAFE_MODE_KEY, false).apply())
                 .setNegativeButton(str("spookd_reset_pref"),
                         (dialog, which) -> InstaUtils.showResetSettingsDialog(activity))
-                .setNeutralButton(str("spookd_safe_mode_turn_on"), (dialog, which) -> {
-                    startup.edit().putBoolean(SAFE_MODE_KEY, false).commit();
-                    InstaUtils.restartApp(activity);
-                })
+                .setNeutralButton(str("spookd_safe_mode_turn_on"), (dialog, which) ->
+                        Utils.runOnBackgroundThread(() -> {
+                            boolean saved = startup.edit().putBoolean(SAFE_MODE_KEY, false).commit();
+                            Utils.runOnMainThread(() -> {
+                                if (saved) InstaUtils.restartApp(activity);
+                                else Utils.showToastShort(str("spookd_setting_save_failed"));
+                            });
+                        }))
                 .show();
     }
 
@@ -172,24 +185,41 @@ public final class SafeStartup {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
-    /**
-     * Counts a still-open previous attempt as failed, turns safe mode on at the limit and opens this
-     * one. Synchronous, so a start that dies right after still leaves its marker.
-     */
+    /** A stored boolean; a value of another type reads as false and is rewritten as false. */
+    static boolean readBoolean(SharedPreferences startup, String key) {
+        try {
+            return startup.getBoolean(key, false);
+        } catch (ClassCastException e) {
+            startup.edit().putBoolean(key, false).apply();
+            return false;
+        }
+    }
+
+    /** A stored int; a value of another type reads as 0 and is rewritten as 0. */
+    static int readInt(SharedPreferences startup, String key) {
+        try {
+            return startup.getInt(key, 0);
+        } catch (ClassCastException e) {
+            startup.edit().putInt(key, 0).apply();
+            return 0;
+        }
+    }
+
+    /** Counts a still-open previous attempt as failed, turns safe mode on at the limit and opens this one. */
     static void openAttempt(SharedPreferences startup) {
-        attemptOpened = true;
-        int failed = startup.getInt(FAILED_STARTS_KEY, 0) + (startup.getBoolean(ATTEMPT_OPEN_KEY, false) ? 1 : 0);
+        int failed = readInt(startup, FAILED_STARTS_KEY) + (readBoolean(startup, ATTEMPT_OPEN_KEY) ? 1 : 0);
         SharedPreferences.Editor editor = startup.edit()
                 .putBoolean(ATTEMPT_OPEN_KEY, true)
                 .putInt(FAILED_STARTS_KEY, failed);
         if (failed >= FAILED_STARTS_FOR_SAFE_MODE) {
             editor.putBoolean(SAFE_MODE_KEY, true).putInt(FAILED_STARTS_KEY, 0);
         }
+        // The one synchronous write at cold start, so a native crash right after still counts this start.
         editor.commit();
     }
 
     static void closeAttempt(SharedPreferences startup) {
-        if (startup.getBoolean(ATTEMPT_OPEN_KEY, false) || startup.getInt(FAILED_STARTS_KEY, 0) != 0) {
+        if (readBoolean(startup, ATTEMPT_OPEN_KEY) || readInt(startup, FAILED_STARTS_KEY) != 0) {
             startup.edit().putBoolean(ATTEMPT_OPEN_KEY, false).putInt(FAILED_STARTS_KEY, 0).apply();
         }
     }

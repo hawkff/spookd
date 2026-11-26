@@ -75,7 +75,7 @@ public class InstaUtils {
                 .setNegativeButton(str("spookd_cancel"), null)
                 .setPositiveButton(
                         str("spookd_ok"),
-                        (dialogInterface, which) -> deletePref()
+                        (dialogInterface, which) -> Utils.runOnBackgroundThread(InstaUtils::deletePref)
                 )
                 .show();
     }

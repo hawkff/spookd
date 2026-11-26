@@ -55,9 +55,7 @@ public class Pref {
     public static boolean clearAllPreferences() {
         // Resetting settings would silently drop an active Focus Lock.
         if (FocusLock.isActive()) return false;
-        if (!SharedPref.clearAll()) return false;
-        SafeStartup.resetStoredState();
-        return true;
+        return SharedPref.clearAll() && SafeStartup.resetStoredState();
     }
     
     public static boolean spookdDebug() {
