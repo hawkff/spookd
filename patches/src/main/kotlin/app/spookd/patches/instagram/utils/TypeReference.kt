@@ -4,7 +4,7 @@
  * See the included NOTICE file for GPLv3 §7(b) terms that apply to this code.
  */
 
-package app.crimera.patches.instagram.utils
+package app.spookd.patches.instagram.utils
 
 import app.morphe.patcher.Match
 import app.morphe.patcher.util.getReference

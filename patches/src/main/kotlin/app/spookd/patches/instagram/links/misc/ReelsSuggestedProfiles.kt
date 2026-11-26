@@ -7,7 +7,7 @@
 package app.spookd.patches.instagram.links.misc
 
 import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
-import app.crimera.patches.instagram.utils.typeReference
+import app.spookd.patches.instagram.utils.typeReference
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.BytecodePatchContext

@@ -7,7 +7,7 @@
 package app.spookd.patches.instagram.misc.dm
 
 import app.spookd.patches.instagram.utils.Constants.PREF_DESCRIPTOR
-import app.crimera.patches.instagram.utils.typeReference
+import app.spookd.patches.instagram.utils.typeReference
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.InstructionLocation.MatchAfterImmediately
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
