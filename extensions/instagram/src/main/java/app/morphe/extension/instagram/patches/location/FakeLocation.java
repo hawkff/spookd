@@ -14,10 +14,10 @@ import android.os.Looper;
 import android.os.SystemClock;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 import app.morphe.extension.instagram.utils.Pref;
@@ -36,9 +36,9 @@ public final class FakeLocation {
     private static final double JITTER_DEGREES = 0.00003;
     private static final Map<LocationListener, LocationListener> LISTENERS =
             Collections.synchronizedMap(new IdentityHashMap<>());
-    // Listeners whose answered request has not been delivered or removed yet.
-    private static final Set<LocationListener> ANSWERING =
-            Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<LocationListener, Boolean>()));
+    // Listeners whose answered request has not been delivered or removed yet, with that request's token.
+    private static final Map<LocationListener, Object> ANSWERING =
+            Collections.synchronizedMap(new IdentityHashMap<>());
     private static volatile Constructor<?> wrapperConstructor;
 
     private FakeLocation() {
@@ -119,27 +119,65 @@ public final class FakeLocation {
 
     /**
      * Start of Instagram's LocationManager update request. While on, the request is answered here with the chosen
-     * place and nothing is asked of the device (null). Otherwise the listener to register, which checks again on
-     * every fix, so a later switch to an account with Fake location on hands on no real fix.
+     * place and nothing is asked of the device (null); a request made while the places load stays open until they
+     * are read. Otherwise the listener to register, which checks again on every fix, so a later switch to an
+     * account with Fake location on hands on no real fix.
      */
     public static LocationListener requestUpdates(LocationListener listener, String provider) {
         try {
             if (listener == null) return null;
             if (!replacesDevice()) return LISTENERS.computeIfAbsent(listener, SpoofingListener::new);
-            ANSWERING.add(listener);
+            // A token per request, so an answer queued for an earlier, removed request never takes a later one's.
+            Object token = new Object();
+            ANSWERING.put(listener, token);
             Looper looper = Looper.myLooper();
             // Delivered later on the requesting looper, as LocationManager would.
-            new Handler(looper != null ? looper : Looper.getMainLooper()).post(() -> {
-                if (!ANSWERING.remove(listener)) return;
-                Location fix = lastKnown(provider);
-                if (fix != null) listener.onLocationChanged(fix);
-            });
+            Handler handler = new Handler(looper != null ? looper : Looper.getMainLooper());
+            handler.post(() -> answer(listener, provider, token, handler));
             return null;
         } catch (Throwable t) {
             Logger.printException(() -> "FakeLocation.requestUpdates failed", t);
             // Dropping the request is safer than registering a listener that could hand on a real fix.
             return null;
         }
+    }
+
+    private static void answer(LocationListener listener, String provider, Object token, Handler handler) {
+        if (ANSWERING.get(listener) != token) return;
+        Location fix = lastKnown(provider);
+        if (fix == null) {
+            if (FakePlaces.isLoaded()) ANSWERING.remove(listener, token);
+            else FakePlaces.whenLoaded(() -> handler.post(() -> answer(listener, provider, token, handler)));
+            return;
+        }
+        if (ANSWERING.remove(listener, token)) listener.onLocationChanged(fix);
+    }
+
+    /** The plugin's update request while on: the fix to deliver now, or null with it delivered once places load. */
+    public static Location pluginAnswer(Object listener) {
+        return nowOrWhenLoaded(listener, "onLocationChanged", Location.class);
+    }
+
+    /** The shop finder's location request while on: the fix to deliver now, or null with it delivered once places load. */
+    public static Location shopFinderAnswer(Object callback) {
+        return nowOrWhenLoaded(callback, "invoke", Object.class);
+    }
+
+    private static Location nowOrWhenLoaded(Object target, String name, Class<?> parameter) {
+        Location fix = current();
+        if (fix != null || target == null || FakePlaces.isLoaded()) return fix;
+        FakePlaces.whenLoaded(() -> {
+            try {
+                Location late = current();
+                if (late == null) return;
+                Method method = target.getClass().getMethod(name, parameter);
+                method.setAccessible(true);
+                method.invoke(target, late);
+            } catch (Throwable t) {
+                Logger.printException(() -> "FakeLocation late answer failed", t);
+            }
+        });
+        return null;
     }
 
     /** Start of Instagram's LocationManager update removal: the listener that was registered for {@code listener}. */

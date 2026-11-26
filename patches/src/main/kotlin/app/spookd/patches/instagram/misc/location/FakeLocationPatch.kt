@@ -230,7 +230,8 @@ val fakeLocationPatch =
             }
 
             // p2 is Instagram's location listener; the chosen place is delivered at once, as the plugin does with a
-            // cached fix, and the device is never asked. With no place yet, the method's first return ends it.
+            // cached fix, and the device is never asked. While places load it is delivered once they are read, and the
+            // method's first return ends the call.
             PluginRequestUpdatesFingerprint.method.apply {
                 val listenerType = parameterTypes[2].toString()
                 if (classDefBy(listenerType).methods.none {
@@ -245,10 +246,10 @@ val fakeLocationPatch =
                     0,
                     """
                     $replacesDevice
-                    invoke-static {}, $FAKE_LOCATION_DESCRIPTOR->current()$LOCATION_CLASS
+                    move-object/from16 v1, p2
+                    invoke-static {v1}, $FAKE_LOCATION_DESCRIPTOR->pluginAnswer(Ljava/lang/Object;)$LOCATION_CLASS
                     move-result-object v0
                     if-eqz v0, :fake_location_none
-                    move-object/from16 v1, p2
                     invoke-interface {v1, v0}, $listenerType->onLocationChanged($LOCATION_CLASS)V
                     return-void
                     """.trimIndent(),
@@ -258,7 +259,8 @@ val fakeLocationPatch =
             }
 
             // The first constructor call builds the result callback (a Function1 taking the Location); right after it,
-            // the chosen place, or null while places load, is handed to it and Google Play services is not asked.
+            // the chosen place is handed to it (once places are read, if they are still loading) and Google Play services
+            // is not asked.
             ShopFinderCurrentLocationFingerprint.method.apply {
                 val callbackIndex = indexOfFirstInstructionOrThrow {
                     opcode == Opcode.INVOKE_DIRECT && getReference<MethodReference>()?.name == "<init>"
@@ -269,16 +271,19 @@ val fakeLocationPatch =
                 if (callback == 0 || callback > 0xf || FUNCTION1_CLASS !in classDefBy(callbackType).interfaces) {
                     throw PatchException("Expected the shop finder's location callback to be a Function1 in v1..v15")
                 }
+                val returnInstruction = getInstruction(indexOfFirstInstructionOrThrow(Opcode.RETURN_VOID))
                 addInstructionsWithLabels(
                     callbackIndex + 1,
                     """
                     $replacesDevice
-                    invoke-static {}, $FAKE_LOCATION_DESCRIPTOR->current()$LOCATION_CLASS
+                    invoke-static {v$callback}, $FAKE_LOCATION_DESCRIPTOR->shopFinderAnswer(Ljava/lang/Object;)$LOCATION_CLASS
                     move-result-object v0
+                    if-eqz v0, :fake_location_none
                     invoke-interface {v$callback, v0}, $FUNCTION1_CLASS->invoke(Ljava/lang/Object;)Ljava/lang/Object;
                     return-void
                     """.trimIndent(),
                     ExternalLabel("fake_location_device", getInstruction(callbackIndex + 1)),
+                    ExternalLabel("fake_location_none", returnInstruction),
                 )
             }
 
