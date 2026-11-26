@@ -346,6 +346,14 @@ public class Pref {
         return SettingsStatus.exactLastActive && EXACT_LAST_ACTIVE.get();
     }
 
+    private static final Cached<Boolean> SEARCH_STORY_VIEWERS =
+            new Cached<>(() -> on(Settings.SEARCH_STORY_VIEWERS), Settings.SEARCH_STORY_VIEWERS.key);
+
+    /** Read on every rebuild of a story's viewer list. */
+    public static boolean searchStoryViewers() {
+        return SettingsStatus.searchStoryViewers && SEARCH_STORY_VIEWERS.get();
+    }
+
     private static final Cached<Boolean> HOLD_SEND_COPY_LINK =
             new Cached<>(() -> on(Settings.HOLD_SEND_COPY_LINK), Settings.HOLD_SEND_COPY_LINK.key);
 
