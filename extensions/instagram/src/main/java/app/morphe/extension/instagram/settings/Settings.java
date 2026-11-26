@@ -39,6 +39,10 @@ public class Settings {
     public static final StringSetting STORY_GHOST_MODE = new StringSetting("story_ghost_mode", "everyone", NOT_REQUIRED);
     public static final StringSetting STORY_GHOST_USERS = new StringSetting("story_ghost_users", "{}", NOT_REQUIRED);
     public static final BooleanSetting MARK_STORY_SEEN_ON_INTERACTION = new BooleanSetting("mark_story_seen_on_interaction", false, NOT_REQUIRED);
+    public static final BooleanSetting MARK_EARLIER_STORIES_SEEN = new BooleanSetting("mark_earlier_stories_seen", false, NOT_REQUIRED);
+    public static final BooleanSetting ADVANCE_STORY_ON_MARK_SEEN = new BooleanSetting("advance_story_on_mark_seen", false, NOT_REQUIRED);
+    public static final BooleanSetting ADVANCE_STORY_ON_LIKE = new BooleanSetting("advance_story_on_like", false, NOT_REQUIRED);
+    public static final BooleanSetting ADVANCE_STORY_ON_REPLY = new BooleanSetting("advance_story_on_reply", false, NOT_REQUIRED);
     public static final BooleanSetting VIEW_LIVE_ANONYMOUSLY = new BooleanSetting("view_live_anonymously", false, NOT_REQUIRED);
     public static final BooleanSetting DISABLE_SCREENSHOT_DETECTION = new BooleanSetting("disable_screenshot_detection", false, NOT_REQUIRED);
     public static final BooleanSetting VIEW_DM_ANONYMOUSLY = new BooleanSetting("view_dm_anonymously", false, NOT_REQUIRED);

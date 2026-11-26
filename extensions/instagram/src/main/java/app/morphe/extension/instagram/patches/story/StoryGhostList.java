@@ -61,9 +61,9 @@ public final class StoryGhostList {
     /** Start of Instagram's story like action, on the main thread. */
     public static void onStoryLiked(Object controller, Object state, Object reelModel, Object item, Object reel) {
         try {
-            if (state instanceof Enum && "LIKED".equals(((Enum<?>) state).name()) && interactionMarksSeen()) {
-                markSeen(controllerSessionNative(controller), item, reel);
-            }
+            if (!(state instanceof Enum && "LIKED".equals(((Enum<?>) state).name()))) return;
+            if (interactionMarksSeen()) markSeen(controllerSessionNative(controller), item, reel);
+            StoryAdvance.afterLike();
         } catch (Throwable throwable) {
             Logger.printException(() -> "Failed to mark a liked story as seen", throwable);
         }
@@ -72,9 +72,11 @@ public final class StoryGhostList {
     /** Start of the story viewer's sent-reply log, which also covers quick reactions. */
     public static void onStoryReplySent(Object logger, Object reel) {
         try {
-            if (!interactionMarksSeen()) return;
-            Object session = loggerSessionNative(logger);
-            markSeen(session, currentItemNative(session, reel), reel);
+            if (interactionMarksSeen()) {
+                Object session = loggerSessionNative(logger);
+                markSeen(session, currentItemNative(session, reel), reel);
+            }
+            StoryAdvance.afterReply();
         } catch (Throwable throwable) {
             Logger.printException(() -> "Failed to mark a replied story as seen", throwable);
         }
