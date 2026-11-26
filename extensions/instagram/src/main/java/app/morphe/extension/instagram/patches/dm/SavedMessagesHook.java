@@ -302,6 +302,7 @@ public class SavedMessagesHook {
             DirectItem directItem = new DirectItem(item);
             String senderId = directItem.getUserId();
             boolean sentByViewer = directItem.isSentByViewer();
+            // REST items fall back to the remembered id, which after an account switch may name the other account.
             String viewerId = resolveViewerId(sentByViewer, senderId, sessionViewerId);
             if (!shouldCaptureReceived(sentByViewer, senderId, viewerId)) return;
 
