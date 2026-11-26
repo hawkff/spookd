@@ -25,6 +25,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstructio
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 private const val REFRESH_CONTROL = "$PATCHES_DESCRIPTOR/navigation/RefreshControl;"
@@ -90,6 +91,34 @@ val refreshControlPatch =
                     """
                     invoke-static {v$refresh, p1}, $REFRESH_CONTROL->allowHomeScrollRefresh(ZLjava/lang/Object;)Z
                     move-result v$refresh
+                    """.trimIndent(),
+                )
+
+                // Before that check a shown New posts pill opens instead: an own field, null-checked, opened by its class's static.
+                val instructions = method.implementation!!.instructions
+                val pillRead = (0 until check).firstOrNull { i ->
+                    val pill = ((instructions[i] as? ReferenceInstruction)?.reference as? FieldReference)
+                        ?.takeIf { instructions[i].opcode == Opcode.IGET_OBJECT && it.definingClass == method.definingClass }
+                        ?: return@firstOrNull false
+                    val register = (instructions[i] as OneRegisterInstruction).registerA
+                    val nullCheck = instructions.getOrNull(i + 1)
+                    nullCheck?.opcode == Opcode.IF_EQZ && (nullCheck as OneRegisterInstruction).registerA == register &&
+                        (i + 2..minOf(i + 12, check - 1)).any { j ->
+                            val open = (instructions[j] as? ReferenceInstruction)?.reference as? MethodReference
+                            instructions[j].opcode == Opcode.INVOKE_STATIC && open?.definingClass == pill.type &&
+                                open?.parameterTypes?.firstOrNull()?.toString() == pill.type &&
+                                instructions.getOrNull(j + 1)?.opcode == Opcode.RETURN_VOID
+                        }
+                } ?: throw PatchException("Home New posts pill check not found")
+                val pillRegister = (instructions[pillRead] as OneRegisterInstruction).registerA
+                val pillType = ((instructions[pillRead] as ReferenceInstruction).reference as FieldReference).type
+                if (pillRegister > 15) throw PatchException("Home New posts pill check uses a high register")
+                method.addInstructions(
+                    pillRead + 1,
+                    """
+                    invoke-static {v$pillRegister, p1}, $REFRESH_CONTROL->homeScrollNewPostsPill(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+                    move-result-object v$pillRegister
+                    check-cast v$pillRegister, $pillType
                     """.trimIndent(),
                 )
             }

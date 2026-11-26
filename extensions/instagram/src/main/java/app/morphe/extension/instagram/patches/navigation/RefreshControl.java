@@ -31,6 +31,23 @@ public final class RefreshControl {
         }
     }
 
+    /**
+     * From Home's scroll to top, on the main thread, after it has scrolled: the New posts pill it would
+     * open instead of reloading, or null to skip it. Tapping the pill itself does not pass here.
+     */
+    public static Object homeScrollNewPostsPill(Object pill, Object reason) {
+        try {
+            return newPostsPill(pill, reason, pill != null && isHomeTabTap(reason) && Pref.disableHomeTabRefresh());
+        } catch (Throwable t) {
+            Logger.printException(() -> "homeScrollNewPostsPill failure", t);
+            return pill;
+        }
+    }
+
+    static Object newPostsPill(Object pill, Object reason, boolean skipTabRefresh) {
+        return skipTabRefresh && isHomeTabTap(reason) ? null : pill;
+    }
+
     static boolean isHomeTabTap(Object reason) {
         return reason instanceof Enum && "HOME_PRESS".equals(((Enum<?>) reason).name());
     }
