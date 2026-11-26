@@ -317,6 +317,10 @@ public class Pref {
         return SettingsStatus.fakeLocation && FAKE_LOCATION.get();
     }
 
+    public static boolean hiddenAccountPrivacyOptions() {
+        return SettingsStatus.hiddenAccountPrivacyOptions && on(Settings.HIDDEN_ACCOUNT_PRIVACY_OPTIONS);
+    }
+
     private static final Cached<Boolean> HIDE_REELS_TAB_HEADER =
             new Cached<>(() -> on(Settings.HIDE_REELS_TAB_HEADER), Settings.HIDE_REELS_TAB_HEADER.key);
 
