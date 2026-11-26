@@ -73,6 +73,8 @@ public class SettingsStatus {
     public static void markAsReadAfterReply() {
         markAsReadAfterReply = true;
     }
+    public static boolean dmGhostChats = false;
+    public static void dmGhostChats() { dmGhostChats = true; }
     public static boolean saveDeletedMessages = false;
     public static void saveDeletedMessages() {
         saveDeletedMessages = true;
@@ -88,6 +90,8 @@ public class SettingsStatus {
     public static void disableDisappearingMessagesGesture() { disableDisappearingMessagesGesture = true; }
     public static boolean unlimitedReplaysOnEphemeralMedia = false;
     public static void unlimitedReplaysOnEphemeralMedia() {unlimitedReplaysOnEphemeralMedia = true;}
+    public static boolean markVisualMessagesSeen = false;
+    public static void markVisualMessagesSeen() { markVisualMessagesSeen = true; }
     public static boolean markChatAsRead = false;
     public static void markChatAsRead() { markChatAsRead = true; }
     public static boolean inboxLock = false;
@@ -448,6 +452,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_disable_disappearing_messages_gesture"), SettingsStatus.disableDisappearingMessagesGesture);
         FLAGS.put(str("spookd_send_keyboard_gifs"), SettingsStatus.sendKeyboardGifs);
         FLAGS.put(str("spookd_stop_visual_message_auto_advance"), SettingsStatus.stopVisualMessageAutoAdvance);
+        FLAGS.put(str("spookd_mark_visual_messages_seen_manually"), SettingsStatus.markVisualMessagesSeen);
         FLAGS.put(str("spookd_exact_last_active"), SettingsStatus.exactLastActive);
 
         FLAGS.put(str("spookd_customise_story_timestamp"),SettingsStatus.customiseStoryTimestamp);
@@ -516,6 +521,7 @@ public class SettingsStatus {
 
         FLAGS.put(str("spookd_view_dm_anonymously"),SettingsStatus.viewDmAnonymously);
         FLAGS.put(str("spookd_mark_as_read_after_reply"), SettingsStatus.markAsReadAfterReply);
+        FLAGS.put(str("spookd_dm_ghost_mode"), SettingsStatus.dmGhostChats);
         FLAGS.put(str("spookd_save_deleted_messages"),SettingsStatus.saveDeletedMessages);
         FLAGS.put(str("spookd_dm_media_vault"),SettingsStatus.dmMediaVault);
         FLAGS.put(str("spookd_disable_screenshot_detection"),SettingsStatus.disableScreenshotDetection);

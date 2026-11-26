@@ -35,7 +35,24 @@ public class EphemeralMediaPatch {
             SharedPreferences preferences = localReadPreferences();
             if (key != null && preferences != null) preferences.edit().putBoolean(key, true).apply();
         } catch (Exception ignored) { }
-        return true;
+        // With the eye button the receipt is built and kept back right before it is queued (VisualMessageSeen).
+        return !manualSeen();
+    }
+
+    /** Marks an item of an account viewed locally, as a kept-back receipt does. */
+    static void markViewed(String viewerId, String itemId) {
+        if (viewerId == null || viewerId.isEmpty() || itemId == null || itemId.isEmpty()) return;
+        SharedPreferences preferences = localReadPreferences();
+        if (preferences != null) preferences.edit().putBoolean(viewerId + ":" + itemId, true).apply();
+    }
+
+    private static boolean manualSeen() {
+        try {
+            return Pref.markVisualMessagesSeenManually();
+        } catch (RuntimeException e) {
+            // Kept back as without the eye.
+            return false;
+        }
     }
 
     public static boolean wasEphemeralMediaViewed(Object item, Object viewer) {

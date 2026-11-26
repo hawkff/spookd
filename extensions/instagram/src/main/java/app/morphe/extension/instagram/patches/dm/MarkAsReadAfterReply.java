@@ -28,7 +28,7 @@ public final class MarkAsReadAfterReply {
             PENDING.clear();
             return;
         }
-        if (!Pref.viewDmAnonymously() || session == null || threadId == null
+        if (session == null || !Pref.viewDmAnonymously(session.getUserId(), threadId) || threadId == null
                 || messageId == null || senderId == null) return;
 
         // Keep the receipt Instagram tried to send, including its original message cursor.

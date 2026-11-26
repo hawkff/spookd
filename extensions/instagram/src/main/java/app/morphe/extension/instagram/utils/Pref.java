@@ -33,6 +33,7 @@ import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
 import app.morphe.extension.instagram.patches.download.ReelDownload;
+import app.morphe.extension.instagram.patches.dm.DmGhostChats;
 
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.shared.MarkChatAsReadScope;
@@ -149,6 +150,16 @@ public class Pref {
                 Pref.getTurnOnAllGhostModes(),
                 enableMarkChatAsReadOption() || markAsReadAfterReply()
         );
+    }
+
+    /** The seen request of one chat of an account: true blocks it, as {@link #viewDmAnonymously()} limited to the chats the mode covers. */
+    public static boolean viewDmAnonymously(String account, String threadId) {
+        return viewDmAnonymously() && DmGhostChats.appliesTo(dmGhostMode(), account, threadId);
+    }
+
+    /** "everyone", "except_listed" or "only_listed": the chats View DMs anonymously covers. */
+    public static String dmGhostMode() {
+        return SettingsStatus.dmGhostChats ? value(Settings.DM_GHOST_MODE) : Settings.DM_GHOST_MODE.defaultValue;
     }
 
     static boolean shouldBlockDmSeen(
@@ -341,6 +352,14 @@ public class Pref {
     /** Called on the main thread when the DM visual message viewer would move on by itself. */
     public static boolean stopVisualMessageAutoAdvance() {
         return SettingsStatus.stopVisualMessageAutoAdvance && STOP_VISUAL_MESSAGE_AUTO_ADVANCE.get();
+    }
+
+    private static final Cached<Boolean> MARK_VISUAL_MESSAGES_SEEN_MANUALLY = new Cached<>(
+            () -> on(Settings.MARK_VISUAL_MESSAGES_SEEN_MANUALLY), Settings.MARK_VISUAL_MESSAGES_SEEN_MANUALLY.key);
+
+    /** Called on the main thread each time the DM visual message viewer shows an item. */
+    public static boolean markVisualMessagesSeenManually() {
+        return SettingsStatus.markVisualMessagesSeen && MARK_VISUAL_MESSAGES_SEEN_MANUALLY.get();
     }
 
     public static boolean disableReelsScrolling() {
