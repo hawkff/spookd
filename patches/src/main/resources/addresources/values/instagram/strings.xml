@@ -803,7 +803,7 @@
     <!-- Instants seen, creation and confirmations -->
     <string name="spookd_patch_instants_seen">Instants seen</string>
     <string name="spookd_instants_dont_mark_seen">Don\'t mark Instants seen</string>
-    <string name="spookd_instants_dont_mark_seen_desc">Instagram is not told you opened an Instant, so it stays unseen for its sender. Senders on the Always mark seen list are still told. An Instant whose sender can\'t be identified is not marked seen.</string>
+    <string name="spookd_instants_dont_mark_seen_desc">Instagram is not told you opened an Instant, so it stays unseen for its sender. Senders on the Always mark seen list are still told. An Instant whose sender can\'t be identified is not marked seen. Turn on all ghost modes turns this on too.</string>
     <string name="spookd_instants_always_seen_users">Always mark seen</string>
     <string name="spookd_instants_always_seen_users_desc">Senders whose Instants are marked seen even while Don\'t mark Instants seen is on</string>
     <string name="spookd_instants_never_seen_users">Never mark seen</string>

@@ -279,7 +279,11 @@ public class Pref {
     }
 
     public static boolean instantsDontMarkSeen() {
-        return SettingsStatus.instantsSeen && on(Settings.INSTANTS_DONT_MARK_SEEN);
+        return instantsDontMarkSeen(SettingsStatus.instantsSeen, on(Settings.INSTANTS_DONT_MARK_SEEN), getTurnOnAllGhostModes());
+    }
+
+    static boolean instantsDontMarkSeen(boolean applied, boolean dontMarkSeen, boolean allGhostModes) {
+        return applied && (dontMarkSeen || allGhostModes);
     }
 
     public static boolean disableInstantsCreation() {
