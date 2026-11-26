@@ -8,26 +8,19 @@ import org.junit.Test;
 public final class ReactionViewerTest {
 
     @Test
-    public void restItemsAfterAnAccountSwitchUseTheCurrentSession() {
-        // Account A was used before; B is current now and the REST item carries no session.
+    public void aResponseForAArrivingAfterTheSwitchToBRecordsNothing() {
+        // A's history request was outstanding when B became current; the REST item has no session.
         String viewer = ReactionViewer.atEnqueue(null, "B", true);
-        assertEquals("B", viewer);
-        assertEquals("B", ReactionViewer.forComparison(true, viewer));
-    }
-
-    @Test
-    public void unknownOwnershipSkipsTheComparison() {
-        // Without a current session the stored id of an earlier account must not be used.
-        String viewer = ReactionViewer.atEnqueue(null, null, true);
-        assertNull(viewer);
         assertNull(ReactionViewer.forComparison(true, viewer));
-        assertNull(ReactionViewer.forComparison(true, " "));
+        assertNull(ReactionViewer.forComparison(true, ReactionViewer.atEnqueue(null, null, true)));
     }
 
     @Test
-    public void realtimeItemsKeepTheirOwnSessionAndAreNotCompared() {
-        assertEquals("A", ReactionViewer.atEnqueue("A", "B", false));
-        assertNull(ReactionViewer.atEnqueue(null, "B", false));
-        assertNull(ReactionViewer.forComparison(false, "A"));
+    public void realtimeItemsCompareForTheirOwnSessionOnly() {
+        String viewer = ReactionViewer.atEnqueue("A", "B", false);
+        assertEquals("A", viewer);
+        assertEquals("A", ReactionViewer.forComparison(false, viewer));
+        assertNull(ReactionViewer.forComparison(false, ReactionViewer.atEnqueue(null, "B", false)));
+        assertNull(ReactionViewer.forComparison(false, " "));
     }
 }

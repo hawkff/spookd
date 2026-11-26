@@ -358,8 +358,8 @@ public class SavedMessagesHook {
                         db.getStoredContent(messageId));
                 if (Pref.dmMediaVault()) captureMedia(item, directItem, serverId, viewerId, type, timestamp);
                 savePicture(db, senderId, session, viewerId);
-                // Only full REST items are compared, since other payloads may leave the reactions out;
-                // without the session's viewer id an own removal would look like someone else's.
+                // Only items whose own session names the account are compared; a REST response may
+                // belong to an account that was switched away from while it loaded.
                 String reactionViewer = ReactionViewer.forComparison(restPath, sessionViewerId);
                 if (reactionViewer != null) {
                     db.syncReactions(messageId, directItem.getReactions(), reactionViewer,

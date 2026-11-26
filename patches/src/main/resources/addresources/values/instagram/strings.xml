@@ -759,7 +759,7 @@
     <string name="spookd_open_share_in_instagram">Open in Instagram</string>
     <string name="spookd_open_voice_with_player">Open with music player</string>
     <string name="spookd_save_deleted_messages">Save deleted messages</string>
-    <string name="spookd_save_deleted_messages_desc">Captures incoming DMs locally as they arrive from the server. Marks messages as deleted when unsent, so you can view them even after the sender deletes them. Also lists reactions that others remove from saved messages, noticed when Instagram loads the chat again.</string>
+    <string name="spookd_save_deleted_messages_desc">Captures incoming DMs locally as they arrive from the server. Marks messages as deleted when unsent, so you can view them even after the sender deletes them. Also lists reactions that others remove from saved messages, when the updated message arrives in real time.</string>
     <string name="spookd_view_deleted_messages">View deleted messages</string>
     <string name="spookd_all_deleted_messages">All deleted messages</string>
     <string name="spookd_no_deleted_messages">No deleted messages captured yet.\nEnable the feature and messages will be saved as they arrive.</string>

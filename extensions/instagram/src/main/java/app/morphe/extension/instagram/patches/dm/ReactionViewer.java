@@ -21,9 +21,12 @@ final class ReactionViewer {
         return restPath && !isBlank(currentSessionId) ? currentSessionId : null;
     }
 
-    /** The viewer id reactions may be compared for, or null when ownership can't be established. */
+    /**
+     * The viewer id reactions may be compared for, or null when ownership can't be established.
+     * REST items carry no session of their own, so the current one is no proof of their account.
+     */
     static String forComparison(boolean restPath, String enqueuedViewerId) {
-        return restPath && !isBlank(enqueuedViewerId) ? enqueuedViewerId : null;
+        return !restPath && !isBlank(enqueuedViewerId) ? enqueuedViewerId : null;
     }
 
     private static boolean isBlank(String value) {
