@@ -145,6 +145,31 @@ public class ActionConfirmTest {
     }
 
     @Test
+    public void likedCommentsAreUnlikedSoNotAsked() {
+        assertTrue(ActionConfirm.isLiked("LIKE"));
+        assertFalse(ActionConfirm.isLiked("NONE"));
+        assertFalse(ActionConfirm.isLiked("DISLIKE"));
+        assertFalse(ActionConfirm.isLiked(null));
+    }
+
+    @Test
+    public void commentLikeReplayMatchesOnlyTheCommentAskedAbout() {
+        Object comments = new Object();
+        Object post = new Object();
+        Object noReaction = new Object();
+        List<Object> asked = Arrays.asList(noReaction, post, "17900000000000001", null, true);
+        List<Boolean> seen = new ArrayList<>();
+
+        ActionConfirm.runConfirmed(comments, asked, () -> {
+            seen.add(ActionConfirm.replayVerdict(comments,
+                    Arrays.asList(noReaction, post, new String("17900000000000001"), null, true)));
+            seen.add(ActionConfirm.replayVerdict(comments, Arrays.asList(noReaction, post, "17900000000000002", null, true)));
+        });
+
+        assertEquals(Arrays.asList(true, false), seen);
+    }
+
+    @Test
     public void blankCommentsAreNotAsked() {
         assertTrue(ActionConfirm.isBlank(null));
         assertTrue(ActionConfirm.isBlank(" \n "));

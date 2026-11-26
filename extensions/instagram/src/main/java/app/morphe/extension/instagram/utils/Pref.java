@@ -465,6 +465,10 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.CONFIRM_REFRESH);
     }
 
+    public static boolean confirmCommentLike() {
+        return SharedPref.getBooleanPref(Settings.CONFIRM_COMMENT_LIKE);
+    }
+
     public static boolean disableHomeTabRefresh() {
         return SharedPref.getBooleanPref(Settings.DISABLE_HOME_TAB_REFRESH);
     }

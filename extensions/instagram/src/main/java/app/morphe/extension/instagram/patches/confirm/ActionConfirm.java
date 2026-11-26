@@ -473,6 +473,31 @@ public final class ActionConfirm {
         }
     }
 
+    /**
+     * From the comment list's like action, which only queues the change; {@code refs} holds the list,
+     * the comment's current reaction, the post, the comment id and a String. Unliking is not asked.
+     */
+    public static boolean allowCommentLike(Object[] refs, boolean last, String name) {
+        try {
+            Object comments = refs[0];
+            // The comment id makes a replay match only the comment that was asked about.
+            List<Object> state = Arrays.asList(refs[1], refs[2], refs[3], refs[4], last);
+            Boolean replay = replayVerdict(comments, state);
+            if (replay != null) return replay;
+            if (comments == null || isLiked(enumName(refs[1])) || !Pref.confirmCommentLike()) return true;
+            Object[] args = Arrays.copyOfRange(refs, 1, refs.length + 1);
+            args[args.length - 1] = last;
+            return !ask(null, LIKE, str("spookd_confirm_comment_like_title"), comments, state,
+                    invoker(comments.getClass(), name, comments, args));
+        } catch (Throwable t) {
+            Logger.printException(() -> "allowCommentLike failure", t);
+            return true;
+        }
+    }
+
+    static boolean isLiked(String reaction) {
+        return "LIKE".equals(reaction);
+    }
 
     /** What a tap on a follow button with this status asks, or null when it follows or Instagram asks itself. */
     static String unfollowAction(String status, String privacy) {
