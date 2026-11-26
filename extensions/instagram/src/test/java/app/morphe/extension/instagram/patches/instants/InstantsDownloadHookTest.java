@@ -39,12 +39,17 @@ public final class InstantsDownloadHookTest {
             }
         });
         clear.start();
+        boolean waited;
+        try {
+            clear.join(200);
+            waited = clear.isAlive();
+        } finally {
+            // Released even when an assertion fails, so the shared executor never stays blocked.
+            release.countDown();
+            clear.join(TimeUnit.SECONDS.toMillis(5));
+        }
 
-        clear.join(200);
-        assertTrue(clear.isAlive());
-        release.countDown();
-        clear.join(TimeUnit.SECONDS.toMillis(5));
-
+        assertTrue(waited);
         assertFalse(clear.isAlive());
         assertTrue(cleared.get());
         assertTrue(db.getAll().isEmpty());

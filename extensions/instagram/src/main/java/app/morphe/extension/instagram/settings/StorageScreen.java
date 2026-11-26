@@ -19,6 +19,8 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import app.morphe.extension.instagram.db.SpookdInstantsDb;
 import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzer;
@@ -40,6 +42,14 @@ public final class StorageScreen {
     private static final String INSTANTS_DB = "piko_instants_vault.db";
     private static final Set<String> KEEP_IN_CACHE = Collections.singleton(GalleryStorage.SHARE_DIR);
     private static final long BYTES_PER_MB = 1_000_000L;
+    // Cache files written this recently may still be in use, such as a download's staged cover.
+    private static final long IN_USE_MS = 10 * 60_000L;
+    // Clears run one at a time, so two never race over the same files.
+    private static final ExecutorService CLEARS = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "spookd-storage-clear");
+        thread.setPriority(Thread.MIN_PRIORITY);
+        return thread;
+    });
 
     private enum Item {
         GALLERY("spookd_storage_gallery", true),
@@ -102,7 +112,7 @@ public final class StorageScreen {
 
     private static void clear(Context context, Item item) {
         Context app = context.getApplicationContext();
-        background(() -> {
+        clearInOrder(() -> {
             boolean cleared;
             try {
                 cleared = clearItem(app, item);
@@ -127,7 +137,7 @@ public final class StorageScreen {
         long limitMb = Math.min(Pref.autoClearCacheMb(), 1_000_000L);
         if (limitMb <= 0) return;
         Context app = context.getApplicationContext();
-        background(() -> {
+        clearInOrder(() -> {
             if (cacheBytes(app) > limitMb * BYTES_PER_MB && !clearCache(app)) {
                 Logger.printInfo(() -> "Some cache files could not be deleted");
             }
@@ -189,8 +199,9 @@ public final class StorageScreen {
 
     /** False when a file that still exists could not be deleted. */
     private static boolean clearCache(Context context) {
-        boolean internal = clearContents(context.getCacheDir(), KEEP_IN_CACHE);
-        return clearContents(context.getExternalCacheDir(), Collections.emptySet()) && internal;
+        long olderThan = System.currentTimeMillis() - IN_USE_MS;
+        boolean internal = clearContents(context.getCacheDir(), KEEP_IN_CACHE, olderThan);
+        return clearContents(context.getExternalCacheDir(), Collections.emptySet(), olderThan) && internal;
     }
 
     private static long databaseBytes(Context context, String name) {
@@ -217,19 +228,29 @@ public final class StorageScreen {
         return total;
     }
 
-    /**
-     * Deletes everything inside {@code dir} but the entries named in {@code keep}; links are removed,
-     * not followed. False when something that still exists could not be deleted; missing files count as gone.
-     */
     static boolean clearContents(File dir, Set<String> keep) {
+        return clearContents(dir, keep, Long.MAX_VALUE);
+    }
+
+    /**
+     * Deletes everything inside {@code dir} but the entries named in {@code keep} and files modified
+     * after {@code olderThan}, with the folders holding them; links are removed, not followed. False
+     * when something else that still exists could not be deleted; missing files count as gone.
+     */
+    static boolean clearContents(File dir, Set<String> keep, long olderThan) {
         File[] children = dir == null ? null : dir.listFiles();
         if (children == null) return dir == null || !dir.exists();
         boolean cleared = true;
         for (File child : children) {
             if (keep.contains(child.getName())) continue;
             Path path = child.toPath();
-            if (!Files.isSymbolicLink(path) && child.isDirectory()) {
-                cleared &= clearContents(child, Collections.emptySet());
+            boolean link = Files.isSymbolicLink(path);
+            if (!link && child.isDirectory()) {
+                cleared &= clearContents(child, Collections.emptySet(), olderThan);
+                String[] left = child.list();
+                if (left != null && left.length > 0) continue;
+            } else if (!link && child.lastModified() > olderThan) {
+                continue;
             }
             if (!child.delete() && Files.exists(path, LinkOption.NOFOLLOW_LINKS)) cleared = false;
         }
@@ -238,6 +259,16 @@ public final class StorageScreen {
 
     private static boolean isGone(Context context) {
         return context instanceof Activity && (((Activity) context).isFinishing() || ((Activity) context).isDestroyed());
+    }
+
+    private static void clearInOrder(Runnable task) {
+        CLEARS.execute(() -> {
+            try {
+                task.run();
+            } catch (Throwable t) {
+                Logger.printException(() -> "Storage clear failed", t);
+            }
+        });
     }
 
     private static void background(Runnable task) {

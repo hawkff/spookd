@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.util.Collections;
 import java.util.Set;
 
+import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -31,7 +32,11 @@ public final class StorageScreenTest {
         write(new File(cache, "images/a.jpg"), 10);
         write(new File(cache, "b.tmp"), 20);
         File shared = write(new File(cache, "piko_share/x/c.jpg"), 40);
-        Files.createSymbolicLink(new File(cache, "link").toPath(), outside.getParentFile().toPath());
+        try {
+            Files.createSymbolicLink(new File(cache, "link").toPath(), outside.getParentFile().toPath());
+        } catch (UnsupportedOperationException | IOException | SecurityException e) {
+            Assume.assumeNoException("Symbolic links are not available here", e);
+        }
         Set<String> keep = Collections.singleton("piko_share");
 
         assertEquals(30, StorageScreen.sizeOfContents(cache, keep));
@@ -44,6 +49,21 @@ public final class StorageScreenTest {
         assertFalse(new File(cache, "images").exists());
         assertFalse(new File(cache, "link").exists());
         assertEquals(0, StorageScreen.sizeOfContents(cache, keep));
+    }
+
+    @Test
+    public void filesWrittenAfterTheCutoffStayWithTheirFolders() throws IOException {
+        File cache = temp.newFolder("recent");
+        File old = write(new File(cache, "old/a.jpg"), 10);
+        File fresh = write(new File(cache, "staging/cover.jpg"), 10);
+        long cutoff = System.currentTimeMillis() - 60_000;
+        assertTrue(old.setLastModified(cutoff - 60_000));
+        assertTrue(fresh.setLastModified(cutoff + 30_000));
+
+        assertTrue(StorageScreen.clearContents(cache, Collections.emptySet(), cutoff));
+
+        assertFalse(new File(cache, "old").exists());
+        assertTrue(fresh.isFile());
     }
 
     @Test
