@@ -1182,6 +1182,18 @@ public class ScreenBuilder {
                     )
             );
         }
+        if (SettingsStatus.audioPageDownloadButton) {
+            addPreference(
+                    helper.availableWhen(
+                            helper.switchPreference(
+                                    str("spookd_audio_page_download_button"),
+                                    str("spookd_audio_page_download_button_desc"),
+                                    Settings.AUDIO_PAGE_DOWNLOAD_BUTTON
+                            ),
+                            () -> SharedPref.getBooleanPref(Settings.ENABLE_DOWNLOAD)
+                    )
+            );
+        }
         if (SettingsStatus.saveMediaCommentButton) {
             addPreference(
                     helper.switchPreference(

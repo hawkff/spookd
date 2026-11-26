@@ -142,6 +142,7 @@ public class Settings {
     public static final BooleanSetting FEED_DOWNLOAD_BUTTON = new BooleanSetting("feed_download_button", true, NOT_REQUIRED);
     public static final BooleanSetting REEL_DOWNLOAD_BUTTON = new BooleanSetting("reel_download_button", true, NOT_REQUIRED);
     public static final BooleanSetting STORY_DOWNLOAD_BUTTON = new BooleanSetting("story_download_button", true, NOT_REQUIRED);
+    public static final BooleanSetting AUDIO_PAGE_DOWNLOAD_BUTTON = new BooleanSetting("audio_page_download_button", true, NOT_REQUIRED);
     public static final BooleanSetting ENABLE_DIRECT_DOWNLOAD = new BooleanSetting("enable_direct_download", false, REQUIRED);
     public static final StringSetting DOWNLOAD_CONFLICT_POLICY = new StringSetting("download_conflict_policy", "rename", NOT_REQUIRED);
     public static final BooleanSetting DOWNLOAD_USERNAME_FOLDER = new BooleanSetting("download_username_folder", false, NOT_REQUIRED);

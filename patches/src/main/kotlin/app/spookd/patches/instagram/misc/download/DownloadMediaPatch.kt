@@ -57,6 +57,7 @@ val downloadMediaPatch =
             reelDownloadButtonPatch,
             storyDownloadButtonPatch,
             storyAutoSavePatch,
+            audioPageDownloadButtonPatch,
         )
         compatibleWith(COMPATIBILITY_INSTAGRAM)
 

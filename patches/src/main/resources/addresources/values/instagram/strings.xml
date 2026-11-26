@@ -462,6 +462,9 @@
     <string name="spookd_video_variants">Video variants</string>
     <string name="spookd_image_variants">Image variants</string>
     <string name="spookd_download_audio">Download audio</string>
+    <string name="spookd_audio_page_download_button">Audio page download button</string>
+    <string name="spookd_audio_page_download_button_desc">Adds a download button to the top bar of original audio pages. Licensed music can\'t be downloaded.</string>
+    <string name="spookd_audio_page_download_unavailable">This audio can\'t be downloaded</string>
     <string name="spookd_download_options">Download options</string>
     <string name="spookd_copy_media_link">Copy media link</string>
     <string name="spookd_copied_media_link">Copied media link</string>
