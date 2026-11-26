@@ -141,6 +141,12 @@ val settingsPatch =
                 )
             }
 
+            // Launch-time tools run, and startup counts as successful, once the main activity resumes.
+            IgFragmentActivityOnResume.method.addInstruction(
+                IgFragmentActivityOnResume.instructionMatches.first().index,
+                "invoke-static {p0}, $ACTIVITY_SETTINGS_CLASS/SafeStartup;->onActivityResumed(Landroid/app/Activity;)V",
+            )
+
             ModalActivityOnCreate.method.apply {
                 val overrideIndex = indexOfFirstInstructionOrThrow {
                     opcode == Opcode.INVOKE_SUPER &&
@@ -282,6 +288,7 @@ val settingsPatch =
                     new-instance v$freeRegister, Lapp/morphe/extension/crimera/CustomCrashHandler;
                     invoke-direct {v$freeRegister, v$contextRegister}, Lapp/morphe/extension/crimera/CustomCrashHandler;-><init>(Landroid/content/Context;)V
                     invoke-static {v$freeRegister}, Ljava/lang/Thread;->setDefaultUncaughtExceptionHandler(Ljava/lang/Thread${'$'}UncaughtExceptionHandler;)V
+                    invoke-static {}, $ACTIVITY_SETTINGS_CLASS/SafeStartup;->install()V
                     
                     ${SSTS_DESCRIPTOR.format("load")}
                     ${LOAD_FLAGS_DESCRIPTOR.format("load")}

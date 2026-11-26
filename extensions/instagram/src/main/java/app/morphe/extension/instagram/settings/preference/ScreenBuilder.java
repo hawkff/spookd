@@ -1531,6 +1531,22 @@ public class ScreenBuilder {
                 )
         );
 
+        addPreference(
+                helper.switchPreference(
+                        str("spookd_disable_all_features"),
+                        str("spookd_disable_all_features_desc"),
+                        Settings.DISABLE_ALL_FEATURES
+                )
+        );
+
+        addPreference(
+                helper.switchPreference(
+                        str("spookd_open_settings_on_launch"),
+                        str("spookd_open_settings_on_launch_desc"),
+                        Settings.OPEN_SETTINGS_ON_LAUNCH
+                )
+        );
+
         Preference storage = helper.buttonPreference(
                 str("spookd_storage"),
                 str("spookd_storage_desc"),
