@@ -25,14 +25,17 @@ import app.morphe.patcher.util.smali.ExternalLabel
 import app.morphe.util.indexOfFirstInstructionOrThrow
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 private const val FAKE_LOCATION_DESCRIPTOR = "$PATCHES_DESCRIPTOR/location/FakeLocation;"
 private const val LOCATION_PLUGIN_CLASS = "Lcom/instagram/location/impl/LocationPluginImpl;"
 private const val LOCATION_CLASS = "Landroid/location/Location;"
 private const val LOCATION_LISTENER_CLASS = "Landroid/location/LocationListener;"
 private const val LOCATION_MANAGER_CLASS = "Landroid/location/LocationManager;"
+private const val FUNCTION1_CLASS = "Lkotlin/jvm/functions/Function1;"
 
 // The immutable wrapper Instagram's location stack puts around every fix, from the system or its cache.
 internal object ImmutableLocationConstructorFingerprint : Fingerprint(
@@ -97,6 +100,16 @@ internal object PluginRequestUpdatesFingerprint : Fingerprint(
     returnType = "V",
     parameters = listOf(LOCATION_PLUGIN_CLASS, USER_SESSION_CLASS, "L", "Ljava/lang/String;", "Z", "L"),
     filters = listOf(literal(7000L), literal(5000L)),
+)
+
+// The wearable shop finder's "current location" action, which asks Google Play services for the device location;
+// 2414 is that request's method key.
+internal object ShopFinderCurrentLocationFingerprint : Fingerprint(
+    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL),
+    returnType = "V",
+    parameters = listOf("Landroid/location/Geocoder;", "L"),
+    strings = listOf("android.permission.ACCESS_FINE_LOCATION"),
+    filters = listOf(literal(2414L)),
 )
 
 internal object PluginPlaceSignatureCollectionFingerprint : Fingerprint(
@@ -241,6 +254,31 @@ val fakeLocationPatch =
                     """.trimIndent(),
                     ExternalLabel("fake_location_device", getInstruction(0)),
                     ExternalLabel("fake_location_none", returnInstruction),
+                )
+            }
+
+            // The first constructor call builds the result callback (a Function1 taking the Location); right after it,
+            // the chosen place, or null while places load, is handed to it and Google Play services is not asked.
+            ShopFinderCurrentLocationFingerprint.method.apply {
+                val callbackIndex = indexOfFirstInstructionOrThrow {
+                    opcode == Opcode.INVOKE_DIRECT && getReference<MethodReference>()?.name == "<init>"
+                }
+                val constructorCall = getInstruction<FiveRegisterInstruction>(callbackIndex)
+                val callback = constructorCall.registerC
+                val callbackType = constructorCall.getReference<MethodReference>()!!.definingClass
+                if (callback == 0 || callback > 0xf || FUNCTION1_CLASS !in classDefBy(callbackType).interfaces) {
+                    throw PatchException("Expected the shop finder's location callback to be a Function1 in v1..v15")
+                }
+                addInstructionsWithLabels(
+                    callbackIndex + 1,
+                    """
+                    $replacesDevice
+                    invoke-static {}, $FAKE_LOCATION_DESCRIPTOR->current()$LOCATION_CLASS
+                    move-result-object v0
+                    invoke-interface {v$callback, v0}, $FUNCTION1_CLASS->invoke(Ljava/lang/Object;)Ljava/lang/Object;
+                    return-void
+                    """.trimIndent(),
+                    ExternalLabel("fake_location_device", getInstruction(callbackIndex + 1)),
                 )
             }
 
