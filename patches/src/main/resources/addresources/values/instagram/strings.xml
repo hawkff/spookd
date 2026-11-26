@@ -49,6 +49,14 @@
     <string name="spookd_story_ghost_remove">Remove</string>
     <string name="spookd_mark_story_seen_on_interaction">Mark seen on like or reply</string>
     <string name="spookd_mark_story_seen_on_interaction_desc">When a story is viewed anonymously, liking it, replying to it or sending a quick reaction marks it as seen</string>
+    <string name="spookd_mark_earlier_stories_seen">Mark earlier stories seen too</string>
+    <string name="spookd_mark_earlier_stories_seen_desc">The eye button also marks that person\'s earlier stories as seen</string>
+    <string name="spookd_advance_story_on_mark_seen">Next story after mark seen</string>
+    <string name="spookd_advance_story_on_mark_seen_desc">Tapping the eye button moves on to the next story</string>
+    <string name="spookd_advance_story_on_like">Next story after like</string>
+    <string name="spookd_advance_story_on_like_desc">Liking a story moves on to the next story</string>
+    <string name="spookd_advance_story_on_reply">Next story after reply</string>
+    <string name="spookd_advance_story_on_reply_desc">Sending a reply or quick reaction moves on to the next story</string>
     <string name="spookd_view_live_anonymously">View live anonymously</string>
     <string name="spookd_disable_typing_status">Disable typing status</string>
     <string name="spookd_disable_screenshot_detection">Disable screenshot detection</string>
@@ -360,6 +368,7 @@
     <!-- Story Section -->
     <string name="spookd_category_story">Story</string>
     <string name="spookd_view_story_mentions">View story mentions</string>
+    <string name="spookd_view_story_mentions_count">View story mentions (%1$d)</string>
     <string name="spookd_vsm_title">Story mentions</string>
     <string name="spookd_vsm_no_mentions">No mentions on this story</string>
     <string name="spookd_mark_story_seen">Mark as seen</string>

@@ -67,6 +67,18 @@ public final class StorySeenRequestScope {
         return REGISTRY.isActive();
     }
 
+    static boolean hasCapacity() {
+        return REGISTRY.hasCapacity();
+    }
+
+    static boolean holds(Listener listener) {
+        return REGISTRY.holds(listener);
+    }
+
+    static void expire() {
+        REGISTRY.expire();
+    }
+
     public static boolean resolveSeenStatus(boolean seenStatus, boolean anonymousStories) {
         return anonymousStories && !isActive() ? true : seenStatus;
     }
@@ -232,6 +244,27 @@ final class RequestRegistry {
     boolean isActive() {
         ScopeFrame current = scope.get();
         return current != null && current.permitted;
+    }
+
+    synchronized void expire() {
+        removeExpired(clock.getAsLong());
+    }
+
+    synchronized boolean hasCapacity() {
+        removeExpired(clock.getAsLong());
+        return pendingPermits.size() + activePermits.size() < maxPendingPermits;
+    }
+
+    /** Whether a pending or active permit carries {@code listener}. */
+    synchronized boolean holds(StorySeenRequestScope.Listener listener) {
+        if (listener == null) return false;
+        for (Permit permit : pendingPermits.values()) {
+            if (permit.listener == listener) return true;
+        }
+        for (Permit permit : activePermits.values()) {
+            if (permit.listener == listener) return true;
+        }
+        return false;
     }
 
     synchronized boolean isPending(StorySeenKey storyKey) {

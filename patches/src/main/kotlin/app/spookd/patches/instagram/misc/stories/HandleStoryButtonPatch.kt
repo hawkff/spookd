@@ -79,10 +79,11 @@ val handleStoryButtonPatch =
         execute {
 
             val STORY_BUTTON_EXTENSION_CLASS = "${PATCHES_DESCRIPTOR}/story/StoryButton;"
-            listOf(
+            val menuBuilders = listOf(
                 SelfStoryAddStoryButtonFingerprint.match(),
                 AddStoryButtonFingerprint.matchOrNull() ?: ExtractedStoryButtonFingerprint.match(),
-            ).forEach {
+            )
+            menuBuilders.forEach {
                 val listIndex = it.instructionMatches.last().index
                 val arrayListRegister = it.instructionMatches.last().instruction.registersUsed.single()
 
@@ -94,6 +95,7 @@ val handleStoryButtonPatch =
                     """.trimIndent(),
                 )
             }
+            addStoryMentionCountHooks(menuBuilders.map { it.method }, STORY_BUTTON_EXTENSION_CLASS)
 
             val onClickFingerprints = listOf(SelfStoryOnCLickStoryButtonFingerprint, OnCLickStoryButtonFingerprint)
             val reelType = storyViewerItemList().definingClass

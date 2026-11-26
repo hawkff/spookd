@@ -469,6 +469,7 @@ public final class StorySeenButton {
                 story.source,
                 listener
         )) {
+            StoryEarlierSeen.markBefore(story.session, story.item, story.reel, story.source);
             StorySeenBridge.SeenState state = StorySeenBridge.state(story.session, story.item);
             StorySeenButtonView.showState(button, state);
             if (state == StorySeenBridge.SeenState.PENDING) {
@@ -477,6 +478,7 @@ public final class StorySeenButton {
                         StorySeenRequestScope.PERMIT_TTL_MILLIS + 1L
                 );
             }
+            StoryAdvance.afterMarkSeen();
             return;
         }
 
