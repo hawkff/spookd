@@ -408,9 +408,9 @@
     <string name="spookd_exact_last_active">Exact last active time</string>
     <string name="spookd_activity_alerts">Activity notifications</string>
     <string name="spookd_activity_alert_online">Notify when they come online</string>
-    <string name="spookd_activity_alert_online_desc">For the people you chose, only while Instagram is running. A person going online and offline within 2 minutes is not reported</string>
+    <string name="spookd_activity_alert_online_desc">For the people you chose, only while Instagram is running. A change within 2 minutes of that person\'s previous one is not reported</string>
     <string name="spookd_activity_alert_offline">Notify when they go offline</string>
-    <string name="spookd_activity_alert_offline_desc">For the people you chose, only while Instagram is running and Instagram updates their active status</string>
+    <string name="spookd_activity_alert_offline_desc">For the people you chose, only while Instagram is running and Instagram updates their active status. A change within 2 minutes of that person\'s previous one is not reported</string>
     <string name="spookd_activity_alert_typing">Notify when they type to you</string>
     <string name="spookd_activity_alert_typing_desc">In your chat with a person you chose, only while Instagram is running. At most once every 2 minutes per person</string>
     <string name="spookd_activity_alert_read">Notify when they read your message</string>
