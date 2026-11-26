@@ -98,6 +98,15 @@ public class ActivityAlertsTest {
     }
 
     @Test
+    public void anAccountChangeRemovesOnlyOtherAccountsActivityNotifications() {
+        assertEquals("spookd_activity:12:34", ActivityAlerts.tag("12", "34"));
+        assertTrue(ActivityAlerts.isOtherAccountsTag(ActivityAlerts.tag("12", "34"), "1"));
+        assertFalse(ActivityAlerts.isOtherAccountsTag(ActivityAlerts.tag("12", "34"), "12"));
+        assertFalse(ActivityAlerts.isOtherAccountsTag("other_tag", "1"));
+        assertFalse(ActivityAlerts.isOtherAccountsTag(null, "1"));
+    }
+
+    @Test
     public void onlyOneToOneChatsHaveAPerson() {
         assertEquals("2", ActivityAlerts.otherUser(Arrays.asList("1", "2"), "1"));
         assertEquals("2", ActivityAlerts.otherUser(Collections.singletonList("2"), "1"));

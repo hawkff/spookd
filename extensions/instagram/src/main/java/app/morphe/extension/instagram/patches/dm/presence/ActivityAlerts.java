@@ -16,6 +16,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.SystemClock;
+import android.service.notification.StatusBarNotification;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -192,16 +193,20 @@ public final class ActivityAlerts {
     }
 
     private static void notifyListed(String user, String chat, String kind, String textKey) {
-        String account = nonEmpty(SharedPref.getStringPref(AccountSettings.OWNER_KEY, null));
+        String account = currentAccount();
         if (account == null || user == null || chat == null || user.equals(account)) return;
         String name = StoryUserList.ACTIVITY_ALERTS.all(account).get(entry(user, chat));
         if (name == null || !TRACKER.due(account + ":" + user + ":" + kind, SystemClock.elapsedRealtime())) return;
         post(account, user, chat, name, str(textKey));
     }
 
-    /** One notification per person, replaced by their next one; tapping it opens the chat. */
+    /**
+     * One notification per person, replaced by their next one; tapping it opens the chat. The chat link opens with the
+     * current account, so only that account's notifications are posted and kept: {@link #onCurrentSession} removes the rest.
+     */
     private static void post(String account, String user, String chat, String name, String text) {
         Utils.runOnMainThread(() -> {
+            if (!account.equals(currentAccount())) return;
             Context context = Utils.getContext();
             NotificationManager manager = context == null ? null
                     : (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -215,7 +220,7 @@ public final class ActivityAlerts {
                     Uri.parse("instagram://direct-thread?thread_id=" + Uri.encode(chat)))
                     .setPackage(context.getPackageName())
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            PendingIntent tap = PendingIntent.getActivity(context, 0, open,
+            PendingIntent tap = PendingIntent.getActivity(context, tag(account, user).hashCode(), open,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             int icon = context.getApplicationInfo().icon;
             Notification notification = new Notification.Builder(context, CHANNEL_ID)
@@ -226,7 +231,7 @@ public final class ActivityAlerts {
                     .setAutoCancel(true)
                     .setContentIntent(tap)
                     .build();
-            manager.notify(CHANNEL_ID + ":" + account + ":" + user, 0, InboxLock.hideNotification(notification));
+            manager.notify(tag(account, user), 0, InboxLock.hideNotification(notification));
         });
     }
 
@@ -240,7 +245,7 @@ public final class ActivityAlerts {
                 return buttons;
             }
             DirectThreadKey key = (DirectThreadKey) threadKey;
-            String account = nonEmpty(SharedPref.getStringPref(AccountSettings.OWNER_KEY, null));
+            String account = currentAccount();
             String user = otherUser(key.A02, account);
             if (account == null || user == null || key.A00 == null) return buttons;
 
@@ -303,6 +308,38 @@ public final class ActivityAlerts {
     /** The list screen in the DM settings, for the account whose settings are shown: tap a person to remove them. */
     public static void showList(Context context) {
         StoryUserList.ACTIVITY_ALERTS.showList(context, SharedPref.getStringPref(AccountSettings.OWNER_KEY, null));
+    }
+
+    /** Called when Instagram sets its current session, on that thread; removes the other accounts' notifications. */
+    public static void onCurrentSession(UserSession session) {
+        try {
+            String account = session == null ? null : nonEmpty(session.getUserId());
+            if (account == null) return;
+            Utils.runOnMainThread(() -> {
+                Context context = Utils.getContext();
+                NotificationManager manager = context == null ? null
+                        : (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+                if (manager == null) return;
+                for (StatusBarNotification shown : manager.getActiveNotifications()) {
+                    String tag = shown.getTag();
+                    if (isOtherAccountsTag(tag, account)) manager.cancel(tag, shown.getId());
+                }
+            });
+        } catch (Throwable t) {
+            Logger.printException(() -> "ActivityAlerts.onCurrentSession failed", t);
+        }
+    }
+
+    static String tag(String account, String user) {
+        return CHANNEL_ID + ":" + account + ":" + user;
+    }
+
+    static boolean isOtherAccountsTag(String tag, String account) {
+        return tag != null && tag.startsWith(CHANNEL_ID + ":") && !tag.startsWith(CHANNEL_ID + ":" + account + ":");
+    }
+
+    private static String currentAccount() {
+        return nonEmpty(SharedPref.getStringPref(AccountSettings.OWNER_KEY, null));
     }
 
     private static boolean anyAlertOn() {

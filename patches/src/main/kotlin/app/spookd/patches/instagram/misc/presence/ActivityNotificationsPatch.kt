@@ -11,6 +11,7 @@ import app.spookd.patches.instagram.misc.dm.MenuButtonsEnumFingerprint
 import app.spookd.patches.instagram.misc.dm.MenuButtonsLabelsFingerprint
 import app.spookd.patches.instagram.misc.dm.MenuOpenFingerprint
 import app.spookd.patches.instagram.misc.dm.passReturnedValues
+import app.spookd.patches.instagram.misc.settings.SetCurrentUserSessionFingerprint
 import app.spookd.patches.instagram.misc.settings.settingsPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
@@ -19,6 +20,7 @@ import app.spookd.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.InstructionFilter
 import app.morphe.patcher.InstructionLocation.MatchAfterImmediately
+import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
@@ -37,6 +39,7 @@ import app.morphe.patcher.util.addInstructionsAtControlFlowLabel
 import app.morphe.patcher.util.getReference
 import app.morphe.patcher.util.p0Register
 import app.morphe.patcher.util.smali.ExternalLabel
+import app.morphe.util.findInstructionIndicesReversedOrThrow
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
@@ -220,6 +223,18 @@ val activityNotificationsPatch =
                     )
                 }
             } ?: throw PatchException("Unexpected read receipt constructor")
+
+            // A chat link opens with the current account, so another account's notifications go when it changes.
+            SetCurrentUserSessionFingerprint.method.apply {
+                val returnIndex = findInstructionIndicesReversedOrThrow(Opcode.RETURN_OBJECT).singleOrNull()
+                    ?: throw PatchException("Expected a single return in the current session method")
+                val register = getInstruction<OneRegisterInstruction>(returnIndex).registerA
+                addInstruction(
+                    returnIndex,
+                    "invoke-static/range { v$register .. v$register }, " +
+                        "$EXTENSION_CLASS->onCurrentSession($USER_SESSION_CLASS)V",
+                )
+            }
 
             // Refresh interval: the wait before the first refresh and before each next one.
             PresenceRefreshStartFingerprint.hookRefreshDelay()
