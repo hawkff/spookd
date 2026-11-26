@@ -1520,7 +1520,7 @@ public class ScreenBuilder {
                     )
             );
         }
-        if (SettingsStatus.storyPlayback) {
+        if (SettingsStatus.storyMute) {
             addPreference(
                     helper.switchPreference(
                             str("spookd_mute_stories"),
