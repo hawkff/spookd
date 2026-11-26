@@ -95,6 +95,7 @@ public class EditTextPref extends EditTextPreference {
     @Override
     protected void onAddEditTextToDialogView(View dialogView, EditText editText) {
         super.onAddEditTextToDialogView(dialogView, editText);
+        SpookdType.applyDialogInput(editText);
         // Numeric (long-typed) dev flags persist FlagState.DEFAULT ("default") as
         // their "no override" sentinel; blank the field here so the number box
         // shows empty instead of the literal word "default".

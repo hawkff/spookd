@@ -65,13 +65,13 @@ public final class DownloadFileNameTemplatePref extends EditTextPref {
         editText.setMinLines(1);
         editText.setMaxLines(1);
         editText.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-        editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        SpookdType.apply(editText, SpookdType.BODY);
 
         editorContainer = new FrameLayout(context);
         container.addView(editorContainer, matchWidthWrapHeight());
 
         previewView = new TextView(context);
-        previewView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        SpookdType.apply(previewView, SpookdType.BODY);
         previewView.setIncludeFontPadding(false);
         previewView.setPaddingRelative(
                 editText.getPaddingStart(),
@@ -196,7 +196,7 @@ public final class DownloadFileNameTemplatePref extends EditTextPref {
         TextView label = new TextView(context);
         label.setText(str(resourceName));
         label.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
-        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        SpookdType.apply(label, SpookdType.CAPTION);
         label.setPadding(0, 0, 0, InstagramPreferenceStyle.dp(context, 4));
         return label;
     }
@@ -208,15 +208,15 @@ public final class DownloadFileNameTemplatePref extends EditTextPref {
     ) {
         TextView button = new TextView(context);
         button.setText(label);
-        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        SpookdType.apply(button, SpookdType.LABEL);
         button.setTextColor(InstagramPreferenceStyle.primaryTextColor());
         button.setGravity(Gravity.CENTER);
-        button.setMinHeight(InstagramPreferenceStyle.dp(context, 44));
+        button.setMinHeight(InstagramPreferenceStyle.dp(context, SpookdType.MIN_TOUCH));
         button.setSingleLine(true);
         button.setMaxLines(1);
         button.setIncludeFontPadding(false);
-        int horizontalPadding = InstagramPreferenceStyle.dp(context, 14);
-        int verticalPadding = InstagramPreferenceStyle.dp(context, 7);
+        int horizontalPadding = InstagramPreferenceStyle.dp(context, SpookdType.SPACE_M);
+        int verticalPadding = InstagramPreferenceStyle.dp(context, SpookdType.SPACE_S);
         button.setPadding(
                 horizontalPadding,
                 verticalPadding,

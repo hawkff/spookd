@@ -185,12 +185,6 @@ public class ButtonPref extends Preference {
                 || key.equals("profile_analyzer")));
     }
 
-    private static boolean hasPressedHighlight(String key) {
-        return isFragmentNavigation(key)
-                && !Constants.SPOOKD_FRAGMENT_FOCUS_LOCK.equals(key)
-                && !Constants.SPOOKD_FRAGMENT_REC_FLAGS.equals(key);
-    }
-
     public void setPressedHighlightEnabled(boolean enabled) {
         if (pressedHighlightEnabled != enabled) {
             pressedHighlightEnabled = enabled;

@@ -15,13 +15,11 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
-import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,6 +30,7 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
+import app.morphe.extension.instagram.settings.preference.widgets.SpookdType;
 import app.morphe.extension.shared.Logger;
 
 /** A bottom panel with speed presets and a seek bar for one playing video. Main thread only. */
@@ -132,8 +131,7 @@ final class PlaybackSpeedPanel {
 
         TextView title = label();
         title.setText(str("spookd_speed_and_seek"));
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
+        SpookdType.apply(title, SpookdType.TITLE);
         root.addView(title);
 
         LinearLayout seekRow = row();
@@ -292,12 +290,13 @@ final class PlaybackSpeedPanel {
     private TextView label() {
         TextView view = new TextView(context);
         view.setTextColor(textColor);
-        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        SpookdType.apply(view, SpookdType.SECONDARY);
         return view;
     }
 
     private TextView button(String text, Runnable action) {
         TextView view = label();
+        SpookdType.apply(view, SpookdType.LABEL);
         view.setText(text);
         view.setGravity(Gravity.CENTER);
         view.setSingleLine(true);

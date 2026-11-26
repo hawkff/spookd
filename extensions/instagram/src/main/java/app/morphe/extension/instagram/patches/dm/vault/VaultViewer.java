@@ -34,6 +34,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import app.morphe.extension.instagram.patches.dm.InboxLock;
+import app.morphe.extension.instagram.settings.preference.widgets.SpookdType;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 
@@ -233,7 +234,7 @@ public final class VaultViewer extends Dialog {
         TextView view = new TextView(activity);
         view.setText(text);
         view.setTextColor(Color.WHITE);
-        view.setTextSize(16);
+        SpookdType.apply(view, SpookdType.BODY);
         view.setGravity(Gravity.CENTER);
         int padding = (int) (24 * activity.getResources().getDisplayMetrics().density);
         view.setPadding(padding, padding, padding, padding);

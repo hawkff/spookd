@@ -27,7 +27,7 @@ public class SwitchPref extends SwitchPreference {
 
     public SwitchPref(Context context) {
         super(context);
-        this.helper = new Helper(context);
+        helper = new Helper(context);
         init();
     }
 

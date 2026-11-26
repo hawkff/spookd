@@ -37,7 +37,22 @@ public final class RecommendedFlagPreference {
         return preference;
     }
 
-    private static CharSequence summary(Flag flag, String value, boolean showCategory) {
+    /** Instagram's primary text color, resolved on the first modified summary instead of on every bind. */
+    private static final class PrimaryColor {
+        private boolean resolved;
+        private int color;
+
+        int get() {
+            if (!resolved) {
+                color = InstagramPreferenceStyle.primaryTextColor();
+                resolved = true;
+            }
+            return color;
+        }
+    }
+
+    private static CharSequence summary(
+            Flag flag, String value, boolean showCategory, PrimaryColor primaryColor) {
         boolean modified = value != null && !value.isEmpty()
                 && !FlagState.DEFAULT.toString().equals(value);
         String label = str("spookd_array_default");
@@ -48,7 +63,7 @@ public final class RecommendedFlagPreference {
         SpannableStringBuilder text = new SpannableStringBuilder(label);
         if (modified) {
             text.setSpan(new StyleSpan(Typeface.BOLD), 0, label.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            text.setSpan(new ForegroundColorSpan(InstagramPreferenceStyle.primaryTextColor()),
+            text.setSpan(new ForegroundColorSpan(primaryColor.get()),
                     0, label.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         if (!flag.getDesc().isEmpty()) text.append('\n').append(flag.getDesc());
@@ -59,6 +74,7 @@ public final class RecommendedFlagPreference {
     private static final class BooleanPreference extends ListPref {
         private final Flag flag;
         private final boolean showCategory;
+        private final PrimaryColor primaryColor = new PrimaryColor();
 
         BooleanPreference(Context context, Flag flag, boolean showCategory) {
             super(context);
@@ -70,13 +86,14 @@ public final class RecommendedFlagPreference {
 
         @Override
         public CharSequence getSummary() {
-            return summary(flag, getValue(), showCategory);
+            return summary(flag, getValue(), showCategory, primaryColor);
         }
     }
 
     private static final class NumberPreference extends EditTextPref {
         private final Flag flag;
         private final boolean showCategory;
+        private final PrimaryColor primaryColor = new PrimaryColor();
 
         NumberPreference(Context context, Flag flag, boolean showCategory) {
             super(context);
@@ -115,7 +132,7 @@ public final class RecommendedFlagPreference {
 
         @Override
         public CharSequence getSummary() {
-            return summary(flag, getText(), showCategory);
+            return summary(flag, getText(), showCategory, primaryColor);
         }
     }
 }
