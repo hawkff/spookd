@@ -33,7 +33,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.constants.UI;
@@ -51,8 +50,9 @@ public final class ProfileAnalyzerActivity {
     private static final int DELETE_DATA = 2;
     // History survives scan pruning; older changes stay stored but are not listed.
     private static final int HISTORY_LIMIT = 500;
-    // Serial, so a clear or delete runs before the reload that follows it.
-    private static final Executor DB_JOBS = Executors.newSingleThreadExecutor();
+    // Shared with visit writes and serial, so a clear or delete runs before the reload that
+    // follows it, and a visit queued before a delete can't bring deleted visits back.
+    private static final Executor DB_JOBS = ProfileVisits.DB_QUEUE;
 
     private ProfileAnalyzerActivity() {
     }

@@ -17,7 +17,8 @@ final class ProfileVisits {
 
     // The header binds again while a profile stays open; one write per profile and minute is enough.
     static final long REBIND_WINDOW_MS = 60_000;
-    private static final Executor DB_WRITES = Executors.newSingleThreadExecutor();
+    /** The one serial queue of visit writes and the analyzer screen's database jobs. */
+    static final Executor DB_QUEUE = Executors.newSingleThreadExecutor();
     // Main thread.
     private static String lastKey;
     private static long lastAt;
@@ -47,7 +48,7 @@ final class ProfileVisits {
             String username = user.getUsername();
             Context context = Utils.getContext();
             if (context == null) return;
-            DB_WRITES.execute(() -> {
+            DB_QUEUE.execute(() -> {
                 try {
                     SpookdFollowDb.getInstance(context).recordVisit(accountId, userId, username, now);
                 } catch (Exception e) {
