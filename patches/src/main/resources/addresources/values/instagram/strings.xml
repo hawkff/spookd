@@ -803,11 +803,11 @@
     <!-- Instants seen, creation and confirmations -->
     <string name="spookd_patch_instants_seen">Instants seen</string>
     <string name="spookd_instants_dont_mark_seen">Don\'t mark Instants seen</string>
-    <string name="spookd_instants_dont_mark_seen_desc">Instagram is not told you opened an Instant, so it stays unseen for its sender. Senders on the Always mark seen list are still told.</string>
+    <string name="spookd_instants_dont_mark_seen_desc">Instagram is not told you opened an Instant, so it stays unseen for its sender. Senders on the Always mark seen list are still told. An Instant whose sender can\'t be identified is not marked seen.</string>
     <string name="spookd_instants_always_seen_users">Always mark seen</string>
     <string name="spookd_instants_always_seen_users_desc">Senders whose Instants are marked seen even while Don\'t mark Instants seen is on</string>
     <string name="spookd_instants_never_seen_users">Never mark seen</string>
-    <string name="spookd_instants_never_seen_users_desc">Senders whose Instants are never marked seen</string>
+    <string name="spookd_instants_never_seen_users_desc">Senders whose Instants are never marked seen. While this list has anyone, an Instant whose sender can\'t be identified is not marked seen either.</string>
     <string name="spookd_instants_seen_users_empty">No senders yet. Open some Instants and their senders show up here to pick.</string>
     <string name="spookd_instants_menu_stop_saving">Turn off Save Instants</string>
     <string name="spookd_instants_menu_start_saving">Turn on Save Instants</string>

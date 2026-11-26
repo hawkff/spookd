@@ -32,6 +32,7 @@ final class InstantsOrigin implements Application.ActivityLifecycleCallbacks {
     }
 
     /** Main thread, once: stops watching; true when the screen is gone, paused or no longer shown. */
+    // A camera to viewer switch inside the same activity still shows the question there, so nothing goes out unasked.
     boolean left() {
         if (activity == null) return true;
         activity.getApplication().unregisterActivityLifecycleCallbacks(this);

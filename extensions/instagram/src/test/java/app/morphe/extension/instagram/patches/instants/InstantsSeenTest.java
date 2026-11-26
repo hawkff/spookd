@@ -6,11 +6,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -85,18 +83,15 @@ public final class InstantsSeenTest {
     }
 
     @Test
-    public void trimmingDropsOnlyReportedPks() {
-        LinkedHashMap<String, InstantsSeen.Owner> owners = new LinkedHashMap<>();
-        owners.put("held", new InstantsSeen.Owner("1", "never"));
-        InstantsSeen.Owner reported = new InstantsSeen.Owner("2", "sent");
-        reported.reported = true;
-        owners.put("sent", reported);
-        owners.put("new", new InstantsSeen.Owner("3", "new"));
-
-        InstantsSeen.trim(owners, 2);
-        assertEquals(Arrays.asList("held", "new"), new ArrayList<>(owners.keySet()));
-        InstantsSeen.trim(owners, 1);
-        assertEquals(2, owners.size());
+    public void sendersStayBoundedAndAForgottenNeverSenderIsNotSent() {
+        Map<String, String> never = Collections.singletonMap("never", "hidden");
+        InstantsSeen.remember("first", new InstantsSeen.Owner("never", "hidden"));
+        for (int i = 0; i < InstantsSeen.MAX_OWNERS * 3; i++) {
+            InstantsSeen.remember("pk" + i, new InstantsSeen.Owner("u" + i, "user" + i));
+            assertTrue(InstantsSeen.knownCount() <= InstantsSeen.MAX_OWNERS);
+        }
+        assertNull(InstantsSeen.ownerOf("first"));
+        assertNull(InstantsSeen.kept(Collections.singletonList("first"), false, InstantsSeen::ownerOf, NONE, never));
     }
 
     @Test
