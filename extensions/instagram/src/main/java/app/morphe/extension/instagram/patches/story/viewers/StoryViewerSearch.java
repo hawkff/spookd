@@ -168,6 +168,16 @@ public final class StoryViewerSearch {
         return false;
     }
 
+    /** The cursor of the next page; it moves with every page Instagram receives. */
+    private static String viewersCursor(Object adapter) {
+        return null;
+    }
+
+    /** Whether Instagram's own request for a page is out. */
+    private static boolean viewersBusy(Object adapter) {
+        return false;
+    }
+
     /** Asks Instagram for the next page, as scrolling to the end of the list does. */
     private static void loadMoreViewers(Object adapter) {
     }
@@ -229,8 +239,9 @@ public final class StoryViewerSearch {
         boolean awaiting;
         boolean stalled;
         boolean rowFailed;
-        int loadedAtRequest;
+        String cursorAtRequest;
         long requestedAt;
+        long busySince;
 
         Search(Context context, Object adapter, String account) {
             this.context = context;
@@ -345,15 +356,14 @@ public final class StoryViewerSearch {
             if (open != this) return;
             render();
             if (!awaiting) return;
+            ViewerPaging.Step step = ViewerPaging.afterRebuild(cursorAtRequest, cursor(), hasMore(), busy());
+            if (step == ViewerPaging.Step.WAIT) return;
             awaiting = false;
-            // A page without new viewers ends the run.
-            if (loaded > loadedAtRequest) {
-                Utils.runOnMainThreadDelayed(this::requestPage, PAGE_GAP_MS);
-            } else if (hasMore()) {
+            if (step == ViewerPaging.Step.STOP) {
                 stop();
             } else {
-                loading = false;
-                render();
+                // requestPage also ends the run when Instagram has no more pages.
+                Utils.runOnMainThreadDelayed(this::requestPage, PAGE_GAP_MS);
             }
         }
 
@@ -361,20 +371,33 @@ public final class StoryViewerSearch {
             if (loading) return;
             loading = true;
             stalled = false;
+            busySince = 0;
             requestPage();
         }
 
         private void requestPage() {
             if (open != this || !loading) return;
-            if (!hasMore()) {
+            ViewerPaging.Step step = ViewerPaging.beforeRequest(hasMore(), busy());
+            if (step == ViewerPaging.Step.DONE) {
                 loading = false;
                 render();
                 return;
             }
+            long now = SystemClock.uptimeMillis();
+            if (step == ViewerPaging.Step.WAIT) {
+                // Instagram is already fetching a page; ask again once it is back instead of sending another.
+                if (busySince == 0) busySince = now;
+                if (ViewerPaging.afterTimeout(true, now - busySince, PAGE_TIMEOUT_MS) == ViewerPaging.Step.STOP) {
+                    stop();
+                } else {
+                    Utils.runOnMainThreadDelayed(this::requestPage, PAGE_GAP_MS);
+                }
+                return;
+            }
+            busySince = 0;
             awaiting = true;
-            loadedAtRequest = loaded;
-            long at = SystemClock.uptimeMillis();
-            requestedAt = at;
+            cursorAtRequest = cursor();
+            requestedAt = now;
             try {
                 loadMoreViewers(adapter);
             } catch (Throwable t) {
@@ -383,9 +406,17 @@ public final class StoryViewerSearch {
                 return;
             }
             render();
-            Utils.runOnMainThreadDelayed(() -> {
-                if (awaiting && requestedAt == at) stop();
-            }, PAGE_TIMEOUT_MS);
+            Utils.runOnMainThreadDelayed(() -> checkTimeout(now), PAGE_TIMEOUT_MS);
+        }
+
+        private void checkTimeout(long at) {
+            if (open != this || !awaiting || requestedAt != at) return;
+            long waited = SystemClock.uptimeMillis() - at;
+            if (ViewerPaging.afterTimeout(busy(), waited, 3 * PAGE_TIMEOUT_MS) == ViewerPaging.Step.WAIT) {
+                Utils.runOnMainThreadDelayed(() -> checkTimeout(at), PAGE_TIMEOUT_MS);
+            } else {
+                stop();
+            }
         }
 
         private void stop() {
@@ -393,6 +424,24 @@ public final class StoryViewerSearch {
             loading = false;
             stalled = true;
             if (open == this) render();
+        }
+
+        private String cursor() {
+            try {
+                return viewersCursor(adapter);
+            } catch (Throwable t) {
+                Logger.printException(() -> "StoryViewerSearch: paging cursor unreadable", t);
+                return null;
+            }
+        }
+
+        private boolean busy() {
+            try {
+                return viewersBusy(adapter);
+            } catch (Throwable t) {
+                Logger.printException(() -> "StoryViewerSearch: paging state unreadable", t);
+                return false;
+            }
         }
 
         private boolean hasMore() {

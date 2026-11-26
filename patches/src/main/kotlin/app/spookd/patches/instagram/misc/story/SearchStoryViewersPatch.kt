@@ -9,6 +9,7 @@ import app.spookd.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.classDefByOrNull
@@ -121,7 +122,7 @@ val searchStoryViewersPatch =
                     it.name == "isLoading" && it.parameterTypes.isEmpty() && it.returnType == "Z"
                 } == true
             } ?: throw PatchException("Could not find the viewer list paging state")
-            val askedCounts = pagingCalls.filter { it.first == paging }.groupingBy { it.second.toString() }.eachCount()
+            val askedCounts = pagingCalls.filter { it.first == paging }.groupingBy { it.second }.eachCount()
             val mostAsked = askedCounts.values.maxOrNull()
             val hasMore = askedCounts.entries.singleOrNull { it.value == mostAsked }?.key
                 ?: throw PatchException("Could not tell which paging call asks for more viewers")
@@ -129,6 +130,26 @@ val searchStoryViewersPatch =
             val loadMore = classDefBy(paging.type).methods.singleOrNull {
                 it.parameterTypes.isEmpty() && it.returnType == "V"
             } ?: throw PatchException("Could not find the viewer list next page call")
+
+            // The paging class the screen creates for each story's list and stores in the adapter.
+            val pagingStore = Fingerprint(
+                filters = listOf(fieldAccess(reference = paging, opcode = Opcode.IPUT_OBJECT)),
+            ).match().originalMethod
+            val pagingClass = pagingStore.implementation!!.instructions
+                .filter { it.opcode == Opcode.NEW_INSTANCE }
+                .mapNotNull { it.getReference<TypeReference>()?.type }
+                .distinct()
+                .singleOrNull { classDefByOrNull(it)?.interfaces?.contains(paging.type) == true }
+                ?.let { classDefBy(it) }
+                ?: throw PatchException("Could not find the viewer list paging class")
+            fun pagingMethod(name: String, returnType: String) = pagingClass.methods.singleOrNull {
+                it.name == name && it.parameterTypes.isEmpty() && it.returnType == returnType
+            } ?: throw PatchException("The viewer list paging class has no $name()")
+            // The next page cursor, which the answer to "more viewers?" checks first.
+            val cursor = pagingMethod(hasMore.name, "Z").implementation!!.instructions.firstNotNullOfOrNull { read ->
+                read.takeIf { it.opcode == Opcode.IGET_OBJECT }?.getReference<FieldReference>()
+                    ?.takeIf { it.definingClass == pagingClass.type && it.type == "Ljava/lang/String;" }
+            } ?: throw PatchException("Could not find the viewer list cursor")
 
             val currentStory = DashboardCurrentStoryFingerprint.originalMethod
             val viewCreated = DashboardViewCreatedFingerprint.method
@@ -201,6 +222,16 @@ val searchStoryViewersPatch =
                 invoke-interface {p0}, $hasMore
                 move-result p0
                 return p0
+                """,
+            )
+            stub(
+                "viewersCursor",
+                """
+                check-cast p0, $adapter
+                iget-object p0, p0, $paging
+                check-cast p0, ${pagingClass.type}
+                iget-object p0, p0, $cursor
+                return-object p0
                 """,
             )
             stub(
