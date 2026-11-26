@@ -87,8 +87,22 @@ public final class FakePlaces {
     private static volatile Snapshot snapshot;
     private static int generation;
     private static SharedPreferences preferencesForTest;
+    private static volatile Context appContext;
 
     private FakePlaces() {
+    }
+
+    /** Start of Instagram's Application.onCreate: reads the places right away, before the extension has a context. */
+    public static void preload(Context context) {
+        try {
+            if (context != null && appContext == null) {
+                Context application = context.getApplicationContext();
+                appContext = application != null ? application : context;
+            }
+            preload();
+        } catch (Throwable t) {
+            Logger.printException(() -> "FakePlaces.preload failed", t);
+        }
     }
 
     /** Starts reading the saved places on a background thread, once; returns at once on any thread. */
@@ -291,7 +305,7 @@ public final class FakePlaces {
 
     private static SharedPreferences preferences() {
         if (preferencesForTest != null) return preferencesForTest;
-        Context context = Utils.getContext();
+        Context context = appContext != null ? appContext : Utils.getContext();
         return context == null ? null : context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 

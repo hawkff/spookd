@@ -6,12 +6,14 @@
 
 package app.spookd.patches.instagram.misc.location
 
+import app.spookd.patches.instagram.misc.extension.hooks.instagramInitHook
 import app.spookd.patches.instagram.misc.settings.settingsPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
 import app.spookd.patches.instagram.utils.Constants.USER_SESSION_CLASS
 import app.spookd.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
@@ -31,6 +33,7 @@ import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 private const val FAKE_LOCATION_DESCRIPTOR = "$PATCHES_DESCRIPTOR/location/FakeLocation;"
+private const val FAKE_PLACES_DESCRIPTOR = "$PATCHES_DESCRIPTOR/location/FakePlaces;"
 private const val LOCATION_PLUGIN_CLASS = "Lcom/instagram/location/impl/LocationPluginImpl;"
 private const val LOCATION_CLASS = "Landroid/location/Location;"
 private const val LOCATION_LISTENER_CLASS = "Landroid/location/LocationListener;"
@@ -112,6 +115,13 @@ internal object ShopFinderCurrentLocationFingerprint : Fingerprint(
     filters = listOf(literal(2414L)),
 )
 
+internal object PluginRemoveUpdatesFingerprint : Fingerprint(
+    definingClass = LOCATION_PLUGIN_CLASS,
+    name = "removeLocationUpdates",
+    returnType = "V",
+    parameters = listOf(USER_SESSION_CLASS, "L"),
+)
+
 internal object PluginPlaceSignatureCollectionFingerprint : Fingerprint(
     definingClass = LOCATION_PLUGIN_CLASS,
     name = "setupPlaceSignatureCollection",
@@ -134,6 +144,12 @@ val fakeLocationPatch =
         compatibleWith(COMPATIBILITY_INSTAGRAM)
 
         execute {
+            // First thing at app start, so the saved places are in memory before Instagram asks for a location.
+            instagramInitHook.fingerprint.method.addInstruction(
+                0,
+                "invoke-static/range {p0 .. p0}, $FAKE_PLACES_DESCRIPTOR->preload(Landroid/content/Context;)V",
+            )
+
             val replacesDevice = """
                 invoke-static {}, $FAKE_LOCATION_DESCRIPTOR->replacesDevice()Z
                 move-result v0
@@ -286,6 +302,12 @@ val fakeLocationPatch =
                     ExternalLabel("fake_location_none", returnInstruction),
                 )
             }
+
+            // p2 is the listener; its delivery still waiting for the places is dropped with the request.
+            PluginRemoveUpdatesFingerprint.method.addInstruction(
+                0,
+                "invoke-static {p2}, $FAKE_LOCATION_DESCRIPTOR->pluginRemoved(Ljava/lang/Object;)V",
+            )
 
             // Both collect device signals such as Wi-Fi scans, which would give the real location away.
             listOf(PluginPlaceSignatureCollectionFingerprint, PluginForegroundCollectionFingerprint).forEach {

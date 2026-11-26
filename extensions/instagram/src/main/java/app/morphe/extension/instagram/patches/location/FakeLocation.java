@@ -19,6 +19,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BooleanSupplier;
 
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
@@ -39,7 +40,12 @@ public final class FakeLocation {
     // Listeners whose answered request has not been delivered or removed yet, with that request's token.
     private static final Map<LocationListener, Object> ANSWERING =
             Collections.synchronizedMap(new IdentityHashMap<>());
+    // Plugin listeners and shop finder callbacks waiting for the places, with their request's token.
+    static final Map<Object, Object> PLUGIN_ANSWERING = Collections.synchronizedMap(new IdentityHashMap<>());
+    static final Map<Object, Object> SHOP_FINDER_ANSWERING = Collections.synchronizedMap(new IdentityHashMap<>());
     private static volatile Constructor<?> wrapperConstructor;
+    // Rechecked right before every delivery that waited for the places; replaceable in tests.
+    static BooleanSupplier switchOn = FakeLocation::replacesDevice;
 
     private FakeLocation() {
     }
@@ -126,7 +132,7 @@ public final class FakeLocation {
     public static LocationListener requestUpdates(LocationListener listener, String provider) {
         try {
             if (listener == null) return null;
-            if (!replacesDevice()) return LISTENERS.computeIfAbsent(listener, SpoofingListener::new);
+            if (!switchOn.getAsBoolean()) return LISTENERS.computeIfAbsent(listener, SpoofingListener::new);
             // A token per request, so an answer queued for an earlier, removed request never takes a later one's.
             Object token = new Object();
             ANSWERING.put(listener, token);
@@ -144,6 +150,11 @@ public final class FakeLocation {
 
     private static void answer(LocationListener listener, String provider, Object token, Handler handler) {
         if (ANSWERING.get(listener) != token) return;
+        // Fake location may have been turned off meanwhile, by an account switch.
+        if (!switchOn.getAsBoolean()) {
+            ANSWERING.remove(listener, token);
+            return;
+        }
         Location fix = lastKnown(provider);
         if (fix == null) {
             if (FakePlaces.isLoaded()) ANSWERING.remove(listener, token);
@@ -155,29 +166,44 @@ public final class FakeLocation {
 
     /** The plugin's update request while on: the fix to deliver now, or null with it delivered once places load. */
     public static Location pluginAnswer(Object listener) {
-        return nowOrWhenLoaded(listener, "onLocationChanged", Location.class);
+        return nowOrWhenLoaded(PLUGIN_ANSWERING, listener, "onLocationChanged", Location.class);
+    }
+
+    /** Start of the plugin's update removal: a delivery still waiting for the places is dropped. */
+    public static void pluginRemoved(Object listener) {
+        try {
+            if (listener != null) PLUGIN_ANSWERING.remove(listener);
+        } catch (Throwable t) {
+            Logger.printException(() -> "FakeLocation.pluginRemoved failed", t);
+        }
     }
 
     /** The shop finder's location request while on: the fix to deliver now, or null with it delivered once places load. */
     public static Location shopFinderAnswer(Object callback) {
-        return nowOrWhenLoaded(callback, "invoke", Object.class);
+        // The shop finder has no way to cancel its request, so only the switch can drop the delivery.
+        return nowOrWhenLoaded(SHOP_FINDER_ANSWERING, callback, "invoke", Object.class);
     }
 
-    private static Location nowOrWhenLoaded(Object target, String name, Class<?> parameter) {
+    private static Location nowOrWhenLoaded(Map<Object, Object> pending, Object target, String name, Class<?> parameter) {
         Location fix = current();
         if (fix != null || target == null || FakePlaces.isLoaded()) return fix;
-        FakePlaces.whenLoaded(() -> {
-            try {
-                Location late = current();
-                if (late == null) return;
-                Method method = target.getClass().getMethod(name, parameter);
-                method.setAccessible(true);
-                method.invoke(target, late);
-            } catch (Throwable t) {
-                Logger.printException(() -> "FakeLocation late answer failed", t);
-            }
-        });
+        Object token = new Object();
+        pending.put(target, token);
+        FakePlaces.whenLoaded(() -> deliverLate(pending, target, token, name, parameter));
         return null;
+    }
+
+    static void deliverLate(Map<Object, Object> pending, Object target, Object token, String name, Class<?> parameter) {
+        try {
+            if (!pending.remove(target, token) || !switchOn.getAsBoolean()) return;
+            Location late = current();
+            if (late == null) return;
+            Method method = target.getClass().getMethod(name, parameter);
+            method.setAccessible(true);
+            method.invoke(target, late);
+        } catch (Throwable t) {
+            Logger.printException(() -> "FakeLocation late answer failed", t);
+        }
     }
 
     /** Start of Instagram's LocationManager update removal: the listener that was registered for {@code listener}. */
