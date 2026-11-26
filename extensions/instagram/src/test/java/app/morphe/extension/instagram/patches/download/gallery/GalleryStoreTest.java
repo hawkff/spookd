@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import android.content.ContentValues;
+import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteDatabase;
 
@@ -534,6 +535,112 @@ public final class GalleryStoreTest {
         assertEquals(1, entries.size());
         assertEquals(id, entries.get(0).id);
         assertEquals("one", read(entries.get(0).file));
+    }
+
+    @Test
+    public void listFiltersAndSortsInTheDatabase() throws Exception {
+        long bob = saved(GalleryTab.REELS, GalleryItem.VIDEO, "Bob", "12345");
+        long unknown = saved(GalleryTab.POSTS, GalleryItem.PHOTO, null, "1");
+        long alice = saved(GalleryTab.POSTS, GalleryItem.PHOTO, "alice_x", "12");
+        long aliceVideo = saved(GalleryTab.STORIES, GalleryItem.VIDEO, "alicex", "123");
+
+        assertEquals(Arrays.asList(aliceVideo, alice, unknown, bob),
+                ids(store.list(null, null, false, null, GalleryStore.SORT_NEWEST)));
+        assertEquals(Arrays.asList(bob, unknown, alice, aliceVideo),
+                ids(store.list(null, null, false, null, GalleryStore.SORT_OLDEST)));
+        assertEquals(Arrays.asList(bob, aliceVideo, alice, unknown),
+                ids(store.list(null, null, false, null, GalleryStore.SORT_SIZE)));
+        assertEquals(Arrays.asList(alice, aliceVideo, bob, unknown),
+                ids(store.list(null, null, false, null, GalleryStore.SORT_USERNAME)));
+        assertEquals(Arrays.asList(alice, unknown),
+                ids(store.list("posts", null, false, null, GalleryStore.SORT_NEWEST)));
+        assertEquals(Arrays.asList(aliceVideo, bob),
+                ids(store.list(null, GalleryItem.VIDEO, false, null, GalleryStore.SORT_NEWEST)));
+        // The underscore is matched as itself, not as any one character.
+        assertEquals(Collections.singletonList(alice),
+                ids(store.list(null, null, false, "ALICE_", GalleryStore.SORT_NEWEST)));
+        assertEquals(Collections.singletonList(bob),
+                ids(store.list(null, null, false, "ob", GalleryStore.SORT_NEWEST)));
+    }
+
+    @Test
+    public void usernameSortReadsAnIndexInOrder() {
+        assertEquals("idx_gallery_owner", sortIndex(null));
+        assertEquals("idx_gallery_tab_owner", sortIndex("reels"));
+    }
+
+    /** The one index the username-sorted query reads, failing when it also sorts in a temporary tree. */
+    private String sortIndex(String source) {
+        List<String> args = new ArrayList<>();
+        String query = GalleryStore.listQuery(source, null, false, null, GalleryStore.SORT_USERNAME, args);
+        StringBuilder plan = new StringBuilder();
+        try (Cursor rows = db.rawQuery("EXPLAIN QUERY PLAN " + query, args.toArray(new String[0]))) {
+            while (rows.moveToNext()) plan.append(rows.getString(rows.getColumnCount() - 1)).append('\n');
+        }
+        assertFalse(plan.toString(), plan.indexOf("TEMP B-TREE") >= 0);
+        if (plan.indexOf("idx_gallery_tab_owner") >= 0) return "idx_gallery_tab_owner";
+        return plan.indexOf("idx_gallery_owner") >= 0 ? "idx_gallery_owner" : plan.toString();
+    }
+
+    @Test
+    public void favoritesAreListedAndGoWithTheirDownload() throws Exception {
+        long first = saved(GalleryTab.POSTS, GalleryItem.PHOTO, "alice", "1");
+        long second = saved(GalleryTab.POSTS, GalleryItem.PHOTO, "alice", "2");
+        store.setFavorite(false, first, true);
+        store.setFavorite(false, first, true);
+        store.setFavorite(true, first, true);
+
+        List<GalleryStore.Entry> starred = store.list(null, null, true, null, GalleryStore.SORT_NEWEST);
+        assertEquals(Collections.singletonList(first), ids(starred));
+        assertTrue(starred.get(0).favorite);
+        assertFalse(store.list(GalleryTab.POSTS).get(0).favorite);
+        assertEquals(Collections.singleton(first), store.favoriteVaultIds());
+
+        assertTrue(store.delete(first));
+        assertTrue(store.list(null, null, true, null, GalleryStore.SORT_NEWEST).isEmpty());
+        // The DM item's star is its own row, untouched by the download's delete.
+        assertEquals(Collections.singleton(first), store.favoriteVaultIds());
+        store.setFavorite(true, first, false);
+        assertTrue(store.favoriteVaultIds().isEmpty());
+        assertEquals(Collections.singletonList(second), ids(store.list(GalleryTab.POSTS)));
+    }
+
+    @Test
+    public void hasTellsWhetherASourceHasDownloads() throws Exception {
+        assertFalse(store.has("dms"));
+        saved(GalleryTab.DMS, GalleryItem.PHOTO, "alice", "1");
+        assertTrue(store.has("dms"));
+        assertFalse(store.has("reels"));
+        assertFalse(store.has(GalleryStore.SOURCE_UNKNOWN));
+    }
+
+    @Test
+    public void aGenericUrlDownloadHasAnUnknownSourceNotPosts() throws Exception {
+        long post = saved(GalleryTab.POSTS, GalleryItem.PHOTO, "alice", "1");
+        // As a profile picture saves: Posts by fallback, with neither a link nor a media id.
+        GalleryItem picture = new GalleryItem(GalleryTab.POSTS, GalleryItem.PHOTO, "bob", null, null, null, null, null);
+        long unknown = store.publish(part("2"), picture, "bob", "bob.jpg", false);
+
+        assertEquals(Collections.singletonList(post),
+                ids(store.list("posts", null, false, null, GalleryStore.SORT_NEWEST)));
+        List<GalleryStore.Entry> unproven = store.list(GalleryStore.SOURCE_UNKNOWN, null, false, null,
+                GalleryStore.SORT_NEWEST);
+        assertEquals(Collections.singletonList(unknown), ids(unproven));
+        assertEquals(GalleryStore.SOURCE_UNKNOWN, unproven.get(0).source);
+        assertEquals(Arrays.asList(unknown, post), ids(store.list(null, null, false, null, GalleryStore.SORT_NEWEST)));
+        assertTrue(store.has(GalleryStore.SOURCE_UNKNOWN));
+        assertEquals("posts", GalleryStore.source("posts", "https://www.instagram.com/p/a/", null));
+        assertEquals("posts", GalleryStore.source("posts", "", "22"));
+        assertEquals(GalleryStore.SOURCE_UNKNOWN, GalleryStore.source("posts", "", null));
+        assertEquals("dms", GalleryStore.source("dms", null, null));
+    }
+
+    /** A download with a media id one minute after the previous one, as big as {@code content}. */
+    private long saved(GalleryTab tab, String kind, String owner, String content) throws IOException {
+        clock[0] += 60_000;
+        GalleryItem item = new GalleryItem(tab, kind, owner, null, "m" + content, null, null, null);
+        String name = GalleryItem.VIDEO.equals(kind) ? "f.mp4" : "f.jpg";
+        return store.publish(part(content), item, null, name, false);
     }
 
     private static GalleryItem story(String mediaId) {

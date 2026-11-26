@@ -350,15 +350,19 @@ public final class DownloadHistoryTest {
     }
 
     @Test
-    public void upgradingAVersionOneGalleryAddsTheHistoryAndKeepsItems() {
+    public void upgradingAVersionOneGalleryAddsTheHistoryAndFavoritesAndKeepsItems() {
         helper.close();
         Application app = RuntimeEnvironment.getApplication();
         app.deleteDatabase(GalleryDb.DB_NAME);
         File path = app.getDatabasePath(GalleryDb.DB_NAME);
         path.getParentFile().mkdirs();
         SQLiteDatabase old = SQLiteDatabase.openOrCreateDatabase(path, null);
-        old.execSQL("CREATE TABLE gallery_items (id INTEGER PRIMARY KEY AUTOINCREMENT, file TEXT NOT NULL)");
-        old.execSQL("INSERT INTO gallery_items (file) VALUES ('a.jpg')");
+        old.execSQL("CREATE TABLE gallery_items (id INTEGER PRIMARY KEY AUTOINCREMENT, file TEXT NOT NULL UNIQUE,"
+                + " tab TEXT NOT NULL, kind TEXT NOT NULL, file_name TEXT NOT NULL, sub_folder TEXT,"
+                + " owner_username TEXT, owner_id TEXT, media_id TEXT, link TEXT, account_id TEXT,"
+                + " saved_at INTEGER NOT NULL, taken_at INTEGER, size_bytes INTEGER NOT NULL, duration_ms INTEGER)");
+        old.execSQL("INSERT INTO gallery_items (file, tab, kind, file_name, saved_at, size_bytes)"
+                + " VALUES ('a.jpg', 'posts', 'photo', 'a.jpg', 1, 1)");
         old.setVersion(1);
         old.close();
 
@@ -369,6 +373,9 @@ public final class DownloadHistoryTest {
         history = new DownloadHistory(db, dir, () -> clock[0]);
         history.start(GalleryItem.PHOTO, "alice", "a.jpg");
         assertEquals(1, DatabaseUtils.longForQuery(db, "SELECT COUNT(*) FROM download_history", null));
+        db.execSQL("INSERT INTO gallery_favorites (vault, item_id) VALUES (0, 1)");
+        db.execSQL("DELETE FROM gallery_items");
+        assertEquals(0, DatabaseUtils.longForQuery(db, "SELECT COUNT(*) FROM gallery_favorites", null));
     }
 
     private DownloadHistory.Entry only() {

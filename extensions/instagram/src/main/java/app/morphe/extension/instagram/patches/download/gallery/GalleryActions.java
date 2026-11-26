@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -102,11 +103,10 @@ final class GalleryActions {
     }
 
     /**
-     * Copies the item to {@code cache/piko_share/} and returns its URI through the app's own file
-     * provider. Runs on the caller's background thread.
+     * Copies the item to {@code dir}, the share folder {@link #clearShared} returned, and returns its
+     * URI through the app's own file provider. Runs on the caller's background thread.
      */
-    static Uri shareCopy(Context context, String name, boolean vault, long id, File file) throws Exception {
-        File dir = clearShared(context);
+    static Uri shareCopy(Context context, File dir, String name, boolean vault, long id, File file) throws Exception {
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cannot create " + dir);
         // A fresh random folder per share: a URI granted earlier never points at a later item.
         File folder = new File(dir, UUID.randomUUID().toString());
@@ -134,11 +134,15 @@ final class GalleryActions {
                 .appendPath("cache").appendPath(SHARE_DIR).appendPath(folder).appendPath(name).build();
     }
 
-    /** Main thread: lets the user pick where to send the shared copy. */
-    static void share(Activity activity, Uri uri, String mimeType) {
-        Intent send = new Intent(Intent.ACTION_SEND).setType(mimeType).putExtra(Intent.EXTRA_STREAM, uri)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        send.setClipData(ClipData.newRawUri(null, uri));
+    /** Main thread: lets the user pick where to send the shared copies; {@code uris} is not empty. */
+    static void share(Activity activity, ArrayList<Uri> uris, String mimeType) {
+        Intent send = uris.size() == 1
+                ? new Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, uris.get(0))
+                : new Intent(Intent.ACTION_SEND_MULTIPLE).putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+        send.setType(mimeType).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        ClipData clip = ClipData.newRawUri(null, uris.get(0));
+        for (int i = 1; i < uris.size(); i++) clip.addItem(new ClipData.Item(uris.get(i)));
+        send.setClipData(clip);
         activity.startActivity(Intent.createChooser(send, null));
     }
 
@@ -146,6 +150,19 @@ final class GalleryActions {
         String guessed = URLConnection.guessContentTypeFromName(name);
         if (guessed != null) return guessed;
         return GalleryItem.PHOTO.equals(kind) ? "image/*" : GalleryItem.VIDEO.equals(kind) ? "video/*" : "audio/*";
+    }
+
+    /** The one type of every copy, else their shared group such as {@code image/*}, else any type; not empty. */
+    static String commonMimeType(List<String> types) {
+        String first = types.get(0);
+        String group = first.substring(0, first.indexOf('/') + 1);
+        boolean same = true;
+        boolean sameGroup = true;
+        for (String type : types) {
+            same &= type.equals(first);
+            sameGroup &= type.startsWith(group);
+        }
+        return same ? first : sameGroup && !group.isEmpty() ? group + "*" : "*/*";
     }
 
     /** Main thread: opens an Instagram link in this app, so clones open it in themselves. */

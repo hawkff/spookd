@@ -146,6 +146,8 @@ public class ActivityHook {
             return DeletedMessagesActivity.handleBackPressed(activity);
         } else if (LAUNCH_TYPE_INSTANTS_VAULT.equals(launchType)) {
             return InstantsVaultActivity.handleBackPressed(activity);
+        } else if (LAUNCH_TYPE_PRIVATE_GALLERY.equals(launchType)) {
+            return PrivateGalleryActivity.handleBackPressed(activity);
         }
         return false;
     }
