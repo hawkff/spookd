@@ -352,6 +352,8 @@ public final class PrivateGalleryActivity {
             this.activity = activity;
             Intent intent = activity.getIntent();
             picking = intent != null && intent.getBooleanExtra(GalleryPicker.EXTRA_PICK, false);
+            // Back, a cancelled lock or leaving the app return this until an item is picked.
+            if (picking) activity.setResult(pickResultCode(null), pickResult(null));
             photosOnly = intent != null && intent.getBooleanExtra(GalleryPicker.EXTRA_PHOTOS_ONLY, false);
             density = activity.getResources().getDisplayMetrics().density;
         }
@@ -1264,8 +1266,7 @@ public final class PrivateGalleryActivity {
                 ui.post(() -> {
                     sharing = false;
                     if (closed) return;
-                    activity.setResult(Activity.RESULT_OK,
-                            new Intent().setData(uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));
+                    activity.setResult(pickResultCode(uri), pickResult(uri));
                     activity.finish();
                 });
             });
@@ -1523,6 +1524,16 @@ public final class PrivateGalleryActivity {
         if (width <= 0 || height <= 0) return Integer.MAX_VALUE;
         int shorter = Math.min(width, height);
         return photo ? shorter / sampleSize(width, height, size) : Math.min(shorter, size);
+    }
+
+    /** RESULT_OK for a picked item's {@code uri}, else RESULT_CANCELED. */
+    static int pickResultCode(Uri uri) {
+        return uri == null ? Activity.RESULT_CANCELED : Activity.RESULT_OK;
+    }
+
+    /** The picked item's {@code uri} with a read grant, as Instagram's picker result carries it; null without one. */
+    static Intent pickResult(Uri uri) {
+        return uri == null ? null : new Intent().setData(uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
     }
 
     /** Whether pick mode lists an item of {@code kind}: photos, and videos unless the picker takes photos only. */
