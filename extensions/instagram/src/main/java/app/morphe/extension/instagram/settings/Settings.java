@@ -76,6 +76,7 @@ public class Settings {
     public static final BooleanSetting VIEW_STORY_MENTIONS = new BooleanSetting("view_story_mentions", true, REQUIRED);
     public static final BooleanSetting DISABLE_STORY_FLIPPING = new BooleanSetting("disable_story_flipping", false, NOT_REQUIRED);
     public static final BooleanSetting LOOP_STORY = new BooleanSetting("loop_story", false, NOT_REQUIRED);
+    public static final BooleanSetting MUTE_STORIES = new BooleanSetting("mute_stories", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_STORY_FOLLOW_BUTTON = new BooleanSetting("hide_story_follow_button", false, NOT_REQUIRED);
     public static final StringSetting CUSTOMISE_STORY_TIMESTAMP = new StringSetting("customise_story_timestamp", "default", REQUIRED);
     public static final StringSetting STORY_AUTO_SAVE = new StringSetting("story_auto_save", "off", NOT_REQUIRED);

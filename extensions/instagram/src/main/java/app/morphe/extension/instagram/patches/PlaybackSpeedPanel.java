@@ -12,6 +12,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.app.Dialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.Typeface;
@@ -40,6 +41,9 @@ final class PlaybackSpeedPanel {
     private final Context context;
     private final Activity host;
     private final Object player;
+    // A story player instead of a Reels or feed player.
+    private final boolean story;
+    private final DialogInterface.OnDismissListener onClose;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final int textColor = InstagramPreferenceStyle.primaryTextColor();
     private final int accentColor = InstagramPreferenceStyle.selectionColor();
@@ -89,18 +93,30 @@ final class PlaybackSpeedPanel {
         public void onActivitySaveInstanceState(Activity activity, Bundle state) {}
     };
 
-    private PlaybackSpeedPanel(Context context, Activity host, Object player) {
+    private PlaybackSpeedPanel(Context context, Activity host, Object player, boolean story,
+                               DialogInterface.OnDismissListener onClose) {
         this.context = context;
         this.host = host;
         this.player = player;
+        this.story = story;
+        this.onClose = onClose;
         position = label();
         duration = label();
         bar = new SeekBar(context);
     }
 
     static void show(Context context, Object player) {
+        show(context, player, false, null);
+    }
+
+    static void showForStory(Context context, Object player, DialogInterface.OnDismissListener onClose) {
+        show(context, player, true, onClose);
+    }
+
+    private static void show(Context context, Object player, boolean story, DialogInterface.OnDismissListener onClose) {
         Context themed = InstagramPreferenceStyle.dialogContext(context);
-        new PlaybackSpeedPanel(themed, context instanceof Activity ? (Activity) context : null, player).open();
+        Activity host = context instanceof Activity ? (Activity) context : null;
+        new PlaybackSpeedPanel(themed, host, player, story, onClose).open();
     }
 
     private void open() {
@@ -177,7 +193,10 @@ final class PlaybackSpeedPanel {
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(root);
         dialog.setCanceledOnTouchOutside(true);
-        dialog.setOnDismissListener(d -> dispose());
+        dialog.setOnDismissListener(d -> {
+            dispose();
+            if (onClose != null) onClose.onDismiss(d);
+        });
         Window window = dialog.getWindow();
         if (window != null) {
             window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -207,12 +226,12 @@ final class PlaybackSpeedPanel {
     // False once the player is released, which reports no duration, which stops the refresh.
     private boolean update() {
         try {
-            int total = PlaybackSpeed.durationMs(player);
+            int total = durationMs();
             bar.setEnabled(total > 0);
             if (total <= 0) return false;
             duration.setText(PlaybackSpeed.formatTime(total));
             if (dragging) return true;
-            int current = PlaybackSpeed.positionMs(player);
+            int current = positionMs();
             bar.setMax(total);
             bar.setProgress(current);
             position.setText(PlaybackSpeed.formatTime(current));
@@ -226,7 +245,8 @@ final class PlaybackSpeedPanel {
 
     private void seek(int positionMs) {
         try {
-            PlaybackSpeed.seekTo(player, positionMs, false);
+            if (story) StoryPlayback.seekTo(player, positionMs);
+            else PlaybackSpeed.seekTo(player, positionMs, false);
         } catch (Throwable t) {
             Logger.printException(() -> "Failed to seek", t);
         }
@@ -234,9 +254,9 @@ final class PlaybackSpeedPanel {
 
     private void skip(int deltaMs) {
         try {
-            int total = PlaybackSpeed.durationMs(player);
+            int total = durationMs();
             if (total <= 0) return;
-            int target = PlaybackSpeed.seekTarget(PlaybackSpeed.positionMs(player), deltaMs, total);
+            int target = PlaybackSpeed.seekTarget(positionMs(), deltaMs, total);
             seek(target);
             bar.setProgress(target);
             position.setText(PlaybackSpeed.formatTime(target));
@@ -247,14 +267,26 @@ final class PlaybackSpeedPanel {
 
     private void pickSpeed(float speed) {
         try {
-            PlaybackSpeed.setSpeed(player, speed);
-            PlaybackSpeed.onPanelSpeedPicked(player, speed);
+            if (story) {
+                StoryPlayback.setSpeed(player, speed);
+            } else {
+                PlaybackSpeed.setSpeed(player, speed);
+                PlaybackSpeed.onPanelSpeedPicked(player, speed);
+            }
             for (int i = 0; i < speeds.length; i++) {
                 style(speeds[i], PlaybackSpeed.PRESETS[i] == speed);
             }
         } catch (Throwable t) {
             Logger.printException(() -> "Failed to set the playback speed", t);
         }
+    }
+
+    private int durationMs() {
+        return story ? StoryPlayback.durationMs(player) : PlaybackSpeed.durationMs(player);
+    }
+
+    private int positionMs() {
+        return story ? StoryPlayback.positionMs(player) : PlaybackSpeed.positionMs(player);
     }
 
     private TextView label() {

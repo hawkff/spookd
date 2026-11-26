@@ -1498,6 +1498,15 @@ public class ScreenBuilder {
                     )
             );
         }
+        if (SettingsStatus.storyPlayback) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_mute_stories"),
+                            str("spookd_mute_stories_desc"),
+                            Settings.MUTE_STORIES
+                    )
+            );
+        }
         if (SettingsStatus.customiseStoryTimestamp) {
             addPreference(
                     helper.listPreference(
