@@ -45,15 +45,31 @@ public final class InstantsSend {
             Runnable discard = () -> {
                 if (settled.compareAndSet(false, true)) discard(send, camera);
             };
-            if (Utils.isCurrentlyOnMainThread()) return !ActionConfirm.askInstantSend(null, send, sendNow, discard);
-            Utils.runOnMainThread(() -> {
-                if (!ActionConfirm.askInstantSend(null, send, sendNow, discard)) sendNow.run();
-            });
+            InstantsOrigin origin = InstantsOrigin.current();
+            if (Utils.isCurrentlyOnMainThread()) {
+                if (!origin.left()) return !ActionConfirm.askInstantSend(null, send, sendNow, discard);
+                discard.run();
+                return false;
+            }
+            Utils.runOnMainThread(() -> askLater(origin, null, send, sendNow, discard));
             return false;
         } catch (Throwable t) {
             Logger.printException(() -> "Failed to check an Instant before sending", t);
             return true;
         }
+    }
+
+    /** Main thread: a camera left before the question shows discards; a question that cannot show sends. */
+    static void askLater(InstantsOrigin origin, String emoji, Object token, Runnable send, Runnable drop) {
+        boolean left;
+        try {
+            left = origin.left();
+        } catch (Throwable t) {
+            Logger.printException(() -> "Failed to check the Instants screen", t);
+            left = false;
+        }
+        if (left) drop.run();
+        else if (!ActionConfirm.askInstantSend(emoji, token, send, drop)) send.run();
     }
 
     private static void resend(Object send, Object camera) {

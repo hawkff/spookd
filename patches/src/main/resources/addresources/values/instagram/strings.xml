@@ -817,7 +817,7 @@
     <string name="spookd_disable_instants_creation_desc">Instants you capture are discarded when they would be sent. The Instants camera still opens.</string>
     <string name="spookd_disable_instants_creation_discarded">Instants creation is off, so this Instant was not sent</string>
     <string name="spookd_confirm_instant_video">Confirm Instant videos</string>
-    <string name="spookd_confirm_instant_video_desc">Asks before a recorded Instant video is sent. Leaving the camera while asked discards the video.</string>
+    <string name="spookd_confirm_instant_video_desc">Asks before a recorded Instant video is sent. Leaving the camera before or while asked discards the video.</string>
     <string name="spookd_confirm_instant_video_title">Send this Instant video?</string>
     <string name="spookd_confirm_instant_video_action">Send</string>
     <string name="spookd_confirm_instant_reaction">Confirm Instant reactions</string>

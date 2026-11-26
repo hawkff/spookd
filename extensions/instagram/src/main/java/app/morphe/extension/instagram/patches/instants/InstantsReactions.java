@@ -45,12 +45,13 @@ public final class InstantsReactions {
             Runnable cancel = () -> {
                 if (settled.compareAndSet(false, true)) resume(continuation, Boolean.FALSE);
             };
+            InstantsOrigin origin = InstantsOrigin.current();
             if (Utils.isCurrentlyOnMainThread()) {
+                // A viewer already left gets Instagram's not-sent result right away.
+                if (origin.left()) return Boolean.FALSE;
                 return ActionConfirm.askInstantSend(emoji, continuation, send, cancel) ? suspended : null;
             }
-            Utils.runOnMainThread(() -> {
-                if (!ActionConfirm.askInstantSend(emoji, continuation, send, cancel)) send.run();
-            });
+            Utils.runOnMainThread(() -> InstantsSend.askLater(origin, emoji, continuation, send, cancel));
             return suspended;
         } catch (Throwable t) {
             Logger.printException(() -> "Failed to hold an Instant reaction", t);
