@@ -12,7 +12,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.text.format.DateUtils;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -34,6 +33,7 @@ import app.morphe.extension.instagram.patches.dm.InboxLock;
 import app.morphe.extension.instagram.patches.dm.vault.PlainMedia;
 import app.morphe.extension.instagram.patches.dm.vault.VaultViewer;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
+import app.morphe.extension.instagram.settings.preference.widgets.SpookdType;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 
@@ -119,10 +119,10 @@ public final class DownloadHistoryActivity {
             TextView title = new TextView(activity);
             title.setText(str("spookd_download_history"));
             title.setTextColor(InstagramPreferenceStyle.primaryTextColor());
-            InstagramPreferenceStyle.applyToolbarLayout(activity, toolbar, back, title, false);
+            InstagramPreferenceStyle.applyToolbarLayout(activity, toolbar, back, title);
             TextView clear = new TextView(activity);
             clear.setText(str("spookd_download_history_clear"));
-            clear.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+            SpookdType.apply(clear, SpookdType.BODY);
             clear.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             clear.setPadding(dp(12), dp(8), dp(4), dp(8));
             clear.setOnClickListener(v -> confirmClear());
@@ -135,7 +135,7 @@ public final class DownloadHistoryActivity {
             empty = new TextView(activity);
             empty.setText(str(unlocked ? "spookd_download_history_empty" : "spookd_vault_needs_screen_lock"));
             empty.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
-            empty.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+            SpookdType.apply(empty, SpookdType.BODY);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(dp(24), dp(24), dp(24), dp(24));
             empty.setVisibility(unlocked ? View.GONE : View.VISIBLE);
@@ -344,18 +344,19 @@ public final class DownloadHistoryActivity {
                 super(activity);
                 setOrientation(HORIZONTAL);
                 setGravity(Gravity.CENTER_VERTICAL);
-                setPadding(dp(16), dp(10), dp(8), dp(10));
+                setPadding(dp(SpookdType.SPACE_L), dp(SpookdType.SPACE_M),
+                        dp(SpookdType.SPACE_S), dp(SpookdType.SPACE_M));
                 LinearLayout texts = new LinearLayout(activity);
                 texts.setOrientation(VERTICAL);
-                name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+                SpookdType.apply(name, SpookdType.BODY);
                 name.setTextColor(InstagramPreferenceStyle.primaryTextColor());
                 name.setSingleLine(true);
                 name.setEllipsize(TextUtils.TruncateAt.END);
-                details.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+                SpookdType.apply(details, SpookdType.SECONDARY);
                 details.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
                 details.setMaxLines(3);
                 details.setEllipsize(TextUtils.TruncateAt.END);
-                file.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+                SpookdType.apply(file, SpookdType.SECONDARY);
                 file.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
                 file.setSingleLine(true);
                 file.setEllipsize(TextUtils.TruncateAt.MIDDLE);
@@ -364,7 +365,7 @@ public final class DownloadHistoryActivity {
                 texts.addView(file);
                 addView(texts, new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1));
                 retryButton.setText(str("spookd_download_history_retry"));
-                retryButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+                SpookdType.apply(retryButton, SpookdType.LABEL);
                 retryButton.setTextColor(InstagramPreferenceStyle.primaryTextColor());
                 retryButton.setPadding(dp(12), dp(8), dp(8), dp(8));
                 // A clickable child that takes focus would stop the row's own taps.

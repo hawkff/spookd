@@ -11,9 +11,9 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.InsetDrawable;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,6 +32,7 @@ import java.util.List;
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramSearchStyle;
+import app.morphe.extension.instagram.settings.preference.widgets.SpookdType;
 
 public final class SettingsSearchController {
     public interface Listener {
@@ -85,7 +86,7 @@ public final class SettingsSearchController {
         searchInput.setTextColor(InstagramPreferenceStyle.primaryTextColor());
         searchInput.setHintTextColor(InstagramPreferenceStyle.secondaryTextColor());
         searchInput.setHint(str("spookd_settings_search_hint"));
-        searchInput.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        SpookdType.apply(searchInput, SpookdType.BODY);
         searchInput.setPaddingRelative(0, 0, 0, 0);
         searchInput.setTextDirection(View.TEXT_DIRECTION_LOCALE);
         searchInput.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
@@ -184,11 +185,9 @@ public final class SettingsSearchController {
 
     public View createSearchEntryView() {
         FrameLayout entry = new FrameLayout(context);
-        entry.setPaddingRelative(
-                InstagramPreferenceStyle.dp(context, 16), 0,
-                InstagramPreferenceStyle.dp(context, 16),
-                InstagramPreferenceStyle.dp(context, 10)
-        );
+        int edge = InstagramPreferenceStyle.dp(context, SpookdType.SPACE_L);
+        int gap = InstagramPreferenceStyle.dp(context, SpookdType.SPACE_XS);
+        entry.setPaddingRelative(edge, gap, edge, gap);
         entry.setContentDescription(str("spookd_settings_search_hint"));
         entry.setFocusable(true);
         entry.setOnClickListener(view -> enterSearchMode());
@@ -199,7 +198,7 @@ public final class SettingsSearchController {
         TextView hint = new TextView(context);
         hint.setText(str("spookd_settings_search_hint"));
         hint.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
-        hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        SpookdType.apply(hint, SpookdType.BODY);
         hint.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
         hint.setTextDirection(View.TEXT_DIRECTION_LOCALE);
         hint.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
@@ -221,18 +220,19 @@ public final class SettingsSearchController {
         bar.setLayoutDirection(View.LAYOUT_DIRECTION_LOCALE);
         GradientDrawable background = new GradientDrawable();
         background.setColor(InstagramPreferenceStyle.searchBackgroundColor());
-        background.setCornerRadius(InstagramPreferenceStyle.dp(context, 12));
-        bar.setBackground(background);
+        background.setCornerRadius(InstagramPreferenceStyle.dp(context, SpookdType.SPACE_M));
+        // A 36dp field, as in Instagram, inside a 48dp touch target.
+        int inset = InstagramPreferenceStyle.dp(context, 6);
+        bar.setBackground(new InsetDrawable(background, 0, inset, 0, inset));
         ImageView icon = new ImageView(context);
         icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        int horizontalPadding = InstagramPreferenceStyle.dp(context, 11);
         int verticalPadding = InstagramPreferenceStyle.dp(context, 14);
-        icon.setPadding(horizontalPadding, verticalPadding,
-                horizontalPadding, verticalPadding);
+        icon.setPaddingRelative(InstagramPreferenceStyle.dp(context, 10), verticalPadding,
+                InstagramPreferenceStyle.dp(context, 6), verticalPadding);
         UI.setThemedIcon(icon, UI.DRAWABLE_SEARCH, "igds_color_secondary_text");
         icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         bar.addView(icon, new LinearLayout.LayoutParams(
-                InstagramPreferenceStyle.dp(context, 42),
+                InstagramPreferenceStyle.dp(context, 36),
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
         return bar;
@@ -335,12 +335,14 @@ public final class SettingsSearchController {
     private FrameLayout.LayoutParams layoutParams() {
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                InstagramPreferenceStyle.dp(context, 48)
+                InstagramPreferenceStyle.dp(context, SpookdType.MIN_TOUCH)
         );
         params.gravity = Gravity.START | Gravity.TOP;
-        params.setMarginStart(InstagramPreferenceStyle.dp(context, 51));
-        params.setMarginEnd(InstagramPreferenceStyle.dp(context, 15));
-        params.topMargin = InstagramPreferenceStyle.dp(context, 11);
+        // Just past the back arrow, centered in the toolbar.
+        params.setMarginStart(InstagramPreferenceStyle.dp(context, 52));
+        params.setMarginEnd(InstagramPreferenceStyle.dp(context, SpookdType.SPACE_L));
+        params.topMargin = InstagramPreferenceStyle.dp(context,
+                (SpookdType.TOOLBAR_HEIGHT - SpookdType.MIN_TOUCH) / 2f);
         return params;
     }
 

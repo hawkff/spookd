@@ -9,7 +9,6 @@ package app.morphe.extension.instagram.settings.preference.widgets;
 import android.content.Context;
 import android.graphics.PorterDuff;
 import android.preference.Preference;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -47,10 +46,10 @@ public class FocusLockDurationPreference extends Preference {
         LinearLayout row = new LinearLayout(context);
         row.setOrientation(LinearLayout.VERTICAL);
         row.setPadding(
-                InstagramPreferenceStyle.dp(context, 15),
-                InstagramPreferenceStyle.dp(context, 14),
-                InstagramPreferenceStyle.dp(context, 15),
-                InstagramPreferenceStyle.dp(context, 14)
+                InstagramPreferenceStyle.dp(context, SpookdType.SPACE_L),
+                InstagramPreferenceStyle.dp(context, SpookdType.SPACE_M),
+                InstagramPreferenceStyle.dp(context, SpookdType.SPACE_L),
+                InstagramPreferenceStyle.dp(context, SpookdType.SPACE_M)
         );
         row.setBackgroundColor(InstagramPreferenceStyle.backgroundColor());
         row.setLayoutParams(new ViewGroup.LayoutParams(
@@ -67,7 +66,7 @@ public class FocusLockDurationPreference extends Preference {
         ));
 
         titleView = new TextView(context);
-        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        SpookdType.apply(titleView, SpookdType.BODY);
         header.addView(titleView, new LinearLayout.LayoutParams(
                 0,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -75,7 +74,7 @@ public class FocusLockDurationPreference extends Preference {
         ));
 
         valueView = new TextView(context);
-        valueView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        SpookdType.apply(valueView, SpookdType.BODY);
         header.addView(valueView, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -85,7 +84,7 @@ public class FocusLockDurationPreference extends Preference {
         seekBar.setMax(FocusLockDuration.stepCount() - 1);
         seekBar.setPadding(
                 seekBar.getPaddingLeft(),
-                InstagramPreferenceStyle.dp(context, 10),
+                InstagramPreferenceStyle.dp(context, SpookdType.SPACE_S),
                 seekBar.getPaddingRight(),
                 0
         );

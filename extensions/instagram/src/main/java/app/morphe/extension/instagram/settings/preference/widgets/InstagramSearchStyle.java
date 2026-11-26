@@ -11,12 +11,10 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.text.Editable;
 import android.text.style.BackgroundColorSpan;
-import android.util.TypedValue;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -75,14 +73,13 @@ public final class InstagramSearchStyle {
         TextView title = new TextView(context);
         title.setText(str("spookd_settings_search_no_results"));
         title.setTextColor(InstagramPreferenceStyle.primaryTextColor());
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        SpookdType.apply(title, SpookdType.TITLE);
         title.setGravity(android.view.Gravity.CENTER);
         title.setIncludeFontPadding(false);
         title.setPadding(
-                InstagramPreferenceStyle.dp(context, 24),
-                InstagramPreferenceStyle.dp(context, 8),
-                InstagramPreferenceStyle.dp(context, 24),
+                InstagramPreferenceStyle.dp(context, SpookdType.SPACE_XL),
+                InstagramPreferenceStyle.dp(context, SpookdType.SPACE_S),
+                InstagramPreferenceStyle.dp(context, SpookdType.SPACE_XL),
                 0
         );
         message.addView(title, new LinearLayout.LayoutParams(

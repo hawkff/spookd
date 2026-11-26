@@ -15,7 +15,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.graphics.Typeface;
 import android.preference.Preference;
 import android.text.TextUtils;
 import android.util.TypedValue;
@@ -35,7 +34,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import app.morphe.extension.instagram.constants.UI;
-import app.morphe.extension.instagram.patches.customise.font.CustomFontContext;
 import app.morphe.extension.instagram.settings.ActivityHook;
 import app.morphe.extension.shared.ResourceUtils;
 
@@ -66,14 +64,6 @@ public final class InstagramPreferenceStyle {
                 : UI.DRAWABLE_CHEVRON_RIGHT;
     }
 
-    private static int topPaddingDp(int trailingType, boolean hasSummary) {
-        return hasSummary || trailingType == TRAILING_SWITCH ? 10 : 15;
-    }
-
-    private static int bottomPaddingDp(int trailingType, boolean hasSummary) {
-        return hasSummary || trailingType == TRAILING_SWITCH ? 20 : 15;
-    }
-
     public static int dp(Context context, float value) {
         return (int) TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
@@ -86,44 +76,44 @@ public final class InstagramPreferenceStyle {
             Context context,
             LinearLayout toolbar,
             ImageView back,
-            TextView title,
-            boolean isRootSettings
+            TextView title
     ) {
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
-        toolbar.setPadding(dp(context, 15), dp(context, 10),
-                dp(context, 15), dp(context, 8));
+        toolbar.setPadding(dp(context, SpookdType.SPACE_M), 0,
+                dp(context, SpookdType.SPACE_M), 0);
         toolbar.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(context, 70)));
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(context, SpookdType.TOOLBAR_HEIGHT)));
 
         back.setScaleType(ImageView.ScaleType.CENTER);
-        back.setPaddingRelative(0, 0, dp(context, 16), 0);
-        LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(
-                dp(context, 44), dp(context, 44));
+        back.setPaddingRelative(0, 0, dp(context, SpookdType.SPACE_L), 0);
+        int backSize = dp(context, SpookdType.MIN_TOUCH);
+        LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(backSize, backSize);
         backParams.gravity = Gravity.CENTER_VERTICAL;
         back.setLayoutParams(backParams);
 
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, isRootSettings ? 25 : 20);
-        title.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
-        title.setIncludeFontPadding(false);
-        title.setMaxLines(1);
-        if (!isRootSettings) {
-            title.setAutoSizeTextTypeUniformWithConfiguration(
-                    18, 20, 1, TypedValue.COMPLEX_UNIT_SP);
-        }
+        applyToolbarTitle(title);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         titleParams.gravity = Gravity.CENTER_VERTICAL;
-        titleParams.leftMargin = dp(context, 7);
+        titleParams.leftMargin = dp(context, SpookdType.SPACE_M);
         title.setLayoutParams(titleParams);
     }
 
-    /** Matches platform preference dialogs to Instagram's resolved theme. */
+    /** Instagram's app bar title: bold, on one line. */
+    public static void applyToolbarTitle(TextView title) {
+        SpookdType.apply(title, SpookdType.TITLE);
+        title.setIncludeFontPadding(false);
+        title.setMaxLines(1);
+        title.setEllipsize(TextUtils.TruncateAt.END);
+    }
+
+    /** Matches platform preference dialogs to Instagram's resolved theme and type scale. */
     public static Context dialogContext(Context context) {
         int themeRes = UI.isDarkMode()
                 ? android.R.style.Theme_DeviceDefault
                 : android.R.style.Theme_DeviceDefault_Light;
-        return new CustomFontContext(context, themeRes);
+        return SpookdType.dialogContext(context, themeRes);
     }
 
     public static int backgroundColor() {
@@ -154,7 +144,12 @@ public final class InstagramPreferenceStyle {
         return UI.getThemedColour("igds_color_secondary_text");
     }
 
+    /** Readable on both themes; a disabled row is told apart by its title losing primary color. */
     public static int disabledTextColor() {
+        return secondaryTextColor();
+    }
+
+    public static int separatorColor() {
         return UI.getThemedColour("igds_color_separator");
     }
 
@@ -190,7 +185,10 @@ public final class InstagramPreferenceStyle {
         PreferenceRow row = new PreferenceRow(context, trailingType);
         row.setOrientation(trailingType == TRAILING_SWITCH ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(dp(context, 15), dp(context, 10), dp(context, 15), dp(context, 10));
+        int edge = dp(context, SpookdType.SPACE_L);
+        int vertical = dp(context, SpookdType.SPACE_M);
+        row.setPadding(edge, vertical, edge, vertical);
+        row.setMinimumHeight(dp(context, SpookdType.MIN_TOUCH));
         row.setBackgroundColor(backgroundColor());
         row.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -213,8 +211,8 @@ public final class InstagramPreferenceStyle {
 
             TextView title = new TextView(context);
             title.setTag(TAG_TITLE);
-            title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-            title.setTextColor(primaryTextColor());
+            SpookdType.apply(title, SpookdType.BODY);
+            title.setTextColor(row.primaryColor);
             title.setIncludeFontPadding(true);
             title.setSingleLine(false);
             alignTextToLocaleStart(title);
@@ -223,7 +221,7 @@ public final class InstagramPreferenceStyle {
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     1f
             );
-            titleParams.setMarginEnd(dp(context, 14));
+            titleParams.setMarginEnd(dp(context, SpookdType.SPACE_M));
             titleRow.addView(title, titleParams);
 
             CompoundButton switchView = createNativeSwitch(nativeSwitchContext(context));
@@ -235,11 +233,10 @@ public final class InstagramPreferenceStyle {
 
             TextView summary = new TextView(context);
             summary.setTag(TAG_SUMMARY);
-            summary.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-            summary.setTextColor(secondaryTextColor());
-            summary.setLineSpacing(dp(context, 1), 1.0f);
+            SpookdType.apply(summary, SpookdType.SECONDARY);
+            summary.setTextColor(row.secondaryColor);
             alignTextToLocaleStart(summary);
-            summary.setPadding(0, dp(context, 10), 0, 0);
+            summary.setPadding(0, dp(context, SpookdType.SPACE_XS), 0, 0);
             row.addView(summary, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
@@ -258,13 +255,13 @@ public final class InstagramPreferenceStyle {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 1f
         );
-        textParams.setMarginEnd(dp(context, 14));
+        textParams.setMarginEnd(dp(context, SpookdType.SPACE_M));
         row.addView(textColumn, textParams);
 
         TextView title = new TextView(context);
         title.setTag(TAG_TITLE);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-        title.setTextColor(primaryTextColor());
+        SpookdType.apply(title, SpookdType.BODY);
+        title.setTextColor(row.primaryColor);
         title.setIncludeFontPadding(true);
         title.setSingleLine(false);
         alignTextToLocaleStart(title);
@@ -275,11 +272,10 @@ public final class InstagramPreferenceStyle {
 
         TextView summary = new TextView(context);
         summary.setTag(TAG_SUMMARY);
-        summary.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        summary.setTextColor(secondaryTextColor());
-        summary.setLineSpacing(dp(context, 1), 1.0f);
+        SpookdType.apply(summary, SpookdType.SECONDARY);
+        summary.setTextColor(row.secondaryColor);
         alignTextToLocaleStart(summary);
-        summary.setPadding(0, dp(context, 10), 0, 0);
+        summary.setPadding(0, dp(context, SpookdType.SPACE_XS), 0, 0);
         textColumn.addView(summary, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -331,15 +327,14 @@ public final class InstagramPreferenceStyle {
                     dp(context, 16),
                     dp(context, 16)
             );
-            iconParams.setMarginEnd(dp(context, 6));
+            iconParams.setMarginEnd(dp(context, SpookdType.SPACE_XS));
             categoryRow.addView(categoryIcon, iconParams);
 
             TextView category = new TextView(context);
             category.setTag(TAG_RESULT_CATEGORY);
-            category.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            SpookdType.apply(category, SpookdType.SECONDARY);
             category.setTextColor(secondaryTextColor());
             category.setIncludeFontPadding(true);
-            category.setLineSpacing(dp(context, 1), 1.0f);
             alignTextToLocaleStart(category);
             category.setMaxLines(1);
             category.setEllipsize(TextUtils.TruncateAt.END);
@@ -384,9 +379,6 @@ public final class InstagramPreferenceStyle {
             summary.setVisibility(hasSummary ? View.VISIBLE : View.GONE);
             summary.setTextColor(summaryColor);
             summary.setEnabled(enabled);
-            if (view instanceof PreferenceRow) {
-                ((PreferenceRow) view).setHasSummary(hasSummary);
-            }
         }
 
         if (trailing != null) {
@@ -409,24 +401,16 @@ public final class InstagramPreferenceStyle {
         bindText(preference, view);
 
         Context context = view.getContext();
-        TextView description = view.findViewWithTag(TAG_SUMMARY);
         View categoryRow = view.findViewWithTag(TAG_RESULT_CATEGORY_ROW);
         ImageView categoryIcon = view.findViewWithTag(TAG_RESULT_CATEGORY_ICON);
         TextView category = view.findViewWithTag(TAG_RESULT_CATEGORY);
-        boolean hasDescription = description != null
-                && description.getVisibility() == View.VISIBLE;
         boolean hasCategory = !TextUtils.isEmpty(categoryText);
         boolean hasCategoryIcon = hasCategory
                 && !TextUtils.isEmpty(categoryIconResourceName);
 
         if (categoryRow != null) {
             categoryRow.setVisibility(hasCategory ? View.VISIBLE : View.GONE);
-            categoryRow.setPaddingRelative(
-                    0,
-                    dp(context, hasDescription ? 4 : 10),
-                    0,
-                    0
-            );
+            categoryRow.setPaddingRelative(0, dp(context, SpookdType.SPACE_XS), 0, 0);
         }
 
         if (categoryIcon != null) {
@@ -438,18 +422,7 @@ public final class InstagramPreferenceStyle {
 
         if (category != null) {
             category.setText(hasCategory ? categoryText : "");
-            category.setTextColor(preference.isEnabled()
-                    ? secondaryTextColor()
-                    : disabledTextColor());
             category.setEnabled(preference.isEnabled());
-        }
-
-        if (view instanceof PreferenceRow) {
-            PreferenceRow row = (PreferenceRow) view;
-            row.setHasSummary(hasDescription || hasCategory);
-            int verticalPadding = dp(context, 15);
-            row.setPadding(row.getPaddingLeft(), verticalPadding,
-                    row.getPaddingRight(), verticalPadding);
         }
     }
 
@@ -509,8 +482,8 @@ public final class InstagramPreferenceStyle {
 
         TextView titleView = new TextView(context);
         titleView.setText(title);
-        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
-        titleView.setTextColor(primaryTextColor());
+        SpookdType.apply(titleView, SpookdType.BODY);
+        titleView.setTextColor(row.primaryColor);
         titleView.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
                 0,
@@ -680,8 +653,7 @@ public final class InstagramPreferenceStyle {
             int iconSize = dp(context, 24);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(iconSize, iconSize);
 
-            params.setMarginStart(dp(context, 16));
-            params.setMarginEnd(dp(context, 16));
+            params.setMarginEnd(dp(context, SpookdType.SPACE_M));
             iconView.setLayoutParams(params);
 
             iconView.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -689,8 +661,6 @@ public final class InstagramPreferenceStyle {
         }
 
         void setIcon(String iconResName) {
-            int horizontalPadding = dp(getContext(), iconResName != null ? 10 : 15);
-            setPadding(horizontalPadding, getPaddingTop(), horizontalPadding, getPaddingBottom());
             if (iconResName == null) {
                 iconName = null;
                 if (iconView != null) {
@@ -752,13 +722,6 @@ public final class InstagramPreferenceStyle {
             } else {
                 setTranslationZ(translationZ);
             }
-        }
-
-        void setHasSummary(boolean hasSummary) {
-            int topPadding = dp(getContext(), topPaddingDp(trailingType, hasSummary));
-            int bottomPadding = dp(getContext(), bottomPaddingDp(trailingType, hasSummary));
-            setMinimumHeight(dp(getContext(), hasSummary ? 80 : 64));
-            setPadding(getPaddingLeft(), topPadding, getPaddingRight(), bottomPadding);
         }
 
         @Override
@@ -869,14 +832,15 @@ public final class InstagramPreferenceStyle {
             if (highlightView == null) {
                 return 0;
             }
-            return Math.max(0, highlightView.getTop() - dp(getContext(), 10));
+            return Math.max(0, highlightView.getTop() - dp(getContext(), SpookdType.SPACE_M));
         }
 
         private int highlightBottom() {
             if (highlightView == null) {
                 return getHeight();
             }
-            return Math.min(getHeight(), highlightView.getBottom() + dp(getContext(), 10));
+            // Ends where the summary begins.
+            return Math.min(getHeight(), highlightView.getBottom() + dp(getContext(), SpookdType.SPACE_XS));
         }
 
         private void setDrawPressedHighlight(boolean drawPressedHighlight) {

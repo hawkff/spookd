@@ -14,7 +14,6 @@ import android.content.DialogInterface;
 import android.content.ContextWrapper;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.os.Build;
@@ -41,6 +40,7 @@ import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.entity.ImageData;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
+import app.morphe.extension.instagram.settings.preference.widgets.SpookdType;
 import app.morphe.extension.instagram.utils.MediaUrls;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
@@ -110,14 +110,14 @@ final class DownloadSelectionSheet {
         LinearLayout header = new LinearLayout(context);
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(dp(20), dp(12), dp(8), 0);
-        TextView title = text(str("spookd_select_media_download"), 22, true);
+        TextView title = text(str("spookd_select_media_download"), SpookdType.TITLE);
         header.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
         ImageButton close = iconButton(UI.DRAWABLE_CLEAR, str("spookd_close"));
         close.setOnClickListener(v -> dialog.cancel());
         header.addView(close, new LinearLayout.LayoutParams(dp(48), dp(48)));
         panel.addView(header);
 
-        TextView author = text("@" + media.username(), 14, false);
+        TextView author = text("@" + media.username(), SpookdType.SECONDARY);
         author.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
         author.setSingleLine(true);
         author.setEllipsize(TextUtils.TruncateAt.END);
@@ -129,8 +129,8 @@ final class DownloadSelectionSheet {
         actions.setPadding(dp(8), 0, dp(8), 0);
 
         selectAll = new Button(context);
+        SpookdType.apply(selectAll, SpookdType.LABEL);
         selectAll.setAllCaps(false);
-        selectAll.setTextSize(14);
         selectAll.setTextColor(InstagramPreferenceStyle.primaryTextColor());
         selectAll.setPadding(dp(12), 0, dp(12), 0);
         selectAll.setMinWidth(0);
@@ -151,9 +151,8 @@ final class DownloadSelectionSheet {
         panel.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
 
         download = new Button(context);
+        SpookdType.apply(download, SpookdType.LABEL);
         download.setAllCaps(false);
-        download.setTextSize(14);
-        download.setTypeface(download.getTypeface(), Typeface.BOLD);
         download.setGravity(Gravity.CENTER);
         download.setTextColor(InstagramPreferenceStyle.backgroundColor());
         download.setBackgroundTintList(null);
@@ -230,7 +229,7 @@ final class DownloadSelectionSheet {
         String thumbnail = thumbnailUrl(item);
         image.setTag(thumbnail);
 
-        TextView name = text(label, 16, true);
+        TextView name = text(label, SpookdType.BODY);
         name.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         name.setPadding(dp(12), 0, dp(4), 0);
         row.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
@@ -307,12 +306,11 @@ final class DownloadSelectionSheet {
         return button;
     }
 
-    private TextView text(String text, int size, boolean bold) {
+    private TextView text(String text, int role) {
         TextView view = new TextView(context);
         view.setText(text);
-        view.setTextSize(size);
+        SpookdType.apply(view, role);
         view.setTextColor(InstagramPreferenceStyle.primaryTextColor());
-        if (bold) view.setTypeface(view.getTypeface(), Typeface.BOLD);
         return view;
     }
 

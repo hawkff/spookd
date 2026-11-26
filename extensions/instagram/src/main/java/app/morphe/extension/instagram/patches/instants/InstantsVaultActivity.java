@@ -69,6 +69,7 @@ import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramSearchStyle;
+import app.morphe.extension.instagram.settings.preference.widgets.SpookdType;
 import app.morphe.extension.instagram.db.SpookdInstantsDb;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.instagram.patches.download.DownloadFileNameFormatter;
@@ -290,7 +291,7 @@ public final class InstantsVaultActivity {
             search.setHint(str("spookd_search_username"));
             search.setHintTextColor(themed("igds_color_secondary_text", 0xFFB0B0B0));
             search.setTextColor(themed("igds_color_primary_text", 0xFFFFFFFF));
-            search.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+            SpookdType.apply(search, SpookdType.BODY);
             search.setBackgroundColor(Color.TRANSPARENT);
             search.setPaddingRelative(0, dp(10), dp(14), dp(10));
             search.setTextDirection(View.TEXT_DIRECTION_LOCALE);
@@ -478,7 +479,7 @@ public final class InstantsVaultActivity {
             TextView tv = new TextView(activity);
             tv.setText(text);
             tv.setTextColor(themed("igds_color_secondary_text", 0xFFB0B0B0));
-            tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+            SpookdType.apply(tv, SpookdType.BODY);
             tv.setGravity(Gravity.CENTER);
             tv.setPadding(dp(24), dp(24), dp(24), dp(24));
             tv.setLayoutParams(new FrameLayout.LayoutParams(
@@ -538,9 +539,9 @@ public final class InstantsVaultActivity {
             TextView h = new TextView(activity);
             h.setText("@" + username);
             h.setTextColor(themed("igds_color_secondary_text", 0xFFB0B0B0));
-            h.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-            h.setTypeface(null, android.graphics.Typeface.BOLD);
-            h.setPadding(dp(12), dp(16), dp(12), dp(6));
+            SpookdType.apply(h, SpookdType.SECTION);
+            h.setPadding(dp(SpookdType.SPACE_M), dp(SpookdType.SPACE_L),
+                    dp(SpookdType.SPACE_M), dp(SpookdType.SPACE_S));
             return h;
         }
 
@@ -628,7 +629,7 @@ public final class InstantsVaultActivity {
             toolbarTitle = title;
             title.setText(str("spookd_view_saved_instants"));
             title.setTextColor(InstagramPreferenceStyle.primaryTextColor());
-            InstagramPreferenceStyle.applyToolbarLayout(activity, bar, back, title, false);
+            InstagramPreferenceStyle.applyToolbarLayout(activity, bar, back, title);
             bar.addView(back);
             LinearLayout selectAll = new LinearLayout(activity);
             selectAll.setOrientation(LinearLayout.VERTICAL);
@@ -641,7 +642,7 @@ public final class InstantsVaultActivity {
             TextView allLabel = new TextView(activity);
             allLabel.setText(str("spookd_all"));
             allLabel.setTextColor(InstagramPreferenceStyle.primaryTextColor());
-            allLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+            SpookdType.apply(allLabel, SpookdType.CAPTION);
             LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
             labelParams.topMargin = -dp(10);
@@ -654,7 +655,7 @@ public final class InstantsVaultActivity {
             TextView cancel = new TextView(activity);
             cancel.setText(str("spookd_cancel"));
             cancel.setTextColor(InstagramPreferenceStyle.primaryTextColor());
-            cancel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+            SpookdType.apply(cancel, SpookdType.BODY);
             cancel.setGravity(Gravity.CENTER);
             cancel.setMinWidth(dp(48));
             cancel.setPadding(dp(8), 0, dp(8), 0);
@@ -669,6 +670,7 @@ public final class InstantsVaultActivity {
         private View buildDeleteAction() {
             deleteAction = new Button(activity);
             deleteAction.setText(str("spookd_delete"));
+            SpookdType.apply(deleteAction, SpookdType.LABEL);
             deleteAction.setAllCaps(false);
             deleteAction.setTextColor(themed("igds_color_error_or_destructive", 0xFFFF5C5C));
             deleteAction.setBackgroundTintList(null);
@@ -716,8 +718,9 @@ public final class InstantsVaultActivity {
                 LinearLayout toolbar = (LinearLayout) toolbarTitle.getParent();
                 if (selectionMode) {
                     toolbar.setGravity(Gravity.TOP);
-                    toolbar.setPadding(dp(16), toolbar.getPaddingTop(), dp(16), toolbar.getPaddingBottom());
-                    toolbar.setMinimumHeight(dp(70));
+                    // Keeps the 48dp actions centered where the normal toolbar centers its row.
+                    toolbar.setPadding(dp(16), dp(4), dp(16), 0);
+                    toolbar.setMinimumHeight(dp(SpookdType.TOOLBAR_HEIGHT));
                     toolbar.getLayoutParams().height = LinearLayout.LayoutParams.WRAP_CONTENT;
                     toolbar.requestLayout();
                     LinearLayout.LayoutParams titleParams =
@@ -730,7 +733,7 @@ public final class InstantsVaultActivity {
                 } else {
                     toolbar.setMinimumHeight(0);
                     InstagramPreferenceStyle.applyToolbarLayout(
-                            activity, toolbar, (ImageView) backAction, toolbarTitle, false);
+                            activity, toolbar, (ImageView) backAction, toolbarTitle);
                 }
                 selectionToolbarVisible = selectionMode;
             }
