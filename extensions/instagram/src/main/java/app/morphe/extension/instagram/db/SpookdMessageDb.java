@@ -700,9 +700,12 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
                 // Unsent messages.
                 + "SELECT * FROM (" + messageColumns + " FROM " + TABLE + " m INDEXED BY idx_deleted_time"
                 + " WHERE m.is_deleted = 1" + HAS_CONTENT + messagesAfter + messageOrder + ")"
-                // Stored view-once and view-twice media whose message was not unsent; the vault is small.
-                + " UNION ALL SELECT * FROM (" + messageColumns + " FROM saved_media s JOIN " + TABLE
+                // Stored view-once and view-twice media whose message was not unsent: CROSS JOIN keeps the
+                // small vault as the outer loop, and the non-empty id lets the partial server id index look up
+                // each message.
+                + " UNION ALL SELECT * FROM (" + messageColumns + " FROM saved_media s CROSS JOIN " + TABLE
                 + " m ON m.server_id = s.item_id WHERE s.state = 'stored' AND s.view_mode IN ('once', 'replayable')"
+                + " AND m.server_id IS NOT NULL AND m.server_id != ''"
                 + " AND COALESCE(m.is_deleted, 0) = 0" + HAS_CONTENT + messagesAfter + messageOrder + ")"
                 // Removed reactions.
                 + " UNION ALL SELECT * FROM (SELECT 1, r.id, NULL, m.thread_id, NULL, m.content, NULL,"

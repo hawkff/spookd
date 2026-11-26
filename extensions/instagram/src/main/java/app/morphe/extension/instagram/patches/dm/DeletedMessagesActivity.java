@@ -493,6 +493,8 @@ public final class DeletedMessagesActivity {
                 updateSelectionUi();
                 return;
             }
+            // Delete stays disabled until the reload is in.
+            updateSelectionUi();
             // Reloads as many rows as are shown, page by page, so the list keeps its length.
             int wanted = Math.max(PAGE_SIZE, messages.size());
             Context app = activity.getApplicationContext();

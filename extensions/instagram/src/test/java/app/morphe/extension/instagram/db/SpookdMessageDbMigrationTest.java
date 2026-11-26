@@ -181,6 +181,10 @@ public final class SpookdMessageDbMigrationTest {
     public void deletedLogPagesSeekTheirIndexes() throws Exception {
         SpookdMessageDb helper = newHelper(RuntimeEnvironment.getApplication());
         SQLiteDatabase db = helper.getWritableDatabase();
+        insertMessages(db);
+        db.execSQL("UPDATE saved_messages SET content = 'once' WHERE message_id = '31000000000000000000000000003'");
+        db.execSQL("INSERT INTO saved_media (item_id, kind, url_expires_at, msg_timestamp, state, view_mode)"
+                + " VALUES ('31000000000000000000000000003', 'photo', 1700000000000, 1690000002000, 'stored', 'once')");
         String[] cursor = {"31000000000000000000000000001", "t", "u", "c", "text", "1690000000000", "1", "5"};
         for (String[] after : new String[][]{null, cursor}) {
             StringBuilder plan = new StringBuilder();
@@ -189,7 +193,12 @@ public final class SpookdMessageDbMigrationTest {
             rows.close();
             assertTrue(plan.toString(), plan.indexOf("idx_deleted_time") >= 0);
             assertTrue(plan.toString(), plan.indexOf("idx_reactions_removed_time") >= 0);
+            // The stored media branch looks each vault row's message up by its server id.
+            assertTrue(plan.toString(), plan.indexOf("idx_server_id") >= 0);
         }
+        // The stored view-once message is listed once, through that branch.
+        assertEquals(1, helper.getDeletedMessages().stream()
+                .filter(row -> "31000000000000000000000000003".equals(row[0])).count());
         helper.close();
     }
 
