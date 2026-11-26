@@ -13,6 +13,7 @@ import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.classDefByOrNull
+import app.morphe.patcher.patch.mutableClassDefBy
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.util.getReference
 import com.android.tools.smali.dexlib2.AccessFlags
@@ -166,14 +167,23 @@ val searchStoryViewersPatch =
                             calls.any { it.definingClass == pagingClass.type && it.name == loadMore.name }
                     } == true
             } ?: throw PatchException("Could not find the guarded viewer list next page call")
-            // The in-flight flag: the first state isLoading() reads, which the guarded call checks too.
-            val busy = pagingMethod("isLoading", "Z").implementation!!.instructions.first()
-                .takeIf { it.opcode == Opcode.IGET_BOOLEAN }?.getReference<FieldReference>()
-                ?.takeIf { flag ->
-                    guardedLoadMore.implementation!!.instructions.any {
-                        it.opcode == Opcode.IGET_BOOLEAN && it.getReference<FieldReference>() == flag
-                    }
-                } ?: throw PatchException("Could not find the viewer list in-flight flag")
+            // The next-page call goes to the story's page, which sends the request on every path
+            // (Instagram viewers, Facebook viewers, the newer list); its start is where a request begins.
+            val pageRequest = pagingMethod(loadMore.name, "V").implementation!!.instructions
+                .firstOrNull { it.opcode == Opcode.INVOKE_INTERFACE }?.getReference<MethodReference>()
+                ?: throw PatchException("Could not find the viewer page request call")
+            val pageType = pagingStore.implementation!!.instructions
+                .filter { it.opcode == Opcode.NEW_INSTANCE }
+                .mapNotNull { it.getReference<TypeReference>()?.type }
+                .distinct()
+                .singleOrNull { classDefByOrNull(it)?.interfaces?.contains(pageRequest.definingClass) == true }
+                ?: throw PatchException("Could not find the viewer page class")
+            val pageAdapter = classDefBy(pageType).fields.singleOrNull {
+                it.type == adapter && !AccessFlags.STATIC.isSet(it.accessFlags)
+            } ?: throw PatchException("Could not find the viewer page adapter")
+            val pageRequestMethod = mutableClassDefBy(pageType).methods.singleOrNull {
+                it.name == pageRequest.name && it.parameterTypes.isEmpty() && it.returnType == "V"
+            } ?: throw PatchException("Could not find the viewer page request")
 
             val currentStory = DashboardCurrentStoryFingerprint.originalMethod
             val viewCreated = DashboardViewCreatedFingerprint.method
@@ -260,13 +270,11 @@ val searchStoryViewersPatch =
                 """,
             )
             stub(
-                "viewersBusy",
+                "pageAdapter",
                 """
-                check-cast p0, $adapter
-                iget-object p0, p0, $paging
-                check-cast p0, ${pagingClass.type}
-                iget-boolean p0, p0, $busy
-                return p0
+                check-cast p0, $pageType
+                iget-object p0, p0, $pageAdapter
+                return-object p0
                 """,
             )
             stub(
@@ -287,6 +295,10 @@ val searchStoryViewersPatch =
             viewCreated.addInstruction(
                 0,
                 "invoke-static/range {p0 .. p1}, $EXTENSION_CLASS->onDashboardViewCreated(Ljava/lang/Object;Landroid/view/View;)V",
+            )
+            pageRequestMethod.addInstruction(
+                0,
+                "invoke-static/range {p0 .. p0}, $EXTENSION_CLASS->onViewersPageRequested(Ljava/lang/Object;)V",
             )
             viewDestroyed.addInstruction(
                 0,

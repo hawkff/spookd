@@ -66,6 +66,8 @@ public final class StoryViewerSearch {
     // Each viewer list adapter with the number of its latest rebuild.
     private static final Map<Object, Long> ADAPTERS = new WeakHashMap<>();
     private static long rebuilds;
+    // The last page request Instagram sent for each viewer list adapter, by anyone.
+    private static final Map<Object, ViewerRequests.Request> REQUESTS = new WeakHashMap<>();
     private static Search open;
 
     private StoryViewerSearch() {
@@ -94,6 +96,19 @@ public final class StoryViewerSearch {
             if (screen == null || screen == fragment) search.close();
         } catch (Throwable t) {
             Logger.printException(() -> "StoryViewerSearch: could not close the search", t);
+        }
+    }
+
+    /** At the start of a story page's next-page request, for scrolling and Load all alike. */
+    public static void onViewersPageRequested(Object page) {
+        try {
+            if (!Pref.searchStoryViewers()) return;
+            Object adapter = pageAdapter(page);
+            if (adapter != null) {
+                REQUESTS.put(adapter, new ViewerRequests.Request(SystemClock.uptimeMillis(), viewersCursor(adapter)));
+            }
+        } catch (Throwable t) {
+            Logger.printException(() -> "StoryViewerSearch: page request not noted", t);
         }
     }
 
@@ -182,9 +197,9 @@ public final class StoryViewerSearch {
         return null;
     }
 
-    /** Whether Instagram's own request for a page is out. */
-    private static boolean viewersBusy(Object adapter) {
-        return false;
+    /** The viewer list adapter of a story's page. */
+    private static Object pageAdapter(Object page) {
+        return null;
     }
 
     /** Asks for the next page through the call scrolling to the end uses, which does nothing while a page is out. */
@@ -457,7 +472,7 @@ public final class StoryViewerSearch {
 
         private boolean busy() {
             try {
-                return viewersBusy(adapter);
+                return ViewerRequests.busy(REQUESTS.get(adapter), viewersCursor(adapter), SystemClock.uptimeMillis());
             } catch (Throwable t) {
                 Logger.printException(() -> "StoryViewerSearch: paging state unreadable", t);
                 return false;
