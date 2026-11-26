@@ -193,7 +193,12 @@ public final class FakePlacesTest {
         long deadline = System.currentTimeMillis() + 5_000;
         while (!FakePlaces.isLoaded() && System.currentTimeMillis() < deadline) Thread.sleep(5);
         assertEquals("Home", FakePlaces.chosen().label);
-        ShadowLooper.idleMainLooper();
+        // The callback is posted after the snapshot is published, so drain the main queue until it has run.
+        deadline = System.currentTimeMillis() + 5_000;
+        while (summaryAfterLoad.get() == null && System.currentTimeMillis() < deadline) {
+            ShadowLooper.idleMainLooper();
+            Thread.sleep(5);
+        }
         assertEquals("Home", summaryAfterLoad.get());
         FakePlaces.useForTest(null);
     }
