@@ -1873,6 +1873,15 @@ public class ScreenBuilder {
             });
             addPreference(storyAutoSaveUsers);
         }
+        if (SettingsStatus.searchStoryViewers) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_search_story_viewers"),
+                            str("spookd_search_story_viewers_desc"),
+                            Settings.SEARCH_STORY_VIEWERS
+                    )
+            );
+        }
     }
 
     public void buildSettingsPage() {

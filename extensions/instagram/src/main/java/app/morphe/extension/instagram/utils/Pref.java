@@ -346,6 +346,14 @@ public class Pref {
         return SettingsStatus.exactLastActive && EXACT_LAST_ACTIVE.get();
     }
 
+    private static final Cached<Boolean> SEARCH_STORY_VIEWERS =
+            new Cached<>(() -> on(Settings.SEARCH_STORY_VIEWERS), Settings.SEARCH_STORY_VIEWERS.key);
+
+    /** Read on every rebuild of a story's viewer list. */
+    public static boolean searchStoryViewers() {
+        return SettingsStatus.searchStoryViewers && SEARCH_STORY_VIEWERS.get();
+    }
+
     /** One kind of activity notification: {@link Settings#ACTIVITY_ALERT_ONLINE} and the like. */
     public static boolean activityAlert(BooleanSetting kind) {
         return SettingsStatus.activityAlerts && on(kind);

@@ -146,8 +146,10 @@ public class SettingsStatus {
     public static void storyPlayback() { storyPlayback = true; }
     public static boolean storyMute = false;
     public static void storyMute() { storyMute = true; }
+    public static boolean searchStoryViewers = false;
+    public static void searchStoryViewers() { searchStoryViewers = true; }
     public static boolean storySection() {
-        return (customiseStoryTimestamp || viewStoryMentions || disableStoryFlipping || loopStory || customiseStoryRingSize || hideStoryFollowButton || storyAutoSave || storyPlayback || storyMute);
+        return (customiseStoryTimestamp || viewStoryMentions || disableStoryFlipping || loopStory || customiseStoryRingSize || hideStoryFollowButton || storyAutoSave || storyPlayback || storyMute || searchStoryViewers);
     }
 
     //Links section.
@@ -473,6 +475,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_story_auto_save"), SettingsStatus.storyAutoSave);
         FLAGS.put(str("spookd_story_playback_options"), SettingsStatus.storyPlayback);
         FLAGS.put(str("spookd_mute_stories"), SettingsStatus.storyMute);
+        FLAGS.put(str("spookd_search_story_viewers"), SettingsStatus.searchStoryViewers);
         FLAGS.put(str("spookd_follow_back_indicator"),SettingsStatus.followBackIndicator);
         FLAGS.put(str("spookd_exact_profile_counts"), SettingsStatus.exactProfileCounts);
         FLAGS.put(str("spookd_profile_analyzer"), SettingsStatus.profileAnalyzer);
