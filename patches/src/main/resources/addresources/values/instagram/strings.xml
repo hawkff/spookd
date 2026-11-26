@@ -559,7 +559,7 @@
     <string name="spookd_navigation_startup_tab">App startup tab</string>
     <string name="spookd_navigation_startup_tab_summary">Choose which tab opens when the app starts</string>
     <string name="spookd_swipe_between_tabs">Swipe between tabs</string>
-    <string name="spookd_swipe_between_tabs_desc">On lets you swipe left and right to move between the main tabs, using Instagram\'s own swipeable tabs. Off turns that swiping off unless Instagram has switched your account to its newer home layout. Default leaves it to Instagram.</string>
+    <string name="spookd_swipe_between_tabs_desc">On lets you swipe left and right to move between the main tabs, using Instagram\'s own swipeable tabs. Off turns that swiping off. Default leaves it to Instagram.</string>
     <string name="spookd_floating_tab_bar">Floating tab bar</string>
     <string name="spookd_floating_tab_bar_desc">Shows the tabs in a rounded bar that floats over your feed, with a highlight behind the selected tab. On Android 15 and later, the feed also shows below the bar, down to the bottom of the screen.</string>
     <string name="spookd_floating_tab_bar_hide_on_scroll">Hide tab bar while scrolling</string>
