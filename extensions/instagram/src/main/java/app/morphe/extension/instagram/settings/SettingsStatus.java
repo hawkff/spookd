@@ -7,6 +7,8 @@
 package app.morphe.extension.instagram.settings;
 
 import java.util.TreeMap;
+
+import app.morphe.extension.instagram.patches.location.FakePlaces;
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
 public class SettingsStatus {
@@ -82,7 +84,10 @@ public class SettingsStatus {
     public static boolean dmMediaVault = false;
     public static void dmMediaVault() { dmMediaVault = true; }
     public static boolean fakeLocation = false;
-    public static void fakeLocation() { fakeLocation = true; }
+    public static void fakeLocation() {
+        fakeLocation = true;
+        FakePlaces.preload();
+    }
     public static boolean ghostSection() {
         return (viewStoriesAnonymously || viewLiveAnonymously || disableScreenshotDetection || disableTypingStatus || viewDmAnonymously || markAsReadAfterReply || fakeLocation);
     }

@@ -16,13 +16,14 @@ import android.widget.LinearLayout;
 import java.util.List;
 
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
+import app.morphe.extension.instagram.utils.Pref;
 
 /** The saved places dialogs in the Ghost settings, on the main thread: choose, add, rename and delete places. */
 public final class FakeLocationScreen {
     private FakeLocationScreen() {
     }
 
-    /** The places row's summary: the chosen place, or that Instagram sees the real location. */
+    /** The places row's summary: the chosen place, or that a Mojave Desert point is used until one is chosen. */
     public static String summary() {
         FakePlaces.Place active = FakePlaces.active();
         return active == null
@@ -79,7 +80,7 @@ public final class FakeLocationScreen {
                 .setMessage(str("spookd_fake_location_delete_confirm", place.label))
                 .setNegativeButton(str("spookd_cancel"), (d, which) -> showPlaces(context, changed))
                 .setPositiveButton(str("spookd_delete"), (d, which) -> {
-                    FakePlaces.remove(place.id);
+                    FakePlaces.remove(place.id, Pref.fakeLocation());
                     changed.run();
                     showPlaces(context, changed);
                 })
@@ -94,9 +95,12 @@ public final class FakeLocationScreen {
         form.setOrientation(LinearLayout.VERTICAL);
         form.setPadding(padding, padding / 2, padding, 0);
 
+        double[] fallback = place == null ? FakePlaces.defaultPoint() : null;
         EditText coordinates = new EditText(dialogContext);
-        coordinates.setHint(str("spookd_fake_location_coordinates_hint"));
-        if (place == null) form.addView(coordinates);
+        if (fallback != null) {
+            coordinates.setHint(str("spookd_fake_location_coordinates_hint", FakePlaces.format(fallback[0], fallback[1])));
+            form.addView(coordinates);
+        }
         EditText label = new EditText(dialogContext);
         label.setSingleLine(true);
         label.setHint(str("spookd_fake_location_label_hint"));
@@ -112,12 +116,14 @@ public final class FakeLocationScreen {
         // Set after show so an invalid entry keeps the dialog open.
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
             if (place == null) {
-                double[] point = FakePlaces.parseCoordinates(coordinates.getText().toString());
+                String typed = coordinates.getText().toString().trim();
+                double[] point = typed.isEmpty() ? fallback : FakePlaces.parseCoordinates(typed);
                 if (point == null) {
                     coordinates.setError(str("spookd_fake_location_invalid"));
                     return;
                 }
-                FakePlaces.add(label.getText().toString(), point[0], point[1]);
+                String name = label.getText().toString().trim();
+                FakePlaces.add(name.isEmpty() && point == fallback ? FakePlaces.DEFAULT_LABEL : name, point[0], point[1]);
             } else {
                 FakePlaces.rename(place.id, label.getText().toString());
             }

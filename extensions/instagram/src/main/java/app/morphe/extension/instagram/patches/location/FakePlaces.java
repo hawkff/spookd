@@ -18,7 +18,9 @@ import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,6 +34,9 @@ public final class FakePlaces {
     private static final String PREFS_NAME = "spookd_fake_location";
     private static final String KEY_PLACES = "places";
     private static final String KEY_ACTIVE = "active";
+    private static final String KEY_DEFAULT = "default";
+    public static final String DEFAULT_ID = "mojave";
+    public static final String DEFAULT_LABEL = "Mojave Desert";
     // The lookahead keeps a longer number such as 1800 from being read as 180.
     private static final String NUMBER = "(-?\\d{1,3}(?:\\.\\d+)?)(?!\\d)";
     // In order: a Google Maps place pin, an OpenStreetMap marker, an OpenStreetMap view, then any number pair.
@@ -60,11 +65,42 @@ public final class FakePlaces {
     private static final List<Place> places = new ArrayList<>();
     private static volatile Place active;
     private static volatile boolean loaded;
+    private static boolean loading;
+    private static double[] defaultPoint;
+    private static SharedPreferences preferencesForTest;
 
     private FakePlaces() {
     }
 
-    /** The chosen place, or null when none is chosen; any thread. */
+    /** Starts reading the saved places on a background thread, so location hooks never wait for the disk. */
+    public static synchronized void preload() {
+        if (loaded || loading) return;
+        loading = true;
+        new Thread(() -> {
+            try {
+                load();
+            } finally {
+                synchronized (FakePlaces.class) {
+                    loading = false;
+                }
+            }
+        }, "spookd-fake-location").start();
+    }
+
+    /**
+     * The place Instagram sees while Fake location is on, from memory only, on any thread: the chosen place, or the
+     * Mojave Desert one when none is chosen. Null only while the saved places are still being read.
+     */
+    public static Place chosen() {
+        if (!loaded) {
+            preload();
+            return null;
+        }
+        Place place = active;
+        return place != null ? place : chooseDefault();
+    }
+
+    /** The chosen place, or null when none is chosen; reads the disk the first time, so for the settings screen. */
     public static Place active() {
         if (!loaded) load();
         return active;
@@ -96,12 +132,17 @@ public final class FakePlaces {
         save();
     }
 
-    /** Deletes a place; deleting the chosen one chooses the first place left, so the real location stays hidden. */
-    public static synchronized void remove(String id) {
+    /**
+     * Deletes a place. Deleting the chosen one chooses the first place left; with none left and {@code keepChosen}
+     * (Fake location is on) a new Mojave Desert point is made, so the real location stays hidden.
+     */
+    public static synchronized void remove(String id, boolean keepChosen) {
         load();
         places.removeIf(place -> place.id.equals(id));
+        if (DEFAULT_ID.equals(id)) defaultPoint = null;
         if (active != null && active.id.equals(id)) active = places.isEmpty() ? null : places.get(0);
-        save();
+        if (active == null && keepChosen) chooseDefault();
+        else save();
     }
 
     public static synchronized void choose(String id) {
@@ -111,29 +152,78 @@ public final class FakePlaces {
         save();
     }
 
+    /** Where the Mojave Desert place is, made once and kept until that place is deleted; also the add form's default. */
+    public static synchronized double[] defaultPoint() {
+        load();
+        if (defaultPoint == null) {
+            defaultPoint = randomMojavePoint(ThreadLocalRandom.current());
+            save();
+        }
+        return defaultPoint.clone();
+    }
+
+    private static synchronized Place chooseDefault() {
+        if (active != null) return active;
+        Place place = find(places, DEFAULT_ID);
+        if (place == null) {
+            double[] point = defaultPoint();
+            place = new Place(DEFAULT_ID, DEFAULT_LABEL, point[0], point[1]);
+            places.add(place);
+        }
+        active = place;
+        save();
+        return place;
+    }
+
+    /** A point inside the Mojave National Preserve, away from towns, to 5 decimals. */
+    static double[] randomMojavePoint(Random random) {
+        return new double[]{
+                round5(34.75 + random.nextDouble() * 0.80),
+                round5(-116.15 + random.nextDouble() * 0.90),
+        };
+    }
+
+    private static double round5(double value) {
+        return Math.round(value * 100_000d) / 100_000d;
+    }
+
     private static synchronized void load() {
         if (loaded) return;
         SharedPreferences preferences = preferences();
         if (preferences == null) return;
         places.clear();
         places.addAll(parse(preferences.getString(KEY_PLACES, "[]")));
+        defaultPoint = parseCoordinates(preferences.getString(KEY_DEFAULT, ""));
         active = find(places, preferences.getString(KEY_ACTIVE, null));
         loaded = true;
     }
 
+    // apply() changes the in-memory copy at once and writes the file in the background.
     private static void save() {
         SharedPreferences preferences = preferences();
         if (preferences == null) return;
         Place chosen = active;
+        double[] point = defaultPoint;
         preferences.edit()
                 .putString(KEY_PLACES, toJson(places))
                 .putString(KEY_ACTIVE, chosen == null ? null : chosen.id)
+                .putString(KEY_DEFAULT, point == null ? null : format(point[0], point[1]))
                 .apply();
     }
 
     private static SharedPreferences preferences() {
+        if (preferencesForTest != null) return preferencesForTest;
         Context context = Utils.getContext();
         return context == null ? null : context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    }
+
+    /** Forgets what is in memory and reads {@code preferences} next, as after a restart. */
+    static synchronized void useForTest(SharedPreferences preferences) {
+        preferencesForTest = preferences;
+        places.clear();
+        active = null;
+        defaultPoint = null;
+        loaded = false;
     }
 
     private static Place find(List<Place> places, String id) {
