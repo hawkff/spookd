@@ -48,14 +48,14 @@ public final class LikeAnimationPreference extends ListPref {
         if (selectedIndex < 0) selectedIndex = 0;
 
         Context context = getContext();
-        int padding = InstagramPreferenceStyle.dp(context, 20);
+        int padding = InstagramPreferenceStyle.dp(context, SpookdType.SPACE_XL);
         LinearLayout header = new LinearLayout(context);
         header.setOrientation(LinearLayout.VERTICAL);
         header.setPadding(padding, padding, padding, 0);
 
         TextView title = new TextView(context);
         title.setText(getDialogTitle());
-        title.setTextSize(20);
+        SpookdType.apply(title, SpookdType.TITLE);
         title.setTextColor(InstagramPreferenceStyle.primaryTextColor());
         header.addView(title);
 
@@ -67,6 +67,7 @@ public final class LikeAnimationPreference extends ListPref {
 
         unavailablePreview = new TextView(context);
         unavailablePreview.setText(str("spookd_like_animation_preview_unavailable"));
+        SpookdType.apply(unavailablePreview, SpookdType.SECONDARY);
         unavailablePreview.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
         unavailablePreview.setGravity(Gravity.CENTER);
         unavailablePreview.setVisibility(View.GONE);

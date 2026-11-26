@@ -14,7 +14,6 @@ import android.app.Application;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
@@ -22,7 +21,6 @@ import android.preference.Preference;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.preference.PreferenceScreen;
-import android.util.TypedValue;
 import android.view.View;
 import android.view.WindowInsets;
 import android.widget.FrameLayout;
@@ -54,6 +52,7 @@ import app.morphe.extension.instagram.settings.preference.ScreenBuilder;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramSearchStyle;
 import app.morphe.extension.instagram.settings.preference.widgets.SearchResultPreference;
+import app.morphe.extension.instagram.settings.preference.widgets.SpookdType;
 import app.morphe.extension.instagram.settings.preference.widgets.SwitchPref;
 import app.morphe.extension.instagram.theme.MaterialYouTheme;
 import app.morphe.extension.shared.Logger;
@@ -284,10 +283,11 @@ public final class SettingsActivity {
             toolbar.setLayoutDirection(View.LAYOUT_DIRECTION_LOCALE);
             toolbar.setBackgroundColor(InstagramPreferenceStyle.backgroundColor());
 
-            int toolbarPadding = InstagramPreferenceStyle.dp(activity, 15);
-            toolbar.setPadding(toolbarPadding, InstagramPreferenceStyle.dp(activity, 10), toolbarPadding, InstagramPreferenceStyle.dp(activity, 8));
+            int toolbarPadding = InstagramPreferenceStyle.dp(activity, SpookdType.SPACE_M);
+            toolbar.setPadding(toolbarPadding, 0, toolbarPadding, 0);
 
-            int iconSize = InstagramPreferenceStyle.dp(activity, 44);
+            int iconSize = InstagramPreferenceStyle.dp(activity, SpookdType.MIN_TOUCH);
+            int toolbarHeight = InstagramPreferenceStyle.dp(activity, SpookdType.TOOLBAR_HEIGHT);
 
             View backSpacer = new View(activity);
             LinearLayout.LayoutParams backParams = new LinearLayout.LayoutParams(iconSize, iconSize);
@@ -296,28 +296,16 @@ public final class SettingsActivity {
 
             titleTextView = new TextView(activity);
             titleTextView.setText(displayTitle); // Dynamically bound from intent data
-            int titleTextSize = isRootSettings ? 25 : 20;
-            titleTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, titleTextSize);
-            titleTextView.setTypeface(Typeface.create("sans-serif", Typeface.NORMAL));
-            titleTextView.setIncludeFontPadding(false);
-            titleTextView.setMaxLines(1);
+            InstagramPreferenceStyle.applyToolbarTitle(titleTextView);
             titleTextView.setTextDirection(View.TEXT_DIRECTION_LOCALE);
             titleTextView.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
-            if (!isRootSettings) {
-                titleTextView.setAutoSizeTextTypeUniformWithConfiguration(
-                        18,
-                        20,
-                        1,
-                        TypedValue.COMPLEX_UNIT_SP
-                );
-            }
             LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
                     0,
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     1.0f
             );
             titleParams.gravity = android.view.Gravity.CENTER_VERTICAL;
-            titleParams.setMarginStart(InstagramPreferenceStyle.dp(activity, 7));
+            titleParams.setMarginStart(InstagramPreferenceStyle.dp(activity, SpookdType.SPACE_M));
             titleTextView.setLayoutParams(titleParams);
             titleTextView.setTextColor(InstagramPreferenceStyle.primaryTextColor());
 
@@ -328,7 +316,7 @@ public final class SettingsActivity {
             customContainer.setOrientation(LinearLayout.VERTICAL);
             customContainer.setBackgroundColor(Color.TRANSPARENT);
 
-            page.addView(toolbar, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, InstagramPreferenceStyle.dp(activity, 70)));
+            page.addView(toolbar, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, toolbarHeight));
             page.addView(customContainer, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
             // ---------- Content ----------
@@ -368,7 +356,7 @@ public final class SettingsActivity {
             backButton.setPaddingRelative(
                     0,
                     0,
-                    InstagramPreferenceStyle.dp(activity, 16),
+                    InstagramPreferenceStyle.dp(activity, SpookdType.SPACE_L),
                     0
             );
             backButton.setOnClickListener(new View.OnClickListener() {
@@ -388,8 +376,8 @@ public final class SettingsActivity {
                     iconSize
             );
             overlayBackParams.gravity = android.view.Gravity.START | android.view.Gravity.TOP;
-            overlayBackParams.setMarginStart(InstagramPreferenceStyle.dp(activity, 15));
-            overlayBackParams.topMargin = InstagramPreferenceStyle.dp(activity, 13);
+            overlayBackParams.setMarginStart(toolbarPadding);
+            overlayBackParams.topMargin = (toolbarHeight - iconSize) / 2;
             chromeOverlay.addView(backButton, overlayBackParams);
 
             root.setOnApplyWindowInsetsListener((v, insets) -> {
@@ -804,7 +792,8 @@ public final class SettingsActivity {
                 }
             }
             if (listView != null) {
-                listView.setPadding(0, InstagramPreferenceStyle.dp(context, 10), 0, InstagramPreferenceStyle.dp(context, 10));
+                int listPadding = InstagramPreferenceStyle.dp(context, SpookdType.SPACE_S);
+                listView.setPadding(0, listPadding, 0, listPadding);
                 listView.setClipToPadding(false);
                 listView.setDivider(null);
                 listView.setDividerHeight(0);
@@ -883,8 +872,8 @@ public final class SettingsActivity {
                         searchEntryAdded = true;
                     }
                     listView.setPadding(0,
-                            InstagramPreferenceStyle.dp(context, state.searchMode ? 10 : 0),
-                            0, InstagramPreferenceStyle.dp(context, 10));
+                            InstagramPreferenceStyle.dp(context, state.searchMode ? SpookdType.SPACE_S : 0),
+                            0, InstagramPreferenceStyle.dp(context, SpookdType.SPACE_S));
                 }
                 screen.bind(listView);
             }

@@ -43,6 +43,7 @@ import java.util.WeakHashMap;
 
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
+import app.morphe.extension.instagram.settings.preference.widgets.SpookdType;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.shared.Logger;
@@ -243,7 +244,7 @@ public final class InboxLock {
         TextView unlock = new TextView(activity);
         unlock.setText(str("spookd_inbox_lock_unlock"));
         unlock.setTextColor(UI.getThemedColour("igds_color_primary_text"));
-        unlock.setTextSize(16);
+        SpookdType.apply(unlock, SpookdType.LABEL);
         unlock.setGravity(Gravity.CENTER);
         GradientDrawable highlight = new GradientDrawable();
         highlight.setColor(InstagramPreferenceStyle.pressedBackgroundColor());

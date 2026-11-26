@@ -8,7 +8,6 @@ import android.app.Application;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Typeface;
 import android.media.MediaDataSource;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
@@ -55,6 +54,7 @@ import app.morphe.extension.instagram.patches.dm.vault.ViewerMedia;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
+import app.morphe.extension.instagram.settings.preference.widgets.SpookdType;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 
@@ -228,7 +228,7 @@ public final class PrivateGalleryActivity {
                 GalleryTab target = TABS[i];
                 TextView view = new TextView(activity);
                 view.setText(str(TAB_TITLES[i]));
-                view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+                SpookdType.apply(view, SpookdType.LABEL);
                 view.setGravity(Gravity.CENTER);
                 view.setPadding(dp(4), dp(12), dp(4), dp(12));
                 view.setOnClickListener(v -> select(target));
@@ -241,14 +241,13 @@ public final class PrivateGalleryActivity {
             header.setOrientation(LinearLayout.HORIZONTAL);
             header.setGravity(Gravity.CENTER_VERTICAL);
             summary = new TextView(activity);
-            summary.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+            SpookdType.apply(summary, SpookdType.SECONDARY);
             summary.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
             summary.setPadding(dp(16), dp(4), dp(16), dp(8));
             header.addView(summary, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
             exportAll = new TextView(activity);
             exportAll.setText(str("spookd_gallery_export_all"));
-            exportAll.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-            exportAll.setTypeface(null, Typeface.BOLD);
+            SpookdType.apply(exportAll, SpookdType.LABEL);
             exportAll.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             exportAll.setPadding(dp(16), dp(4), dp(16), dp(8));
             exportAll.setVisibility(View.GONE);
@@ -281,7 +280,7 @@ public final class PrivateGalleryActivity {
             TextView title = new TextView(activity);
             title.setText(str("spookd_private_gallery"));
             title.setTextColor(InstagramPreferenceStyle.primaryTextColor());
-            InstagramPreferenceStyle.applyToolbarLayout(activity, toolbar, back, title, false);
+            InstagramPreferenceStyle.applyToolbarLayout(activity, toolbar, back, title);
             toolbar.addView(back);
             toolbar.addView(title);
             root.addView(toolbar);
@@ -389,7 +388,7 @@ public final class PrivateGalleryActivity {
                 TextView view = tabViews[i];
                 view.setVisibility(TABS[i] != GalleryTab.DMS || dmsShown() ? View.VISIBLE : View.GONE);
                 view.setSelected(selected);
-                view.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
+                view.setTypeface(SpookdType.typeface(activity, selected ? 600 : 400));
                 view.setTextColor(selected ? InstagramPreferenceStyle.primaryTextColor()
                         : InstagramPreferenceStyle.secondaryTextColor());
             }
@@ -473,7 +472,7 @@ public final class PrivateGalleryActivity {
                 addView(note, new FrameLayout.LayoutParams(
                         FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
                 badge.setTextColor(0xFFFFFFFF);
-                badge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+                SpookdType.apply(badge, SpookdType.CAPTION);
                 badge.setPadding(dp(4), 0, dp(4), 0);
                 badge.setBackgroundColor(0x99000000);
                 FrameLayout.LayoutParams badgeParams = new FrameLayout.LayoutParams(
@@ -636,7 +635,7 @@ public final class PrivateGalleryActivity {
             TextView view = new TextView(activity);
             view.setText(text);
             view.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
-            view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+            SpookdType.apply(view, SpookdType.BODY);
             view.setGravity(Gravity.CENTER);
             view.setPadding(dp(24), dp(24), dp(24), dp(24));
             view.setLayoutParams(new FrameLayout.LayoutParams(

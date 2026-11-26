@@ -27,7 +27,7 @@ public class EditTextPref extends EditTextPreference {
         String sanitized = removeLineBreaks(input.toString());
         return sanitized.contentEquals(input) ? null : sanitized;
     };
-    private static Helper helper;
+    private final Helper helper;
     private boolean numericOnly;
 
     private static String removeLineBreaks(String value) {
@@ -95,6 +95,7 @@ public class EditTextPref extends EditTextPreference {
     @Override
     protected void onAddEditTextToDialogView(View dialogView, EditText editText) {
         super.onAddEditTextToDialogView(dialogView, editText);
+        SpookdType.applyDialogInput(editText);
         // Numeric (long-typed) dev flags persist FlagState.DEFAULT ("default") as
         // their "no override" sentinel; blank the field here so the number box
         // shows empty instead of the literal word "default".

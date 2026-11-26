@@ -25,7 +25,6 @@ import android.os.Bundle;
 import android.text.format.DateFormat;
 import android.util.SparseBooleanArray;
 import android.util.StateSet;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -75,6 +74,7 @@ import app.morphe.extension.instagram.patches.dm.vault.VaultViewer;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.instagram.settings.ActivityHook;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
+import app.morphe.extension.instagram.settings.preference.widgets.SpookdType;
 import app.morphe.extension.instagram.utils.MediaUrls;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
@@ -310,7 +310,7 @@ public final class DeletedMessagesActivity {
             toolbarTitle.setText(str("spookd_all_deleted_messages"));
             toolbarTitle.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             InstagramPreferenceStyle.applyToolbarLayout(
-                    activity, toolbar, back, toolbarTitle, false);
+                    activity, toolbar, back, toolbarTitle);
 
             LinearLayout selectAll = new LinearLayout(activity);
             selectAll.setOrientation(LinearLayout.VERTICAL);
@@ -327,7 +327,7 @@ public final class DeletedMessagesActivity {
 
             selectAllLabel = new TextView(activity);
             selectAllLabel.setText(str("spookd_all"));
-            selectAllLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+            SpookdType.apply(selectAllLabel, SpookdType.CAPTION);
             selectAllLabel.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             selectAllLabel.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
@@ -340,7 +340,7 @@ public final class DeletedMessagesActivity {
 
             TextView cancelSelection = new TextView(activity);
             cancelSelection.setText(str("spookd_cancel"));
-            cancelSelection.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+            SpookdType.apply(cancelSelection, SpookdType.BODY);
             cancelSelection.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             cancelSelection.setGravity(Gravity.CENTER);
             cancelSelection.setMinWidth(Dim.dp48);
@@ -368,6 +368,7 @@ public final class DeletedMessagesActivity {
             FrameLayout content = new FrameLayout(activity);
             TextView empty = new TextView(activity);
             empty.setText(str("spookd_no_deleted_messages"));
+            SpookdType.apply(empty, SpookdType.BODY);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(Dim.dp8 * 2, Dim.dp8 * 4, Dim.dp8 * 2, Dim.dp8 * 4);
             empty.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
@@ -424,6 +425,7 @@ public final class DeletedMessagesActivity {
 
             deleteAction = new Button(activity);
             deleteAction.setText(str("spookd_delete"));
+            SpookdType.apply(deleteAction, SpookdType.LABEL);
             deleteAction.setAllCaps(false);
             deleteAction.setTextColor(UI.getThemedColour("igds_color_error_or_destructive"));
             deleteAction.setBackgroundTintList(null);
@@ -671,14 +673,14 @@ public final class DeletedMessagesActivity {
             if (!selecting) {
                 toolbar.setMinimumHeight(0);
                 InstagramPreferenceStyle.applyToolbarLayout(
-                        activity, toolbar, (ImageView) backAction, toolbarTitle, false);
+                        activity, toolbar, (ImageView) backAction, toolbarTitle);
                 return;
             }
 
             toolbar.setGravity(Gravity.TOP);
-            toolbar.setPadding(Dim.dp8, toolbar.getPaddingTop(),
-                    Dim.dp16, toolbar.getPaddingBottom());
-            toolbar.setMinimumHeight(InstagramPreferenceStyle.dp(activity, 70));
+            // Keeps the 48dp actions centered where the normal toolbar centers its row.
+            toolbar.setPadding(Dim.dp8, Dim.dp4, Dim.dp16, 0);
+            toolbar.setMinimumHeight(InstagramPreferenceStyle.dp(activity, SpookdType.TOOLBAR_HEIGHT));
             toolbar.getLayoutParams().height = LinearLayout.LayoutParams.WRAP_CONTENT;
             toolbar.requestLayout();
             LinearLayout.LayoutParams titleParams =
@@ -963,18 +965,18 @@ public final class DeletedMessagesActivity {
                     contentColumn.setOrientation(LinearLayout.VERTICAL);
 
                     senderView = new TextView(activity);
-                    senderView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+                    SpookdType.apply(senderView, SpookdType.SECONDARY);
                     senderView.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
                     senderView.setTag("s");
 
                     contentView = new TextView(activity);
-                    contentView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+                    SpookdType.apply(contentView, SpookdType.BODY);
                     contentView.setTextColor(InstagramPreferenceStyle.primaryTextColor());
                     contentView.setPadding(0, Dim.dp4, 0, Dim.dp4);
                     contentView.setTag("c");
 
                     metaView = new TextView(activity);
-                    metaView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+                    SpookdType.apply(metaView, SpookdType.CAPTION);
                     metaView.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
                     metaView.setTag("m");
 

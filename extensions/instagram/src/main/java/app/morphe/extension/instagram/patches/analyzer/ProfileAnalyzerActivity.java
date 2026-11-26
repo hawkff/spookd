@@ -6,14 +6,12 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Application;
 import android.content.res.ColorStateList;
-import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.format.DateFormat;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -37,6 +35,7 @@ import java.util.concurrent.Executor;
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
+import app.morphe.extension.instagram.settings.preference.widgets.SpookdType;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
@@ -235,7 +234,7 @@ public final class ProfileAnalyzerActivity {
             TextView title = new TextView(activity);
             title.setText(str("spookd_profile_analyzer"));
             title.setTextColor(InstagramPreferenceStyle.primaryTextColor());
-            InstagramPreferenceStyle.applyToolbarLayout(activity, toolbar, back, title, false);
+            InstagramPreferenceStyle.applyToolbarLayout(activity, toolbar, back, title);
             toolbar.addView(back);
             toolbar.addView(title);
             root.addView(toolbar);
@@ -244,7 +243,7 @@ public final class ProfileAnalyzerActivity {
             header.setOrientation(LinearLayout.VERTICAL);
             header.setPadding(Dim.dp16, Dim.dp8, Dim.dp16, Dim.dp8);
             summary = new TextView(activity);
-            summary.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            SpookdType.apply(summary, SpookdType.SECONDARY);
             summary.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
             header.addView(summary);
             startAction = actionButton(header, str(ProfileAnalyzer.ROW_START),
@@ -343,6 +342,7 @@ public final class ProfileAnalyzerActivity {
         private Button actionButton(LinearLayout parent, String text, int textColor) {
             Button button = new Button(activity);
             button.setText(text);
+            SpookdType.apply(button, SpookdType.LABEL);
             button.setAllCaps(false);
             button.setTextColor(textColor);
             button.setBackgroundTintList(null);
@@ -503,13 +503,13 @@ public final class ProfileAnalyzerActivity {
             }
 
             private TextView labelView(Label label, TextView view) {
-                if (view == null) view = new TextView(activity);
+                if (view == null) {
+                    view = new TextView(activity);
+                    view.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
+                }
                 boolean title = label.count >= 0;
                 view.setText(title ? str(label.key, ProfileAnalyzer.count(label.count)) : str(label.key));
-                view.setTextSize(TypedValue.COMPLEX_UNIT_SP, title ? 16 : 14);
-                view.setTypeface(null, title ? Typeface.BOLD : Typeface.NORMAL);
-                view.setTextColor(title ? InstagramPreferenceStyle.primaryTextColor()
-                        : InstagramPreferenceStyle.secondaryTextColor());
+                SpookdType.apply(view, title ? SpookdType.SECTION : SpookdType.SECONDARY);
                 view.setPadding(Dim.dp16, title ? Dim.dp24 : Dim.dp12, Dim.dp16, Dim.dp12);
                 return view;
             }
@@ -539,7 +539,7 @@ public final class ProfileAnalyzerActivity {
                 circle.setColor(InstagramPreferenceStyle.pressedBackgroundColor());
                 views.initials.setBackground(circle);
                 views.initials.setGravity(Gravity.CENTER);
-                views.initials.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+                SpookdType.apply(views.initials, SpookdType.BODY);
                 views.initials.setTextColor(InstagramPreferenceStyle.primaryTextColor());
                 views.initials.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
                 LinearLayout.LayoutParams circleParams = new LinearLayout.LayoutParams(Dim.dp48, Dim.dp48);
@@ -551,24 +551,23 @@ public final class ProfileAnalyzerActivity {
                 LinearLayout nameLine = new LinearLayout(activity);
                 nameLine.setOrientation(LinearLayout.HORIZONTAL);
                 nameLine.setGravity(Gravity.CENTER_VERTICAL);
-                views.username = text(15, InstagramPreferenceStyle.primaryTextColor());
-                views.username.setTypeface(null, Typeface.BOLD);
+                views.username = text(SpookdType.LABEL, InstagramPreferenceStyle.primaryTextColor());
                 nameLine.addView(views.username);
-                views.verified = text(14, InstagramPreferenceStyle.selectionColor());
+                views.verified = text(SpookdType.SECONDARY, InstagramPreferenceStyle.selectionColor());
                 views.verified.setText("\u2713");
                 views.verified.setContentDescription(str("spookd_profile_analyzer_verified"));
                 views.verified.setPaddingRelative(Dim.dp4, 0, 0, 0);
                 nameLine.addView(views.verified);
                 column.addView(nameLine);
-                views.fullName = text(14, InstagramPreferenceStyle.secondaryTextColor());
+                views.fullName = text(SpookdType.SECONDARY, InstagramPreferenceStyle.secondaryTextColor());
                 column.addView(views.fullName);
-                views.change = text(14, InstagramPreferenceStyle.primaryTextColor());
+                views.change = text(SpookdType.SECONDARY, InstagramPreferenceStyle.primaryTextColor());
                 views.change.setPadding(0, Dim.dp4, 0, 0);
                 column.addView(views.change);
-                views.note = text(12, InstagramPreferenceStyle.secondaryTextColor());
+                views.note = text(SpookdType.CAPTION, InstagramPreferenceStyle.secondaryTextColor());
                 views.note.setText(str("spookd_profile_analyzer_lost_follower_note"));
                 column.addView(views.note);
-                views.date = text(11, InstagramPreferenceStyle.secondaryTextColor());
+                views.date = text(SpookdType.CAPTION, InstagramPreferenceStyle.secondaryTextColor());
                 views.date.setPadding(0, Dim.dp4, 0, 0);
                 column.addView(views.date);
                 row.addView(column, new LinearLayout.LayoutParams(
@@ -577,9 +576,9 @@ public final class ProfileAnalyzerActivity {
                 return row;
             }
 
-            private TextView text(int sizeSp, int color) {
+            private TextView text(int role, int color) {
                 TextView view = new TextView(activity);
-                view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp);
+                SpookdType.apply(view, role);
                 view.setTextColor(color);
                 return view;
             }
