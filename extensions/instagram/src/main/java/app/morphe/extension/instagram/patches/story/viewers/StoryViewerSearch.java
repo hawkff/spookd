@@ -36,11 +36,10 @@ import java.util.Set;
 import java.util.WeakHashMap;
 
 import app.morphe.extension.crimera.PikoUtils;
+import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.instagram.patches.analyzer.FollowUser;
 import app.morphe.extension.instagram.patches.analyzer.SpookdFollowDb;
-import app.morphe.extension.instagram.patches.story.StoryUserList;
-import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramSearchStyle;
@@ -63,8 +62,6 @@ public final class StoryViewerSearch {
     private static final long PAGE_GAP_MS = 600;
     private static final long DAY_MS = 24L * 60 * 60 * 1000;
     private static final long OLD_SCAN_MS = 7 * DAY_MS;
-    private static final StoryUserList STARS = new StoryUserList(Settings.STORY_VIEWER_STARS,
-            "spookd_viewer_search_starred", "spookd_story_ghost_remove_confirm");
 
     // Each viewer list adapter with the number of its latest rebuild.
     private static final Map<Object, Long> ADAPTERS = new WeakHashMap<>();
@@ -237,6 +234,8 @@ public final class StoryViewerSearch {
         final WeakReference<Object> screen;
         final Object adapter;
         final String account;
+        final String starsKey;
+        Set<String> starred;
         // Instagram's viewer entries with what was read from them, so a rebuild reads only new ones.
         final Map<Object, ViewerFilter.Viewer> known = new IdentityHashMap<>();
         final List<ViewerFilter.Viewer> shown = new ArrayList<>();
@@ -261,6 +260,8 @@ public final class StoryViewerSearch {
             this.screen = new WeakReference<>(fragment);
             this.adapter = adapter;
             this.account = account;
+            starsKey = ViewerStars.key(account);
+            starred = starsKey == null ? new HashSet<>() : ViewerStars.ids(SharedPref.getStringPref(starsKey, "{}"));
         }
 
         /** Drops the static reference first, so every pending paging and refresh callback ends. */
@@ -477,7 +478,6 @@ public final class StoryViewerSearch {
             List<ViewerFilter.Viewer> viewers = viewers();
             loaded = viewers.size();
             FollowData data = follow != null ? follow : FollowData.NO_SCAN;
-            Set<String> starred = STARS.all().keySet();
             List<ViewerFilter.Viewer> matches = ViewerFilter.filter(viewers, query.getText().toString(), filter,
                     data.followers, data.notFollowingBack, starred);
             shown.clear();
@@ -552,7 +552,10 @@ public final class StoryViewerSearch {
             if (position < 0 || position >= shown.size()) return;
             ViewerFilter.Viewer viewer = shown.get(position);
             if (viewer.id == null) return;
-            if (!STARS.add(viewer.id, viewer.username == null ? "" : viewer.username)) STARS.remove(viewer.id);
+            if (starsKey == null) return;
+            String stars = ViewerStars.toggled(SharedPref.getStringPref(starsKey, "{}"), viewer.id, viewer.username);
+            SharedPref.setStringPref(starsKey, stars);
+            starred = ViewerStars.ids(stars);
             render();
         }
 
