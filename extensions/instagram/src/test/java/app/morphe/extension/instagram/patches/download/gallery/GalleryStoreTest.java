@@ -552,7 +552,7 @@ public final class GalleryStoreTest {
         assertEquals(Arrays.asList(alice, aliceVideo, bob, unknown),
                 ids(store.list(null, null, false, null, GalleryStore.SORT_USERNAME)));
         assertEquals(Arrays.asList(alice, unknown),
-                ids(store.list(GalleryTab.POSTS, null, false, null, GalleryStore.SORT_NEWEST)));
+                ids(store.list("posts", null, false, null, GalleryStore.SORT_NEWEST)));
         assertEquals(Arrays.asList(aliceVideo, bob),
                 ids(store.list(null, GalleryItem.VIDEO, false, null, GalleryStore.SORT_NEWEST)));
         // The underscore is matched as itself, not as any one character.
@@ -586,17 +586,39 @@ public final class GalleryStoreTest {
     }
 
     @Test
-    public void hasTellsWhetherATabHasDownloads() throws Exception {
-        assertFalse(store.has(GalleryTab.DMS));
+    public void hasTellsWhetherASourceHasDownloads() throws Exception {
+        assertFalse(store.has("dms"));
         saved(GalleryTab.DMS, GalleryItem.PHOTO, "alice", "1");
-        assertTrue(store.has(GalleryTab.DMS));
-        assertFalse(store.has(GalleryTab.REELS));
+        assertTrue(store.has("dms"));
+        assertFalse(store.has("reels"));
+        assertFalse(store.has(GalleryStore.SOURCE_UNKNOWN));
     }
 
-    /** A download one minute after the previous one, as big as {@code content}. */
+    @Test
+    public void aGenericUrlDownloadHasAnUnknownSourceNotPosts() throws Exception {
+        long post = saved(GalleryTab.POSTS, GalleryItem.PHOTO, "alice", "1");
+        // As a profile picture saves: Posts by fallback, with neither a link nor a media id.
+        GalleryItem picture = new GalleryItem(GalleryTab.POSTS, GalleryItem.PHOTO, "bob", null, null, null, null, null);
+        long unknown = store.publish(part("2"), picture, "bob", "bob.jpg", false);
+
+        assertEquals(Collections.singletonList(post),
+                ids(store.list("posts", null, false, null, GalleryStore.SORT_NEWEST)));
+        List<GalleryStore.Entry> unproven = store.list(GalleryStore.SOURCE_UNKNOWN, null, false, null,
+                GalleryStore.SORT_NEWEST);
+        assertEquals(Collections.singletonList(unknown), ids(unproven));
+        assertEquals(GalleryStore.SOURCE_UNKNOWN, unproven.get(0).source);
+        assertEquals(Arrays.asList(unknown, post), ids(store.list(null, null, false, null, GalleryStore.SORT_NEWEST)));
+        assertTrue(store.has(GalleryStore.SOURCE_UNKNOWN));
+        assertEquals("posts", GalleryStore.source("posts", "https://www.instagram.com/p/a/", null));
+        assertEquals("posts", GalleryStore.source("posts", "", "22"));
+        assertEquals(GalleryStore.SOURCE_UNKNOWN, GalleryStore.source("posts", "", null));
+        assertEquals("dms", GalleryStore.source("dms", null, null));
+    }
+
+    /** A download with a media id one minute after the previous one, as big as {@code content}. */
     private long saved(GalleryTab tab, String kind, String owner, String content) throws IOException {
         clock[0] += 60_000;
-        GalleryItem item = new GalleryItem(tab, kind, owner, null, null, null, null, null);
+        GalleryItem item = new GalleryItem(tab, kind, owner, null, "m" + content, null, null, null);
         String name = GalleryItem.VIDEO.equals(kind) ? "f.mp4" : "f.jpg";
         return store.publish(part(content), item, null, name, false);
     }

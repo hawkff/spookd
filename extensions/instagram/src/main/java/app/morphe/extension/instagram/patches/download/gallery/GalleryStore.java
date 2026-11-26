@@ -43,6 +43,10 @@ public final class GalleryStore {
     static final String SORT_OLDEST = "oldest";
     static final String SORT_SIZE = "size";
     static final String SORT_USERNAME = "username";
+    /** The source of a download whose origin was not recorded; other sources are the stored tab names. */
+    static final String SOURCE_UNKNOWN = "unknown";
+    // Generic URL downloads, such as profile pictures, land in Posts with neither a link nor a media id.
+    private static final String UNPROVEN_POST = "tab = 'posts' AND COALESCE(link, '') = '' AND COALESCE(media_id, '') = ''";
 
     /** What {@link #publish} does when a saved download already has the same subfolder and name. */
     public enum Conflict { RENAME, SKIP, OVERWRITE }
@@ -59,6 +63,8 @@ public final class GalleryStore {
         public final long sizeBytes;
         public final Long durationMs;
         public final boolean favorite;
+        /** The stored tab's name, or {@link #SOURCE_UNKNOWN}. */
+        public final String source;
 
         private Entry(Cursor c, File dir) {
             id = c.getLong(0);
@@ -72,6 +78,7 @@ public final class GalleryStore {
             sizeBytes = c.getLong(13);
             durationMs = c.isNull(14) ? null : c.getLong(14);
             favorite = c.getInt(15) != 0;
+            source = source(c.getString(2), item.link, item.mediaId);
         }
     }
 
@@ -220,23 +227,34 @@ public final class GalleryStore {
 
     /** Saved downloads of one tab, newest first. */
     public synchronized List<Entry> list(GalleryTab tab) {
-        return list(tab, null, false, null, SORT_NEWEST);
+        return list(tab.name().toLowerCase(Locale.ROOT), null, false, null, SORT_NEWEST);
+    }
+
+    /** {@link #UNPROVEN_POST} in Java. */
+    static String source(String tab, String link, String mediaId) {
+        boolean unproven = "posts".equals(tab) && (link == null || link.isEmpty())
+                && (mediaId == null || mediaId.isEmpty());
+        return unproven ? SOURCE_UNKNOWN : tab;
+    }
+
+    /** The condition, after WHERE 1, of downloads from {@code source}; null matches every source. */
+    private static String sourceWhere(String source, List<String> args) {
+        if (source == null) return "";
+        if (SOURCE_UNKNOWN.equals(source)) return " AND " + UNPROVEN_POST;
+        args.add(source);
+        return " AND tab = ?" + ("posts".equals(source) ? " AND NOT (" + UNPROVEN_POST + ")" : "");
     }
 
     /**
-     * Saved downloads matching every filter given, in {@code sort} order: a null {@code tab} or
+     * Saved downloads matching every filter given, in {@code sort} order: a null {@code source} or
      * {@code kind} matches all, and {@code username} is a case-insensitive part of the owner's name.
      * By username, downloads without an owner come last.
      */
-    public synchronized List<Entry> list(GalleryTab tab, String kind, boolean favoritesOnly, String username,
+    public synchronized List<Entry> list(String source, String kind, boolean favoritesOnly, String username,
                                          String sort) {
         recover();
-        StringBuilder where = new StringBuilder(" WHERE 1");
         List<String> args = new ArrayList<>();
-        if (tab != null) {
-            where.append(" AND tab = ?");
-            args.add(tab.name().toLowerCase(Locale.ROOT));
-        }
+        StringBuilder where = new StringBuilder(" WHERE 1").append(sourceWhere(source, args));
         if (kind != null) {
             where.append(" AND kind = ?");
             args.add(kind);
@@ -261,11 +279,12 @@ public final class GalleryStore {
         return out;
     }
 
-    /** Whether any saved download is in {@code tab}. */
-    public synchronized boolean has(GalleryTab tab) {
+    /** Whether any saved download is from {@code source}. */
+    public synchronized boolean has(String source) {
         recover();
-        try (Cursor c = db.rawQuery("SELECT 1 FROM gallery_items WHERE tab = ? LIMIT 1",
-                new String[]{tab.name().toLowerCase(Locale.ROOT)})) {
+        List<String> args = new ArrayList<>();
+        try (Cursor c = db.rawQuery("SELECT 1 FROM gallery_items WHERE 1" + sourceWhere(source, args) + " LIMIT 1",
+                args.toArray(new String[0]))) {
             return c.moveToFirst();
         }
     }

@@ -53,6 +53,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.Callable;
@@ -87,11 +88,11 @@ import app.morphe.extension.shared.ui.SelectionCheck;
 public final class PrivateGalleryActivity {
     // Serial, so a delete runs before the reload that follows it.
     private static final Executor JOBS = Executors.newSingleThreadExecutor();
-    /** Null is All. */
-    private static final GalleryTab[] TABS = {null, GalleryTab.POSTS, GalleryTab.REELS, GalleryTab.STORIES,
-            GalleryTab.DMS};
+    private static final String DMS = "dms";
+    /** Null is All; the rest are {@link GalleryStore} sources. */
+    private static final String[] SOURCES = {null, "posts", "reels", "stories", DMS, GalleryStore.SOURCE_UNKNOWN};
     private static final String[] TAB_TITLES = {"spookd_all", "spookd_gallery_tab_posts", "spookd_gallery_tab_reels",
-            "spookd_gallery_tab_stories", "spookd_gallery_tab_dms"};
+            "spookd_gallery_tab_stories", "spookd_gallery_tab_dms", "spookd_unknown"};
     private static final String[] SORTS = {GalleryStore.SORT_NEWEST, GalleryStore.SORT_OLDEST,
             GalleryStore.SORT_SIZE, GalleryStore.SORT_USERNAME};
     private static final String[] SORT_TITLES = {"spookd_gallery_sort_newest", "spookd_gallery_sort_oldest",
@@ -144,7 +145,8 @@ public final class PrivateGalleryActivity {
     private static final class Item {
         final long id;
         final boolean vault;
-        final GalleryTab tab;
+        /** A {@link GalleryStore} source. */
+        final String source;
         /** photo, video, audio or voice. */
         final String kind;
         final long time;
@@ -165,7 +167,7 @@ public final class PrivateGalleryActivity {
         Item(GalleryStore.Entry entry) {
             id = entry.id;
             vault = false;
-            tab = entry.item.tab;
+            source = entry.source;
             kind = entry.item.kind;
             time = entry.savedAt;
             size = entry.sizeBytes;
@@ -182,7 +184,7 @@ public final class PrivateGalleryActivity {
         Item(MediaVault.Item stored, boolean favorite) {
             id = stored.id;
             vault = true;
-            tab = GalleryTab.DMS;
+            source = DMS;
             kind = stored.kind;
             time = stored.msgTimestamp;
             size = stored.sizeBytes;
@@ -242,13 +244,14 @@ public final class PrivateGalleryActivity {
         long count;
         long bytes;
         boolean dmDownloads;
+        boolean unknownDownloads;
     }
 
     /**
      * Runs on the jobs thread: applies the cleanup when asked, then lists what the view shows. A null
-     * {@code tab} is All; vault items are matched and merged here, downloads in SQL.
+     * {@code source} is All; vault items are matched and merged here, downloads in SQL.
      */
-    private static Loaded load(boolean prune, GalleryTab tab, String kind, boolean favoritesOnly, String username,
+    private static Loaded load(boolean prune, String source, String kind, boolean favoritesOnly, String username,
                                String sort) {
         Loaded out = new Loaded();
         try {
@@ -257,8 +260,9 @@ public final class PrivateGalleryActivity {
             long[] totals = store.totals();
             out.count = totals[0];
             out.bytes = totals[1];
-            out.dmDownloads = store.has(GalleryTab.DMS);
-            for (GalleryStore.Entry entry : store.list(tab, kind, favoritesOnly, username, sort)) {
+            out.dmDownloads = store.has(DMS);
+            out.unknownDownloads = store.has(GalleryStore.SOURCE_UNKNOWN);
+            for (GalleryStore.Entry entry : store.list(source, kind, favoritesOnly, username, sort)) {
                 out.items.add(new Item(entry));
             }
         } catch (Exception e) {
@@ -266,7 +270,7 @@ public final class PrivateGalleryActivity {
         }
         if (SettingsStatus.dmMediaVault) {
             try {
-                boolean shown = tab == null || tab == GalleryTab.DMS;
+                boolean shown = source == null || DMS.equals(source);
                 Set<Long> favorites = Collections.emptySet();
                 if (shown) {
                     try {
@@ -300,8 +304,10 @@ public final class PrivateGalleryActivity {
         private final Runnable searchReload = () -> reload(false);
         private List<Item> list = Collections.emptyList();
         private boolean dmDownloads;
+        private boolean unknownDownloads;
         private String summaryText = "";
-        private GalleryTab tab;
+        /** Null is All. */
+        private String source;
         private String kind;
         private boolean favoritesOnly;
         private String username = "";
@@ -358,17 +364,17 @@ public final class PrivateGalleryActivity {
             videoLabel = str("spookd_media_video");
             audioLabel = str("spookd_gallery_audio");
             unknownLabel = str("spookd_unknown");
-            tabLabels = new String[TABS.length];
-            for (int i = 0; i < TABS.length; i++) tabLabels[i] = str(TAB_TITLES[i]);
+            tabLabels = new String[SOURCES.length];
+            for (int i = 0; i < SOURCES.length; i++) tabLabels[i] = str(TAB_TITLES[i]);
             updateTileSize();
             thumbs = new ThumbLoader();
             LinearLayout root = buildRoot();
 
             LinearLayout tabsRow = new LinearLayout(activity);
             tabsRow.setOrientation(LinearLayout.HORIZONTAL);
-            tabViews = new TextView[TABS.length];
-            for (int i = 0; i < TABS.length; i++) {
-                GalleryTab target = TABS[i];
+            tabViews = new TextView[SOURCES.length];
+            for (int i = 0; i < SOURCES.length; i++) {
+                String target = SOURCES[i];
                 TextView view = new TextView(activity);
                 view.setText(tabLabels[i]);
                 SpookdType.apply(view, SpookdType.LABEL);
@@ -582,13 +588,13 @@ public final class PrivateGalleryActivity {
         private void reload(boolean prune) {
             int generation = ++loads;
             ui.removeCallbacks(searchReload);
-            GalleryTab tab = this.tab;
+            String source = this.source;
             String kind = this.kind;
             boolean favoritesOnly = this.favoritesOnly;
             String username = this.username;
             String sort = this.sort;
             JOBS.execute(() -> {
-                Loaded loaded = load(prune, tab, kind, favoritesOnly, username, sort);
+                Loaded loaded = load(prune, source, kind, favoritesOnly, username, sort);
                 ui.post(() -> {
                     if (!closed && generation == loads) show(loaded);
                 });
@@ -598,12 +604,13 @@ public final class PrivateGalleryActivity {
         private void show(Loaded loaded) {
             list = loaded.items;
             dmDownloads = loaded.dmDownloads;
+            unknownDownloads = loaded.unknownDownloads;
             selected.clear();
             selecting = false;
             summaryText = String.format(Locale.getDefault(), str("spookd_gallery_summary"), loaded.count,
                     Formatter.formatShortFileSize(activity, loaded.bytes));
-            if (tab == GalleryTab.DMS && !dmsShown()) {
-                tab = null;
+            if (source != null && !shown(source)) {
+                source = null;
                 updateTabs();
                 reload(false);
                 return;
@@ -613,22 +620,23 @@ public final class PrivateGalleryActivity {
         }
 
         // DM downloads exist without the vault patch, so their rows keep the tab.
-        private boolean dmsShown() {
-            return SettingsStatus.dmMediaVault || dmDownloads;
+        private boolean shown(String tab) {
+            if (DMS.equals(tab)) return SettingsStatus.dmMediaVault || dmDownloads;
+            return !GalleryStore.SOURCE_UNKNOWN.equals(tab) || unknownDownloads;
         }
 
-        private void select(GalleryTab target) {
-            if (tab == target) return;
-            tab = target;
+        private void select(String target) {
+            if (Objects.equals(source, target)) return;
+            source = target;
             updateTabs();
             reload(false);
         }
 
         private void updateTabs() {
-            for (int i = 0; i < TABS.length; i++) {
-                boolean selected = TABS[i] == tab;
+            for (int i = 0; i < SOURCES.length; i++) {
+                boolean selected = Objects.equals(SOURCES[i], source);
                 TextView view = tabViews[i];
-                view.setVisibility(TABS[i] != GalleryTab.DMS || dmsShown() ? View.VISIBLE : View.GONE);
+                view.setVisibility(SOURCES[i] == null || shown(SOURCES[i]) ? View.VISIBLE : View.GONE);
                 view.setSelected(selected);
                 view.setTypeface(SpookdType.typeface(activity, selected ? 600 : 400));
                 view.setTextColor(selected ? InstagramPreferenceStyle.primaryTextColor()
@@ -903,7 +911,7 @@ public final class PrivateGalleryActivity {
         }
 
         private String sourceLabel(Item item) {
-            return tabLabels[Arrays.asList(TABS).indexOf(item.tab)];
+            return tabLabels[Arrays.asList(SOURCES).indexOf(item.source)];
         }
 
         private SelectionCheck selectionCheck(int tint) {
@@ -983,7 +991,7 @@ public final class PrivateGalleryActivity {
                 if (item.mark != null) badgeText = (str(item.mark) + " " + badgeText).trim();
                 badge.setText(badgeText);
                 badge.setVisibility(badgeText.isEmpty() ? View.GONE : View.VISIBLE);
-                label.setText(tab == null ? sourceLabel(item) + " · " + ownerLabel(item) : ownerLabel(item));
+                label.setText(source == null ? sourceLabel(item) + " · " + ownerLabel(item) : ownerLabel(item));
                 label.setVisibility(overlays ? View.VISIBLE : View.INVISIBLE);
                 star.setVisibility(item.favorite ? View.VISIBLE : View.GONE);
                 check.setVisibility(selecting ? View.VISIBLE : View.GONE);
