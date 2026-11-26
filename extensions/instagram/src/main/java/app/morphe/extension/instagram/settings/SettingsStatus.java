@@ -232,9 +232,22 @@ public class SettingsStatus {
     public static void hideThreadsButton() { hideThreadsButton = true; }
     public static boolean hideFriendsMap = false;
     public static void hideFriendsMap() { hideFriendsMap = true; }
+    public static boolean hideRecentSearches = false;
+    public static void hideRecentSearches() { hideRecentSearches = true; }
+    public static boolean squareExploreGrid = false;
+    public static void squareExploreGrid() { squareExploreGrid = true; }
+    public static boolean hideReelsCommentBar = false;
+    public static void hideReelsCommentBar() { hideReelsCommentBar = true; }
+    public static boolean hideChatBlendButton = false;
+    public static void hideChatBlendButton() { hideChatBlendButton = true; }
+    public static boolean hideInboxInstants = false;
+    public static void hideInboxInstants() { hideInboxInstants = true; }
+    public static boolean hideReelsTabHeader = false;
+    public static void hideReelsTabHeader() { hideReelsTabHeader = true; }
     public static boolean distractionFreeSection() {
         return (hideReelsFollowButton || disableDoubleTapLike || hideHiddenRequests || hideNotesTray || disableHighlights || disableStories || disableExplore || disableComments || hideStoriesTray || limitFollowingFeed || hideFeedPosts || disableVideoAutoplay || disableDiscoverPeople || hideGroupCreationOnSharesheet || hideReshareButton || hideSaveButtons || hideLikes || hideShareButton || disableReelsScrolling || disableSwipeToCreate || focusLock
-                || hideCommentEmojiBar || hideReelsVisualSearch || hideProfileNotesBubble || hideThreadsButton || hideFriendsMap);
+                || hideCommentEmojiBar || hideReelsVisualSearch || hideProfileNotesBubble || hideThreadsButton || hideFriendsMap
+                || hideRecentSearches || squareExploreGrid || hideReelsCommentBar || hideChatBlendButton || hideInboxInstants || hideReelsTabHeader);
     }
 
     //Misc section.
@@ -304,7 +317,9 @@ public class SettingsStatus {
     public static void moreOptionsOnPost() { moreOptionsOnPost = true; }
     public static boolean moreOptionsOnProfile = false;
     public static void moreOptionsOnProfile() { moreOptionsOnProfile = true; }
-    public static boolean miscSection() {return ( moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || defaultPlaybackSpeed || reelsPlayerOptions || followBackIndicator || followListNonFollowerBadge || profileAnalyzer || exactProfileCounts || squareProfileGrid || profileSavedTab || confirmationsSection() || customFont);}
+    public static boolean disableAppHaptics = false;
+    public static void disableAppHaptics() { disableAppHaptics = true; }
+    public static boolean miscSection() {return ( disableAppHaptics || moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || defaultPlaybackSpeed || reelsPlayerOptions || followBackIndicator || followListNonFollowerBadge || profileAnalyzer || exactProfileCounts || squareProfileGrid || profileSavedTab || confirmationsSection() || customFont);}
 
     //Font section.
     public static boolean customFont = false;
@@ -438,6 +453,13 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_hide_profile_notes_bubble"), SettingsStatus.hideProfileNotesBubble);
         FLAGS.put(str("spookd_hide_threads_button"), SettingsStatus.hideThreadsButton);
         FLAGS.put(str("spookd_hide_friends_map"), SettingsStatus.hideFriendsMap);
+        FLAGS.put(str("spookd_hide_recent_searches"), SettingsStatus.hideRecentSearches);
+        FLAGS.put(str("spookd_square_explore_grid"), SettingsStatus.squareExploreGrid);
+        FLAGS.put(str("spookd_hide_reels_comment_bar"), SettingsStatus.hideReelsCommentBar);
+        FLAGS.put(str("spookd_hide_chat_blend_button"), SettingsStatus.hideChatBlendButton);
+        FLAGS.put(str("spookd_hide_inbox_instants"), SettingsStatus.hideInboxInstants);
+        FLAGS.put(str("spookd_hide_reels_tab_header"), SettingsStatus.hideReelsTabHeader);
+        FLAGS.put(str("spookd_disable_app_haptics"), SettingsStatus.disableAppHaptics);
 
         FLAGS.put(str("spookd_view_dm_anonymously"),SettingsStatus.viewDmAnonymously);
         FLAGS.put(str("spookd_mark_as_read_after_reply"), SettingsStatus.markAsReadAfterReply);
