@@ -20,8 +20,13 @@ import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.patch
+import app.morphe.patcher.util.getReference
 import app.morphe.patcher.util.smali.ExternalLabel
+import app.morphe.util.indexOfFirstInstructionOrThrow
 import com.android.tools.smali.dexlib2.AccessFlags
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 
 private const val FAKE_LOCATION_DESCRIPTOR = "$PATCHES_DESCRIPTOR/location/FakeLocation;"
 private const val LOCATION_PLUGIN_CLASS = "Lcom/instagram/location/impl/LocationPluginImpl;"
@@ -35,6 +40,24 @@ internal object ImmutableLocationConstructorFingerprint : Fingerprint(
     returnType = "V",
     parameters = listOf(LOCATION_CLASS),
     strings = listOf("location must have latitude/longitude"),
+)
+
+// Its factory for device fixes, which returns null for a fix without coordinates.
+internal object ImmutableLocationFactoryFingerprint : Fingerprint(
+    classFingerprint = ImmutableLocationConstructorFingerprint,
+    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.STATIC),
+    returnType = "L",
+    parameters = listOf(LOCATION_CLASS),
+)
+
+// The location cache's read, which can hand out the fix it holds without asking the device.
+internal object LocationCacheReadFingerprint : Fingerprint(
+    returnType = "L",
+    parameters = listOf("Ljava/lang/String;", "L", "F", "J", "Z"),
+    strings = listOf(
+        "app in background. returning saved location",
+        "minimize location access and should not allow access to OS cache",
+    ),
 )
 
 // Instagram's own detours around LocationManager.
@@ -98,6 +121,12 @@ val fakeLocationPatch =
         compatibleWith(COMPATIBILITY_INSTAGRAM)
 
         execute {
+            val replacesDevice = """
+                invoke-static {}, $FAKE_LOCATION_DESCRIPTOR->replacesDevice()Z
+                move-result v0
+                if-eqz v0, :fake_location_device
+            """.trimIndent()
+
             ImmutableLocationConstructorFingerprint.method.addInstructions(
                 0,
                 """
@@ -106,13 +135,52 @@ val fakeLocationPatch =
                 """.trimIndent(),
             )
 
-            LocationUpdatesDetourFingerprint.method.addInstructions(
-                0,
-                """
-                invoke-static {p0}, $FAKE_LOCATION_DESCRIPTOR->updatesListener($LOCATION_LISTENER_CLASS)$LOCATION_LISTENER_CLASS
-                move-result-object p0
-                """.trimIndent(),
-            )
+            ImmutableLocationFactoryFingerprint.method.apply {
+                addInstructionsWithLabels(
+                    0,
+                    """
+                    invoke-static {}, $FAKE_LOCATION_DESCRIPTOR->blocksFix()Z
+                    move-result v0
+                    if-eqz v0, :fake_location_device
+                    const/4 v0, 0x0
+                    return-object v0
+                    """.trimIndent(),
+                    ExternalLabel("fake_location_device", getInstruction(0)),
+                )
+            }
+
+            // Right after the cached fix is read, so every way out of the method sees the replaced one.
+            LocationCacheReadFingerprint.method.apply {
+                val wrapperType = returnType
+                val readIndex = indexOfFirstInstructionOrThrow {
+                    opcode == Opcode.IGET_OBJECT && getReference<FieldReference>()?.let {
+                        it.type == wrapperType && it.definingClass == definingClass
+                    } == true
+                }
+                val register = getInstruction<TwoRegisterInstruction>(readIndex).registerA
+                addInstructions(
+                    readIndex + 1,
+                    """
+                    invoke-static/range {v$register .. v$register}, $FAKE_LOCATION_DESCRIPTOR->cachedFix(Ljava/lang/Object;)Ljava/lang/Object;
+                    move-result-object v$register
+                    check-cast v$register, $wrapperType
+                    """.trimIndent(),
+                )
+            }
+
+            // p0 is the listener and p2 the provider; null means the request was answered with the chosen place.
+            LocationUpdatesDetourFingerprint.method.apply {
+                addInstructionsWithLabels(
+                    0,
+                    """
+                    invoke-static {p0, p2}, $FAKE_LOCATION_DESCRIPTOR->requestUpdates(${LOCATION_LISTENER_CLASS}Ljava/lang/String;)$LOCATION_LISTENER_CLASS
+                    move-result-object p0
+                    if-nez p0, :fake_location_device
+                    return-void
+                    """.trimIndent(),
+                    ExternalLabel("fake_location_device", getInstruction(0)),
+                )
+            }
 
             RemoveLocationUpdatesDetourFingerprint.method.addInstructions(
                 0,
@@ -126,9 +194,9 @@ val fakeLocationPatch =
                 addInstructionsWithLabels(
                     0,
                     """
+                    $replacesDevice
                     invoke-static {p1}, $FAKE_LOCATION_DESCRIPTOR->lastKnown(Ljava/lang/String;)$LOCATION_CLASS
                     move-result-object v0
-                    if-eqz v0, :fake_location_device
                     return-object v0
                     """.trimIndent(),
                     ExternalLabel("fake_location_device", getInstruction(0)),
@@ -139,16 +207,17 @@ val fakeLocationPatch =
                 addInstructionsWithLabels(
                     0,
                     """
+                    $replacesDevice
                     invoke-static {}, $FAKE_LOCATION_DESCRIPTOR->current()$LOCATION_CLASS
                     move-result-object v0
-                    if-eqz v0, :fake_location_device
                     return-object v0
                     """.trimIndent(),
                     ExternalLabel("fake_location_device", getInstruction(0)),
                 )
             }
 
-            // p2 is Instagram's location listener; the chosen place is delivered at once, as the plugin does with a cached fix.
+            // p2 is Instagram's location listener; the chosen place is delivered at once, as the plugin does with a
+            // cached fix, and the device is never asked. With no place yet, the method's first return ends it.
             PluginRequestUpdatesFingerprint.method.apply {
                 val listenerType = parameterTypes[2].toString()
                 if (classDefBy(listenerType).methods.none {
@@ -158,17 +227,20 @@ val fakeLocationPatch =
                 ) {
                     throw PatchException("Expected the plugin's update listener to take onLocationChanged(Location)")
                 }
+                val returnInstruction = getInstruction(indexOfFirstInstructionOrThrow(Opcode.RETURN_VOID))
                 addInstructionsWithLabels(
                     0,
                     """
+                    $replacesDevice
                     invoke-static {}, $FAKE_LOCATION_DESCRIPTOR->current()$LOCATION_CLASS
                     move-result-object v0
-                    if-eqz v0, :fake_location_device
+                    if-eqz v0, :fake_location_none
                     move-object/from16 v1, p2
                     invoke-interface {v1, v0}, $listenerType->onLocationChanged($LOCATION_CLASS)V
                     return-void
                     """.trimIndent(),
                     ExternalLabel("fake_location_device", getInstruction(0)),
+                    ExternalLabel("fake_location_none", returnInstruction),
                 )
             }
 
