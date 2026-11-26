@@ -64,5 +64,7 @@ public final class GalleryDb extends SQLiteOpenHelper {
         db.execSQL("CREATE INDEX idx_gallery_time ON gallery_items(saved_at)");
         db.execSQL("CREATE INDEX idx_gallery_size ON gallery_items(size_bytes)");
         db.execSQL("CREATE INDEX idx_gallery_tab_size ON gallery_items(tab, size_bytes)");
+        db.execSQL("CREATE INDEX idx_gallery_owner ON gallery_items(" + GalleryStore.USERNAME_ORDER + ")");
+        db.execSQL("CREATE INDEX idx_gallery_tab_owner ON gallery_items(tab, " + GalleryStore.USERNAME_ORDER + ")");
     }
 }

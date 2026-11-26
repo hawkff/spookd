@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import android.content.ContentValues;
+import android.database.Cursor;
 import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteDatabase;
 
@@ -560,6 +561,25 @@ public final class GalleryStoreTest {
                 ids(store.list(null, null, false, "ALICE_", GalleryStore.SORT_NEWEST)));
         assertEquals(Collections.singletonList(bob),
                 ids(store.list(null, null, false, "ob", GalleryStore.SORT_NEWEST)));
+    }
+
+    @Test
+    public void usernameSortReadsAnIndexInOrder() {
+        assertEquals("idx_gallery_owner", sortIndex(null));
+        assertEquals("idx_gallery_tab_owner", sortIndex("reels"));
+    }
+
+    /** The one index the username-sorted query reads, failing when it also sorts in a temporary tree. */
+    private String sortIndex(String source) {
+        List<String> args = new ArrayList<>();
+        String query = GalleryStore.listQuery(source, null, false, null, GalleryStore.SORT_USERNAME, args);
+        StringBuilder plan = new StringBuilder();
+        try (Cursor rows = db.rawQuery("EXPLAIN QUERY PLAN " + query, args.toArray(new String[0]))) {
+            while (rows.moveToNext()) plan.append(rows.getString(rows.getColumnCount() - 1)).append('\n');
+        }
+        assertFalse(plan.toString(), plan.indexOf("TEMP B-TREE") >= 0);
+        if (plan.indexOf("idx_gallery_tab_owner") >= 0) return "idx_gallery_tab_owner";
+        return plan.indexOf("idx_gallery_owner") >= 0 ? "idx_gallery_owner" : plan.toString();
     }
 
     @Test

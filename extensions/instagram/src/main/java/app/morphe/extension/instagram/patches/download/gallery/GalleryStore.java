@@ -43,6 +43,9 @@ public final class GalleryStore {
     static final String SORT_OLDEST = "oldest";
     static final String SORT_SIZE = "size";
     static final String SORT_USERNAME = "username";
+    /** Owners first, case-insensitively, then the unknown ones; also the columns of the index that serves it. */
+    static final String USERNAME_ORDER = "COALESCE(owner_username, '') = '', owner_username COLLATE NOCASE,"
+            + " saved_at DESC";
     /** The source of a download whose origin was not recorded; other sources are the stored tab names. */
     static final String SOURCE_UNKNOWN = "unknown";
     // Generic URL downloads, such as profile pictures, land in Posts with neither a link nor a media id.
@@ -254,6 +257,17 @@ public final class GalleryStore {
                                          String sort) {
         recover();
         List<String> args = new ArrayList<>();
+        List<Entry> out = new ArrayList<>();
+        try (Cursor c = db.rawQuery(listQuery(source, kind, favoritesOnly, username, sort, args),
+                args.toArray(new String[0]))) {
+            while (c.moveToNext()) out.add(new Entry(c, dir));
+        }
+        return out;
+    }
+
+    /** The query of {@link #list}, adding its arguments to {@code args}. */
+    static String listQuery(String source, String kind, boolean favoritesOnly, String username, String sort,
+                            List<String> args) {
         StringBuilder where = new StringBuilder(" WHERE 1").append(sourceWhere(source, args));
         if (kind != null) {
             where.append(" AND kind = ?");
@@ -266,17 +280,11 @@ public final class GalleryStore {
         }
         String order = SORT_OLDEST.equals(sort) ? "saved_at, id"
                 : SORT_SIZE.equals(sort) ? "size_bytes DESC, id DESC"
-                : SORT_USERNAME.equals(sort) ? "owner_username IS NULL OR owner_username = '',"
-                + " owner_username COLLATE NOCASE, saved_at DESC, id DESC"
+                : SORT_USERNAME.equals(sort) ? USERNAME_ORDER
                 : "saved_at DESC, id DESC";
-        List<Entry> out = new ArrayList<>();
-        try (Cursor c = db.rawQuery("SELECT " + COLUMNS + ", f.item_id IS NOT NULL FROM gallery_items"
-                        + " LEFT JOIN gallery_favorites f ON f.vault = 0 AND f.item_id = id"
-                        + where + " ORDER BY " + order,
-                args.toArray(new String[0]))) {
-            while (c.moveToNext()) out.add(new Entry(c, dir));
-        }
-        return out;
+        return "SELECT " + COLUMNS + ", f.item_id IS NOT NULL FROM gallery_items"
+                + " LEFT JOIN gallery_favorites f ON f.vault = 0 AND f.item_id = id"
+                + where + " ORDER BY " + order;
     }
 
     /** Whether any saved download is from {@code source}. */
