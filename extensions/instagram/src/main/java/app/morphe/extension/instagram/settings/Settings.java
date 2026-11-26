@@ -69,6 +69,7 @@ public class Settings {
     public static final BooleanSetting CONFIRM_FOLLOW_REQUEST = new BooleanSetting("confirm_follow_request", false, NOT_REQUIRED);
     public static final BooleanSetting CONFIRM_REFRESH = new BooleanSetting("confirm_refresh", false, NOT_REQUIRED);
     public static final BooleanSetting CONFIRM_COMMENT_LIKE = new BooleanSetting("confirm_comment_like", false, NOT_REQUIRED);
+    public static final BooleanSetting CONFIRM_DM_ACTIONS = new BooleanSetting("confirm_dm_actions", false, NOT_REQUIRED);
     public static final BooleanSetting DISABLE_HOME_TAB_REFRESH = new BooleanSetting("disable_home_tab_refresh", false, NOT_REQUIRED);
     public static final BooleanSetting DISABLE_HOME_BACKGROUND_REFRESH = new BooleanSetting("disable_home_background_refresh", false, NOT_REQUIRED);
     public static final BooleanSetting DISABLE_REELS_TAB_REFRESH = new BooleanSetting("disable_reels_tab_refresh", false, NOT_REQUIRED);

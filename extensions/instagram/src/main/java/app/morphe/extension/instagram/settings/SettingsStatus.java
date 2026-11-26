@@ -280,12 +280,14 @@ public class SettingsStatus {
     public static void confirmRefresh() { confirmRefresh = true; }
     public static boolean confirmCommentLike = false;
     public static void confirmCommentLike() { confirmCommentLike = true; }
+    public static boolean confirmDisappearingMessages = false;
+    public static void confirmDisappearingMessages() { confirmDisappearingMessages = true; }
     public static boolean refreshControls = false;
     public static void refreshControls() { refreshControls = true; }
     public static boolean confirmationsSection() {
         return confirmFollow || confirmFeedLike || confirmReelLike || confirmReelRepost || confirmComment || confirmCommentSheet
                 || confirmUnfollow || confirmFeedRepost || confirmStoryLike || confirmStoryReaction || confirmCall || confirmFollowRequest
-                || confirmRefresh || confirmCommentLike;
+                || confirmRefresh || confirmCommentLike || confirmDisappearingMessages;
     }
     public static boolean resumeReelsAfterScrolling = false;
     public static void resumeReelsAfterScrolling() { resumeReelsAfterScrolling = true; }
@@ -421,6 +423,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_confirm_follow_request"), SettingsStatus.confirmFollowRequest);
         FLAGS.put(str("spookd_confirm_refresh"), SettingsStatus.confirmRefresh);
         FLAGS.put(str("spookd_confirm_comment_like"), SettingsStatus.confirmCommentLike);
+        FLAGS.put(str("spookd_patch_confirm_disappearing"), SettingsStatus.confirmDisappearingMessages);
         FLAGS.put(str("spookd_patch_refresh_controls"), SettingsStatus.refreshControls);
         FLAGS.put(str("spookd_disable_discover_people"),SettingsStatus.disableDiscoverPeople);
         FLAGS.put(str("spookd_customise_story_ring_size"),SettingsStatus.customiseStoryRingSize);

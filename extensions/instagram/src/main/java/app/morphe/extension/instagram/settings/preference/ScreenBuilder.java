@@ -1030,6 +1030,10 @@ public class ScreenBuilder {
                 addPreference(confirmations, helper.switchPreference(
                         str("spookd_confirm_comment_like"), str("spookd_confirm_comment_like_desc"), Settings.CONFIRM_COMMENT_LIKE));
             }
+            if (SettingsStatus.confirmDisappearingMessages) {
+                addPreference(confirmations, helper.switchPreference(
+                        str("spookd_confirm_dm_actions"), str("spookd_confirm_dm_actions_desc"), Settings.CONFIRM_DM_ACTIONS));
+            }
         }
         if (SettingsStatus.refreshControls) {
             PreferenceCategory refresh = addCategory(str("spookd_category_refresh"));

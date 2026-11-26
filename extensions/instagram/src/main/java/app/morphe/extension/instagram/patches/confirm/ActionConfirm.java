@@ -32,9 +32,10 @@ import app.morphe.extension.shared.ResourceUtils;
 import app.morphe.extension.shared.Utils;
 
 /**
- * Asks before a like, follow, unfollow, repost, comment, reaction, call, follow request approval or pull
- * to refresh goes through. Every entry point runs on the main thread from Instagram's own click and
- * refresh handlers and returns true, letting the action run, on any failure.
+ * Asks before a like, follow, unfollow, repost, comment, reaction, call, follow request approval, pull to
+ * refresh or disappearing messages switch goes through. Every entry point runs on the main thread from
+ * Instagram's own click, gesture and refresh handlers and returns true, letting the action run, on any
+ * failure.
  */
 @SuppressWarnings("unused")
 public final class ActionConfirm {
@@ -48,6 +49,7 @@ public final class ActionConfirm {
     static final String CALL = "call";
     static final String FOLLOW_REQUEST = "follow_request";
     static final String REFRESH = "refresh";
+    static final String DISAPPEARING = "disappearing";
 
     // Set only while an approved action runs again: what it was about, and how it looked when asked.
     private static Object pendingToken;
@@ -497,6 +499,24 @@ public final class ActionConfirm {
 
     static boolean isLiked(String reaction) {
         return "LIKE".equals(reaction);
+    }
+
+    /**
+     * From a chat's swipe-up switch of disappearing messages, on the main thread, which turns them on or
+     * off. Each chat screen has its own {@code chat} controller, so a replay cannot reach another chat.
+     */
+    public static boolean allowDisappearingMessagesSwitch(Object chat, String name) {
+        try {
+            List<Object> state = Collections.emptyList();
+            Boolean replay = replayVerdict(chat, state);
+            if (replay != null) return replay;
+            if (chat == null || !Pref.confirmDmActions()) return true;
+            return !ask(null, DISAPPEARING, str("spookd_confirm_disappearing_title"), chat, state,
+                    invoker(chat.getClass(), name, chat, new Object[0]));
+        } catch (Throwable t) {
+            Logger.printException(() -> "allowDisappearingMessagesSwitch failure", t);
+            return true;
+        }
     }
 
     /** What a tap on a follow button with this status asks, or null when it follows or Instagram asks itself. */

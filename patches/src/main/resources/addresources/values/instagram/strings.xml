@@ -256,6 +256,11 @@
     <string name="spookd_confirm_comment_like">Confirm comment likes</string>
     <string name="spookd_confirm_comment_like_desc">Asks before you like a comment. Unliking is not asked.</string>
     <string name="spookd_confirm_comment_like_title">Like this comment?</string>
+    <string name="spookd_confirm_dm_actions">Confirm chat actions</string>
+    <string name="spookd_confirm_dm_actions_desc">Asks before swiping up in a chat turns disappearing messages on or off</string>
+    <string name="spookd_patch_confirm_disappearing">Confirm disappearing messages</string>
+    <string name="spookd_confirm_disappearing_title">Turn disappearing messages on or off for this chat?</string>
+    <string name="spookd_confirm_disappearing_action">Continue</string>
     <string name="spookd_category_refresh">Refresh</string>
     <string name="spookd_patch_refresh_controls">Refresh controls</string>
     <string name="spookd_disable_home_tab_refresh">Don\'t refresh Home on tab tap</string>
