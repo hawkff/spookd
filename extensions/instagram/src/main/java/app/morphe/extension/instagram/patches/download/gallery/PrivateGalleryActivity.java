@@ -52,7 +52,9 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -98,8 +100,17 @@ public final class PrivateGalleryActivity {
     private static final int MAX_COLUMNS = 5;
     // Its own file, so the layout stays the same on every account of this device.
     private static final String VIEW_PREFS = "piko_gallery_view";
+    private static final Map<Activity, Controller> controllers = new WeakHashMap<>();
 
     private PrivateGalleryActivity() {
+    }
+
+    /** Main thread, from the activity's Back dispatch: true when Back only ended a selection. */
+    public static boolean handleBackPressed(Activity activity) {
+        Controller controller = controllers.get(activity);
+        if (controller == null || !controller.selecting) return false;
+        controller.cancelSelection();
+        return true;
     }
 
     /**
@@ -336,6 +347,7 @@ public final class PrivateGalleryActivity {
         }
 
         void setup() {
+            controllers.put(activity, this);
             viewPrefs = activity.getSharedPreferences(VIEW_PREFS, Context.MODE_PRIVATE);
             columns = Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, viewPrefs.getInt("columns", 3)));
             listView = viewPrefs.getBoolean("list", false);
@@ -418,7 +430,10 @@ public final class PrivateGalleryActivity {
             toolbar.setBackgroundColor(InstagramPreferenceStyle.backgroundColor());
             ImageView back = new ImageView(activity);
             UI.setThemedIcon(back, UI.DRAWABLE_ARROW_BACK);
-            back.setOnClickListener(v -> activity.finish());
+            back.setOnClickListener(v -> {
+                if (selecting) cancelSelection();
+                else activity.finish();
+            });
             TextView title = new TextView(activity);
             title.setText(str("spookd_private_gallery"));
             title.setTextColor(InstagramPreferenceStyle.primaryTextColor());
@@ -549,6 +564,7 @@ public final class PrivateGalleryActivity {
                 public void onActivityDestroyed(Activity a) {
                     if (a != activity) return;
                     app.unregisterActivityLifecycleCallbacks(this);
+                    controllers.remove(a);
                     close();
                 }
             });
