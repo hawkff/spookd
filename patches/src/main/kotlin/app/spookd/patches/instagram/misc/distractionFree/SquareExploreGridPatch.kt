@@ -16,8 +16,8 @@ import app.morphe.patcher.patch.patch
 @Suppress("unused")
 val squareExploreGridPatch =
     patch(
-        name = "Square Explore grid",
-        description = "Adds an option to show Explore as a grid of square tiles instead of tall 3:4 ones.",
+        name = "Classic Explore grid",
+        description = "Adds an option to use Instagram's older, mostly square Explore layout instead of the tall 3:4 grid.",
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(settingsPatch, hookFlagsPatch)
