@@ -56,6 +56,8 @@ public class Settings {
     public static final BooleanSetting DISABLE_INSTANTS_CREATION = new BooleanSetting("disable_instants_creation", false, NOT_REQUIRED);
     public static final BooleanSetting CONFIRM_INSTANT_VIDEO = new BooleanSetting("confirm_instant_video", false, NOT_REQUIRED);
     public static final BooleanSetting CONFIRM_INSTANT_REACTION = new BooleanSetting("confirm_instant_reaction", false, NOT_REQUIRED);
+    // Instagram sets up its location collection and listeners at startup.
+    public static final BooleanSetting FAKE_LOCATION = new BooleanSetting("fake_location", false, REQUIRED);
     public static final BooleanSetting SAVE_DELETED_MESSAGES = new BooleanSetting("save_deleted_messages", false, NOT_REQUIRED);
     public static final BooleanSetting DM_MEDIA_VAULT = new BooleanSetting("dm_media_vault", false, NOT_REQUIRED);
     public static final BooleanSetting DM_MEDIA_VAULT_VIEW_ONCE = new BooleanSetting("dm_media_vault_view_once", true, NOT_REQUIRED);

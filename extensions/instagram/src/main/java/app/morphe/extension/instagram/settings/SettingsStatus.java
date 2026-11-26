@@ -7,6 +7,8 @@
 package app.morphe.extension.instagram.settings;
 
 import java.util.TreeMap;
+
+import app.morphe.extension.instagram.patches.location.FakePlaces;
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
 public class SettingsStatus {
@@ -81,8 +83,13 @@ public class SettingsStatus {
     }
     public static boolean dmMediaVault = false;
     public static void dmMediaVault() { dmMediaVault = true; }
+    public static boolean fakeLocation = false;
+    public static void fakeLocation() {
+        fakeLocation = true;
+        FakePlaces.preload();
+    }
     public static boolean ghostSection() {
-        return (viewStoriesAnonymously || viewLiveAnonymously || disableScreenshotDetection || disableTypingStatus || viewDmAnonymously || markAsReadAfterReply);
+        return (viewStoriesAnonymously || viewLiveAnonymously || disableScreenshotDetection || disableTypingStatus || viewDmAnonymously || markAsReadAfterReply || fakeLocation);
     }
 
     //DM section
@@ -528,6 +535,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_disable_typing_status"),SettingsStatus.disableTypingStatus);
         FLAGS.put(str("spookd_view_live_anonymously"),SettingsStatus.viewLiveAnonymously);
         FLAGS.put(str("spookd_view_stories_anonymously"),SettingsStatus.viewStoriesAnonymously);
+        FLAGS.put(str("spookd_fake_location"), SettingsStatus.fakeLocation);
         FLAGS.put(str("spookd_instants_title"),SettingsStatus.instantsDownload);
         FLAGS.put(str("spookd_patch_instants_seen"), SettingsStatus.instantsSeen);
         FLAGS.put(str("spookd_disable_instants_creation"), SettingsStatus.disableInstantsCreation);

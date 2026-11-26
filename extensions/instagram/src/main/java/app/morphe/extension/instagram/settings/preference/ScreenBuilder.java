@@ -35,6 +35,8 @@ import app.morphe.extension.instagram.patches.story.StoryAutoSave;
 import app.morphe.extension.instagram.patches.story.StoryGhostList;
 import app.morphe.extension.instagram.patches.dm.DmGhostChats;
 import app.morphe.extension.instagram.patches.instants.InstantsMenu;
+import app.morphe.extension.instagram.patches.location.FakeLocationScreen;
+import app.morphe.extension.instagram.patches.location.FakePlaces;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.RestartPolicy;
 import app.morphe.extension.instagram.settings.SafeStartup;
@@ -627,6 +629,27 @@ public class ScreenBuilder {
                                     || SharedPref.getBooleanPref(Settings.TURN_ON_ALL_GHOST_MODES)
                     )
             );
+        }
+        if (SettingsStatus.fakeLocation) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_fake_location"),
+                            str("spookd_fake_location_desc"),
+                            Settings.FAKE_LOCATION
+                    )
+            );
+            Preference places = helper.buttonPreference(
+                    str("spookd_fake_location_places"),
+                    FakeLocationScreen.summary(),
+                    "spookd_fake_location_places"
+            );
+            places.setOnPreferenceClickListener(preference -> {
+                FakeLocationScreen.showPlaces(preference.getContext(),
+                        () -> preference.setSummary(FakeLocationScreen.summary()));
+                return true;
+            });
+            addPreference(places);
+            FakePlaces.whenLoaded(() -> places.setSummary(FakeLocationScreen.summary()));
         }
 
     }
