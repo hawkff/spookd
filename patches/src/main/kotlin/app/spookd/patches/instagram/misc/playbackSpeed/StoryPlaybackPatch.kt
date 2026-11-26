@@ -31,6 +31,7 @@ import app.morphe.patcher.patch.classDefByOrNull
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.util.getReference
 import app.morphe.patcher.util.p0Register
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.registersUsed
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.Opcode
@@ -45,6 +46,7 @@ private const val FRAGMENT = "Landroidx/fragment/app/Fragment;"
 private const val ACTIVITY = "Landroid/app/Activity;"
 private const val CHAR_SEQUENCE = "Ljava/lang/CharSequence;"
 private const val DISMISS_LISTENER = "Landroid/content/DialogInterface\$OnDismissListener;"
+private const val ATOMIC_BOOLEAN = "Ljava/util/concurrent/atomic/AtomicBoolean;"
 
 private object StoryPlayerCreatedFingerprint : Fingerprint(
     definingClass = REEL_VIEWER_FRAGMENT,
@@ -53,12 +55,12 @@ private object StoryPlayerCreatedFingerprint : Fingerprint(
 )
 
 // The story player's sound decision: Instagram's session sound check, told whether the viewer asked for sound.
-private fun storySoundFingerprint(player: String) = Fingerprint(
-    definingClass = player,
+private fun storySoundFingerprint(owner: String) = Fingerprint(
+    definingClass = owner,
     returnType = "Z",
     parameters = emptyList(),
     filters = listOf(
-        methodCall(smali = "Ljava/util/concurrent/atomic/AtomicBoolean;->get()Z"),
+        methodCall(smali = "$ATOMIC_BOOLEAN->get()Z"),
         opcode(Opcode.MOVE_RESULT, MatchAfterImmediately()),
         methodCall(parameters = listOf("Ljava/lang/Integer;", "Z", "Z"), returnType = "Z"),
         opcode(Opcode.MOVE_RESULT, MatchAfterImmediately()),
@@ -136,23 +138,40 @@ private fun hookStoryPlayer(playerField: FieldReference, players: List<String>) 
     """)
 }
 
-// Each story player keeps the session's sound decision unless Mute stories is on and the viewer was not asked for sound.
+// Turns the session sound check's true result false while Mute stories is on and the viewer was not asked for sound.
+private fun hookSoundDecision(method: MutableMethod, callIndex: Int, asked: Int) {
+    val code = method.implementation!!.instructions
+    val call = code[callIndex].registersUsed
+    val result = code[callIndex + 1].registersUsed.single()
+    val insertAt = callIndex + 2
+    if (code[callIndex + 1].opcode != Opcode.MOVE_RESULT || call.size != 4 || call[2] != asked || asked == result ||
+        asked !in 0..15 || result !in 0..15 || insertAt >= code.size || code[insertAt].location.labels.isNotEmpty()
+    ) throw PatchException("Unexpected story sound decision in $method")
+    method.addInstructions(insertAt, """
+        invoke-static {v$result, v$asked}, $STORY_PLAYBACK_CLASS->storySound(ZZ)Z
+        move-result v$result
+    """)
+}
+
+// Every story player's sound decision is hooked; a player that keeps its sound state in a helper plays by the helper's decision.
 private fun hookStorySound(players: List<String>) {
-    val matches = players.mapNotNull { storySoundFingerprint(it).matchOrNull() }
-    if (matches.isEmpty()) throw PatchException("Missing story sound decision")
-    for (match in matches) {
-        val asked = match.instructionMatches[1].instruction.registersUsed.single()
-        val call = match.instructionMatches[2].instruction.registersUsed
-        val result = match.instructionMatches[3].instruction.registersUsed.single()
-        val insertAt = match.instructionMatches[3].index + 1
-        val code = match.method.implementation!!.instructions
-        if (call.size != 4 || call[2] != asked || asked == result || asked !in 0..15 || result !in 0..15 ||
-            insertAt >= code.size || code[insertAt].location.labels.isNotEmpty()
-        ) throw PatchException("Unexpected story sound decision in ${match.method}")
-        match.method.addInstructions(insertAt, """
-            invoke-static {v$result, v$asked}, $STORY_PLAYBACK_CLASS->storySound(ZZ)Z
-            move-result v$result
-        """)
+    val hooked = mutableSetOf<String>()
+    fun hook(owner: String): String? {
+        val match = storySoundFingerprint(owner).matchOrNull() ?: return null
+        val get = match.instructionMatches[0]
+        val stateRead = match.method.implementation!!.instructions[get.index - 1]
+        val stateField = stateRead.getReference<FieldReference>()
+        if (stateRead.opcode != Opcode.IGET_OBJECT || stateField?.type != ATOMIC_BOOLEAN ||
+            stateRead.registersUsed.first() != get.instruction.registersUsed.single()
+        ) throw PatchException("Unexpected story sound state in ${match.method}")
+        if (hooked.add(owner)) {
+            hookSoundDecision(match.method, match.instructionMatches[2].index, match.instructionMatches[1].instruction.registersUsed.single())
+        }
+        return stateField!!.definingClass
+    }
+    for (player in players) {
+        val state = hook(player) ?: throw PatchException("Missing story sound decision in $player")
+        if (state != player && hook(state) == null) throw PatchException("Missing story sound decision in $state")
     }
 }
 
