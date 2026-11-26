@@ -152,6 +152,68 @@ public class ActionConfirmTest {
         assertFalse(ActionConfirm.isLiked(null));
     }
 
+    private enum Reaction { NONE, LIKE }
+
+    /** Stands in for the like tap lambda and the cached comment preview it updates once it goes on. */
+    private static final class CommentLikeTap {
+        final Reaction bound;
+        boolean previewLiked;
+        int previewLikes;
+        List<Object> asked;
+        Boolean actionSawReplay;
+
+        CommentLikeTap(Reaction bound) {
+            this.bound = bound;
+        }
+
+        void invoke(Object post) {
+            if (!ActionConfirm.commentLikeTapGoesOn(this, bound, post, () -> true, state -> {
+                asked = state;
+                return true;
+            })) {
+                return;
+            }
+            previewLiked = true;
+            previewLikes++;
+            actionSawReplay = ActionConfirm.isReplaying();
+        }
+    }
+
+    @Test
+    public void cancelledCommentLikeLeavesTheCachedPreviewUnchanged() {
+        Object post = new Object();
+        CommentLikeTap tap = new CommentLikeTap(Reaction.NONE);
+
+        tap.invoke(post);
+
+        assertEquals(Arrays.asList(Reaction.NONE, post), tap.asked);
+        assertFalse(tap.previewLiked);
+        assertEquals(0, tap.previewLikes);
+        assertNull(tap.actionSawReplay);
+    }
+
+    @Test
+    public void approvedCommentLikeUpdatesThePreviewOnceAndTheActionIsNotAskedAgain() {
+        Object post = new Object();
+        CommentLikeTap tap = new CommentLikeTap(Reaction.NONE);
+        tap.invoke(post);
+
+        assertTrue(ActionConfirm.runConfirmed(tap, tap.asked, () -> tap.invoke(post)));
+
+        assertTrue(tap.previewLiked);
+        assertEquals(1, tap.previewLikes);
+        assertEquals(Boolean.TRUE, tap.actionSawReplay);
+        assertFalse(ActionConfirm.isReplaying());
+    }
+
+    @Test
+    public void unlikeTapIsNotAsked() {
+        CommentLikeTap tap = new CommentLikeTap(Reaction.LIKE);
+        tap.invoke(new Object());
+        assertNull(tap.asked);
+        assertEquals(Boolean.FALSE, tap.actionSawReplay);
+    }
+
     @Test
     public void commentLikeReplayMatchesOnlyTheCommentAskedAbout() {
         Object comments = new Object();

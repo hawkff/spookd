@@ -23,6 +23,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.WeakHashMap;
+import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.instagram.utils.Pref;
@@ -486,6 +488,8 @@ public final class ActionConfirm {
             List<Object> state = Arrays.asList(refs[1], refs[2], refs[3], refs[4], last);
             Boolean replay = replayVerdict(comments, state);
             if (replay != null) return replay;
+            // The like tap that led here was asked already and is replaying.
+            if (isReplaying()) return true;
             if (comments == null || isLiked(enumName(refs[1])) || !Pref.confirmCommentLike()) return true;
             Object[] args = Arrays.copyOfRange(refs, 1, refs.length + 1);
             args[args.length - 1] = last;
@@ -499,6 +503,45 @@ public final class ActionConfirm {
 
     static boolean isLiked(String reaction) {
         return "LIKE".equals(reaction);
+    }
+
+    /**
+     * From the comment like button's tap lambda, before it updates the post's cached comment previews and
+     * calls the like action. It runs for every {@code callCase} of its class; case 0 is the like tap.
+     * {@code reaction} is the comment's reaction when its row was bound, and the lambda holds the comment
+     * id, so a replay reaches only the comment that was asked about.
+     */
+    public static boolean allowCommentLikeTap(Object tap, int callCase, Object reaction, Object post, String name) {
+        if (callCase != 0) return true;
+        try {
+            Runnable rerun = () -> {
+                try {
+                    invoker(tap.getClass(), name, tap, new Object[]{post}).run();
+                } catch (NoSuchMethodException e) {
+                    throw new RuntimeException(e);
+                }
+            };
+            return commentLikeTapGoesOn(tap, reaction, post, Pref::confirmCommentLike,
+                    state -> ask(null, LIKE, str("spookd_confirm_comment_like_title"), tap, state, rerun));
+        } catch (Throwable t) {
+            Logger.printException(() -> "allowCommentLikeTap failure", t);
+            return true;
+        }
+    }
+
+    /** Whether a comment like tap goes on now; {@code shown} shows the prompt and is true when it did. */
+    static boolean commentLikeTapGoesOn(Object tap, Object reaction, Object post, BooleanSupplier enabled,
+                                        Predicate<List<Object>> shown) {
+        List<Object> state = Arrays.asList(reaction, post);
+        Boolean replay = replayVerdict(tap, state);
+        if (replay != null) return replay;
+        if (tap == null || isLiked(enumName(reaction)) || !enabled.getAsBoolean()) return true;
+        return !shown.test(state);
+    }
+
+    /** Whether an approved action is running again right now. */
+    static boolean isReplaying() {
+        return pendingToken != null;
     }
 
     /**
