@@ -79,7 +79,7 @@ public class MoreOptionsOnPostPatch {
                         }
                     } catch (Exception e) {
                         Logger.printException(() -> "Error at postMoreOptions addDialogMenuItems", e);
-                        Utils.showToastShort(String.valueOf(e));
+                        Utils.showToastShort(str("spookd_post_option_failed"));
                     }
                 }
             });

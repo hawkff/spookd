@@ -531,6 +531,7 @@
     <string name="spookd_copy_post_owner_username">Copy post owner username</string>
     <string name="spookd_copy_post_owner_fullname">Copy post owner fullname</string>
     <string name="spookd_posted_at">Posted %1$s</string>
+    <string name="spookd_post_option_failed">Something went wrong. Try again.</string>
     <string name="spookd_enable_more_options_on_post">Enable more option on post</string>
     <string name="spookd_enable_more_options_on_post_desc">Adds an overflow menu button to get more options on post/reels, like copy description, copy username etc</string>
     <string name="spookd_more_options">More options</string>
