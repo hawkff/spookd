@@ -691,7 +691,7 @@ public final class DeletedMessagesActivity {
         }
 
         private void confirmDeleteSelected() {
-            if (wholeLogSelected && hasMore) {
+            if (wholeLogSelected) {
                 confirmDeleteWholeLog();
                 return;
             }
