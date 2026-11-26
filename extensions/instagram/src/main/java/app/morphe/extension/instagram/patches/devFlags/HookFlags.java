@@ -16,6 +16,7 @@ import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.entity.DeveloperOptions;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.entity.DeveloperOptionsItem;
+import app.morphe.extension.instagram.settings.SafeStartup;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 
@@ -249,6 +250,12 @@ public class HookFlags {
     }
 
     public static void load() {
+        if (SafeStartup.featuresOff()) {
+            // Empty overrides make every MobileConfig read return "no override" on the fast path.
+            boolOverrides = new FlagOverrides<>(new HashMap<String, Boolean>());
+            longOverrides = new FlagOverrides<>(new HashMap<String, Long>());
+            return;
+        }
         addRecommendedFlags();
         boolOverrides = new FlagOverrides<>(BOOL_FLAGS);
         longOverrides = new FlagOverrides<>(LONG_FLAGS);

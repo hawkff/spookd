@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import app.morphe.extension.instagram.settings.SafeStartup;
 import app.morphe.extension.shared.Logger;
 
 /**
@@ -130,7 +131,9 @@ public class CustomFont {
      * nothing has been added.
      */
     public static void load() {
-        if (FontStorage.hasFile()) {
+        if (SafeStartup.featuresOff()) {
+            active = false;
+        } else if (FontStorage.hasFile()) {
             customTypeface = FontStorage.loadTypeface();
             systemFontSelected = false;
             active = customTypeface != null;

@@ -55,11 +55,13 @@ public class Pref {
     public static boolean clearAllPreferences() {
         // Resetting settings would silently drop an active Focus Lock.
         if (FocusLock.isActive()) return false;
-        return SharedPref.clearAll();
+        if (!SharedPref.clearAll()) return false;
+        SafeStartup.resetStoredState();
+        return true;
     }
     
     public static boolean spookdDebug() {
-        return SharedPref.getBooleanPref(Settings.SPOOKD_DEBUG);
+        return on(Settings.SPOOKD_DEBUG);
     }
 
     public static boolean firstTimeSpookd() {
@@ -98,7 +100,7 @@ public class Pref {
     }
 
     public static String customSharingDomain() {
-        return removeLineBreaks(SharedPref.getStringPref(Settings.CUSTOM_SHARING_DOMAIN));
+        return removeLineBreaks(value(Settings.CUSTOM_SHARING_DOMAIN));
     }
 
     public static boolean detectLinksInText() {
@@ -342,16 +344,16 @@ public class Pref {
     }
 
     /**
-     * A feature switch: false while Disable all or safe startup mode is on, without touching the
-     * stored value. Inbox lock, hidden chats, navigation tabs and values the settings screen shows
-     * are read directly instead.
+     * A feature switch, for every runtime read: false while Disable all or safe startup mode is
+     * on, without touching the stored value. Only the settings screen, migrations, and Inbox lock,
+     * hidden chats and Focus Lock read the stored value directly.
      */
-    private static boolean on(BooleanSetting setting) {
+    public static boolean on(BooleanSetting setting) {
         return !SafeStartup.featuresOff() && SharedPref.getBooleanPref(setting);
     }
 
     /** {@link #on} for text settings: the declared default while features are off. */
-    private static String value(StringSetting setting) {
+    public static String value(StringSetting setting) {
         return SafeStartup.featuresOff() ? setting.defaultValue : SharedPref.getStringPref(setting);
     }
 
@@ -378,12 +380,17 @@ public class Pref {
     }
 
     /** Keys of the first released Focus Lock, read so a lock it wrote still counts. */
+    private static final BooleanSetting LEGACY_FOCUS_LOCK_BLOCK_REELS =
+            new BooleanSetting("focus_lock_block_reels", false, NOT_REQUIRED);
+    private static final BooleanSetting LEGACY_FOCUS_LOCK_BLOCK_EXPLORE =
+            new BooleanSetting("focus_lock_block_explore", false, NOT_REQUIRED);
+
     public static boolean legacyFocusLockBlockReels() {
-        return SharedPref.getBooleanPref(new BooleanSetting("focus_lock_block_reels", false, NOT_REQUIRED));
+        return SharedPref.getBooleanPref(LEGACY_FOCUS_LOCK_BLOCK_REELS);
     }
 
     public static boolean legacyFocusLockBlockExplore() {
-        return SharedPref.getBooleanPref(new BooleanSetting("focus_lock_block_explore", false, NOT_REQUIRED));
+        return SharedPref.getBooleanPref(LEGACY_FOCUS_LOCK_BLOCK_EXPLORE);
     }
 
     public static String focusLockFormat() {

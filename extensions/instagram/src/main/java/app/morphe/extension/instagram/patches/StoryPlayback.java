@@ -15,7 +15,6 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
 
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.settings.SettingsStatus;
@@ -27,7 +26,7 @@ public final class StoryPlayback {
     // A holder, so the pure helper below loads without the settings classes.
     private static final class Switches {
         static final Pref.Cached<Boolean> MUTE_STORIES = new Pref.Cached<>(
-                () -> Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.MUTE_STORIES)), Settings.MUTE_STORIES.key);
+                () -> Pref.on(Settings.MUTE_STORIES), Settings.MUTE_STORIES.key);
     }
 
     // Music helpers created by the story viewer's audio manager.

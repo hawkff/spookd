@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
+import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.db.SpookdInstantsDb;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.settings.Settings;
@@ -36,7 +36,7 @@ public class InstantsDownloadHook {
     public static void noteInstantMedia(Object media) {
         try {
             if (media == null) return;
-            if (!SharedPref.getBooleanPref(Settings.INSTANTS_DOWNLOAD)) return;
+            if (!Pref.on(Settings.INSTANTS_DOWNLOAD)) return;
 
             captureMedia(media);
         } catch (Throwable t) {

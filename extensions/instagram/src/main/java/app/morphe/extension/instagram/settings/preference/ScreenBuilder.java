@@ -33,6 +33,7 @@ import app.morphe.extension.instagram.patches.focusLock.FocusLockTargets;
 import app.morphe.extension.instagram.patches.story.StoryAutoSave;
 import app.morphe.extension.instagram.patches.story.StoryGhostList;
 import app.morphe.extension.instagram.settings.SettingsStatus;
+import app.morphe.extension.instagram.settings.SafeStartup;
 import app.morphe.extension.instagram.settings.StorageScreen;
 import app.morphe.extension.instagram.settings.BooleanSetting;
 import app.morphe.extension.instagram.settings.Settings;
@@ -1531,13 +1532,18 @@ public class ScreenBuilder {
                 )
         );
 
-        addPreference(
-                helper.switchPreference(
-                        str("spookd_disable_all_features"),
-                        str("spookd_disable_all_features_desc"),
-                        Settings.DISABLE_ALL_FEATURES
-                )
-        );
+        // Device-wide, so it is kept outside the per-account settings the framework would write.
+        SwitchPref disableAll = new SwitchPref(context);
+        disableAll.setTitle(str("spookd_disable_all_features"));
+        disableAll.setSummary(str("spookd_disable_all_features_desc"));
+        disableAll.setKey(SafeStartup.DISABLE_ALL_KEY);
+        disableAll.setPersistent(false);
+        disableAll.setChecked(SafeStartup.disableAllStored());
+        disableAll.setOnPreferenceChangeListener((preference, newValue) -> {
+            SafeStartup.setDisableAll(Boolean.TRUE.equals(newValue));
+            return true;
+        });
+        addPreference(disableAll);
 
         addPreference(
                 helper.switchPreference(

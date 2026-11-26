@@ -17,7 +17,6 @@ import java.util.Iterator;
 import java.util.Locale;
 import java.util.WeakHashMap;
 
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
@@ -39,7 +38,7 @@ public final class PlaybackSpeed {
     // A holder, so the pure helpers below load without the settings classes.
     private static final class DefaultSpeed {
         static final Pref.Cached<Float> VALUE = new Pref.Cached<>(
-                () -> parseSpeed(SharedPref.getStringPref(Settings.DEFAULT_PLAYBACK_SPEED)),
+                () -> parseSpeed(Pref.value(Settings.DEFAULT_PLAYBACK_SPEED)),
                 Settings.DEFAULT_PLAYBACK_SPEED.key);
     }
 

@@ -12,7 +12,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
+import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.shared.Logger;
@@ -116,7 +116,7 @@ public final class StoryEarlierSeen {
     static void markBefore(Object session, Object item, Object reel, Object source) {
         try {
             if (!SettingsStatus.markEarlierStoriesSeen
-                    || !SharedPref.getBooleanPref(Settings.MARK_EARLIER_STORIES_SEEN)) return;
+                    || !Pref.on(Settings.MARK_EARLIER_STORIES_SEEN)) return;
             List<?> items = itemsNative(reel, session);
             if (items == null) return;
             long token = StoryAdvance.lifecycleToken();
