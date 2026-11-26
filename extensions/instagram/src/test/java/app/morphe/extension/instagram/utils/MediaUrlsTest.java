@@ -41,4 +41,13 @@ public class MediaUrlsTest {
         assertEquals(null, MediaUrls.avatar("", ""));
         assertEquals(null, MediaUrls.avatar(null, null));
     }
+
+    @Test
+    public void expiredAvatarLinksCountAsMissing() {
+        String expired = "https://x.fbcdn.net/s.jpg?oe=00000001";
+        String fresh = "https://x.fbcdn.net/hd.jpg?oe=7FFFFFFF";
+        assertEquals(fresh, MediaUrls.avatar(expired, fresh));
+        // Neither usable: refresh fetches the profile instead of storing the broken link.
+        assertEquals(null, MediaUrls.avatar(expired, "https://x.fbcdn.net/hd.jpg?oe=00000002"));
+    }
 }

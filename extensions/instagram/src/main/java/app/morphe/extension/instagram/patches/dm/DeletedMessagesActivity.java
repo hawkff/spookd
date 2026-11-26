@@ -215,8 +215,9 @@ public final class DeletedMessagesActivity {
     }
 
     /**
-     * Picture refresh thread: the cached avatar of each user, else one profile request per user,
-     * paced and time-limited. Stops when interrupted. Returns how many pictures were stored.
+     * Picture refresh thread: the cached avatar of each user when it has not expired, else one
+     * profile request per user, paced and time-limited; a request that times out moves on to the
+     * next user. Stops when interrupted. Returns how many pictures were stored.
      */
     private static int refreshPictureUrls(Context context, UserSession session, String viewerId,
                                           Set<String> userIds) {
@@ -239,7 +240,10 @@ public final class DeletedMessagesActivity {
                     url = user == null ? null : user.getAvatarUrl();
                 }
                 if (url != null && db.putPicture(userId, user.getUsername(), url)) updated++;
-            } catch (InterruptedException | TimeoutException e) {
+            } catch (TimeoutException e) {
+                // One profile that does not answer leaves the others to refresh.
+                fetch.cancel(true);
+            } catch (InterruptedException e) {
                 if (fetch != null) fetch.cancel(true);
                 break;
             } catch (Exception e) {
