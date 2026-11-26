@@ -504,6 +504,30 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.CONFIRM_FOLLOW_REQUEST);
     }
 
+    public static boolean confirmRefresh() {
+        return SharedPref.getBooleanPref(Settings.CONFIRM_REFRESH);
+    }
+
+    public static boolean confirmCommentLike() {
+        return SharedPref.getBooleanPref(Settings.CONFIRM_COMMENT_LIKE);
+    }
+
+    public static boolean confirmDmActions() {
+        return SharedPref.getBooleanPref(Settings.CONFIRM_DM_ACTIONS);
+    }
+
+    public static boolean disableHomeTabRefresh() {
+        return SharedPref.getBooleanPref(Settings.DISABLE_HOME_TAB_REFRESH);
+    }
+
+    public static boolean disableHomeBackgroundRefresh() {
+        return SharedPref.getBooleanPref(Settings.DISABLE_HOME_BACKGROUND_REFRESH);
+    }
+
+    public static boolean disableReelsTabRefresh() {
+        return SharedPref.getBooleanPref(Settings.DISABLE_REELS_TAB_REFRESH);
+    }
+
     public static boolean disableStoryFlipping() {
         return SharedPref.getBooleanPref(Settings.DISABLE_STORY_FLIPPING);
     }

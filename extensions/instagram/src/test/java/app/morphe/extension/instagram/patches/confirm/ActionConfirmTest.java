@@ -137,6 +137,101 @@ public class ActionConfirmTest {
     }
 
     @Test
+    public void onlyPullToRefreshIsAskedAmongRefreshReasons() {
+        assertTrue(ActionConfirm.isPullToRefresh("PULL_TO_REFRESH"));
+        assertFalse(ActionConfirm.isPullToRefresh("AUTO_REFRESH"));
+        assertFalse(ActionConfirm.isPullToRefresh("PILL_REFRESH"));
+        assertFalse(ActionConfirm.isPullToRefresh(null));
+    }
+
+    @Test
+    public void likedCommentsAreUnlikedSoNotAsked() {
+        assertTrue(ActionConfirm.isLiked("LIKE"));
+        assertFalse(ActionConfirm.isLiked("NONE"));
+        assertFalse(ActionConfirm.isLiked("DISLIKE"));
+        assertFalse(ActionConfirm.isLiked(null));
+    }
+
+    private enum Reaction { NONE, LIKE }
+
+    /** Stands in for the like tap lambda and the cached comment preview it updates once it goes on. */
+    private static final class CommentLikeTap {
+        final Reaction bound;
+        boolean previewLiked;
+        int previewLikes;
+        List<Object> asked;
+        Boolean actionSawReplay;
+
+        CommentLikeTap(Reaction bound) {
+            this.bound = bound;
+        }
+
+        void invoke(Object post) {
+            if (!ActionConfirm.commentLikeTapGoesOn(this, bound, post, () -> true, state -> {
+                asked = state;
+                return true;
+            })) {
+                return;
+            }
+            previewLiked = true;
+            previewLikes++;
+            actionSawReplay = ActionConfirm.isReplaying();
+        }
+    }
+
+    @Test
+    public void cancelledCommentLikeLeavesTheCachedPreviewUnchanged() {
+        Object post = new Object();
+        CommentLikeTap tap = new CommentLikeTap(Reaction.NONE);
+
+        tap.invoke(post);
+
+        assertEquals(Arrays.asList(Reaction.NONE, post), tap.asked);
+        assertFalse(tap.previewLiked);
+        assertEquals(0, tap.previewLikes);
+        assertNull(tap.actionSawReplay);
+    }
+
+    @Test
+    public void approvedCommentLikeUpdatesThePreviewOnceAndTheActionIsNotAskedAgain() {
+        Object post = new Object();
+        CommentLikeTap tap = new CommentLikeTap(Reaction.NONE);
+        tap.invoke(post);
+
+        assertTrue(ActionConfirm.runConfirmed(tap, tap.asked, () -> tap.invoke(post)));
+
+        assertTrue(tap.previewLiked);
+        assertEquals(1, tap.previewLikes);
+        assertEquals(Boolean.TRUE, tap.actionSawReplay);
+        assertFalse(ActionConfirm.isReplaying());
+    }
+
+    @Test
+    public void unlikeTapIsNotAsked() {
+        CommentLikeTap tap = new CommentLikeTap(Reaction.LIKE);
+        tap.invoke(new Object());
+        assertNull(tap.asked);
+        assertEquals(Boolean.FALSE, tap.actionSawReplay);
+    }
+
+    @Test
+    public void commentLikeReplayMatchesOnlyTheCommentAskedAbout() {
+        Object comments = new Object();
+        Object post = new Object();
+        Object noReaction = new Object();
+        List<Object> asked = Arrays.asList(noReaction, post, "17900000000000001", null, true);
+        List<Boolean> seen = new ArrayList<>();
+
+        ActionConfirm.runConfirmed(comments, asked, () -> {
+            seen.add(ActionConfirm.replayVerdict(comments,
+                    Arrays.asList(noReaction, post, new String("17900000000000001"), null, true)));
+            seen.add(ActionConfirm.replayVerdict(comments, Arrays.asList(noReaction, post, "17900000000000002", null, true)));
+        });
+
+        assertEquals(Arrays.asList(true, false), seen);
+    }
+
+    @Test
     public void blankCommentsAreNotAsked() {
         assertTrue(ActionConfirm.isBlank(null));
         assertTrue(ActionConfirm.isBlank(" \n "));
