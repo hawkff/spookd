@@ -173,8 +173,8 @@ public final class MediaVault {
     /**
      * Drops every row, stored or still to be fetched, and stops running fetches, so nothing is
      * published after it: a fetch re-checks its row under this monitor and publishes only a queued
-     * row. Returns false when a stored file could not be deleted. Runs on the caller's background
-     * thread, may wait for startup recovery, and throws on database errors.
+     * row. Returns false when a stored file could not be deleted; a later call tries it again.
+     * Runs on the caller's background thread, may wait for startup recovery, and throws on database errors.
      */
     public boolean deleteAll() {
         boolean deleted = true;
@@ -186,6 +186,25 @@ public final class MediaVault {
                     else deleted = false;
                 }
                 for (long[] row : store.queued()) store.drop(row[0]);
+                // Files an earlier clear could not delete: their rows stay dropped, so this retries them.
+                File[] files = dir.listFiles();
+                for (File file : files == null ? new File[0] : files) {
+                    String name = file.getName();
+                    if (!name.endsWith(PKV)) continue;
+                    long id;
+                    try {
+                        id = Long.parseLong(name.substring(0, name.length() - PKV.length()));
+                    } catch (NumberFormatException e) {
+                        continue;
+                    }
+                    // A fetch still running discards its own file and was never counted as stored.
+                    if (activeWriters.contains(id)) continue;
+                    VaultStore.Media row = store.row(id);
+                    if (row != null && !VaultStore.DROPPED.equals(row.state)) continue;
+                    long size = file.length();
+                    if (unlink(file)) storedBytes -= size;
+                    else deleted = false;
+                }
             }
             for (HttpURLConnection connection : connections.values()) connection.disconnect();
         }

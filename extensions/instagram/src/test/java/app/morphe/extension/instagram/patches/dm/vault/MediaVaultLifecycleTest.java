@@ -454,6 +454,16 @@ public final class MediaVaultLifecycleTest {
     }
 
     @Test
+    public void deletingAllRetriesFilesAnEarlierClearLeftBehind() throws IOException {
+        long left = storedRow("left", 5000, NOW - 2000);
+        db.execSQL("UPDATE saved_media SET state = 'dropped' WHERE id = ?", new Object[]{left});
+
+        assertTrue(vault.deleteAll());
+
+        assertFalse(pkv(left).exists());
+    }
+
+    @Test
     public void offlineWaitsWithoutCountingAndServerErrorsBackOff() {
         network.online = false;
         long id = enqueue("1");

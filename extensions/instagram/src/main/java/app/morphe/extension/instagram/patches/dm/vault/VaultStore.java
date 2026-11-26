@@ -15,6 +15,7 @@ import java.util.Map;
 final class VaultStore {
     static final String QUEUED = "queued";
     static final String STORED = "stored";
+    static final String DROPPED = "dropped";
 
     // Kept media: view-once or view-twice, or its message was unsent, so neither eviction nor retention may drop it.
     // Never NULL, so NOT stays true for rows whose mode is unknown.
