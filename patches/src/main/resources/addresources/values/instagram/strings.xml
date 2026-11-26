@@ -31,6 +31,9 @@
     <string name="spookd_custom_sharing_domain_desc">Domain to use when sharing links</string>
     <string name="spookd_detect_links_in_text">Tappable links in captions</string>
     <string name="spookd_detect_links_in_text_desc">Underlines plain http, https and www. addresses in feed captions. Tapping one opens it in your external browser, without trackers when Sanitize share links is on</string>
+    <string name="spookd_hold_send_copy_link">Hold Send to copy link</string>
+    <string name="spookd_hold_send_copy_link_desc">Long-pressing the Send button under a post in the home feed copies the post link, cleaned like Copy link. A tap still opens the share sheet</string>
+    <string name="spookd_post_link_copied">Copied post link</string>
 
     <!-- Ghost Section -->
     <string name="spookd_category_ghost">Ghost</string>
@@ -366,6 +369,9 @@
     <string name="spookd_unlimited_replays_desc">Changes unexpired view once, view twice media to permanent view</string>
     <string name="spookd_stop_visual_message_auto_advance">Don\'t auto-advance view-once messages</string>
     <string name="spookd_stop_visual_message_auto_advance_desc">Photos and videos you open in a chat stay on screen after their time runs out. Tap to go to the next one or to close the viewer.</string>
+    <string name="spookd_exact_last_active">Exact last active time</string>
+    <string name="spookd_exact_last_active_desc">The chat header shows the time the person was last active instead of \"Active 5m ago\" when Instagram has it. \"Active now\" stays</string>
+    <string name="spookd_last_active_at">Active %1$s</string>
     <string name="spookd_ephemeral_caption">Show how ephemeral media was received</string>
     <string name="spookd_ephemeral_caption_desc">Adds a line under photos and videos that were sent as ephemeral media saying how they were sent and until when they are available</string>
     <string name="spookd_ephemeral_received_once">Received to view once</string>
@@ -531,6 +537,8 @@
     <string name="spookd_copy_post_description">Copy post description</string>
     <string name="spookd_copy_post_owner_username">Copy post owner username</string>
     <string name="spookd_copy_post_owner_fullname">Copy post owner fullname</string>
+    <string name="spookd_posted_at">Posted %1$s</string>
+    <string name="spookd_post_option_failed">Something went wrong. Try again.</string>
     <string name="spookd_enable_more_options_on_post">Enable more option on post</string>
     <string name="spookd_enable_more_options_on_post_desc">Adds an overflow menu button to get more options on post/reels, like copy description, copy username etc</string>
     <string name="spookd_more_options">More options</string>
