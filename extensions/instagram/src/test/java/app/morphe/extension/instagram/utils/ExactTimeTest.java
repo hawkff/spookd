@@ -31,9 +31,14 @@ public class ExactTimeTest {
         TimeZone.setDefault(original);
     }
 
+    // Newer ICU data puts a narrow or no-break space before AM/PM.
+    private static String format(boolean is24Hour, String dateSkeleton) {
+        return ExactTime.format(MILLIS, Locale.US, is24Hour, dateSkeleton).replaceAll("[\\u00a0\\u202f]", " ");
+    }
+
     @Test
     public void fullDateHasWeekdayDateYearAndTwelveHourTime() {
-        String text = ExactTime.format(MILLIS, Locale.US, false, ExactTime.FULL_DATE);
+        String text = format(false, ExactTime.FULL_DATE);
         assertTrue(text, text.contains("Tuesday"));
         assertTrue(text, text.contains("March 5, 2024"));
         assertTrue(text, text.contains("2:07"));
@@ -42,7 +47,7 @@ public class ExactTimeTest {
 
     @Test
     public void twentyFourHourSettingDropsTheDayPeriod() {
-        String text = ExactTime.format(MILLIS, Locale.US, true, ExactTime.SHORT_DATE);
+        String text = format(true, ExactTime.SHORT_DATE);
         assertTrue(text, text.contains("Mar 5"));
         assertTrue(text, text.contains("14:07"));
         assertFalse(text, text.contains("PM"));

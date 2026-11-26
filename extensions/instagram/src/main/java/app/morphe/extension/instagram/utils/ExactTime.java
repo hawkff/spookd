@@ -7,9 +7,11 @@
 package app.morphe.extension.instagram.utils;
 
 import android.content.Context;
+import android.icu.text.DateTimePatternGenerator;
+import android.icu.text.SimpleDateFormat;
+import android.icu.util.TimeZone;
 import android.text.format.DateFormat;
 
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
@@ -31,8 +33,12 @@ public final class ExactTime {
         return format(millis, locale, DateFormat.is24HourFormat(context), dateSkeleton);
     }
 
+    // ICU directly gives the patterns Android's DateFormat uses, and real ones under unit tests too.
     static String format(long millis, Locale locale, boolean is24Hour, String dateSkeleton) {
         String skeleton = dateSkeleton + (is24Hour ? "Hm" : "hm");
-        return new SimpleDateFormat(DateFormat.getBestDateTimePattern(locale, skeleton), locale).format(new Date(millis));
+        SimpleDateFormat format = new SimpleDateFormat(
+                DateTimePatternGenerator.getInstance(locale).getBestPattern(skeleton), locale);
+        format.setTimeZone(TimeZone.getTimeZone(java.util.TimeZone.getDefault().getID()));
+        return format.format(new Date(millis));
     }
 }
