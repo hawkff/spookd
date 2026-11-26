@@ -221,6 +221,26 @@ public final class GalleryStore {
         return true;
     }
 
+    /**
+     * Deletes every item: the rows, then their files and thumbnails. False when an item file that
+     * still exists could not be deleted; recovery removes it at the next start. Throws on database errors.
+     */
+    public synchronized boolean deleteAll() {
+        recover();
+        List<String> files = new ArrayList<>();
+        try (Cursor c = db.rawQuery("SELECT file FROM gallery_items", null)) {
+            while (c.moveToNext()) files.add(c.getString(0));
+        }
+        db.delete("gallery_items", null, null);
+        boolean deleted = true;
+        for (String file : files) {
+            File item = new File(dir, file);
+            if (!item.delete() && item.exists()) deleted = false;
+            thumb(file).delete();
+        }
+        return deleted;
+    }
+
     /** {@link #delete(long)} only while {@code seen} is still the item's file, so an item overwritten meanwhile stays. */
     public synchronized boolean delete(long id, File seen) {
         try (Cursor c = db.rawQuery("SELECT file FROM gallery_items WHERE id = ?",

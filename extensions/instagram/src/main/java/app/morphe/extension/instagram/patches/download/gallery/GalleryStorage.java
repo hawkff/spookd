@@ -24,11 +24,9 @@ public final class GalleryStorage {
         return total;
     }
 
-    public static void clearGallery() {
-        GalleryStore store = GalleryStore.get();
-        for (GalleryTab tab : GalleryTab.values()) {
-            for (GalleryStore.Entry entry : store.list(tab)) store.delete(entry.id);
-        }
+    /** False when a saved file could not be deleted; throws on database errors. */
+    public static boolean clearGallery() {
+        return GalleryStore.get().deleteAll();
     }
 
     public static int historyEntries() {

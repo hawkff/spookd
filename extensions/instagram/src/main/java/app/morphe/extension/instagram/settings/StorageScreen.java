@@ -167,15 +167,11 @@ public final class StorageScreen {
     private static boolean clearItem(Context context, Item item) throws Exception {
         switch (item) {
             case GALLERY:
-                GalleryStorage.clearGallery();
-                return true;
+                return GalleryStorage.clearGallery();
             case VAULT:
-                MediaVault vault = MediaVault.get();
-                for (MediaVault.Item stored : vault.storedItems()) vault.delete(stored.id);
-                return true;
+                return MediaVault.get().deleteAll();
             case INSTANTS:
-                SpookdInstantsDb.getInstance(context).clearAll();
-                return true;
+                return SpookdInstantsDb.getInstance(context).clearAll();
             case HISTORY:
                 GalleryStorage.clearHistory();
                 return true;

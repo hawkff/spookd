@@ -170,6 +170,28 @@ public final class MediaVault {
         }
     }
 
+    /**
+     * Drops every row, stored or still to be fetched, and stops running fetches, so nothing is
+     * published after it: a fetch re-checks its row under this monitor and publishes only a queued
+     * row. Returns false when a stored file could not be deleted. Runs on the caller's background
+     * thread, may wait for startup recovery, and throws on database errors.
+     */
+    public boolean deleteAll() {
+        boolean deleted = true;
+        synchronized (this) {
+            synchronized (storageLock) {
+                for (long[] row : store.stored()) {
+                    if (store.drop(row[0]) != 1) continue;
+                    if (unlink(file(row[0], PKV))) storedBytes -= row[1];
+                    else deleted = false;
+                }
+                for (long[] row : store.queued()) store.drop(row[0]);
+            }
+            for (HttpURLConnection connection : connections.values()) connection.disconnect();
+        }
+        return deleted;
+    }
+
     /** Drops the row {@code lookup} reads under the storage lock; the caller holds this monitor. */
     private void dropRow(Supplier<VaultStore.Media> lookup) {
         VaultStore.Media row;
