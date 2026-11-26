@@ -7,6 +7,7 @@
 package app.morphe.extension.instagram.patches.instants;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
@@ -33,19 +34,29 @@ public final class InstantsSeen {
             "spookd_instants_never_seen_users", "spookd_story_ghost_remove_confirm");
 
     private static final int MAX_OWNERS = 500;
-    // Media pk to its sender's {user id, username}, oldest first; seen reports carry only pks.
-    private static final LinkedHashMap<String, String[]> OWNERS = new LinkedHashMap<String, String[]>() {
-        @Override
-        protected boolean removeEldestEntry(Map.Entry<String, String[]> eldest) {
-            return size() > MAX_OWNERS;
+    // Media pk to its sender, oldest first; seen reports carry only pks.
+    private static final LinkedHashMap<String, Owner> OWNERS = new LinkedHashMap<>();
+
+    static final class Owner {
+        final String userId;
+        final String username;
+        // Reported as seen already, so forgetting it cannot change a later decision.
+        boolean reported;
+
+        Owner(String userId, String username) {
+            this.userId = userId;
+            this.username = username;
         }
-    };
+    }
 
     private InstantsSeen() {
     }
 
-    /** From the per-instant item's constructor, on the thread that builds it: notes who sent it. */
-    public static void noteInstant(Object media) {
+    /**
+     * From the per-instant item's constructor, on the thread that builds it, with its Media and its
+     * author; items rebuilt from Instagram's cache carry the author only in {@code user}.
+     */
+    public static void noteInstant(Object media, Object skipped1, Object skipped2, Object skipped3, Object user) {
         try {
             if (media == null || SafeStartup.featuresOff()) return;
             MediaData data = new MediaData(media);
@@ -54,15 +65,41 @@ public final class InstantsSeen {
             synchronized (OWNERS) {
                 if (OWNERS.containsKey(pk)) return;
             }
-            UserData owner = data.getUserData();
-            String userId = owner == null ? null : owner.getUserId();
-            if (userId == null || userId.isEmpty()) return;
-            String username = owner.getUsername();
+            Owner owner = sender(userOf(() -> data.getUserData()), userOf(() -> user == null ? null : new UserData(user)));
+            if (owner == null) return;
             synchronized (OWNERS) {
-                OWNERS.put(pk, new String[]{userId, username == null || username.isEmpty() ? userId : username});
+                OWNERS.put(pk, owner);
+                trim(OWNERS, MAX_OWNERS);
             }
         } catch (Throwable t) {
             Logger.printException(() -> "Failed to note an Instant's sender", t);
+        }
+    }
+
+    private interface UserCall { UserData get() throws Exception; }
+
+    /** {user id, username} of a user, or null when it has no id. */
+    private static String[] userOf(UserCall call) {
+        try {
+            UserData user = call.get();
+            String userId = user == null ? null : user.getUserId();
+            return userId == null || userId.isEmpty() ? null : new String[]{userId, user.getUsername()};
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** The media's user when it has one, else the item's author; a missing username shows the id. */
+    static Owner sender(String[] fromMedia, String[] fromAuthor) {
+        String[] user = fromMedia != null ? fromMedia : fromAuthor;
+        if (user == null) return null;
+        return new Owner(user[0], user[1] == null || user[1].isEmpty() ? user[0] : user[1]);
+    }
+
+    /** Drops the oldest reported pks while over {@code max}; pks still to be decided are kept. */
+    static void trim(LinkedHashMap<String, Owner> owners, int max) {
+        for (Iterator<Owner> it = owners.values().iterator(); owners.size() > max && it.hasNext(); ) {
+            if (it.next().reported) it.remove();
         }
     }
 
@@ -74,9 +111,11 @@ public final class InstantsSeen {
         try {
             if (SafeStartup.featuresOff()) return ids;
             boolean dontMark = Pref.instantsDontMarkSeen();
+            Map<String, String> always = ALWAYS.all();
             Map<String, String> never = NEVER.all();
-            if (!dontMark && never.isEmpty()) return ids;
-            return kept(ids, dontMark, InstantsSeen::ownerOf, ALWAYS.all(), never);
+            List<?> kept = !dontMark && never.isEmpty() ? ids : kept(ids, dontMark, InstantsSeen::ownerOf, always, never);
+            if (kept != null) markReported(kept);
+            return kept;
         } catch (Throwable t) {
             Logger.printException(() -> "Failed to filter the Instants seen report", t);
             return ids;
@@ -95,10 +134,14 @@ public final class InstantsSeen {
         return kept.isEmpty() ? null : kept;
     }
 
-    /** Whether an Instant of {@code ownerId} is reported as seen; an unknown (null) sender follows the switch. */
+    /**
+     * Whether an Instant of {@code ownerId} is reported as seen. An unknown (null) sender is held back
+     * while the switch is on or a Never list exists, since it could be on it.
+     */
     static boolean marksSeen(boolean dontMark, String ownerId, Map<String, String> always, Map<String, String> never) {
-        if (ownerId != null && never.containsKey(ownerId)) return false;
-        if (ownerId != null && always.containsKey(ownerId)) return true;
+        if (ownerId == null) return !dontMark && never.isEmpty();
+        if (never.containsKey(ownerId)) return false;
+        if (always.containsKey(ownerId)) return true;
         return !dontMark;
     }
 
@@ -112,8 +155,18 @@ public final class InstantsSeen {
     private static String ownerOf(String pk) {
         if (pk == null) return null;
         synchronized (OWNERS) {
-            String[] owner = OWNERS.get(pk);
-            return owner == null ? null : owner[0];
+            Owner owner = OWNERS.get(pk);
+            return owner == null ? null : owner.userId;
+        }
+    }
+
+    private static void markReported(List<?> ids) {
+        synchronized (OWNERS) {
+            for (Object id : ids) {
+                Owner owner = OWNERS.get(pkOf(String.valueOf(id)));
+                if (owner != null) owner.reported = true;
+            }
+            trim(OWNERS, MAX_OWNERS);
         }
     }
 
@@ -121,10 +174,10 @@ public final class InstantsSeen {
     static Map<String, String> recentSenders() {
         Map<String, String> senders = new LinkedHashMap<>();
         synchronized (OWNERS) {
-            ListIterator<String[]> owners = new ArrayList<>(OWNERS.values()).listIterator(OWNERS.size());
+            ListIterator<Owner> owners = new ArrayList<>(OWNERS.values()).listIterator(OWNERS.size());
             while (owners.hasPrevious()) {
-                String[] owner = owners.previous();
-                senders.putIfAbsent(owner[0], owner[1]);
+                Owner owner = owners.previous();
+                senders.putIfAbsent(owner.userId, owner.username);
             }
         }
         return senders;

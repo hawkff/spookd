@@ -6,9 +6,11 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -57,8 +59,44 @@ public final class InstantsSeenTest {
         List<String> ids = Arrays.asList("10", "20_2", "30");
 
         assertEquals(Collections.singletonList("10"), InstantsSeen.kept(ids, true, owners::get, always, NONE));
-        assertEquals(Arrays.asList("10", "30"),
+        // The unknown sender of 30 could be on the Never list, so it is held back too.
+        assertEquals(Collections.singletonList("10"),
                 InstantsSeen.kept(ids, false, owners::get, NONE, Collections.singletonMap("2", "second")));
+        // With only an Always list and the switch off, unknown senders are still reported.
+        assertSame(ids, InstantsSeen.kept(ids, false, owners::get, always, NONE));
+    }
+
+    @Test
+    public void anUnknownSenderIsHeldWhileANeverListExists() {
+        Map<String, String> listed = Collections.singletonMap("1", "first");
+        assertFalse(InstantsSeen.marksSeen(false, null, NONE, listed));
+        assertTrue(InstantsSeen.marksSeen(false, null, listed, NONE));
+        assertFalse(InstantsSeen.marksSeen(true, null, listed, NONE));
+    }
+
+    @Test
+    public void theSenderComesFromTheAuthorWhenTheMediaHasNone() {
+        InstantsSeen.Owner fromAuthor = InstantsSeen.sender(null, new String[]{"2", "author"});
+        assertEquals("2", fromAuthor.userId);
+        assertEquals("author", fromAuthor.username);
+        assertEquals("1", InstantsSeen.sender(new String[]{"1", "media"}, new String[]{"2", "author"}).userId);
+        assertEquals("2", InstantsSeen.sender(null, new String[]{"2", null}).username);
+        assertNull(InstantsSeen.sender(null, null));
+    }
+
+    @Test
+    public void trimmingDropsOnlyReportedPks() {
+        LinkedHashMap<String, InstantsSeen.Owner> owners = new LinkedHashMap<>();
+        owners.put("held", new InstantsSeen.Owner("1", "never"));
+        InstantsSeen.Owner reported = new InstantsSeen.Owner("2", "sent");
+        reported.reported = true;
+        owners.put("sent", reported);
+        owners.put("new", new InstantsSeen.Owner("3", "new"));
+
+        InstantsSeen.trim(owners, 2);
+        assertEquals(Arrays.asList("held", "new"), new ArrayList<>(owners.keySet()));
+        InstantsSeen.trim(owners, 1);
+        assertEquals(2, owners.size());
     }
 
     @Test
