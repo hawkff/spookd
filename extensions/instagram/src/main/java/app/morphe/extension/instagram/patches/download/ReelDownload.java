@@ -23,7 +23,7 @@ import java.util.WeakHashMap;
 
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.shared.Logger;
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
+import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
@@ -61,8 +61,7 @@ public final class ReelDownload {
 
     public static boolean isEnabled() {
         return SettingsStatus.reelDownloadButton
-                && Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.ENABLE_DOWNLOAD))
-                && Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.REEL_DOWNLOAD_BUTTON));
+                && Pref.on(Settings.ENABLE_DOWNLOAD) && Pref.on(Settings.REEL_DOWNLOAD_BUTTON);
     }
 
     public static void register(Object component) {

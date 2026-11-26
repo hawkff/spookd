@@ -9,11 +9,12 @@ package app.morphe.extension.instagram.patches.instants;
 import android.content.Context;
 
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
+import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.db.SpookdInstantsDb;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.settings.Settings;
@@ -30,13 +31,22 @@ public class InstantsDownloadHook {
     /** The item constructor runs again whenever the app rebuilds an item. */
     // Ids stored or being stored this session; one deleted, cleared or purged from the vault is not captured again until restart.
     private static final Set<String> sCapturedIds = ConcurrentHashMap.newKeySet();
-    private static final ExecutorService sDbExecutor = Executors.newSingleThreadExecutor();
+    // Package-private so tests can queue work ahead of a clear.
+    static final ExecutorService sDbExecutor = Executors.newSingleThreadExecutor();
+
+    /**
+     * Background thread: clears the vault on the capture thread, so a capture queued before the
+     * clear can't insert after it; false when the rows could not be deleted.
+     */
+    public static boolean clearVault(SpookdInstantsDb db) throws Exception {
+        return sDbExecutor.submit((Callable<Boolean>) db::clearAll).get();
+    }
 
     /** Called from the per-instant item's constructor with that instant's Media. */
     public static void noteInstantMedia(Object media) {
         try {
             if (media == null) return;
-            if (!SharedPref.getBooleanPref(Settings.INSTANTS_DOWNLOAD)) return;
+            if (!Pref.on(Settings.INSTANTS_DOWNLOAD)) return;
 
             captureMedia(media);
         } catch (Throwable t) {

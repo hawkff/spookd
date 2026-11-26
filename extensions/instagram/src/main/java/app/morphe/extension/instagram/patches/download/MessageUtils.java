@@ -15,6 +15,7 @@ import app.morphe.extension.instagram.entity.MessageInfo;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.instagram.utils.Pref;
+import app.morphe.extension.instagram.settings.SafeStartup;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.constants.Constants;
 
@@ -29,6 +30,8 @@ public class MessageUtils {
 
     public static boolean messageDownloadCheck(Context context, Object messageInfoObject){
         try{
+            // Instagram's own saver runs as unpatched while features are off.
+            if (SafeStartup.featuresOff()) return true;
             MessageInfo messageInfo = new MessageInfo(messageInfoObject);
             String messageType = messageInfo.getMessageType();
 

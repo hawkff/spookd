@@ -589,6 +589,33 @@
     <string name="spookd_patch_info_title">Patch information</string>
     <string name="spookd_patch_enabled">Enabled</string>
     <string name="spookd_patch_disabled">Disabled</string>
+    <string name="spookd_disable_all_features">Disable all spookd features</string>
+    <string name="spookd_disable_all_features_desc">Turns spookd features off on this device without changing your settings, so turning this off brings them all back. Inbox lock, hidden chats, Focus Lock and these settings keep working. Changes made when patching stay.</string>
+    <string name="spookd_open_settings_on_launch">Open spookd settings on launch</string>
+    <string name="spookd_open_settings_on_launch_desc">Opens spookd settings once each time the app starts</string>
+    <string name="spookd_storage">Storage</string>
+    <string name="spookd_storage_desc">See how much space spookd data and Instagram\'s cache use, and clear them</string>
+    <string name="spookd_storage_calculating">Calculating…</string>
+    <string name="spookd_storage_item">%1$s: %2$s</string>
+    <string name="spookd_storage_entries_size">%1$d entries, %2$s</string>
+    <string name="spookd_storage_history_size">%1$d entries, about %2$s of the gallery database</string>
+    <string name="spookd_storage_gallery">Private gallery</string>
+    <string name="spookd_storage_vault">Saved DM media</string>
+    <string name="spookd_storage_instants">Saved Instants</string>
+    <string name="spookd_storage_history">Download history</string>
+    <string name="spookd_storage_analyzer">Profile analyzer data</string>
+    <string name="spookd_storage_cache">Instagram cache</string>
+    <string name="spookd_storage_clear_confirm">Clear %1$s? This can\'t be undone.</string>
+    <string name="spookd_storage_cleared">%1$s cleared</string>
+    <string name="spookd_storage_clear_failed">Couldn\'t clear %1$s</string>
+    <string name="spookd_auto_clear_cache">Auto clear Instagram cache</string>
+    <string name="spookd_auto_clear_cache_off">Off</string>
+    <string name="spookd_auto_clear_cache_over">At launch, when over %1$d MB. Saved data is never cleared</string>
+    <string name="spookd_safe_mode_title">Safe startup mode</string>
+    <string name="spookd_safe_mode_message">spookd features are off for now because the app did not finish starting several times in a row, or its startup state could not be read. Your settings are unchanged.</string>
+    <string name="spookd_safe_mode_keep">Keep features off</string>
+    <string name="spookd_safe_mode_turn_on">Turn features on</string>
+    <string name="spookd_setting_save_failed">Couldn\'t save the setting</string>
 
     <!-- Export and Import Section -->
     <string name="spookd_export_success">Exported successfully</string>

@@ -21,7 +21,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
 
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
+import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.entity.OriginalSoundDataIntf;
@@ -78,8 +78,7 @@ public final class AudioPageDownload {
     }
 
     private static boolean isEnabled() {
-        return Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.ENABLE_DOWNLOAD))
-                && Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.AUDIO_PAGE_DOWNLOAD_BUTTON));
+        return Pref.on(Settings.ENABLE_DOWNLOAD) && Pref.on(Settings.AUDIO_PAGE_DOWNLOAD_BUTTON);
     }
 
     /** Shows or hides the button this action bar already has and returns it, or null when it has none. */

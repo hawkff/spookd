@@ -11,6 +11,7 @@ import java.util.function.LongConsumer;
 import app.morphe.extension.crimera.legacydownloader.DownloadRequest;
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.settings.AccountSettings;
+import app.morphe.extension.instagram.settings.SafeStartup;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
@@ -57,9 +58,14 @@ public final class Gallery {
                 : policy == DownloadRequest.ConflictPolicy.OVERWRITE ? GalleryStore.Conflict.OVERWRITE
                 : GalleryStore.Conflict.RENAME;
         return new DownloadRequest.PrivateTarget() {
+            // Read when the download starts, so a gallery clear meanwhile drops this download.
+            private long startedEpoch;
+
             @Override
             public File partFile() {
-                return GalleryStore.get().partFile();
+                GalleryStore store = GalleryStore.get();
+                startedEpoch = store.clearEpoch();
+                return store.partFile();
             }
 
             @Override
@@ -69,7 +75,7 @@ public final class Gallery {
 
             @Override
             public boolean publish(File part) throws IOException {
-                long id = GalleryStore.get().publish(part, item, subFolder, fileName, conflict);
+                long id = GalleryStore.get().publish(part, item, subFolder, fileName, conflict, startedEpoch);
                 if (id == -1) return false;
                 published.accept(id);
                 prune();
@@ -81,6 +87,7 @@ public final class Gallery {
     /** Applies the opt-in cleanup settings to downloads only; runs on the caller's background thread, never throws. */
     public static void prune() {
         try {
+            if (SafeStartup.featuresOff()) return;
             GalleryStore.get().prune(Pref.galleryMaxAgeDays(), Pref.galleryMaxBytes(), System.currentTimeMillis());
         } catch (Exception e) {
             Logger.printException(() -> "Gallery cleanup failed", e);

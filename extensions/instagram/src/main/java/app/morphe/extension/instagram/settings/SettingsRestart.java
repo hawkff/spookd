@@ -45,25 +45,30 @@ public final class SettingsRestart {
     }
 
     /** For changes outside preferences, such as replacing the custom font file. */
-    public static synchronized void markChanged(String key, RestartPolicy restartPolicy,
-                                                Object previousValue, Object newValue) {
+    public static void markChanged(String key, RestartPolicy restartPolicy,
+                                   Object previousValue, Object newValue) {
         Objects.requireNonNull(restartPolicy);
         if (Objects.equals(previousValue, newValue)) {
             return;
         }
 
-        if (!originalValues.containsKey(key)) {
-            // Preference widgets can mutate their sets after saving.
-            originalValues.put(key, previousValue instanceof Set
-                    ? new HashSet<>((Set<?>) previousValue) : previousValue);
+        boolean pending;
+        synchronized (SettingsRestart.class) {
+            if (!originalValues.containsKey(key)) {
+                // Preference widgets can mutate their sets after saving.
+                originalValues.put(key, previousValue instanceof Set
+                        ? new HashSet<>((Set<?>) previousValue) : previousValue);
+            }
+            if (Objects.equals(originalValues.get(key), newValue)) {
+                changedSettings.remove(key);
+            } else {
+                changedSettings.put(key, restartPolicy);
+            }
+            pending = !changedSettings.isEmpty();
         }
-        if (Objects.equals(originalValues.get(key), newValue)) {
-            changedSettings.remove(key);
-        } else {
-            changedSettings.put(key, restartPolicy);
-        }
+        // Disk writes stay outside the monitor, so a slow flush never blocks the restart checks.
         flushPreferences();
-        if (!changedSettings.isEmpty()) {
+        if (pending) {
             startTaskService();
         }
     }
@@ -104,9 +109,9 @@ public final class SettingsRestart {
             if (manager == null || !manager.getAppTasks().isEmpty()) return;
             if (!flushPreferences()) return;
             // A delayed callback must not terminate an app that has already been reopened.
-            if (manager.getAppTasks().isEmpty()) {
-                Process.killProcess(Process.myPid());
-            }
+            SafeStartup.runSave(() -> {
+                if (manager.getAppTasks().isEmpty()) Process.killProcess(Process.myPid());
+            });
         } catch (RuntimeException e) {
             Logger.printException(() -> "Failed to prepare the process restart", e);
         }
@@ -130,7 +135,8 @@ public final class SettingsRestart {
                     .setTitle(str("spookd_restart_app"))
                     .setPositiveButton(str("spookd_ok"), (dialog, which) -> {
                         clearPendingRestart();
-                        InstaUtils.restartApp(activity);
+                        // After any queued startup-state save, so the restart can't drop it.
+                        SafeStartup.runSave(() -> InstaUtils.restartApp(activity));
                     })
                     .setNegativeButton(str("spookd_cancel"), (dialog, which) -> {
                         activity.finish();

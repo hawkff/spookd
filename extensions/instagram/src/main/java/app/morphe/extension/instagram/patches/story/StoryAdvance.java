@@ -8,7 +8,7 @@ package app.morphe.extension.instagram.patches.story;
 
 import java.lang.ref.WeakReference;
 
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
+import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.settings.BooleanSetting;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.settings.SettingsStatus;
@@ -62,7 +62,7 @@ public final class StoryAdvance {
 
     private static void advanceIf(BooleanSetting trigger) {
         try {
-            if (!SettingsStatus.advanceStory || !SharedPref.getBooleanPref(trigger)) return;
+            if (!SettingsStatus.advanceStory || !Pref.on(trigger)) return;
             Object viewer = resumedViewer.get();
             if (viewer == null) return;
             // Posted so Instagram finishes handling the tap, like or reply before the viewer moves on.

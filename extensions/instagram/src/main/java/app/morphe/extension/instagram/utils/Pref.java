@@ -7,6 +7,8 @@
 
 package app.morphe.extension.instagram.utils;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.List;
@@ -26,6 +28,7 @@ import app.morphe.extension.instagram.settings.StringSetting;
 
 import app.morphe.extension.instagram.settings.Settings;
 import static app.morphe.extension.instagram.settings.RestartPolicy.NOT_REQUIRED;
+import app.morphe.extension.instagram.settings.SafeStartup;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
@@ -52,11 +55,11 @@ public class Pref {
     public static boolean clearAllPreferences() {
         // Resetting settings would silently drop an active Focus Lock.
         if (FocusLock.isActive()) return false;
-        return SharedPref.clearAll();
+        return SharedPref.clearAll() && SafeStartup.resetStoredState();
     }
     
     public static boolean spookdDebug() {
-        return SharedPref.getBooleanPref(Settings.SPOOKD_DEBUG);
+        return on(Settings.SPOOKD_DEBUG);
     }
 
     public static boolean firstTimeSpookd() {
@@ -67,43 +70,43 @@ public class Pref {
     }
 
     public static boolean disableAds() {
-        return SharedPref.getBooleanPref(Settings.DISABLE_ADS);
+        return on(Settings.DISABLE_ADS);
     }
 
     public static boolean hideSuggestedContent() {
-        return SharedPref.getBooleanPref(Settings.HIDE_SUGGESTED_CONTENT);
+        return on(Settings.HIDE_SUGGESTED_CONTENT);
     }
 
     public static boolean hideMetaAi() {
-        return SharedPref.getBooleanPref(Settings.HIDE_META_AI);
+        return on(Settings.HIDE_META_AI);
     }
 
     public static boolean saveDeletedMessages() {
-        return SharedPref.getBooleanPref(Settings.SAVE_DELETED_MESSAGES);
+        return on(Settings.SAVE_DELETED_MESSAGES);
     }
 
     public static boolean dmMediaVault() {
-        return SharedPref.getBooleanPref(Settings.DM_MEDIA_VAULT) && SettingsStatus.dmMediaVault && saveDeletedMessages();
+        return on(Settings.DM_MEDIA_VAULT) && SettingsStatus.dmMediaVault && saveDeletedMessages();
     }
 
     public static boolean openLinksExternally() {
-        return SharedPref.getBooleanPref(Settings.OPEN_LINKS_EXTERNALLY);
+        return on(Settings.OPEN_LINKS_EXTERNALLY);
     }
 
     public static boolean sanitizeShareLinks() {
-        return SharedPref.getBooleanPref(Settings.SANITIZE_SHARE_LINKS);
+        return on(Settings.SANITIZE_SHARE_LINKS);
     }
 
     public static String customSharingDomain() {
-        return removeLineBreaks(SharedPref.getStringPref(Settings.CUSTOM_SHARING_DOMAIN));
+        return removeLineBreaks(value(Settings.CUSTOM_SHARING_DOMAIN));
     }
 
     public static boolean detectLinksInText() {
-        return SettingsStatus.detectLinksInText && SharedPref.getBooleanPref(Settings.DETECT_LINKS_IN_TEXT);
+        return SettingsStatus.detectLinksInText && on(Settings.DETECT_LINKS_IN_TEXT);
     }
 
     public static boolean getTurnOnAllGhostModes() {
-        return SharedPref.getBooleanPref(Settings.TURN_ON_ALL_GHOST_MODES);
+        return on(Settings.TURN_ON_ALL_GHOST_MODES);
     }
 
     public static boolean setTurnOnAllGhostModes(boolean bool) {
@@ -111,38 +114,38 @@ public class Pref {
     }
 
     public static boolean isMoreOptionsOnProfilePatched(){
-        return SettingsStatus.moreOptionsOnProfile;
+        return SettingsStatus.moreOptionsOnProfile && !SafeStartup.featuresOff();
     }
 
     public static boolean viewStoriesAnonymously() {
-        return (SharedPref.getBooleanPref(Settings.VIEW_STORIES_ANONYMOUSLY) && SettingsStatus.viewStoriesAnonymously) || Pref.getTurnOnAllGhostModes();
+        return (on(Settings.VIEW_STORIES_ANONYMOUSLY) && SettingsStatus.viewStoriesAnonymously) || Pref.getTurnOnAllGhostModes();
     }
 
     public static boolean viewLiveAnonymously() {
-        return (SharedPref.getBooleanPref(Settings.VIEW_LIVE_ANONYMOUSLY) && SettingsStatus.viewLiveAnonymously) || Pref.getTurnOnAllGhostModes();
+        return (on(Settings.VIEW_LIVE_ANONYMOUSLY) && SettingsStatus.viewLiveAnonymously) || Pref.getTurnOnAllGhostModes();
     }
 
     public static boolean disableScreenshotDetection() {
-        return SharedPref.getBooleanPref(Settings.DISABLE_SCREENSHOT_DETECTION) || Pref.getTurnOnAllGhostModes();
+        return on(Settings.DISABLE_SCREENSHOT_DETECTION) || Pref.getTurnOnAllGhostModes();
     }
 
     public static boolean disableTypingStatus() {
-        return SharedPref.getBooleanPref(Settings.DISABLE_TYPING_STATUS) || Pref.getTurnOnAllGhostModes();
+        return on(Settings.DISABLE_TYPING_STATUS) || Pref.getTurnOnAllGhostModes();
     }
 
     public static boolean enableMarkChatAsReadOption() {
-        return SharedPref.getBooleanPref(Settings.ENABLE_MARK_CHAT_AS_READ) && SettingsStatus.markChatAsRead;
+        return on(Settings.ENABLE_MARK_CHAT_AS_READ) && SettingsStatus.markChatAsRead;
     }
 
     public static boolean markAsReadAfterReply() {
-        return SharedPref.getBooleanPref(Settings.MARK_AS_READ_AFTER_REPLY) && SettingsStatus.markAsReadAfterReply;
+        return on(Settings.MARK_AS_READ_AFTER_REPLY) && SettingsStatus.markAsReadAfterReply;
     }
 
     // Return false = call the message seen api.
     // Return true = blocks the message seen api.
     public static boolean viewDmAnonymously() {
         return shouldBlockDmSeen(
-                SharedPref.getBooleanPref(Settings.VIEW_DM_ANONYMOUSLY),
+                on(Settings.VIEW_DM_ANONYMOUSLY),
                 Pref.getTurnOnAllGhostModes(),
                 enableMarkChatAsReadOption() || markAsReadAfterReply()
         );
@@ -160,16 +163,16 @@ public class Pref {
     }
 
     public static boolean resumeReelsAfterScrolling() {
-        return SharedPref.getBooleanPref(Settings.RESUME_REELS_AFTER_SCROLLING);
+        return on(Settings.RESUME_REELS_AFTER_SCROLLING);
     }
 
     public static boolean playbackSpeedControls() {
-        return SharedPref.getBooleanPref(Settings.PLAYBACK_SPEED_CONTROLS);
+        return on(Settings.PLAYBACK_SPEED_CONTROLS);
     }
 
     /** "default", "on" or "off". */
     public static String reelsAutoScroll() {
-        return SettingsStatus.reelsAutoScroll ? SharedPref.getStringPref(Settings.REELS_AUTO_SCROLL) : "default";
+        return SettingsStatus.reelsAutoScroll ? value(Settings.REELS_AUTO_SCROLL) : "default";
     }
 
     private static final Cached<Boolean> REELS_AUTO_SCROLL_OFF =
@@ -181,24 +184,24 @@ public class Pref {
     }
 
     public static boolean disableVideoAutoplay() {
-        return SharedPref.getBooleanPref(Settings.DISABLE_VIDEO_AUTOPLAY);
+        return on(Settings.DISABLE_VIDEO_AUTOPLAY);
     }
 
     public
     static boolean disableStories() {
-        return SharedPref.getBooleanPref(Settings.DISABLE_STORIES);
+        return on(Settings.DISABLE_STORIES);
     }
 
     public static boolean disableHighlights() {
-        return SharedPref.getBooleanPref(Settings.DISABLE_HIGHLIGHTS);
+        return on(Settings.DISABLE_HIGHLIGHTS);
     }
 
     public static boolean disableExplore() {
-        return SharedPref.getBooleanPref(Settings.DISABLE_EXPLORE);
+        return on(Settings.DISABLE_EXPLORE);
     }
 
     public static boolean disableComments() {
-        return SharedPref.getBooleanPref(Settings.DISABLE_COMMENTS);
+        return on(Settings.DISABLE_COMMENTS);
     }
 
     public static boolean hideCommentButtons() {
@@ -206,11 +209,11 @@ public class Pref {
     }
 
     public static boolean limitFollowingFeed() {
-        return SharedPref.getBooleanPref(Settings.LIMIT_FOLLOWING_FEED);
+        return on(Settings.LIMIT_FOLLOWING_FEED);
     }
 
     public static boolean hideFeedPosts() {
-        return SharedPref.getBooleanPref(Settings.HIDE_FEED_POSTS) && SettingsStatus.hideFeedPosts;
+        return on(Settings.HIDE_FEED_POSTS) && SettingsStatus.hideFeedPosts;
     }
 
     public static boolean hideStoriesTray() {
@@ -227,70 +230,70 @@ public class Pref {
 
     /** The comment sheet's own "hide emoji bar" argument, also set when the switch is on. */
     public static boolean hideCommentEmojiBar(boolean hidden) {
-        return hidden || (SharedPref.getBooleanPref(Settings.HIDE_COMMENT_EMOJI_BAR) && SettingsStatus.hideCommentEmojiBar);
+        return hidden || (on(Settings.HIDE_COMMENT_EMOJI_BAR) && SettingsStatus.hideCommentEmojiBar);
     }
 
     public static boolean hideReelsVisualSearch() {
-        return SharedPref.getBooleanPref(Settings.HIDE_REELS_VISUAL_SEARCH) && SettingsStatus.hideReelsVisualSearch;
+        return on(Settings.HIDE_REELS_VISUAL_SEARCH) && SettingsStatus.hideReelsVisualSearch;
     }
 
     public static boolean hideProfileNotesBubble() {
-        return SharedPref.getBooleanPref(Settings.HIDE_PROFILE_NOTES_BUBBLE) && SettingsStatus.hideProfileNotesBubble;
+        return on(Settings.HIDE_PROFILE_NOTES_BUBBLE) && SettingsStatus.hideProfileNotesBubble;
     }
 
     public static boolean hideThreadsButton() {
-        return SharedPref.getBooleanPref(Settings.HIDE_THREADS_BUTTON) && SettingsStatus.hideThreadsButton;
+        return on(Settings.HIDE_THREADS_BUTTON) && SettingsStatus.hideThreadsButton;
     }
 
     public static boolean hideFriendsMap() {
-        return SharedPref.getBooleanPref(Settings.HIDE_FRIENDS_MAP) && SettingsStatus.hideFriendsMap;
+        return on(Settings.HIDE_FRIENDS_MAP) && SettingsStatus.hideFriendsMap;
     }
 
     private static final Cached<Boolean> HIDE_RECENT_SEARCHES =
-            new Cached<>(() -> SharedPref.getBooleanPref(Settings.HIDE_RECENT_SEARCHES), Settings.HIDE_RECENT_SEARCHES.key);
+            new Cached<>(() -> on(Settings.HIDE_RECENT_SEARCHES), Settings.HIDE_RECENT_SEARCHES.key);
 
     public static boolean hideRecentSearches() {
         return SettingsStatus.hideRecentSearches && HIDE_RECENT_SEARCHES.get();
     }
 
     public static boolean squareExploreGrid() {
-        return SharedPref.getBooleanPref(Settings.SQUARE_EXPLORE_GRID) && SettingsStatus.squareExploreGrid;
+        return on(Settings.SQUARE_EXPLORE_GRID) && SettingsStatus.squareExploreGrid;
     }
 
     private static final Cached<Boolean> HIDE_REELS_COMMENT_BAR =
-            new Cached<>(() -> SharedPref.getBooleanPref(Settings.HIDE_REELS_COMMENT_BAR), Settings.HIDE_REELS_COMMENT_BAR.key);
+            new Cached<>(() -> on(Settings.HIDE_REELS_COMMENT_BAR), Settings.HIDE_REELS_COMMENT_BAR.key);
 
     public static boolean hideReelsCommentBar() {
         return SettingsStatus.hideReelsCommentBar && HIDE_REELS_COMMENT_BAR.get();
     }
 
     public static boolean hideChatBlendButton() {
-        return SharedPref.getBooleanPref(Settings.HIDE_CHAT_BLEND_BUTTON) && SettingsStatus.hideChatBlendButton;
+        return on(Settings.HIDE_CHAT_BLEND_BUTTON) && SettingsStatus.hideChatBlendButton;
     }
 
     private static final Cached<Boolean> HIDE_INBOX_INSTANTS =
-            new Cached<>(() -> SharedPref.getBooleanPref(Settings.HIDE_INBOX_INSTANTS), Settings.HIDE_INBOX_INSTANTS.key);
+            new Cached<>(() -> on(Settings.HIDE_INBOX_INSTANTS), Settings.HIDE_INBOX_INSTANTS.key);
 
     public static boolean hideInboxInstants() {
         return SettingsStatus.hideInboxInstants && HIDE_INBOX_INSTANTS.get();
     }
 
     private static final Cached<Boolean> HIDE_REELS_TAB_HEADER =
-            new Cached<>(() -> SharedPref.getBooleanPref(Settings.HIDE_REELS_TAB_HEADER), Settings.HIDE_REELS_TAB_HEADER.key);
+            new Cached<>(() -> on(Settings.HIDE_REELS_TAB_HEADER), Settings.HIDE_REELS_TAB_HEADER.key);
 
     public static boolean hideReelsTabHeader() {
         return SettingsStatus.hideReelsTabHeader && HIDE_REELS_TAB_HEADER.get();
     }
 
     private static final Cached<Boolean> DISABLE_APP_HAPTICS =
-            new Cached<>(() -> SharedPref.getBooleanPref(Settings.DISABLE_APP_HAPTICS), Settings.DISABLE_APP_HAPTICS.key);
+            new Cached<>(() -> on(Settings.DISABLE_APP_HAPTICS), Settings.DISABLE_APP_HAPTICS.key);
 
     public static boolean disableAppHaptics() {
         return SettingsStatus.disableAppHaptics && DISABLE_APP_HAPTICS.get();
     }
 
     private static final Cached<Boolean> TRACK_VISITED_PROFILES =
-            new Cached<>(() -> SharedPref.getBooleanPref(Settings.TRACK_VISITED_PROFILES), Settings.TRACK_VISITED_PROFILES.key);
+            new Cached<>(() -> on(Settings.TRACK_VISITED_PROFILES), Settings.TRACK_VISITED_PROFILES.key);
 
     /** Read on every profile header bind. */
     public static boolean trackVisitedProfiles() {
@@ -298,21 +301,21 @@ public class Pref {
     }
 
     private static final Cached<Boolean> EXACT_LAST_ACTIVE =
-            new Cached<>(() -> SharedPref.getBooleanPref(Settings.EXACT_LAST_ACTIVE), Settings.EXACT_LAST_ACTIVE.key);
+            new Cached<>(() -> on(Settings.EXACT_LAST_ACTIVE), Settings.EXACT_LAST_ACTIVE.key);
 
     public static boolean exactLastActive() {
         return SettingsStatus.exactLastActive && EXACT_LAST_ACTIVE.get();
     }
 
     private static final Cached<Boolean> HOLD_SEND_COPY_LINK =
-            new Cached<>(() -> SharedPref.getBooleanPref(Settings.HOLD_SEND_COPY_LINK), Settings.HOLD_SEND_COPY_LINK.key);
+            new Cached<>(() -> on(Settings.HOLD_SEND_COPY_LINK), Settings.HOLD_SEND_COPY_LINK.key);
 
     public static boolean holdSendCopyLink() {
         return SettingsStatus.holdSendCopyLink && HOLD_SEND_COPY_LINK.get();
     }
 
     private static final Cached<Boolean> STOP_VISUAL_MESSAGE_AUTO_ADVANCE = new Cached<>(
-            () -> Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.STOP_VISUAL_MESSAGE_AUTO_ADVANCE)),
+            () -> Boolean.TRUE.equals(on(Settings.STOP_VISUAL_MESSAGE_AUTO_ADVANCE)),
             Settings.STOP_VISUAL_MESSAGE_AUTO_ADVANCE.key);
 
     /** Called on the main thread when the DM visual message viewer would move on by itself. */
@@ -335,7 +338,21 @@ public class Pref {
      * needing a restart.
      */
     private static boolean lockable(BooleanSetting setting) {
-        return SharedPref.getBooleanPref(setting) || FocusLock.isForced(setting);
+        return on(setting) || FocusLock.isForced(setting);
+    }
+
+    /**
+     * A feature switch, for every runtime read: false while Disable all or safe startup mode is
+     * on, without touching the stored value. Only the settings screen, migrations, and Inbox lock,
+     * hidden chats and Focus Lock read the stored value directly.
+     */
+    public static boolean on(BooleanSetting setting) {
+        return !SafeStartup.featuresOff() && SharedPref.getBooleanPref(setting);
+    }
+
+    /** {@link #on} for text settings: the declared default while features are off. */
+    public static String value(StringSetting setting) {
+        return SafeStartup.featuresOff() ? setting.defaultValue : SharedPref.getStringPref(setting);
     }
 
     /** Whether the target behind {@code key} is one of the things Focus Lock holds on. */
@@ -361,12 +378,17 @@ public class Pref {
     }
 
     /** Keys of the first released Focus Lock, read so a lock it wrote still counts. */
+    private static final BooleanSetting LEGACY_FOCUS_LOCK_BLOCK_REELS =
+            new BooleanSetting("focus_lock_block_reels", false, NOT_REQUIRED);
+    private static final BooleanSetting LEGACY_FOCUS_LOCK_BLOCK_EXPLORE =
+            new BooleanSetting("focus_lock_block_explore", false, NOT_REQUIRED);
+
     public static boolean legacyFocusLockBlockReels() {
-        return SharedPref.getBooleanPref(new BooleanSetting("focus_lock_block_reels", false, NOT_REQUIRED));
+        return SharedPref.getBooleanPref(LEGACY_FOCUS_LOCK_BLOCK_REELS);
     }
 
     public static boolean legacyFocusLockBlockExplore() {
-        return SharedPref.getBooleanPref(new BooleanSetting("focus_lock_block_explore", false, NOT_REQUIRED));
+        return SharedPref.getBooleanPref(LEGACY_FOCUS_LOCK_BLOCK_EXPLORE);
     }
 
     public static String focusLockFormat() {
@@ -394,23 +416,23 @@ public class Pref {
     }
 
     public static boolean ephemeralMediaCaption() {
-        return SharedPref.getBooleanPref(Settings.EPHEMERAL_MEDIA_CAPTION);
+        return on(Settings.EPHEMERAL_MEDIA_CAPTION);
     }
 
     public static boolean disableDisappearingMessagesGesture() {
-        return SharedPref.getBooleanPref(Settings.DISABLE_DISAPPEARING_MESSAGES_GESTURE) && SettingsStatus.disableDisappearingMessagesGesture;
+        return on(Settings.DISABLE_DISAPPEARING_MESSAGES_GESTURE) && SettingsStatus.disableDisappearingMessagesGesture;
     }
 
     public static boolean sendKeyboardGifs() {
-        return SharedPref.getBooleanPref(Settings.SEND_KEYBOARD_GIFS) && SettingsStatus.sendKeyboardGifs;
+        return on(Settings.SEND_KEYBOARD_GIFS) && SettingsStatus.sendKeyboardGifs;
     }
 
     public static boolean makeEphemeralMediaPermanent() {
-        return SharedPref.getBooleanPref(Settings.UNLIMITED_REPLAYS) && SettingsStatus.unlimitedReplaysOnEphemeralMedia;
+        return on(Settings.UNLIMITED_REPLAYS) && SettingsStatus.unlimitedReplaysOnEphemeralMedia;
     }
 
     public static boolean hideLikes() {
-        return SharedPref.getBooleanPref(Settings.HIDE_LIKES) && SettingsStatus.hideLikes;
+        return on(Settings.HIDE_LIKES) && SettingsStatus.hideLikes;
     }
 
     public static boolean showLikeButton(boolean visible) {
@@ -422,7 +444,7 @@ public class Pref {
     }
 
     public static boolean hideShareButton() {
-        return SharedPref.getBooleanPref(Settings.HIDE_SHARE_BUTTON) && SettingsStatus.hideShareButton;
+        return on(Settings.HIDE_SHARE_BUTTON) && SettingsStatus.hideShareButton;
     }
 
     private static final Cached<Set<String>> HIDE_SAVE_BUTTON_SURFACES = new Cached<>(
@@ -450,11 +472,11 @@ public class Pref {
     }
 
     public static boolean hideSaveButtons() {
-        return hideSaveButtonSurfaces().contains("posts") && SettingsStatus.hideSaveButtons;
+        return hideSaveButtonSurfaces().contains("posts") && SettingsStatus.hideSaveButtons && !SafeStartup.featuresOff();
     }
 
     public static boolean hideSaveButtonReels() {
-        return hideSaveButtonSurfaces().contains("reels") && SettingsStatus.hideSaveButtons;
+        return hideSaveButtonSurfaces().contains("reels") && SettingsStatus.hideSaveButtons && !SafeStartup.featuresOff();
     }
 
     public static boolean showSaveButton(boolean original) {
@@ -471,7 +493,7 @@ public class Pref {
     }
 
     public static boolean hideReshareButton() {
-        return SharedPref.getBooleanPref(Settings.HIDE_RESHARE_BUTTON) && SettingsStatus.hideReshareButton;
+        return on(Settings.HIDE_RESHARE_BUTTON) && SettingsStatus.hideReshareButton;
     }
 
     public static boolean hideGroupCreationOnSharesheet() {
@@ -484,124 +506,124 @@ public class Pref {
     }
 
     public static boolean enableDevOptions() {
-        return SharedPref.getBooleanPref(Settings.DEVELOPER_OPTIONS);
+        return on(Settings.DEVELOPER_OPTIONS);
     }
 
     // Only while the gallery's settings row is shown, so the entry never leads to a screen that cannot be reached.
     public static boolean homeLongPressGallery() {
         return SettingsStatus.homeLongPressSettings && SettingsStatus.downloadSection()
-                && SharedPref.getBooleanPref(Settings.HOME_LONG_PRESS_GALLERY);
+                && on(Settings.HOME_LONG_PRESS_GALLERY);
     }
     public static boolean directlyOpenMetaConfig() {
-        return SharedPref.getBooleanPref(Settings.DIRECTLY_OPEN_METACONFIG);
+        return on(Settings.DIRECTLY_OPEN_METACONFIG);
     }
     public static boolean disableDiscoverPeople() {
-        return SharedPref.getBooleanPref(Settings.DISABLE_DISCOVER_PEOPLE);
+        return on(Settings.DISABLE_DISCOVER_PEOPLE);
     }
 
     public static boolean followBackIndicator() {
-        return SharedPref.getBooleanPref(Settings.FOLLOW_BACK_INDICATOR);
+        return on(Settings.FOLLOW_BACK_INDICATOR);
     }
     public static boolean followBackColorIndicator() {
-        return SharedPref.getBooleanPref(Settings.FOLLOW_BACK_COLOR_INDICATOR);
+        return on(Settings.FOLLOW_BACK_COLOR_INDICATOR);
     }
 
     public static boolean followListNonFollowerBadge() {
-        return SharedPref.getBooleanPref(Settings.FOLLOW_LIST_NON_FOLLOWER_BADGE);
+        return on(Settings.FOLLOW_LIST_NON_FOLLOWER_BADGE);
     }
 
     public static boolean exactProfileCounts() {
-        return SharedPref.getBooleanPref(Settings.EXACT_PROFILE_COUNTS) && SettingsStatus.exactProfileCounts;
+        return on(Settings.EXACT_PROFILE_COUNTS) && SettingsStatus.exactProfileCounts;
     }
 
     public static boolean squareProfileGrid() {
-        return SharedPref.getBooleanPref(Settings.SQUARE_PROFILE_GRID) && SettingsStatus.squareProfileGrid;
+        return on(Settings.SQUARE_PROFILE_GRID) && SettingsStatus.squareProfileGrid;
     }
 
     public static boolean profileSavedTab() {
-        return SharedPref.getBooleanPref(Settings.PROFILE_SAVED_TAB) && SettingsStatus.profileSavedTab;
+        return on(Settings.PROFILE_SAVED_TAB) && SettingsStatus.profileSavedTab;
     }
 
     public static boolean confirmLike() {
-        return SharedPref.getBooleanPref(Settings.CONFIRM_LIKE);
+        return on(Settings.CONFIRM_LIKE);
     }
 
     public static boolean confirmFollow() {
-        return SharedPref.getBooleanPref(Settings.CONFIRM_FOLLOW);
+        return on(Settings.CONFIRM_FOLLOW);
     }
 
     public static boolean confirmRepost() {
-        return SharedPref.getBooleanPref(Settings.CONFIRM_REPOST);
+        return on(Settings.CONFIRM_REPOST);
     }
 
     public static boolean confirmComment() {
-        return SharedPref.getBooleanPref(Settings.CONFIRM_COMMENT);
+        return on(Settings.CONFIRM_COMMENT);
     }
 
     public static boolean confirmUnfollow() {
-        return SharedPref.getBooleanPref(Settings.CONFIRM_UNFOLLOW);
+        return on(Settings.CONFIRM_UNFOLLOW);
     }
 
     public static boolean confirmStoryLike() {
-        return SharedPref.getBooleanPref(Settings.CONFIRM_STORY_LIKE);
+        return on(Settings.CONFIRM_STORY_LIKE);
     }
 
     public static boolean confirmCall() {
-        return SharedPref.getBooleanPref(Settings.CONFIRM_CALL);
+        return on(Settings.CONFIRM_CALL);
     }
 
     public static boolean confirmFollowRequest() {
-        return SharedPref.getBooleanPref(Settings.CONFIRM_FOLLOW_REQUEST);
+        return on(Settings.CONFIRM_FOLLOW_REQUEST);
     }
 
     public static boolean confirmRefresh() {
-        return SharedPref.getBooleanPref(Settings.CONFIRM_REFRESH);
+        return on(Settings.CONFIRM_REFRESH);
     }
 
     public static boolean confirmCommentLike() {
-        return SharedPref.getBooleanPref(Settings.CONFIRM_COMMENT_LIKE);
+        return on(Settings.CONFIRM_COMMENT_LIKE);
     }
 
     public static boolean confirmDmActions() {
-        return SharedPref.getBooleanPref(Settings.CONFIRM_DM_ACTIONS);
+        return on(Settings.CONFIRM_DM_ACTIONS);
     }
 
     public static boolean disableHomeTabRefresh() {
-        return SharedPref.getBooleanPref(Settings.DISABLE_HOME_TAB_REFRESH);
+        return on(Settings.DISABLE_HOME_TAB_REFRESH);
     }
 
     public static boolean disableHomeBackgroundRefresh() {
-        return SharedPref.getBooleanPref(Settings.DISABLE_HOME_BACKGROUND_REFRESH);
+        return on(Settings.DISABLE_HOME_BACKGROUND_REFRESH);
     }
 
     public static boolean disableReelsTabRefresh() {
-        return SharedPref.getBooleanPref(Settings.DISABLE_REELS_TAB_REFRESH);
+        return on(Settings.DISABLE_REELS_TAB_REFRESH);
     }
 
     public static boolean disableStoryFlipping() {
-        return SharedPref.getBooleanPref(Settings.DISABLE_STORY_FLIPPING);
+        return on(Settings.DISABLE_STORY_FLIPPING);
     }
 
     public static boolean loopStory() {
-        return SharedPref.getBooleanPref(Settings.LOOP_STORY);
+        return on(Settings.LOOP_STORY);
     }
 
     public static int storyFollowButtonState(int original) {
-        return SharedPref.getBooleanPref(Settings.HIDE_STORY_FOLLOW_BUTTON) ? 0 : original;
+        return on(Settings.HIDE_STORY_FOLLOW_BUTTON) ? 0 : original;
     }
 
     public static boolean viewStoryMentions() {
-        return SharedPref.getBooleanPref(Settings.VIEW_STORY_MENTIONS);
+        return on(Settings.VIEW_STORY_MENTIONS);
     }
 
     public static String customiseStoryTimestamp() {
-        return SharedPref.getStringPref(Settings.CUSTOMISE_STORY_TIMESTAMP);
+        return value(Settings.CUSTOMISE_STORY_TIMESTAMP);
     }
 
     // Takes the width Instagram picks an image variant for. Requests at least as wide as a
     // full-screen view get the widest variant; narrower ones, such as grid tiles, stay unchanged.
     public static int imageVariantTargetWidth(int original) {
-        if (!SharedPref.getBooleanPref(Settings.IMPROVE_IMAGE_VIEWING)) return original;
+        if (!on(Settings.IMPROVE_IMAGE_VIEWING)) return original;
         Activity activity = Utils.getActivity();
         Resources resources = activity != null ? activity.getResources() : Resources.getSystem();
         int fullScreenWidth = Math.min(resources.getDisplayMetrics().widthPixels, FULL_SCREEN_WIDTH_CAP);
@@ -609,31 +631,31 @@ public class Pref {
     }
 
     public static Integer userAgentScreenSize(Integer original) {
-        return SharedPref.getBooleanPref(Settings.IMPROVE_IMAGE_VIEWING) ? USER_AGENT_SCREEN_SIZE : original;
+        return on(Settings.IMPROVE_IMAGE_VIEWING) ? USER_AGENT_SCREEN_SIZE : original;
     }
 
     public static boolean enableDownload() {
-        return SharedPref.getBooleanPref(Settings.ENABLE_DOWNLOAD) && SettingsStatus.downloadMedia;
+        return on(Settings.ENABLE_DOWNLOAD) && SettingsStatus.downloadMedia;
     }
 
     public static boolean enableDirectDownload() {
-        return SharedPref.getBooleanPref(Settings.ENABLE_DIRECT_DOWNLOAD);
+        return on(Settings.ENABLE_DIRECT_DOWNLOAD);
     }
 
     public static boolean downloadUsernameFolder() {
-        return SharedPref.getBooleanPref(Settings.DOWNLOAD_USERNAME_FOLDER);
+        return on(Settings.DOWNLOAD_USERNAME_FOLDER);
     }
 
     public static boolean embedDownloadMetadata() {
-        return SharedPref.getBooleanPref(Settings.EMBED_DOWNLOAD_METADATA);
+        return on(Settings.EMBED_DOWNLOAD_METADATA);
     }
 
     public static boolean preferDashFormat() {
-        return SharedPref.getBooleanPref(Settings.PREFER_DASH_FORMAT);
+        return on(Settings.PREFER_DASH_FORMAT);
     }
 
     public static boolean dashAudioAacLc() {
-        return SharedPref.getBooleanPref(Settings.DASH_AUDIO_AAC_LC);
+        return on(Settings.DASH_AUDIO_AAC_LC);
     }
 
     public static String downloadFileNameTemplate() {
@@ -708,35 +730,35 @@ public class Pref {
     }
 
     public static boolean floatingTabBar() {
-        return SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR);
+        return on(Settings.FLOATING_TAB_BAR);
     }
 
     public static String swipeBetweenTabs() {
-        return SettingsStatus.swipeBetweenTabs ? SharedPref.getStringPref(Settings.SWIPE_BETWEEN_TABS) : "default";
+        return SettingsStatus.swipeBetweenTabs ? value(Settings.SWIPE_BETWEEN_TABS) : "default";
     }
 
     public static boolean floatingTabBarHideOnScroll() {
-        return floatingTabBar() && SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR_HIDE_ON_SCROLL);
+        return floatingTabBar() && on(Settings.FLOATING_TAB_BAR_HIDE_ON_SCROLL);
     }
 
     public static boolean floatingTabBarGlass() {
-        return floatingTabBar() && SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR_GLASS);
+        return floatingTabBar() && on(Settings.FLOATING_TAB_BAR_GLASS);
     }
 
     public static boolean removeEmptyBottomSpace() {
-        return SharedPref.getBooleanPref(Settings.REMOVE_EMPTY_BOTTOM_SPACE);
+        return on(Settings.REMOVE_EMPTY_BOTTOM_SPACE);
     }
 
     public static boolean commentCopyButton() {
-        return SharedPref.getBooleanPref(Settings.COMMENT_COPY_BUTTON) && SettingsStatus.copyCommentButton;
+        return on(Settings.COMMENT_COPY_BUTTON) && SettingsStatus.copyCommentButton;
     }
 
     public static boolean commentSaveMediaButton() {
-        return SharedPref.getBooleanPref(Settings.COMMENT_SAVE_MEDIA_BUTTON) && SettingsStatus.saveMediaCommentButton;
+        return on(Settings.COMMENT_SAVE_MEDIA_BUTTON) && SettingsStatus.saveMediaCommentButton;
     }
 
     public static String changeLikeAnimation() {
-        return SharedPref.getStringPref(Settings.CHANGE_LIKE_ANIMATION);
+        return value(Settings.CHANGE_LIKE_ANIMATION);
     }
 
     private static final Cached<Float> STORY_RING_SIZE =
@@ -748,7 +770,7 @@ public class Pref {
 
     private static float loadStoryRingSize() {
         try {
-            return Float.parseFloat(SharedPref.getStringPref(Settings.CUSTOMISE_STORY_RING_SIZE));
+            return Float.parseFloat(value(Settings.CUSTOMISE_STORY_RING_SIZE));
         } catch (Exception ex) {
             return 100.0f;
         }
@@ -767,10 +789,10 @@ public class Pref {
         return lockable(Settings.DISABLE_DOUBLE_TAP_LIKE_MESSAGE);
     }
     public static boolean moreOptionsOnPost() {
-        return SharedPref.getBooleanPref(Settings.ENABLE_MORE_OPTIONS_ON_POST) && SettingsStatus.moreOptionsOnPost;
+        return on(Settings.ENABLE_MORE_OPTIONS_ON_POST) && SettingsStatus.moreOptionsOnPost;
     }
     public static boolean downloadWithExternalDownloader() {
-        return SharedPref.getBooleanPref(Settings.DOWNLOAD_WITH_EXTERNAL_DOWNLOADER) && SettingsStatus.downloadWithExternalDownloader;
+        return on(Settings.DOWNLOAD_WITH_EXTERNAL_DOWNLOADER) && SettingsStatus.downloadWithExternalDownloader;
     }
 
     public static String externalDownloaderPackageName() {
@@ -778,6 +800,11 @@ public class Pref {
     }
 
     private static final String ACTION_BAR_MIGRATED_SUFFIX = "_visibility_migrated";
+    private static final Set<String> STOCK_MAIN_FEED_BUTTONS =
+            Collections.unmodifiableSet(new HashSet<>(Arrays.asList(Constants.AB_CREATE, Constants.AB_NOTIFICATIONS)));
+    private static final Set<String> STOCK_USER_PROFILE_BUTTONS = Collections.singleton(Constants.AB_CREATE);
+    private static final Set<String> STOCK_CHAT_ACTIONS =
+            Collections.unmodifiableSet(new HashSet<>(Arrays.asList(Constants.AB_AUDIO_CALL_ICON, Constants.AB_VIDEO_CALL_ICON)));
     private static final Cached<Set<String>> MAIN_FEED_ACTION_BAR_BUTTONS = new Cached<>(
             () -> loadAndMigrateActionBarButtons(Settings.ACTION_BAR_MAIN_FEED, true),
             Settings.ACTION_BAR_MAIN_FEED.key, Settings.ACTION_BAR_MAIN_FEED.key + ACTION_BAR_MIGRATED_SUFFIX);
@@ -785,12 +812,15 @@ public class Pref {
             () -> loadAndMigrateActionBarButtons(Settings.ACTION_BAR_USER_PROFILE, false),
             Settings.ACTION_BAR_USER_PROFILE.key, Settings.ACTION_BAR_USER_PROFILE.key + ACTION_BAR_MIGRATED_SUFFIX);
 
+    // Loaded even while features are off, so the one-time migration still runs before the editor reads the key.
     public static Set<String> mainFeedActionBarButtons() {
-        return MAIN_FEED_ACTION_BAR_BUTTONS.get();
+        Set<String> buttons = MAIN_FEED_ACTION_BAR_BUTTONS.get();
+        return SafeStartup.featuresOff() ? STOCK_MAIN_FEED_BUTTONS : buttons;
     }
 
     public static Set<String> userProfileActionBarButtons() {
-        return USER_PROFILE_ACTION_BAR_BUTTONS.get();
+        Set<String> buttons = USER_PROFILE_ACTION_BAR_BUTTONS.get();
+        return SafeStartup.featuresOff() ? STOCK_USER_PROFILE_BUTTONS : buttons;
     }
 
     private static Set<String> loadAndMigrateActionBarButtons(StringSetting setting, boolean home) {
@@ -821,7 +851,7 @@ public class Pref {
     }
 
     public static Set<String> chatActionBarButtons() {
-        return SharedPref.getSetPref(Settings.ACTION_BAR_CHAT);
+        return SafeStartup.featuresOff() ? new HashSet<>() : SharedPref.getSetPref(Settings.ACTION_BAR_CHAT);
     }
 
     private static final String CHAT_CALL_ICONS_INITIALIZED_KEY = "action_bar_chat_call_icons_initialized";
@@ -830,11 +860,12 @@ public class Pref {
             Settings.ACTION_BAR_CHAT.key, CHAT_CALL_ICONS_INITIALIZED_KEY);
 
     public static Set<String> chatActionsWithCallDefaults() {
-        return CHAT_ACTIONS_WITH_CALL_DEFAULTS.get();
+        Set<String> actions = CHAT_ACTIONS_WITH_CALL_DEFAULTS.get();
+        return SafeStartup.featuresOff() ? STOCK_CHAT_ACTIONS : actions;
     }
 
     private static synchronized Set<String> loadChatActionsWithCallDefaults() {
-        Set<String> actions = chatActionBarButtons();
+        Set<String> actions = SharedPref.getSetPref(Settings.ACTION_BAR_CHAT);
         Context context = Utils.getContext();
         var preferences = context == null ? null
                 : context.getSharedPreferences(Constants.SHARED_PREF_NAME, Context.MODE_PRIVATE);
@@ -861,20 +892,20 @@ public class Pref {
     }
 
     public static Set<String> inboxActionBarButtons() {
-        return SharedPref.getSetPref(Settings.ACTION_BAR_INBOX);
+        return SafeStartup.featuresOff() ? new HashSet<>() : SharedPref.getSetPref(Settings.ACTION_BAR_INBOX);
     }
 
     public static Set<String> filterStoryByType() {
-        return SharedPref.getSetPref(Settings.FILTER_STORY_BY_TYPE);
+        return SafeStartup.featuresOff() ? new HashSet<>() : SharedPref.getSetPref(Settings.FILTER_STORY_BY_TYPE);
     }
 
     public static Set<String> filterStoryByUserType() {
-        return SharedPref.getSetPref(Settings.FILTER_STORY_BY_USER_TYPE);
+        return SafeStartup.featuresOff() ? new HashSet<>() : SharedPref.getSetPref(Settings.FILTER_STORY_BY_USER_TYPE);
     }
 
     public static Integer filterStoryByMinStoryItems() {
         try {
-            return Integer.valueOf(SharedPref.getStringPref(Settings.FILTER_STORY_MIN_STORY_ITEMS));
+            return Integer.valueOf(value(Settings.FILTER_STORY_MIN_STORY_ITEMS));
         } catch (NumberFormatException e) {
             return 1;
         }
@@ -882,7 +913,7 @@ public class Pref {
 
     public static Integer filterStoryByMaxStoryItems() {
         try {
-            return Integer.valueOf(SharedPref.getStringPref(Settings.FILTER_STORY_MAX_STORY_ITEMS));
+            return Integer.valueOf(value(Settings.FILTER_STORY_MAX_STORY_ITEMS));
         } catch (NumberFormatException e) {
             return 9999;
         }
@@ -896,8 +927,21 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.INBOX_LOCK_NOTIFICATIONS);
     }
 
+    public static boolean openSettingsOnLaunch() {
+        return on(Settings.OPEN_SETTINGS_ON_LAUNCH);
+    }
+
+    /** 0 when off or not a number; auto clear itself does not run while features are off. */
+    public static long autoClearCacheMb() {
+        try {
+            return Math.max(0, Long.parseLong(SharedPref.getStringPref(Settings.AUTO_CLEAR_CACHE_MB).trim()));
+        } catch (RuntimeException e) {
+            return 0;
+        }
+    }
+
     private static final Cached<Boolean> PIN_RECIPIENTS =
-            new Cached<>(() -> SharedPref.getBooleanPref(Settings.PIN_RECIPIENTS), Settings.PIN_RECIPIENTS.key);
+            new Cached<>(() -> on(Settings.PIN_RECIPIENTS), Settings.PIN_RECIPIENTS.key);
 
     public static boolean pinRecipients() {
         return SettingsStatus.pinRecipients && PIN_RECIPIENTS.get();

@@ -19,6 +19,7 @@ import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
 
 import app.morphe.extension.instagram.utils.Pref;
+import app.morphe.extension.instagram.settings.SafeStartup;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.entity.Entity;
 import app.morphe.extension.instagram.constants.UI;
@@ -108,7 +109,7 @@ public class AddReelButton {
         if(Pref.moreOptionsOnPost()){
             AddReelButton.addInfoButton(context, helperObject, mediaObject, currentMediaIndex);
         }
-        if(SettingsStatus.defaultPlaybackSpeed){
+        if(SettingsStatus.defaultPlaybackSpeed && !SafeStartup.featuresOff()){
             AddReelButton.addReelButton(context, new ReelOverflowButton("instagram_clock_dotted_outline_24",
                     new SpeedPanelButton(context, mediaObject), str("spookd_speed_and_seek")), helperObject);
         }

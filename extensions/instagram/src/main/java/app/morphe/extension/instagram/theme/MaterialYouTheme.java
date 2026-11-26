@@ -18,6 +18,7 @@ import android.widget.RadioGroup;
 
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.settings.Settings;
+import app.morphe.extension.instagram.settings.SafeStartup;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.ResourceType;
 import app.morphe.extension.shared.ResourceUtils;
@@ -90,7 +91,7 @@ public final class MaterialYouTheme {
     }
 
     public static void initialize(Context context) {
-        if (Build.VERSION.SDK_INT < 31) {
+        if (Build.VERSION.SDK_INT < 31 || SafeStartup.featuresOff()) {
             return;
         }
 
@@ -114,7 +115,8 @@ public final class MaterialYouTheme {
     public static void applyToActivity(Activity activity) {
         if (Build.VERSION.SDK_INT < 31
                 || activity == null
-                || Looper.myLooper() != Looper.getMainLooper()) {
+                || Looper.myLooper() != Looper.getMainLooper()
+                || SafeStartup.featuresOff()) {
             return;
         }
 
@@ -205,9 +207,11 @@ public final class MaterialYouTheme {
     public static Function1<Integer, Unit> wrapNativeThemeCallback(
             Function1<Integer, Unit> callback
     ) {
+        // While features are off, Instagram's own theme choice runs untouched.
         if (Build.VERSION.SDK_INT < 31
                 || callback == null
-                || callback instanceof NativeThemeCallback) {
+                || callback instanceof NativeThemeCallback
+                || SafeStartup.featuresOff()) {
             return callback;
         }
         return new NativeThemeCallback(callback);
@@ -230,7 +234,8 @@ public final class MaterialYouTheme {
     ) {
         if (Build.VERSION.SDK_INT < 31
                 || listener == null
-                || listener instanceof LegacyNativeThemeController) {
+                || listener instanceof LegacyNativeThemeController
+                || SafeStartup.featuresOff()) {
             return listener;
         }
         return new LegacyNativeThemeController(
@@ -242,6 +247,7 @@ public final class MaterialYouTheme {
     }
 
     public static String getLegacySelectedRadioId(String nativeId, int packedIds) {
+        if (SafeStartup.featuresOff()) return nativeId;
         Integer observedNativeMode =
                 MaterialYouState.nativeModeForLegacySelectionId(nativeId, packedIds);
         if (observedNativeMode != null) {

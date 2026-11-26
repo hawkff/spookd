@@ -33,6 +33,10 @@ import app.morphe.extension.instagram.patches.focusLock.FocusLockTargets;
 import app.morphe.extension.instagram.patches.story.StoryAutoSave;
 import app.morphe.extension.instagram.patches.story.StoryGhostList;
 import app.morphe.extension.instagram.settings.SettingsStatus;
+import app.morphe.extension.instagram.settings.RestartPolicy;
+import app.morphe.extension.instagram.settings.SafeStartup;
+import app.morphe.extension.instagram.settings.SettingsRestart;
+import app.morphe.extension.instagram.settings.StorageScreen;
 import app.morphe.extension.instagram.settings.BooleanSetting;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.settings.StringSetting;
@@ -1556,6 +1560,72 @@ public class ScreenBuilder {
                         "spookd_reset_pref"
                 )
         );
+
+        // Device-wide, so it is kept outside the per-account settings the framework would write.
+        SwitchPref disableAll = new SwitchPref(context);
+        disableAll.setTitle(str("spookd_disable_all_features"));
+        disableAll.setSummary(str("spookd_disable_all_features_desc"));
+        disableAll.setKey(SafeStartup.DISABLE_ALL_KEY);
+        disableAll.setPersistent(false);
+        disableAll.setChecked(SafeStartup.disableAllStored());
+        disableAll.setOnPreferenceChangeListener((preference, newValue) -> {
+            boolean enabled = Boolean.TRUE.equals(newValue);
+            boolean previous = disableAll.isChecked();
+            SafeStartup.runSave(() -> {
+                boolean saved = SafeStartup.setDisableAll(enabled);
+                if (saved) SettingsRestart.markChanged(SafeStartup.DISABLE_ALL_KEY, RestartPolicy.REQUIRED, previous, enabled);
+                Utils.runOnMainThread(() -> {
+                    if (saved) disableAll.setChecked(enabled);
+                    else Utils.showToastShort(str("spookd_setting_save_failed"));
+                });
+            });
+            // Rejected for now; the switch flips once the value is on disk.
+            return false;
+        });
+        addPreference(disableAll);
+
+        addPreference(
+                helper.switchPreference(
+                        str("spookd_open_settings_on_launch"),
+                        str("spookd_open_settings_on_launch_desc"),
+                        Settings.OPEN_SETTINGS_ON_LAUNCH
+                )
+        );
+
+        Preference storage = helper.buttonPreference(
+                str("spookd_storage"),
+                str("spookd_storage_desc"),
+                "spookd_storage"
+        );
+        storage.setOnPreferenceClickListener(preference -> {
+            StorageScreen.show(preference.getContext());
+            return true;
+        });
+        addPreference(storage);
+
+        ListPref autoClearCache = new ListPref(context) {
+            @Override
+            protected void onSetInitialValue(boolean restoreValue, Object defaultValue) {
+                super.onSetInitialValue(restoreValue, defaultValue);
+                String[] megabytes = {"100", "250", "500", "1000"};
+                CharSequence[] entries = new CharSequence[megabytes.length + 1];
+                CharSequence[] values = new CharSequence[megabytes.length + 1];
+                entries[0] = str("spookd_auto_clear_cache_off");
+                values[0] = "0";
+                for (int i = 0; i < megabytes.length; i++) {
+                    entries[i + 1] = String.format(str("spookd_auto_clear_cache_over"), Integer.parseInt(megabytes[i]));
+                    values[i + 1] = megabytes[i];
+                }
+                setEntries(entries);
+                setEntryValues(values);
+            }
+        };
+        autoClearCache.setTitle(str("spookd_auto_clear_cache"));
+        autoClearCache.setDialogTitle(str("spookd_auto_clear_cache"));
+        autoClearCache.setSummary("%s");
+        autoClearCache.setKey(Settings.AUTO_CLEAR_CACHE_MB.key);
+        autoClearCache.setDefaultValue(Settings.AUTO_CLEAR_CACHE_MB.defaultValue);
+        addPreference(autoClearCache);
 
         addPreference(
                 helper.switchPreference(

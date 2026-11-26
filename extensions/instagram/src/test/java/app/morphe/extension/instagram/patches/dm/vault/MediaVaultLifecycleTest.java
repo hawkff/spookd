@@ -437,6 +437,33 @@ public final class MediaVaultLifecycleTest {
     }
 
     @Test
+    public void deletingAllDropsStoredAndQueuedRowsSoNothingIsFetchedAfter() throws IOException {
+        long stored = storedRow("stored", 5000, NOW - 2000);
+        network.respond = url -> new FakeConnection(url, 200, body(1000));
+        long queued = enqueue("queued");
+
+        assertTrue(vault.deleteAll());
+        executor.runAll();
+
+        assertEquals("dropped", column("state", stored));
+        assertEquals("dropped", column("state", queued));
+        assertFalse(pkv(stored).exists());
+        assertFalse(pkv(queued).exists());
+        assertEquals(0, network.opened.size());
+        assertTrue(vault.storedItems().isEmpty());
+    }
+
+    @Test
+    public void deletingAllRetriesFilesAnEarlierClearLeftBehind() throws IOException {
+        long left = storedRow("left", 5000, NOW - 2000);
+        db.execSQL("UPDATE saved_media SET state = 'dropped' WHERE id = ?", new Object[]{left});
+
+        assertTrue(vault.deleteAll());
+
+        assertFalse(pkv(left).exists());
+    }
+
+    @Test
     public void offlineWaitsWithoutCountingAndServerErrorsBackOff() {
         network.online = false;
         long id = enqueue("1");

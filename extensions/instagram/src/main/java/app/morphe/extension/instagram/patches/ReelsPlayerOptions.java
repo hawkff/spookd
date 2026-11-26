@@ -11,7 +11,6 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
 
-import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.settings.BooleanSetting;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.utils.Pref;
@@ -34,7 +33,7 @@ public final class ReelsPlayerOptions {
         static final Pref.Cached<Boolean> EXPANDED_FEED_MUTED = cached(Settings.EXPANDED_FEED_VIDEOS_MUTED);
 
         private static Pref.Cached<Boolean> cached(BooleanSetting setting) {
-            return new Pref.Cached<>(() -> Boolean.TRUE.equals(SharedPref.getBooleanPref(setting)), setting.key);
+            return new Pref.Cached<>(() -> Pref.on(setting), setting.key);
         }
 
         static boolean isOn(Pref.Cached<Boolean> option) {

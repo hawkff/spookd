@@ -179,11 +179,14 @@ public class SpookdInstantsDb extends SQLiteOpenHelper {
         }
     }
 
-    public void clearAll() {
+    /** False when the rows could not be deleted. */
+    public boolean clearAll() {
         try {
             getWritableDatabase().delete(TABLE, null, null);
+            return true;
         } catch (Throwable t) {
             Logger.printException(() -> "SpookdInstantsDb.clearAll failed", t);
+            return false;
         }
     }
 }

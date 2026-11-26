@@ -204,4 +204,7 @@ public class Settings {
     public static final BooleanSetting TRACK_VISITED_PROFILES = new BooleanSetting("track_visited_profiles", false, NOT_REQUIRED);
     public static final BooleanSetting EXACT_LAST_ACTIVE = new BooleanSetting("exact_last_active", false, NOT_REQUIRED);
     public static final BooleanSetting HOLD_SEND_COPY_LINK = new BooleanSetting("hold_send_copy_link", false, REQUIRED);
+    public static final BooleanSetting OPEN_SETTINGS_ON_LAUNCH = new BooleanSetting("open_settings_on_launch", false, NOT_REQUIRED);
+    // Megabytes; "0" turns it off.
+    public static final StringSetting AUTO_CLEAR_CACHE_MB = new StringSetting("auto_clear_cache_mb", "0", NOT_REQUIRED);
 }

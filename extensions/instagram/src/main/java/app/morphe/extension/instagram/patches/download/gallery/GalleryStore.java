@@ -76,6 +76,8 @@ public final class GalleryStore {
     private final File thumbDir;
     private final LongSupplier clock;
     private boolean recovered;
+    // Bumped by deleteAll, so a download that started before a clear never publishes after it.
+    private long clearEpoch;
 
     GalleryStore(SQLiteDatabase db, File dir, File thumbDir, LongSupplier clock) {
         this.db = db;
@@ -134,14 +136,29 @@ public final class GalleryStore {
         return publish(part, item, subFolder, fileName, overwrite ? Conflict.OVERWRITE : Conflict.RENAME);
     }
 
+    /** The clear epoch a download reads when it starts and hands back to {@link #publish}. */
+    public synchronized long clearEpoch() {
+        return clearEpoch;
+    }
+
     /** {@link #publish} that with SKIP deletes the part and returns -1 when the name is taken, checked under the store's lock. */
     public long publish(File part, GalleryItem item, String subFolder, String fileName,
                         Conflict conflict) throws IOException {
+        return publish(part, item, subFolder, fileName, conflict, null);
+    }
+
+    /** {@link #publish}, also deleting the part and failing when the gallery was cleared after {@code startedEpoch}. */
+    public long publish(File part, GalleryItem item, String subFolder, String fileName,
+                        Conflict conflict, Long startedEpoch) throws IOException {
         try {
             if (!part.isFile()) throw new IOException("Missing " + part);
             Long durationMs = GalleryItem.PHOTO.equals(item.kind) ? null : durationMs(part);
             long size = part.length();
             synchronized (this) {
+                // A failure, not a name conflict, so the download is reported as not saved and can be retried.
+                if (startedEpoch != null && startedEpoch != clearEpoch) {
+                    throw new IOException("The gallery was cleared during the download");
+                }
                 String file = baseName(part) + extension(fileName);
                 File target = new File(dir, file);
                 ContentValues values = new ContentValues();
@@ -219,6 +236,43 @@ public final class GalleryStore {
         new File(dir, file).delete();
         thumb(file).delete();
         return true;
+    }
+
+    /**
+     * Deletes every item: its thumbnail and file, then its row. False when a file or thumbnail that
+     * still exists could not be deleted; an item whose file stays keeps its row for the next clear.
+     * Throws on database errors.
+     */
+    public synchronized boolean deleteAll() {
+        clearEpoch++;
+        recover();
+        List<Object[]> rows = new ArrayList<>();
+        try (Cursor c = db.rawQuery("SELECT id, file FROM gallery_items", null)) {
+            while (c.moveToNext()) rows.add(new Object[]{c.getLong(0), c.getString(1)});
+        }
+        boolean deleted = true;
+        for (Object[] row : rows) {
+            String file = (String) row[1];
+            File item = new File(dir, file);
+            File thumb = thumb(file);
+            if (!thumb.delete() && thumb.exists()) deleted = false;
+            // A file that stays keeps its row, so the next clear tries it again.
+            if (!item.delete() && item.exists()) {
+                deleted = false;
+                continue;
+            }
+            db.delete("gallery_items", "id = ?", new String[]{String.valueOf(row[0])});
+        }
+        return deleted;
+    }
+
+    /** {count, total size in bytes} of the saved downloads. */
+    public synchronized long[] totals() {
+        recover();
+        try (Cursor c = db.rawQuery("SELECT COUNT(*), COALESCE(SUM(size_bytes), 0) FROM gallery_items", null)) {
+            c.moveToFirst();
+            return new long[]{c.getLong(0), c.getLong(1)};
+        }
     }
 
     /** {@link #delete(long)} only while {@code seen} is still the item's file, so an item overwritten meanwhile stays. */

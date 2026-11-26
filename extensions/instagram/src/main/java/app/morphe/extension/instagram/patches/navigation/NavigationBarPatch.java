@@ -9,6 +9,7 @@ package app.morphe.extension.instagram.patches.navigation;
 import android.content.Intent;
 
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
+import app.morphe.extension.instagram.settings.SafeStartup;
 import app.morphe.extension.instagram.settings.SettingsRestart;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.utils.Pref;
@@ -261,8 +262,8 @@ public final class NavigationBarPatch {
             List<Candidate> candidates = classify(allCandidates);
             List<Candidate> output = new ArrayList<>();
             int knownCapacity = Math.max(0, MAX_TABS - unknown.size());
-            Config config = applyFocusLock(
-                    loadConfig(find(current, Tab.CREATE, new IdentityHashMap<>()) != null));
+            Config config = applyFocusLock(SafeStartup.featuresOff() ? defaultConfig()
+                    : loadConfig(find(current, Tab.CREATE, new IdentityHashMap<>()) != null));
             for (Tab tab : config.order()) {
                 if (output.size() == knownCapacity) break;
                 if (!config.visible().contains(tab)) continue;
@@ -312,7 +313,7 @@ public final class NavigationBarPatch {
         try {
             if (intent.hasExtra(STARTUP_TAB_EXTRA)) return;
             List<Candidate> candidates = classify(allCandidates);
-            Config config = applyFocusLock(loadConfig());
+            Config config = applyFocusLock(SafeStartup.featuresOff() ? defaultConfig() : loadConfig());
             Tab[] choices = startupChoices(config);
             for (Tab tab : choices) {
                 Candidate candidate = find(candidates, tab, new IdentityHashMap<>());

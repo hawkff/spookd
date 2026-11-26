@@ -347,6 +347,21 @@ public final class SpookdFollowDb extends SQLiteOpenHelper {
         }
     }
 
+    /** {@link #deleteAccount} for every account, on the open helper, so a held instance stays usable. */
+    public void deleteEverything() {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            for (String table : new String[]{"follow_scan_members", "follow_scans", "follow_users",
+                    "follow_changes", "profile_visits"}) {
+                db.delete(table, null, null);
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
     private List<FollowUser> latestMembers(String accountId, int list, int other, boolean inOther) {
         List<FollowUser> out = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
