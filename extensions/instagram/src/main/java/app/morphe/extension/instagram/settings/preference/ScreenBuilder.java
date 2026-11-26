@@ -321,6 +321,19 @@ public class ScreenBuilder {
             );
         }
 
+        if (SettingsStatus.markVisualMessagesSeen) {
+            addPreference(
+                    helper.availableWhen(
+                            helper.switchPreference(
+                                    str("spookd_mark_visual_messages_seen_manually"),
+                                    str("spookd_mark_visual_messages_seen_manually_desc"),
+                                    Settings.MARK_VISUAL_MESSAGES_SEEN_MANUALLY
+                            ),
+                            () -> SharedPref.getBooleanPref(Settings.UNLIMITED_REPLAYS)
+                    )
+            );
+        }
+
         if (SettingsStatus.exactLastActive) {
             addPreference(
                     helper.switchPreference(

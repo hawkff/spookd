@@ -92,6 +92,7 @@ public class Settings {
     public static final BooleanSetting SEND_KEYBOARD_GIFS = new BooleanSetting("send_keyboard_gifs", true, NOT_REQUIRED);
     public static final BooleanSetting EPHEMERAL_MEDIA_CAPTION = new BooleanSetting("ephemeral_media_caption", false, NOT_REQUIRED);
     public static final BooleanSetting STOP_VISUAL_MESSAGE_AUTO_ADVANCE = new BooleanSetting("stop_visual_message_auto_advance", false, NOT_REQUIRED);
+    public static final BooleanSetting MARK_VISUAL_MESSAGES_SEEN_MANUALLY = new BooleanSetting("mark_visual_messages_seen_manually", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_LIKES = new BooleanSetting("hide_likes", false, REQUIRED);
     public static final BooleanSetting HIDE_SHARE_BUTTON = new BooleanSetting("hide_share_button", false, NOT_REQUIRED);
     public static final StringSetting HIDE_SAVE_BUTTON_SURFACES = new StringSetting("hide_save_button_surfaces", "", NOT_REQUIRED);

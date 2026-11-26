@@ -334,6 +334,14 @@ public class Pref {
         return SettingsStatus.stopVisualMessageAutoAdvance && STOP_VISUAL_MESSAGE_AUTO_ADVANCE.get();
     }
 
+    private static final Cached<Boolean> MARK_VISUAL_MESSAGES_SEEN_MANUALLY = new Cached<>(
+            () -> on(Settings.MARK_VISUAL_MESSAGES_SEEN_MANUALLY), Settings.MARK_VISUAL_MESSAGES_SEEN_MANUALLY.key);
+
+    /** Called on the main thread each time the DM visual message viewer shows an item. */
+    public static boolean markVisualMessagesSeenManually() {
+        return SettingsStatus.markVisualMessagesSeen && MARK_VISUAL_MESSAGES_SEEN_MANUALLY.get();
+    }
+
     public static boolean disableReelsScrolling() {
         return lockable(Settings.DISABLE_REELS_SCROLLING) && SettingsStatus.disableReelsScrolling;
     }

@@ -23,7 +23,7 @@ import com.android.tools.smali.dexlib2.AccessFlags
 private const val VISUAL_MESSAGE_VIEWER = "Linstagram/features/direct/visual/internal/DirectVisualMessageViewerController;"
 
 // Moves the viewer to the next message, or closes it after the last; false means the photo timer or the video ended.
-private object VisualMessageAdvanceFingerprint : Fingerprint(
+internal object VisualMessageAdvanceFingerprint : Fingerprint(
     definingClass = VISUAL_MESSAGE_VIEWER,
     returnType = "V",
     parameters = listOf(VISUAL_MESSAGE_VIEWER, "Z"),
