@@ -142,6 +142,18 @@
     <string name="spookd_hide_threads_button_desc">Removes the Threads button from the profile header</string>
     <string name="spookd_hide_friends_map">Hide Friends Map</string>
     <string name="spookd_hide_friends_map_desc">Turns off Instagram\'s Friends Map, including its entry in the inbox notes tray. Stop sharing your location in the map before you turn this on</string>
+    <string name="spookd_hide_recent_searches">Hide recent searches</string>
+    <string name="spookd_hide_recent_searches_desc">Removes your recent searches from the search screen and from the suggestions while you type</string>
+    <string name="spookd_square_explore_grid">Square Explore grid</string>
+    <string name="spookd_square_explore_grid_desc">Shows Explore as the classic grid of square tiles instead of tall 3:4 ones. This can also remove the topic pills above it</string>
+    <string name="spookd_hide_reels_comment_bar">Hide Reels comment bar</string>
+    <string name="spookd_hide_reels_comment_bar_desc">Removes the comment bar at the bottom of the Reels viewer</string>
+    <string name="spookd_hide_reels_tab_header">Hide Reels tab header</string>
+    <string name="spookd_hide_reels_tab_header_desc">Removes the title bar at the top of the Reels tab. Reels opened from anywhere else keep theirs, with the back button</string>
+    <string name="spookd_hide_chat_blend_button">Hide Blend button in chats</string>
+    <string name="spookd_hide_chat_blend_button_desc">Turns off Blend, which removes its button from chat headers. Blends you already have can no longer be opened</string>
+    <string name="spookd_hide_inbox_instants">Hide Instants in inbox</string>
+    <string name="spookd_hide_inbox_instants_desc">Removes the Instants stack from the inbox. Instants themselves keep working</string>
 
     <!-- Miscellaneous Section -->
     <string name="spookd_category_misc">Misc</string>

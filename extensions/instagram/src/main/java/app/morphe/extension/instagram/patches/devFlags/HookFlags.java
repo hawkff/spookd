@@ -220,6 +220,18 @@ public class HookFlags {
         }
     }
 
+    private static void squareExploreGridFlags() {
+        if (Pref.squareExploreGrid()) {
+            BOOL_FLAGS.put("101152::0", false); //ig_home_ai_pod_android::enable_tune_your_explore_android (3:4 Explore grid)
+        }
+    }
+
+    private static void hideChatBlendButtonFlags() {
+        if (Pref.hideChatBlendButton()) {
+            BOOL_FLAGS.put("76757::0", false); //ig_android_blends_fbid::enable_thread_header_entrypoint (Blend master switch)
+        }
+    }
+
     private static void addRecommendedFlags(){
         if(SettingsStatus.recommendedFlags) {
             Map<String, Boolean> recFlags = FlagsSharedPref.getAll();

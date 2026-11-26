@@ -174,4 +174,10 @@ public class Settings {
     public static final BooleanSetting HIDE_PROFILE_NOTES_BUBBLE = new BooleanSetting("hide_profile_notes_bubble", false, REQUIRED);
     public static final BooleanSetting HIDE_THREADS_BUTTON = new BooleanSetting("hide_threads_button", false, REQUIRED);
     public static final BooleanSetting HIDE_FRIENDS_MAP = new BooleanSetting("hide_friends_map", false, REQUIRED);
+    public static final BooleanSetting HIDE_RECENT_SEARCHES = new BooleanSetting("hide_recent_searches", false, NOT_REQUIRED);
+    public static final BooleanSetting SQUARE_EXPLORE_GRID = new BooleanSetting("square_explore_grid", false, REQUIRED);
+    public static final BooleanSetting HIDE_REELS_COMMENT_BAR = new BooleanSetting("hide_reels_comment_bar", false, NOT_REQUIRED);
+    public static final BooleanSetting HIDE_CHAT_BLEND_BUTTON = new BooleanSetting("hide_chat_blend_button", false, REQUIRED);
+    public static final BooleanSetting HIDE_INBOX_INSTANTS = new BooleanSetting("hide_inbox_instants", false, NOT_REQUIRED);
+    public static final BooleanSetting HIDE_REELS_TAB_HEADER = new BooleanSetting("hide_reels_tab_header", false, REQUIRED);
 }

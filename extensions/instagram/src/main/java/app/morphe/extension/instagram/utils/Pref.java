@@ -233,6 +233,39 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.HIDE_FRIENDS_MAP) && SettingsStatus.hideFriendsMap;
     }
 
+    private static final Cached<Boolean> HIDE_RECENT_SEARCHES =
+            new Cached<>(() -> SharedPref.getBooleanPref(Settings.HIDE_RECENT_SEARCHES), Settings.HIDE_RECENT_SEARCHES.key);
+
+    public static boolean hideRecentSearches() {
+        return SettingsStatus.hideRecentSearches && HIDE_RECENT_SEARCHES.get();
+    }
+
+    public static boolean squareExploreGrid() {
+        return SharedPref.getBooleanPref(Settings.SQUARE_EXPLORE_GRID) && SettingsStatus.squareExploreGrid;
+    }
+
+    private static final Cached<Boolean> HIDE_REELS_COMMENT_BAR =
+            new Cached<>(() -> SharedPref.getBooleanPref(Settings.HIDE_REELS_COMMENT_BAR), Settings.HIDE_REELS_COMMENT_BAR.key);
+
+    public static boolean hideReelsCommentBar() {
+        return SettingsStatus.hideReelsCommentBar && HIDE_REELS_COMMENT_BAR.get();
+    }
+
+    public static boolean hideChatBlendButton() {
+        return SharedPref.getBooleanPref(Settings.HIDE_CHAT_BLEND_BUTTON) && SettingsStatus.hideChatBlendButton;
+    }
+
+    private static final Cached<Boolean> HIDE_INBOX_INSTANTS =
+            new Cached<>(() -> SharedPref.getBooleanPref(Settings.HIDE_INBOX_INSTANTS), Settings.HIDE_INBOX_INSTANTS.key);
+
+    public static boolean hideInboxInstants() {
+        return SettingsStatus.hideInboxInstants && HIDE_INBOX_INSTANTS.get();
+    }
+
+    public static boolean hideReelsTabHeader() {
+        return SharedPref.getBooleanPref(Settings.HIDE_REELS_TAB_HEADER) && SettingsStatus.hideReelsTabHeader;
+    }
+
     public static boolean disableReelsScrolling() {
         return lockable(Settings.DISABLE_REELS_SCROLLING) && SettingsStatus.disableReelsScrolling;
     }
