@@ -31,6 +31,7 @@ import app.morphe.extension.instagram.patches.dm.HiddenChatsPref;
 import app.morphe.extension.instagram.patches.dm.InboxLock;
 import app.morphe.extension.instagram.patches.story.StoryUserList;
 import app.morphe.extension.instagram.settings.AccountSettings;
+import app.morphe.extension.instagram.settings.BooleanSetting;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
@@ -127,7 +128,8 @@ public final class ActivityAlerts {
                 boolean cameOnline = Boolean.TRUE.equals(active);
                 if (cameOnline ? online : offline) {
                     post(account, user, chatOf(listed.getKey()), listed.getValue(),
-                            str(cameOnline ? "spookd_activity_came_online" : "spookd_activity_went_offline"));
+                            str(cameOnline ? "spookd_activity_came_online" : "spookd_activity_went_offline"),
+                            cameOnline ? Settings.ACTIVITY_ALERT_ONLINE : Settings.ACTIVITY_ALERT_OFFLINE);
                 }
             }
         } catch (Throwable t) {
@@ -139,7 +141,7 @@ public final class ActivityAlerts {
     public static void onTyping(Object chat, Object sender, int activity) {
         try {
             if (activity == 0 || !Pref.activityAlert(Settings.ACTIVITY_ALERT_TYPING)) return;
-            notifyListed(pairId(sender), pairId(chat), "typing", "spookd_activity_typing");
+            notifyListed(pairId(sender), pairId(chat), Settings.ACTIVITY_ALERT_TYPING, "spookd_activity_typing");
         } catch (Throwable t) {
             Logger.printException(() -> "ActivityAlerts.onTyping failed", t);
         }
@@ -149,7 +151,7 @@ public final class ActivityAlerts {
     public static void onReadReceipt(String reader, String readAtMs, String chat) {
         try {
             if (!Pref.activityAlert(Settings.ACTIVITY_ALERT_READ) || !recent(readAtMs, System.currentTimeMillis())) return;
-            notifyListed(reader, chat, "read", "spookd_activity_read");
+            notifyListed(reader, chat, Settings.ACTIVITY_ALERT_READ, "spookd_activity_read");
         } catch (Throwable t) {
             Logger.printException(() -> "ActivityAlerts.onReadReceipt failed", t);
         }
@@ -192,21 +194,25 @@ public final class ActivityAlerts {
         return null;
     }
 
-    private static void notifyListed(String user, String chat, String kind, String textKey) {
+    private static void notifyListed(String user, String chat, BooleanSetting kind, String textKey) {
         String account = currentAccount();
         if (account == null || user == null || chat == null || user.equals(account)) return;
         String name = StoryUserList.ACTIVITY_ALERTS.all(account).get(entry(user, chat));
-        if (name == null || !TRACKER.due(account + ":" + user + ":" + kind, SystemClock.elapsedRealtime())) return;
-        post(account, user, chat, name, str(textKey));
+        if (name == null || !TRACKER.due(account + ":" + user + ":" + kind.key, SystemClock.elapsedRealtime())) return;
+        post(account, user, chat, name, str(textKey), kind);
     }
 
     /**
      * One notification per person, replaced by their next one; tapping it opens the chat. The chat link opens with the
      * current account, so only that account's notifications are posted and kept: {@link #onCurrentSession} removes the rest.
      */
-    private static void post(String account, String user, String chat, String name, String text) {
+    private static void post(String account, String user, String chat, String name, String text, BooleanSetting kind) {
         Utils.runOnMainThread(() -> {
-            if (!account.equals(currentAccount()) || hiddenAndMuted(account, chat)) return;
+            // Checked again as it is posted, so turning the kind off or removing the person in between keeps it out.
+            if (!account.equals(currentAccount()) || !stillWanted(kind, account, user, chat)
+                    || hiddenAndMuted(account, chat)) {
+                return;
+            }
             Context context = Utils.getContext();
             NotificationManager manager = context == null ? null
                     : (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -328,6 +334,10 @@ public final class ActivityAlerts {
         } catch (Throwable t) {
             Logger.printException(() -> "ActivityAlerts.onCurrentSession failed", t);
         }
+    }
+
+    private static boolean stillWanted(BooleanSetting kind, String account, String user, String chat) {
+        return Pref.activityAlert(kind) && StoryUserList.ACTIVITY_ALERTS.all(account).containsKey(entry(user, chat));
     }
 
     // Checked as the notification is posted, so hiding the chat in between still keeps it out.
