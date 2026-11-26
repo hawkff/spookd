@@ -1,9 +1,13 @@
 package app.morphe.extension.instagram.patches.dm;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 
 import org.junit.Test;
@@ -36,5 +40,22 @@ public class DmGhostChatsTest {
         }
         assertTrue(DmGhostChats.appliesTo("removed_mode", "2", CHOSEN));
         assertTrue(DmGhostChats.appliesTo(null, "2", CHOSEN));
+    }
+
+    @Test
+    public void anUnknownAccountStaysAnonymous() {
+        assertTrue(DmGhostChats.appliesTo(DmGhostChats.MODE_ONLY_LISTED, null, "2"));
+        assertTrue(DmGhostChats.appliesTo(DmGhostChats.MODE_ONLY_LISTED, "", "2"));
+    }
+
+    @Test
+    public void theMenuEntryLeavesPinRecipientsItsButtonsNextToANativeOne() {
+        // Pin recipients borrows DETAILS or REPLAY_VISUAL_MESSAGE; with one of them native it needs the other.
+        assertEquals("THREAD_LEVEL_DEBUG", DmGhostChats.freeButton(new HashSet<>(Arrays.asList("DETAILS"))));
+        assertEquals("THREAD_LEVEL_DEBUG", DmGhostChats.freeButton(new HashSet<>(Arrays.asList("REPLAY_VISUAL_MESSAGE"))));
+        // With the debug entry already listed (debug mode), the entry falls back to a free borrowed one.
+        assertEquals("REPLAY_VISUAL_MESSAGE",
+                DmGhostChats.freeButton(new HashSet<>(Arrays.asList("THREAD_LEVEL_DEBUG", "DETAILS"))));
+        assertNull(DmGhostChats.freeButton(new HashSet<>(Arrays.asList(DmGhostChats.MENU_BUTTONS))));
     }
 }

@@ -152,9 +152,9 @@ public class Pref {
         );
     }
 
-    /** The seen request of one chat: true blocks it, as {@link #viewDmAnonymously()} limited to the chats the mode covers. */
-    public static boolean viewDmAnonymously(String threadId) {
-        return viewDmAnonymously() && DmGhostChats.appliesTo(dmGhostMode(), threadId);
+    /** The seen request of one chat of an account: true blocks it, as {@link #viewDmAnonymously()} limited to the chats the mode covers. */
+    public static boolean viewDmAnonymously(String account, String threadId) {
+        return viewDmAnonymously() && DmGhostChats.appliesTo(dmGhostMode(), account, threadId);
     }
 
     /** "everyone", "except_listed" or "only_listed": the chats View DMs anonymously covers. */

@@ -130,7 +130,7 @@ public class MarkChatAsRead {
             if(buttonEnumTag.equals("MARK_AS_READ")){
                 MarkChatAsRead.markAsRead(userSession, unknown, directThreadKey);
                 return true;
-            } else if(buttonEnumTag.equals("THREAD_LEVEL_DEBUG")){
+            } else if(buttonEnumTag.equals("THREAD_LEVEL_DEBUG") && !DmGhostChats.ownsMenuButton(buttonEnumTag)){
                 ObjectBrowser.browseObject(context, unknown);
                 return true;
             }
