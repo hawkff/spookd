@@ -39,6 +39,10 @@ public final class GalleryStore {
     private static final String COLUMNS = "id, file, tab, kind, file_name, sub_folder,"
             + " owner_username, owner_id, media_id, link, account_id, saved_at, taken_at,"
             + " size_bytes, duration_ms";
+    static final String SORT_NEWEST = "newest";
+    static final String SORT_OLDEST = "oldest";
+    static final String SORT_SIZE = "size";
+    static final String SORT_USERNAME = "username";
 
     /** What {@link #publish} does when a saved download already has the same subfolder and name. */
     public enum Conflict { RENAME, SKIP, OVERWRITE }
@@ -54,6 +58,7 @@ public final class GalleryStore {
         public final long savedAt;
         public final long sizeBytes;
         public final Long durationMs;
+        public final boolean favorite;
 
         private Entry(Cursor c, File dir) {
             id = c.getLong(0);
@@ -66,6 +71,7 @@ public final class GalleryStore {
             savedAt = c.getLong(11);
             sizeBytes = c.getLong(13);
             durationMs = c.isNull(14) ? null : c.getLong(14);
+            favorite = c.getInt(15) != 0;
         }
     }
 
@@ -214,12 +220,71 @@ public final class GalleryStore {
 
     /** Saved downloads of one tab, newest first. */
     public synchronized List<Entry> list(GalleryTab tab) {
+        return list(tab, null, false, null, SORT_NEWEST);
+    }
+
+    /**
+     * Saved downloads matching every filter given, in {@code sort} order: a null {@code tab} or
+     * {@code kind} matches all, and {@code username} is a case-insensitive part of the owner's name.
+     * By username, downloads without an owner come last.
+     */
+    public synchronized List<Entry> list(GalleryTab tab, String kind, boolean favoritesOnly, String username,
+                                         String sort) {
         recover();
+        StringBuilder where = new StringBuilder(" WHERE 1");
+        List<String> args = new ArrayList<>();
+        if (tab != null) {
+            where.append(" AND tab = ?");
+            args.add(tab.name().toLowerCase(Locale.ROOT));
+        }
+        if (kind != null) {
+            where.append(" AND kind = ?");
+            args.add(kind);
+        }
+        if (favoritesOnly) where.append(" AND f.item_id IS NOT NULL");
+        if (username != null && !username.isEmpty()) {
+            where.append(" AND owner_username LIKE ? ESCAPE '\\'");
+            args.add("%" + username.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
+        }
+        String order = SORT_OLDEST.equals(sort) ? "saved_at, id"
+                : SORT_SIZE.equals(sort) ? "size_bytes DESC, id DESC"
+                : SORT_USERNAME.equals(sort) ? "owner_username IS NULL OR owner_username = '',"
+                + " owner_username COLLATE NOCASE, saved_at DESC, id DESC"
+                : "saved_at DESC, id DESC";
         List<Entry> out = new ArrayList<>();
-        try (Cursor c = db.rawQuery("SELECT " + COLUMNS + " FROM gallery_items WHERE tab = ?"
-                        + " ORDER BY saved_at DESC, id DESC",
-                new String[]{tab.name().toLowerCase(Locale.ROOT)})) {
+        try (Cursor c = db.rawQuery("SELECT " + COLUMNS + ", f.item_id IS NOT NULL FROM gallery_items"
+                        + " LEFT JOIN gallery_favorites f ON f.vault = 0 AND f.item_id = id"
+                        + where + " ORDER BY " + order,
+                args.toArray(new String[0]))) {
             while (c.moveToNext()) out.add(new Entry(c, dir));
+        }
+        return out;
+    }
+
+    /** Whether any saved download is in {@code tab}. */
+    public synchronized boolean has(GalleryTab tab) {
+        recover();
+        try (Cursor c = db.rawQuery("SELECT 1 FROM gallery_items WHERE tab = ? LIMIT 1",
+                new String[]{tab.name().toLowerCase(Locale.ROOT)})) {
+            return c.moveToFirst();
+        }
+    }
+
+    /** Stars or unstars a download, or with {@code vault} a stored DM item; a deleted download loses its star. */
+    public synchronized void setFavorite(boolean vault, long id, boolean favorite) {
+        String[] args = {vault ? "1" : "0", String.valueOf(id)};
+        if (favorite) {
+            db.execSQL("INSERT OR IGNORE INTO gallery_favorites (vault, item_id) VALUES (?, ?)", args);
+        } else {
+            db.delete("gallery_favorites", "vault = ? AND item_id = ?", args);
+        }
+    }
+
+    /** Row ids of the starred stored DM items. */
+    public synchronized Set<Long> favoriteVaultIds() {
+        Set<Long> out = new HashSet<>();
+        try (Cursor c = db.rawQuery("SELECT item_id FROM gallery_favorites WHERE vault = 1", null)) {
+            while (c.moveToNext()) out.add(c.getLong(0));
         }
         return out;
     }

@@ -536,6 +536,71 @@ public final class GalleryStoreTest {
         assertEquals("one", read(entries.get(0).file));
     }
 
+    @Test
+    public void listFiltersAndSortsInTheDatabase() throws Exception {
+        long bob = saved(GalleryTab.REELS, GalleryItem.VIDEO, "Bob", "12345");
+        long unknown = saved(GalleryTab.POSTS, GalleryItem.PHOTO, null, "1");
+        long alice = saved(GalleryTab.POSTS, GalleryItem.PHOTO, "alice_x", "12");
+        long aliceVideo = saved(GalleryTab.STORIES, GalleryItem.VIDEO, "alicex", "123");
+
+        assertEquals(Arrays.asList(aliceVideo, alice, unknown, bob),
+                ids(store.list(null, null, false, null, GalleryStore.SORT_NEWEST)));
+        assertEquals(Arrays.asList(bob, unknown, alice, aliceVideo),
+                ids(store.list(null, null, false, null, GalleryStore.SORT_OLDEST)));
+        assertEquals(Arrays.asList(bob, aliceVideo, alice, unknown),
+                ids(store.list(null, null, false, null, GalleryStore.SORT_SIZE)));
+        assertEquals(Arrays.asList(alice, aliceVideo, bob, unknown),
+                ids(store.list(null, null, false, null, GalleryStore.SORT_USERNAME)));
+        assertEquals(Arrays.asList(alice, unknown),
+                ids(store.list(GalleryTab.POSTS, null, false, null, GalleryStore.SORT_NEWEST)));
+        assertEquals(Arrays.asList(aliceVideo, bob),
+                ids(store.list(null, GalleryItem.VIDEO, false, null, GalleryStore.SORT_NEWEST)));
+        // The underscore is matched as itself, not as any one character.
+        assertEquals(Collections.singletonList(alice),
+                ids(store.list(null, null, false, "ALICE_", GalleryStore.SORT_NEWEST)));
+        assertEquals(Collections.singletonList(bob),
+                ids(store.list(null, null, false, "ob", GalleryStore.SORT_NEWEST)));
+    }
+
+    @Test
+    public void favoritesAreListedAndGoWithTheirDownload() throws Exception {
+        long first = saved(GalleryTab.POSTS, GalleryItem.PHOTO, "alice", "1");
+        long second = saved(GalleryTab.POSTS, GalleryItem.PHOTO, "alice", "2");
+        store.setFavorite(false, first, true);
+        store.setFavorite(false, first, true);
+        store.setFavorite(true, first, true);
+
+        List<GalleryStore.Entry> starred = store.list(null, null, true, null, GalleryStore.SORT_NEWEST);
+        assertEquals(Collections.singletonList(first), ids(starred));
+        assertTrue(starred.get(0).favorite);
+        assertFalse(store.list(GalleryTab.POSTS).get(0).favorite);
+        assertEquals(Collections.singleton(first), store.favoriteVaultIds());
+
+        assertTrue(store.delete(first));
+        assertTrue(store.list(null, null, true, null, GalleryStore.SORT_NEWEST).isEmpty());
+        // The DM item's star is its own row, untouched by the download's delete.
+        assertEquals(Collections.singleton(first), store.favoriteVaultIds());
+        store.setFavorite(true, first, false);
+        assertTrue(store.favoriteVaultIds().isEmpty());
+        assertEquals(Collections.singletonList(second), ids(store.list(GalleryTab.POSTS)));
+    }
+
+    @Test
+    public void hasTellsWhetherATabHasDownloads() throws Exception {
+        assertFalse(store.has(GalleryTab.DMS));
+        saved(GalleryTab.DMS, GalleryItem.PHOTO, "alice", "1");
+        assertTrue(store.has(GalleryTab.DMS));
+        assertFalse(store.has(GalleryTab.REELS));
+    }
+
+    /** A download one minute after the previous one, as big as {@code content}. */
+    private long saved(GalleryTab tab, String kind, String owner, String content) throws IOException {
+        clock[0] += 60_000;
+        GalleryItem item = new GalleryItem(tab, kind, owner, null, null, null, null, null);
+        String name = GalleryItem.VIDEO.equals(kind) ? "f.mp4" : "f.jpg";
+        return store.publish(part(content), item, null, name, false);
+    }
+
     private static GalleryItem story(String mediaId) {
         return new GalleryItem(GalleryTab.STORIES, GalleryItem.PHOTO, "alice", "11", mediaId, null, "33", 5000L);
     }
