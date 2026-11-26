@@ -315,6 +315,16 @@ public class ScreenBuilder {
             );
         }
 
+        if (SettingsStatus.exactLastActive) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_exact_last_active"),
+                            str("spookd_exact_last_active_desc"),
+                            Settings.EXACT_LAST_ACTIVE
+                    )
+            );
+        }
+
         if (SettingsStatus.markChatAsRead) {
             addPreference(
                     helper.switchPreference(
