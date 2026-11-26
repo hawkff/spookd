@@ -26,8 +26,11 @@ import java.util.List;
 @Config(sdk = 29, manifest = Config.NONE)
 public final class SpookdMessageDbMigrationTest {
     private static final String DB_NAME = "piko_dm_vault.db";
-    // Added in version 7.
-    private static final String[] V7_NAMES = {"message_reactions", "idx_reactions_live", "idx_reactions_message"};
+    // Added in version 9.
+    private static final String[] V9_NAMES = {"idx_deleted_time", "idx_reactions_removed_time"};
+    // Added in versions 7 and 9.
+    private static final String[] V7_NAMES = concat(V9_NAMES,
+            "message_reactions", "idx_reactions_live", "idx_reactions_message");
 
     @Test
     public void upgradesV4WithRowsIntact() throws Exception {
@@ -145,9 +148,49 @@ public final class SpookdMessageDbMigrationTest {
         assertEquals(Arrays.asList("sender_id", "username", "pic_url"), columns(db, "user_directory"));
         helper.close();
 
-        assertEquals(upgradedDirectory(before), withoutDirectorySchema(dump(context)));
+        assertEquals(upgradedDirectory(before), withoutDirectorySchema(dump(context, V9_NAMES)));
         assertEquals(2, before.stream().filter(line -> line.startsWith("message_reactions|")).count());
         assertEquals(2, before.stream().filter(line -> line.startsWith("user_directory|")).count());
+    }
+
+    @Test
+    public void upgradesV8WithEveryRowIntactAndAddsTheLogIndexes() throws Exception {
+        Context context = RuntimeEnvironment.getApplication();
+        SpookdMessageDb current = newHelper(context);
+        SQLiteDatabase v8 = current.getWritableDatabase();
+        insertMessages(v8);
+        v8.execSQL("UPDATE user_directory SET pic_url = 'https://x.fbcdn.net/p.jpg' WHERE sender_id = '1234567'");
+        v8.execSQL("INSERT INTO message_reactions (message_id, sender_id, emoji, removed_at) VALUES"
+                + " ('31000000000000000000000000001', '7654321', 'x', 1690000005000)");
+        for (String name : V9_NAMES) v8.execSQL("DROP INDEX " + name);
+        v8.setVersion(8);
+        current.close();
+        List<String> before = dump(context);
+
+        SpookdMessageDb helper = newHelper(context);
+        SQLiteDatabase db = helper.getWritableDatabase();
+        assertEquals(SpookdMessageDb.DB_VERSION, db.getVersion());
+        for (String name : V9_NAMES) assertTrue(hasIndex(db, name));
+        helper.close();
+
+        assertEquals(before, dump(context, V9_NAMES));
+        assertEquals(3, before.stream().filter(line -> line.startsWith("saved_messages|")).count());
+    }
+
+    @Test
+    public void deletedLogPagesSeekTheirIndexes() throws Exception {
+        SpookdMessageDb helper = newHelper(RuntimeEnvironment.getApplication());
+        SQLiteDatabase db = helper.getWritableDatabase();
+        String[] cursor = {"31000000000000000000000000001", "t", "u", "c", "text", "1690000000000", "1", "5"};
+        for (String[] after : new String[][]{null, cursor}) {
+            StringBuilder plan = new StringBuilder();
+            Cursor rows = db.rawQuery("EXPLAIN QUERY PLAN " + SpookdMessageDb.deletedPageQuery(200, after), null);
+            while (rows.moveToNext()) plan.append(rows.getString(rows.getColumnCount() - 1)).append('\n');
+            rows.close();
+            assertTrue(plan.toString(), plan.indexOf("idx_deleted_time") >= 0);
+            assertTrue(plan.toString(), plan.indexOf("idx_reactions_removed_time") >= 0);
+        }
+        helper.close();
     }
 
     @Test

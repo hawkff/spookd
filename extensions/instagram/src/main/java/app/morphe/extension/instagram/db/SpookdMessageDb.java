@@ -19,7 +19,7 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
 
     // Legacy stored name: existing installs keep their database under it.
     private static final String DB_NAME = "piko_dm_vault.db";
-    static final int DB_VERSION = 8;
+    static final int DB_VERSION = 9;
     /** The message type of a removed reaction row in {@link #getDeletedMessages()}. */
     public static final String REMOVED_REACTION = "removed_reaction";
     /** The id prefix of a removed reaction row in {@link #getDeletedMessages()}. */
@@ -95,6 +95,15 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
     // Version 8: the sender's profile picture link, NULL until one is known.
     static final String USER_DIRECTORY_PIC_URL = "ALTER TABLE user_directory ADD COLUMN pic_url TEXT";
 
+    // Version 9: the deleted log walks unsent messages and removed reactions newest first by these.
+    static String[] deletedLogIndexStatements() {
+        return new String[]{
+                "CREATE INDEX idx_deleted_time ON " + TABLE + "(timestamp, id) WHERE is_deleted = 1",
+                "CREATE INDEX idx_reactions_removed_time ON message_reactions(removed_at, id)"
+                        + " WHERE removed_at IS NOT NULL"
+        };
+    }
+
     static String[] upgradeStatements(int oldVersion) {
         List<String> statements = new ArrayList<>();
         if (oldVersion < 3) {
@@ -115,6 +124,9 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         }
         if (oldVersion < 8) {
             statements.add(USER_DIRECTORY_PIC_URL);
+        }
+        if (oldVersion < 9) {
+            java.util.Collections.addAll(statements, deletedLogIndexStatements());
         }
         return statements.toArray(new String[0]);
     }
@@ -163,6 +175,9 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
             db.execSQL(statement);
         }
         db.execSQL(USER_DIRECTORY_PIC_URL);
+        for (String statement : deletedLogIndexStatements()) {
+            db.execSQL(statement);
+        }
     }
 
     private void createDirTable(SQLiteDatabase db) {
@@ -617,8 +632,8 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
     }
 
     private static final String HAS_CONTENT =
-        " AND (COALESCE(content, '') <> '' OR COALESCE(sender_id, '') <> ''"
-            + " OR COALESCE(sender_username, '') <> '')";
+        " AND (COALESCE(m.content, '') <> '' OR COALESCE(m.sender_id, '') <> ''"
+            + " OR COALESCE(m.sender_username, '') <> '')";
 
     /** The largest page {@link #getDeletedMessages(int, String[])} returns. */
     public static final int DELETED_PAGE_SIZE = 200;
@@ -638,34 +653,18 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
      */
     public List<String[]> getDeletedMessages(int limit, String[] after) {
         List<String[]> result = new ArrayList<>();
-        SQLiteDatabase db = getReadableDatabase();
-        // Load the whole sender_id -> username directory once instead of letting each row
-        // that lacks a stored username fall back to its own query - this list can grow to
-        // hundreds/thousands of rows over time, which turned that fallback into an N+1 query.
-        java.util.Map<String, String> directory = loadUsernameDirectory(db);
-        int pageSize = Math.max(1, Math.min(limit, DELETED_PAGE_SIZE));
-        // Stored view-once and view-twice media is listed too, whether or not its message was unsent.
-        Cursor c = db.rawQuery("SELECT * FROM ("
-                + "SELECT 0 AS kind, id AS row_id, message_id, thread_id, sender_username, content,"
-                + " message_type, timestamp AS at, sender_id, NULL AS emoji, NULL AS reacted_type FROM " + TABLE
-                + " WHERE (is_deleted = 1 OR server_id IN (SELECT item_id FROM saved_media"
-                + " WHERE state = 'stored' AND view_mode IN ('once', 'replayable')))" + HAS_CONTENT
-                + " UNION ALL SELECT 1, r.id, NULL, m.thread_id, NULL, m.content, NULL, r.removed_at,"
-                + " r.sender_id, r.emoji, m.message_type FROM message_reactions r JOIN " + TABLE
-                + " m ON m.message_id = r.message_id WHERE r.removed_at IS NOT NULL"
-                + ")" + afterRow(after) + " ORDER BY at DESC, kind DESC, row_id DESC LIMIT " + pageSize,
-                null);
+        Cursor c = getReadableDatabase().rawQuery(
+                deletedPageQuery(Math.max(1, Math.min(limit, DELETED_PAGE_SIZE)), after), null);
         try {
             while (c.moveToNext()) {
                 String senderId = c.getString(8);
                 if (c.getInt(0) == 0) {
-                    result.add(new String[]{c.getString(2), c.getString(3),
-                            resolveUsername(c.getString(4), senderId, directory), c.getString(5),
+                    result.add(new String[]{c.getString(2), c.getString(3), c.getString(4), c.getString(5),
                             c.getString(6), String.valueOf(c.getLong(7)), senderId,
                             String.valueOf(c.getLong(1))});
                 } else {
                     result.add(new String[]{REACTION_ID_PREFIX + c.getLong(1), c.getString(3),
-                            directory.get(senderId), c.getString(5), REMOVED_REACTION,
+                            c.getString(4), c.getString(5), REMOVED_REACTION,
                             String.valueOf(c.getLong(7)), senderId, c.getString(9), c.getString(10),
                             String.valueOf(c.getLong(1))});
                 }
@@ -676,34 +675,54 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         return result;
     }
 
-    /** The keyset condition for rows after {@code row} in (at, kind, row_id) descending order. */
-    private static String afterRow(String[] row) {
-        if (row == null) return "";
-        // Parsed numbers inlined: bound text would compare as text against the untyped columns.
-        long at = Long.parseLong(row[5]);
-        int kind = REMOVED_REACTION.equals(row[4]) ? 1 : 0;
-        long rowId = Long.parseLong(row[row.length - 1]);
-        return " WHERE at < " + at + " OR (at = " + at + " AND (kind < " + kind
-                + " OR (kind = " + kind + " AND row_id < " + rowId + ")))";
+    /**
+     * Each branch seeks its own index past the cursor and stops at the page size; only those
+     * candidates are merged, ordered by (at, kind, row_id) descending, and given usernames.
+     */
+    static String deletedPageQuery(int pageSize, String[] after) {
+        long at = 0;
+        int kind = 0;
+        long rowId = 0;
+        if (after != null) {
+            at = Long.parseLong(after[5]);
+            kind = REMOVED_REACTION.equals(after[4]) ? 1 : 0;
+            rowId = Long.parseLong(after[after.length - 1]);
+        }
+        String messagesAfter = after == null ? "" : branchAfter("m.timestamp", "m.id", 0, at, kind, rowId);
+        String reactionsAfter = after == null ? "" : branchAfter("r.removed_at", "r.id", 1, at, kind, rowId);
+        String messageColumns = "SELECT 0 AS kind, m.id AS row_id, m.message_id, m.thread_id, m.sender_username,"
+                + " m.content, m.message_type, m.timestamp AS at, m.sender_id, NULL AS emoji, NULL AS reacted_type";
+        String messageOrder = " ORDER BY m.timestamp DESC, m.id DESC LIMIT " + pageSize;
+        return "SELECT x.kind, x.row_id, x.message_id, x.thread_id,"
+                + " CASE WHEN x.kind = 0 THEN COALESCE(NULLIF(x.sender_username, ''), NULLIF(d.username, ''),"
+                + " x.sender_username) ELSE d.username END, x.content, x.message_type, x.at, x.sender_id,"
+                + " x.emoji, x.reacted_type FROM ("
+                // Unsent messages.
+                + "SELECT * FROM (" + messageColumns + " FROM " + TABLE + " m INDEXED BY idx_deleted_time"
+                + " WHERE m.is_deleted = 1" + HAS_CONTENT + messagesAfter + messageOrder + ")"
+                // Stored view-once and view-twice media whose message was not unsent; the vault is small.
+                + " UNION ALL SELECT * FROM (" + messageColumns + " FROM saved_media s JOIN " + TABLE
+                + " m ON m.server_id = s.item_id WHERE s.state = 'stored' AND s.view_mode IN ('once', 'replayable')"
+                + " AND COALESCE(m.is_deleted, 0) = 0" + HAS_CONTENT + messagesAfter + messageOrder + ")"
+                // Removed reactions.
+                + " UNION ALL SELECT * FROM (SELECT 1, r.id, NULL, m.thread_id, NULL, m.content, NULL,"
+                + " r.removed_at, r.sender_id, r.emoji, m.message_type FROM message_reactions r"
+                + " INDEXED BY idx_reactions_removed_time JOIN " + TABLE + " m ON m.message_id = r.message_id"
+                + " WHERE r.removed_at IS NOT NULL" + reactionsAfter
+                + " ORDER BY r.removed_at DESC, r.id DESC LIMIT " + pageSize + ")"
+                + ") x LEFT JOIN " + DIR_TABLE + " d ON d.sender_id = x.sender_id"
+                + " ORDER BY x.at DESC, x.kind DESC, x.row_id DESC LIMIT " + pageSize;
     }
 
-    private java.util.Map<String, String> loadUsernameDirectory(SQLiteDatabase db) {
-        java.util.Map<String, String> directory = new java.util.HashMap<>();
-        Cursor c = db.query(DIR_TABLE, new String[]{"sender_id", "username"}, null, null, null, null, null);
-        while (c.moveToNext()) {
-            directory.put(c.getString(0), c.getString(1));
-        }
-        c.close();
-        return directory;
-    }
-
-    private String resolveUsername(String storedUsername, String senderId, java.util.Map<String, String> directory) {
-        if (storedUsername != null && !storedUsername.isEmpty()) return storedUsername;
-        if (senderId != null && !senderId.isEmpty()) {
-            String dir = directory.get(senderId);
-            if (dir != null && !dir.isEmpty()) return dir;
-        }
-        return storedUsername;
+    /**
+     * The rows of one branch that come after the cursor (at, kind, rowId): a range on the branch's
+     * time column its index can seek, with the id breaking ties within the cursor's own kind.
+     * Parsed numbers are inlined, since bound text would compare as text.
+     */
+    private static String branchAfter(String time, String id, int branchKind, long at, int kind, long rowId) {
+        if (branchKind < kind) return " AND " + time + " <= " + at;
+        if (branchKind > kind) return " AND " + time + " < " + at;
+        return " AND " + time + " <= " + at + " AND (" + time + " < " + at + " OR " + id + " < " + rowId + ")";
     }
 
 }
