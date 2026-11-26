@@ -8,8 +8,6 @@ package app.morphe.extension.instagram.patches.instants;
 
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import app.morphe.extension.instagram.patches.confirm.ActionConfirm;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
@@ -38,38 +36,20 @@ public final class InstantsSend {
             }
             if (!Pref.confirmInstantVideo() || !isVideoNative(send)) return true;
 
-            AtomicBoolean settled = new AtomicBoolean();
-            Runnable sendNow = () -> {
-                if (settled.compareAndSet(false, true)) resend(send, camera);
-            };
-            Runnable discard = () -> {
-                if (settled.compareAndSet(false, true)) discard(send, camera);
-            };
+            InstantsHold hold = new InstantsHold(() -> resend(send, camera), () -> discard(send, camera));
             InstantsOrigin origin = InstantsOrigin.current();
             if (Utils.isCurrentlyOnMainThread()) {
-                if (!origin.left()) return !ActionConfirm.askInstantSend(null, send, sendNow, discard);
-                discard.run();
+                if (!origin.left()) return !ActionConfirm.askInstantSend(null, send, hold::send, hold::drop);
+                hold.drop();
                 return false;
             }
-            Utils.runOnMainThread(() -> askLater(origin, null, send, sendNow, discard));
+            Utils.runOnMainThread(() -> hold.askLater(origin::left,
+                    asked -> ActionConfirm.askInstantSend(null, send, asked::send, asked::drop)));
             return false;
         } catch (Throwable t) {
             Logger.printException(() -> "Failed to check an Instant before sending", t);
             return true;
         }
-    }
-
-    /** Main thread: a camera left before the question shows discards; a question that cannot show sends. */
-    static void askLater(InstantsOrigin origin, String emoji, Object token, Runnable send, Runnable drop) {
-        boolean left;
-        try {
-            left = origin.left();
-        } catch (Throwable t) {
-            Logger.printException(() -> "Failed to check the Instants screen", t);
-            left = false;
-        }
-        if (left) drop.run();
-        else if (!ActionConfirm.askInstantSend(emoji, token, send, drop)) send.run();
     }
 
     private static void resend(Object send, Object camera) {

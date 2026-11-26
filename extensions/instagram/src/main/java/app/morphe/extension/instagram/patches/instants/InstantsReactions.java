@@ -6,7 +6,8 @@
 
 package app.morphe.extension.instagram.patches.instants;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 
 import app.morphe.extension.instagram.patches.confirm.ActionConfirm;
 import app.morphe.extension.instagram.utils.Pref;
@@ -38,20 +39,16 @@ public final class InstantsReactions {
             Object suspended = suspendedNative();
             if (suspended == null) return null;
 
-            AtomicBoolean settled = new AtomicBoolean();
-            Runnable send = () -> {
-                if (settled.compareAndSet(false, true)) send(api, mediaId, emoji, continuation, suspended);
-            };
-            Runnable cancel = () -> {
-                if (settled.compareAndSet(false, true)) resume(continuation, Boolean.FALSE);
-            };
+            InstantsHold hold = new InstantsHold(() -> send(api, mediaId, emoji, continuation, suspended),
+                    () -> resume(continuation, Boolean.FALSE));
             InstantsOrigin origin = InstantsOrigin.current();
             if (Utils.isCurrentlyOnMainThread()) {
                 // A viewer already left gets Instagram's not-sent result right away.
                 if (origin.left()) return Boolean.FALSE;
-                return ActionConfirm.askInstantSend(emoji, continuation, send, cancel) ? suspended : null;
+                return ActionConfirm.askInstantSend(emoji, continuation, hold::send, hold::drop) ? suspended : null;
             }
-            Utils.runOnMainThread(() -> InstantsSend.askLater(origin, emoji, continuation, send, cancel));
+            Utils.runOnMainThread(() -> hold.askLater(origin::left,
+                    asked -> ActionConfirm.askInstantSend(emoji, continuation, asked::send, asked::drop)));
             return suspended;
         } catch (Throwable t) {
             Logger.printException(() -> "Failed to hold an Instant reaction", t);
@@ -60,18 +57,25 @@ public final class InstantsReactions {
     }
 
     private static void send(Object api, String mediaId, String emoji, Object continuation, Object suspended) {
-        Object result;
         replaying = continuation;
         try {
-            result = reactNative(api, mediaId, emoji, continuation);
-        } catch (Throwable t) {
-            Logger.printException(() -> "Failed to send a confirmed Instant reaction", t);
-            result = Boolean.FALSE;
+            sendThrough(() -> reactNative(api, mediaId, emoji, continuation), suspended,
+                    result -> resume(continuation, result));
         } finally {
             replaying = null;
         }
-        // A call that suspended resumes its caller itself once the request finishes.
-        if (result != suspended) resume(continuation, result);
+    }
+
+    /** Runs the reaction send; unless it suspended, which resumes its caller later, its result resumes the caller once. */
+    static void sendThrough(Callable<Object> react, Object suspended, Consumer<Object> resume) {
+        Object result;
+        try {
+            result = react.call();
+        } catch (Throwable t) {
+            Logger.printException(() -> "Failed to send a confirmed Instant reaction", t);
+            result = Boolean.FALSE;
+        }
+        if (result != suspended) resume.accept(result);
     }
 
     private static void resume(Object continuation, Object result) {
