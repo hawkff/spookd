@@ -28,6 +28,8 @@ import app.morphe.extension.shared.Logger;
 public final class GalleryPicker {
     /** Intent extra that opens the private gallery to pick one photo or video. */
     public static final String EXTRA_PICK = "spookd_gallery_pick";
+    /** Intent extra set when the sheet takes photos only, as the comment photo button's does. */
+    public static final String EXTRA_PHOTOS_ONLY = "spookd_gallery_photos_only";
     // The sheet imports this request's result URI as external media.
     private static final int EXTERNAL_MEDIA_REQUEST = 1002;
     private static final String GALLERY_VIEW = "com.instagram.ui.widget.gallery.GalleryView";
@@ -46,20 +48,27 @@ public final class GalleryPicker {
     }
 
     /** The modal screen in private gallery pick mode; the extras match ActivityHook's launch. */
-    static Intent pickIntent(String packageName) {
+    static Intent pickIntent(String packageName, boolean photosOnly) {
         return new Intent()
                 .setClassName(packageName, "com.instagram.modal.ModalActivity")
                 .putExtra("piko", true)
                 .putExtra("fragment_arguments", new Bundle())
                 .putExtra("piko_launch_type", "private_gallery")
-                .putExtra(EXTRA_PICK, true);
+                .putExtra(EXTRA_PICK, true)
+                .putExtra(EXTRA_PHOTOS_ONLY, photosOnly);
+    }
+
+    // The patch replaces this body with a read of the sheet's own flag for offering videos.
+    public static boolean allowsVideo(Object sheet) {
+        return false;
     }
 
     /** Main thread. */
     private static void open(Fragment sheet, View entry) {
         try {
             if (!sheet.isAdded()) return;
-            sheet.startActivityForResult(pickIntent(entry.getContext().getPackageName()), EXTERNAL_MEDIA_REQUEST);
+            sheet.startActivityForResult(pickIntent(entry.getContext().getPackageName(), !allowsVideo(sheet)),
+                    EXTERNAL_MEDIA_REQUEST);
         } catch (Throwable t) {
             Logger.printException(() -> "GalleryPicker: cannot open the gallery", t);
         }

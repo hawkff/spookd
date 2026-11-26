@@ -1,6 +1,8 @@
 package app.morphe.extension.instagram.patches.download.gallery;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -33,5 +35,15 @@ public final class PrivateGalleryActivityTest {
         assertEquals(533, PrivateGalleryActivity.frameBox(1080, 1920, 300));
         assertEquals(1200, PrivateGalleryActivity.frameBox(10000, 100, 300));
         assertEquals(0, PrivateGalleryActivity.frameBox(0, 1080, 300));
+    }
+
+    @Test
+    public void pickModeListsPhotosAndOnlyOffersVideosWhenThePickerTakesThem() {
+        assertTrue(PrivateGalleryActivity.pickable(GalleryItem.PHOTO, true));
+        assertTrue(PrivateGalleryActivity.pickable(GalleryItem.PHOTO, false));
+        assertTrue(PrivateGalleryActivity.pickable(GalleryItem.VIDEO, false));
+        assertFalse(PrivateGalleryActivity.pickable(GalleryItem.VIDEO, true));
+        assertFalse(PrivateGalleryActivity.pickable(GalleryItem.AUDIO, false));
+        assertFalse(PrivateGalleryActivity.pickable("voice", false));
     }
 }

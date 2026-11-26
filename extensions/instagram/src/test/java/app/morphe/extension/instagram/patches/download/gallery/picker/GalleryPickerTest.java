@@ -17,7 +17,7 @@ import app.morphe.extension.instagram.settings.ActivityHook;
 public final class GalleryPickerTest {
     @Test
     public void pickIntentOpensThePrivateGalleryInPickMode() {
-        Intent intent = GalleryPicker.pickIntent("com.instagram.android");
+        Intent intent = GalleryPicker.pickIntent("com.instagram.android", true);
 
         assertTrue(ActivityHook.isSpookdIntent(intent));
         assertEquals("com.instagram.android", intent.getComponent().getPackageName());

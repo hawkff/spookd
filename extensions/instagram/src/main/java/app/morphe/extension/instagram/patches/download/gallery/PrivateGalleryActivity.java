@@ -305,6 +305,7 @@ public final class PrivateGalleryActivity {
         private final Activity activity;
         /** Opened by Instagram's media picker: a tap returns that photo or video. */
         private final boolean picking;
+        private final boolean photosOnly;
         private final Handler ui = new Handler(Looper.getMainLooper());
         private final Runnable searchReload = () -> reload(false);
         private List<Item> list = Collections.emptyList();
@@ -351,6 +352,7 @@ public final class PrivateGalleryActivity {
             this.activity = activity;
             Intent intent = activity.getIntent();
             picking = intent != null && intent.getBooleanExtra(GalleryPicker.EXTRA_PICK, false);
+            photosOnly = intent != null && intent.getBooleanExtra(GalleryPicker.EXTRA_PHOTOS_ONLY, false);
             density = activity.getResources().getDisplayMetrics().density;
         }
 
@@ -609,7 +611,7 @@ public final class PrivateGalleryActivity {
         }
 
         private void show(Loaded loaded) {
-            if (picking) loaded.items.removeIf(item -> !item.photo() && !item.video());
+            if (picking) loaded.items.removeIf(item -> !pickable(item.kind, photosOnly));
             list = loaded.items;
             dmDownloads = loaded.dmDownloads;
             unknownDownloads = loaded.unknownDownloads;
@@ -1516,6 +1518,11 @@ public final class PrivateGalleryActivity {
         if (width <= 0 || height <= 0) return Integer.MAX_VALUE;
         int shorter = Math.min(width, height);
         return photo ? shorter / sampleSize(width, height, size) : Math.min(shorter, size);
+    }
+
+    /** Whether pick mode lists an item of {@code kind}: photos, and videos unless the picker takes photos only. */
+    static boolean pickable(String kind, boolean photosOnly) {
+        return GalleryItem.PHOTO.equals(kind) || (!photosOnly && GalleryItem.VIDEO.equals(kind));
     }
 
     /** The largest power-of-two step that keeps both sides at least {@code size}. */
