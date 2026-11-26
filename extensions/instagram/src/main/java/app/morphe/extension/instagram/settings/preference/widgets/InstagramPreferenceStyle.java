@@ -14,8 +14,6 @@ import android.content.res.TypedArray;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffColorFilter;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.preference.Preference;
@@ -366,8 +364,12 @@ public final class InstagramPreferenceStyle {
         TextView summary = view.findViewWithTag(TAG_SUMMARY);
         View trailing = view.findViewWithTag(TAG_TRAILING);
 
-        int titleColor = useNormalColors ? primaryTextColor() : disabledTextColor();
-        int summaryColor = useNormalColors ? secondaryTextColor() : disabledTextColor();
+        PreferenceRow row = view instanceof PreferenceRow ? (PreferenceRow) view : null;
+        int disabledColor = row != null ? row.disabledColor : disabledTextColor();
+        int titleColor = !useNormalColors ? disabledColor
+                : row != null ? row.primaryColor : primaryTextColor();
+        int summaryColor = !useNormalColors ? disabledColor
+                : row != null ? row.secondaryColor : secondaryTextColor();
 
         if (title != null) {
             title.setText(preference.getTitle());
@@ -388,17 +390,8 @@ public final class InstagramPreferenceStyle {
         }
 
         if (trailing != null) {
+            // Only chevron rows have a trailing icon, and its tint is set when it is created.
             trailing.setEnabled(enabled);
-            if (trailing instanceof ImageView) {
-                int trailingColor = useNormalColors
-                        ? UI.getThemedColour("igds_color_secondary_icon")
-                        : disabledTextColor();
-                ((ImageView) trailing).setColorFilter(new PorterDuffColorFilter(
-                        trailingColor,
-                        PorterDuff.Mode.SRC_ATOP
-                ));
-            }
-            trailing.invalidate();
         }
 
         if (chevron) {
@@ -658,6 +651,11 @@ public final class InstagramPreferenceStyle {
         private int dragOverlayColor;
         private boolean switchAccessibilityChecked;
         private ImageView iconView;
+        private String iconName;
+        private int pressedColor;
+        final int primaryColor = primaryTextColor();
+        final int secondaryColor = secondaryTextColor();
+        final int disabledColor = disabledTextColor();
 
 
         PreferenceRow(Context context, int trailingType) {
@@ -694,10 +692,14 @@ public final class InstagramPreferenceStyle {
             int horizontalPadding = dp(getContext(), iconResName != null ? 10 : 15);
             setPadding(horizontalPadding, getPaddingTop(), horizontalPadding, getPaddingBottom());
             if (iconResName == null) {
+                iconName = null;
                 if (iconView != null) {
                     iconView.setImageDrawable(null);
                     iconView.setVisibility(View.GONE);
                 }
+                return;
+            }
+            if (iconResName.equals(iconName)) {
                 return;
             }
             if (iconView == null) {
@@ -705,6 +707,7 @@ public final class InstagramPreferenceStyle {
             }
             UI.setThemedIcon(iconView, iconResName);
             iconView.setVisibility(View.VISIBLE);
+            iconName = iconResName;
         }
 
         void setHighlightView(View highlightView) {
@@ -808,13 +811,20 @@ public final class InstagramPreferenceStyle {
             if (drawPressedHighlight || drawDragHighlight) {
                 pressedPaint.setStyle(Paint.Style.FILL);
                 pressedPaint.setColor(
-                        drawDragHighlight ? dragOverlayColor : pressedBackgroundColor()
+                        drawDragHighlight ? dragOverlayColor : pressedColor()
                 );
                 int top = highlightTop();
                 int bottom = highlightBottom();
                 canvas.drawRect(0, top, getWidth(), bottom, pressedPaint);
             }
             super.dispatchDraw(canvas);
+        }
+
+        private int pressedColor() {
+            if (pressedColor == 0) {
+                pressedColor = pressedBackgroundColor();
+            }
+            return pressedColor;
         }
 
         private boolean shouldDrawPressedHighlight(float x, float y) {
@@ -883,6 +893,8 @@ public final class InstagramPreferenceStyle {
 
         DragHandleView(Context context) {
             super(context);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(secondaryTextColor());
         }
 
         @Override
@@ -895,8 +907,6 @@ public final class InstagramPreferenceStyle {
             float right = left + lineWidth;
             float radius = stroke / 2.0f;
 
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(secondaryTextColor());
             for (int line = 0; line < 3; line++) {
                 float centerY = dp(
                         getContext(),
