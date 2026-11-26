@@ -262,8 +262,11 @@ public class Pref {
         return SettingsStatus.hideInboxInstants && HIDE_INBOX_INSTANTS.get();
     }
 
+    private static final Cached<Boolean> HIDE_REELS_TAB_HEADER =
+            new Cached<>(() -> SharedPref.getBooleanPref(Settings.HIDE_REELS_TAB_HEADER), Settings.HIDE_REELS_TAB_HEADER.key);
+
     public static boolean hideReelsTabHeader() {
-        return SharedPref.getBooleanPref(Settings.HIDE_REELS_TAB_HEADER) && SettingsStatus.hideReelsTabHeader;
+        return SettingsStatus.hideReelsTabHeader && HIDE_REELS_TAB_HEADER.get();
     }
 
     private static final Cached<Boolean> DISABLE_APP_HAPTICS =
