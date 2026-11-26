@@ -620,21 +620,23 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         " AND (COALESCE(content, '') <> '' OR COALESCE(sender_id, '') <> ''"
             + " OR COALESCE(sender_username, '') <> '')";
 
-    /** The largest page {@link #getDeletedMessages(int, int)} returns. */
+    /** The largest page {@link #getDeletedMessages(int, String[])} returns. */
     public static final int DELETED_PAGE_SIZE = 200;
 
     /** The first page of the deleted log. */
     public List<String[]> getDeletedMessages() {
-        return getDeletedMessages(DELETED_PAGE_SIZE, 0);
+        return getDeletedMessages(DELETED_PAGE_SIZE, null);
     }
 
     /**
      * One page of the deleted log, newest first in a stable order, at most {@link #DELETED_PAGE_SIZE} rows.
-     * Message rows are [messageId, threadId, senderUsername, content, messageType, timestamp, senderId];
-     * removed reaction rows are [reaction:id, threadId, reactorUsername, messageContent, REMOVED_REACTION,
-     * removedAt, reactorId, emoji, messageType].
+     * The page holds the rows strictly after {@code after}, the last row of the previous page (null for
+     * the first page), so rows saved meanwhile never shift a page.
+     * Message rows are [messageId, threadId, senderUsername, content, messageType, timestamp, senderId,
+     * rowId]; removed reaction rows are [reaction:id, threadId, reactorUsername, messageContent,
+     * REMOVED_REACTION, removedAt, reactorId, emoji, messageType, rowId].
      */
-    public List<String[]> getDeletedMessages(int limit, int offset) {
+    public List<String[]> getDeletedMessages(int limit, String[] after) {
         List<String[]> result = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
         // Load the whole sender_id -> username directory once instead of letting each row
@@ -651,7 +653,7 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
                 + " UNION ALL SELECT 1, r.id, NULL, m.thread_id, NULL, m.content, NULL, r.removed_at,"
                 + " r.sender_id, r.emoji, m.message_type FROM message_reactions r JOIN " + TABLE
                 + " m ON m.message_id = r.message_id WHERE r.removed_at IS NOT NULL"
-                + ") ORDER BY at DESC, kind DESC, row_id DESC LIMIT " + pageSize + " OFFSET " + Math.max(0, offset),
+                + ")" + afterRow(after) + " ORDER BY at DESC, kind DESC, row_id DESC LIMIT " + pageSize,
                 null);
         try {
             while (c.moveToNext()) {
@@ -659,17 +661,30 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
                 if (c.getInt(0) == 0) {
                     result.add(new String[]{c.getString(2), c.getString(3),
                             resolveUsername(c.getString(4), senderId, directory), c.getString(5),
-                            c.getString(6), String.valueOf(c.getLong(7)), senderId});
+                            c.getString(6), String.valueOf(c.getLong(7)), senderId,
+                            String.valueOf(c.getLong(1))});
                 } else {
                     result.add(new String[]{REACTION_ID_PREFIX + c.getLong(1), c.getString(3),
                             directory.get(senderId), c.getString(5), REMOVED_REACTION,
-                            String.valueOf(c.getLong(7)), senderId, c.getString(9), c.getString(10)});
+                            String.valueOf(c.getLong(7)), senderId, c.getString(9), c.getString(10),
+                            String.valueOf(c.getLong(1))});
                 }
             }
         } finally {
             c.close();
         }
         return result;
+    }
+
+    /** The keyset condition for rows after {@code row} in (at, kind, row_id) descending order. */
+    private static String afterRow(String[] row) {
+        if (row == null) return "";
+        // Parsed numbers inlined: bound text would compare as text against the untyped columns.
+        long at = Long.parseLong(row[5]);
+        int kind = REMOVED_REACTION.equals(row[4]) ? 1 : 0;
+        long rowId = Long.parseLong(row[row.length - 1]);
+        return " WHERE at < " + at + " OR (at = " + at + " AND (kind < " + kind
+                + " OR (kind = " + kind + " AND row_id < " + rowId + ")))";
     }
 
     private java.util.Map<String, String> loadUsernameDirectory(SQLiteDatabase db) {

@@ -503,7 +503,8 @@ public final class DeletedMessagesActivity {
                     List<String[]> rows = new ArrayList<>();
                     List<String[]> page;
                     do {
-                        page = db.getDeletedMessages(PAGE_SIZE, rows.size());
+                        page = db.getDeletedMessages(PAGE_SIZE,
+                                rows.isEmpty() ? null : rows.get(rows.size() - 1));
                         rows.addAll(page);
                     } while (page.size() == PAGE_SIZE && rows.size() < wanted);
                     more = page.size() == PAGE_SIZE;
@@ -541,11 +542,12 @@ public final class DeletedMessagesActivity {
             if (loading || !hasMore) return;
             loading = true;
             int offset = messages.size();
+            String[] last = offset == 0 ? null : messages.get(offset - 1);
             Context app = activity.getApplicationContext();
             sDbJobs.execute(() -> {
                 List<String[]> loaded = null;
                 try {
-                    loaded = SpookdMessageDb.getInstance(app).getDeletedMessages(PAGE_SIZE, offset);
+                    loaded = SpookdMessageDb.getInstance(app).getDeletedMessages(PAGE_SIZE, last);
                 } catch (Exception e) {
                     Logger.printException(() -> "loadMore: ", e);
                 }

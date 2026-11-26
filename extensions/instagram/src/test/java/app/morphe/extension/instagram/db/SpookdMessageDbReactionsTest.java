@@ -127,16 +127,48 @@ public final class SpookdMessageDbReactionsTest {
         db.syncReactions(messageId, Collections.emptyList(), VIEWER, 1000);
 
         List<String> all = new ArrayList<>();
-        for (String[] row : db.getDeletedMessages(200, 0)) all.add(row[0]);
+        for (String[] row : db.getDeletedMessages(200, null)) all.add(row[0]);
         assertEquals(4, all.size());
-        List<String> paged = new ArrayList<>();
-        for (int offset = 0; offset < 6; offset += 2) {
-            List<String[]> page = db.getDeletedMessages(2, offset);
-            assertTrue(page.size() <= 2);
-            for (String[] row : page) paged.add(row[0]);
-        }
-        assertEquals(all, paged);
+        assertEquals(all, pageThrough(2, null));
         assertEquals("31000000000000000000000000012", all.get(0));
+    }
+
+    @Test
+    public void rowsSavedBetweenPagesNeitherShiftNorRepeatAPage() {
+        List<String> expected = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            // Equal times for some rows, so the id breaks the tie.
+            String id = db.upsertMessage("3200000000000000000000000000" + i, null, "thread-1", OTHER,
+                    "bob", "old " + i, "text", 1000 + (i / 2) * 100);
+            db.markDeleted(id);
+        }
+        for (String[] row : db.getDeletedMessages(200, null)) expected.add(row[0]);
+
+        List<String[]> first = db.getDeletedMessages(2, null);
+        List<String> seen = new ArrayList<>();
+        for (String[] row : first) seen.add(row[0]);
+        // Newer rows saved while the list is open land above the cursor and leave later pages alone.
+        for (int i = 0; i < 3; i++) {
+            db.markDeleted(db.upsertMessage("3300000000000000000000000000" + i, null, "thread-1", OTHER,
+                    "bob", "new " + i, "text", 5000 + i));
+        }
+        db.syncReactions(messageId, Collections.singletonList(reaction(OTHER, "\u2764")), VIEWER, 6000);
+        db.syncReactions(messageId, Collections.emptyList(), VIEWER, 7000);
+        seen.addAll(pageThrough(2, first.get(first.size() - 1)));
+
+        assertEquals(expected, seen);
+    }
+
+    /** Every row after {@code after}, read {@code size} rows at a time with the keyset cursor. */
+    private List<String> pageThrough(int size, String[] after) {
+        List<String> out = new ArrayList<>();
+        while (true) {
+            List<String[]> page = db.getDeletedMessages(size, after);
+            assertTrue(page.size() <= size);
+            for (String[] row : page) out.add(row[0]);
+            if (page.size() < size) return out;
+            after = page.get(page.size() - 1);
+        }
     }
 
     private static String[] reaction(String sender, String emoji) {
