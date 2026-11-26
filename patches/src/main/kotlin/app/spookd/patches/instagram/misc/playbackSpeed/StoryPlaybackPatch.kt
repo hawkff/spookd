@@ -34,6 +34,7 @@ import app.morphe.patcher.util.p0Register
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.registersUsed
 import app.morphe.patcher.util.smali.ExternalLabel
+import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
@@ -175,6 +176,38 @@ private fun hookStorySound(players: List<String>) {
     }
 }
 
+private fun sessionSoundCheckFingerprint(owner: String) = Fingerprint(
+    definingClass = owner,
+    filters = listOf(
+        methodCall(parameters = listOf("Ljava/lang/Integer;", "Z", "Z"), returnType = "Z"),
+        opcode(Opcode.MOVE_RESULT, MatchAfterImmediately()),
+    ),
+)
+
+// The story audio manager's own player (sponsored story music) asks the session sound check with its volume-key flag.
+private fun hookStoryAudioSound(managers: List<String>) {
+    val owners = managers.flatMap { manager ->
+        classDefBy(manager).fields.filter { !AccessFlags.STATIC.isSet(it.accessFlags) }.map { it.type }
+    }.distinct().filter { it != REEL_VIEWER_FRAGMENT && classDefByOrNull(it) != null }
+    var hooked = 0
+    for (owner in owners) {
+        val match = sessionSoundCheckFingerprint(owner).matchOrNull() ?: continue
+        val callIndex = match.instructionMatches[0].index
+        val code = match.method.implementation!!.instructions
+        val asked = code[callIndex].registersUsed.getOrNull(2) ?: continue
+        val writer = (callIndex - 1 downTo 0).firstOrNull {
+            code[it].opcode.setsRegister() && code[it].registersUsed.firstOrNull() == asked
+        } ?: continue
+        val flag = code[writer].getReference<FieldReference>()
+        if (code[writer].opcode != Opcode.IGET_BOOLEAN || flag?.definingClass != owner ||
+            (writer + 1..callIndex).any { code[it].location.labels.isNotEmpty() }
+        ) continue
+        hookSoundDecision(match.method, callIndex, asked)
+        hooked++
+    }
+    if (hooked == 0) throw PatchException("Missing story audio manager sound decision")
+}
+
 // A Speed and seek row tap opens the panel for the viewer's player and keeps the story paused until it closes.
 private fun hookStoryMenu() {
     listOf(SelfStoryOnCLickStoryButtonFingerprint, OnCLickStoryButtonFingerprint).forEach { fingerprint ->
@@ -230,16 +263,19 @@ val storyPlaybackPatch =
 
         execute {
             val created = StoryPlayerCreatedFingerprint.instructionMatches.single().fieldReference
-            val players = StoryPlayerCreatedFingerprint.originalMethod.implementation!!.instructions
+            val viewerParts = StoryPlayerCreatedFingerprint.originalMethod.implementation!!.instructions
                 .mapNotNull { it.getReference<MethodReference>() }
                 .filter { it.name == "<init>" }
                 .map { it.definingClass }
                 .distinct()
-                .filter { classDefByOrNull(it)?.interfaces?.contains(created.type) == true }
+            fun implementations(type: String) = viewerParts.filter { classDefByOrNull(it)?.interfaces?.contains(type) == true }
+            val players = implementations(created.type)
             if (players.isEmpty()) throw PatchException("No story video player implementations")
+            val audioManager = classDefBy(REEL_VIEWER_FRAGMENT).fields.single { it.name == "mStoryAudioManager" }.type
 
             hookStoryPlayer(created, players)
             hookStorySound(players)
+            hookStoryAudioSound(implementations(audioManager))
             hookStoryMenu()
 
             enableSettings("storyPlayback")
