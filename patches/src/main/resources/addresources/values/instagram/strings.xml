@@ -250,7 +250,7 @@
     <string name="spookd_confirm_follow_request_action">Accept</string>
     <string name="spookd_confirm_not_done">Nothing was done: it changed while you were deciding. Try again.</string>
     <string name="spookd_confirm_refresh">Confirm refresh</string>
-    <string name="spookd_confirm_refresh_desc">Asks before pulling down reloads Home, Reels or your inbox. Cancel stops the spinner and keeps what is shown.</string>
+    <string name="spookd_confirm_refresh_desc">Asks before pulling down reloads Home, Reels or your inbox. Cancel stops the spinner and keeps what is shown. Pressing back at the top of Reels also asks, since it refreshes the same way.</string>
     <string name="spookd_confirm_refresh_title">Refresh now?</string>
     <string name="spookd_confirm_refresh_action">Refresh</string>
     <string name="spookd_confirm_comment_like">Confirm comment likes</string>
@@ -266,7 +266,7 @@
     <string name="spookd_disable_home_tab_refresh">Don\'t refresh Home on tab tap</string>
     <string name="spookd_disable_home_tab_refresh_desc">Tapping Home again still scrolls to the top but no longer loads new posts</string>
     <string name="spookd_disable_home_background_refresh">Don\'t refresh Home in the background</string>
-    <string name="spookd_disable_home_background_refresh_desc">Stops Home from loading new posts while the app is in the background</string>
+    <string name="spookd_disable_home_background_refresh_desc">Stops Home from loading new posts while the app is in the background. Home may still reload when you open the app after a long time.</string>
     <string name="spookd_disable_reels_tab_refresh">Don\'t refresh Reels on tab tap</string>
     <string name="spookd_disable_reels_tab_refresh_desc">Tapping Reels again still goes back to the top but no longer loads new Reels</string>
     <string name="spookd_resume_reels_after_scrolling">Resume Reels after scrolling</string>
