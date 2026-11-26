@@ -6,24 +6,37 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Application;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
+import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.media.MediaDataSource;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.text.format.Formatter;
 import android.util.LruCache;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.BaseAdapter;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.GridView;
 import android.widget.ImageView;
@@ -33,14 +46,18 @@ import android.widget.TextView;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.EnumMap;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.IntConsumer;
 
 import app.morphe.extension.crimera.legacydownloader.DownloadRequest;
 import app.morphe.extension.crimera.legacydownloader.MediaDownloader;
@@ -54,22 +71,33 @@ import app.morphe.extension.instagram.patches.dm.vault.ViewerMedia;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
+import app.morphe.extension.instagram.settings.preference.widgets.InstagramSearchStyle;
 import app.morphe.extension.instagram.settings.preference.widgets.SpookdType;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
+import app.morphe.extension.shared.ui.SelectionCheck;
 
 /**
  * The private gallery, built in code inside the app's modal activity: downloads by tab, and stored
- * DM media in the DMs tab. The UI runs on the main thread; listing, cleanup, deletes and share copies
- * run on one background thread, thumbnails on a small pool, exports on the download writer's thread.
+ * DM media in the DMs tab. The UI runs on the main thread; listing, cleanup, deletes, stars and share
+ * copies run on one background thread, thumbnails on a small pool, exports on the download writer's thread.
  */
 public final class PrivateGalleryActivity {
-    private static final int COLUMNS = 3;
     // Serial, so a delete runs before the reload that follows it.
     private static final Executor JOBS = Executors.newSingleThreadExecutor();
-    private static final GalleryTab[] TABS = GalleryTab.values();
-    private static final String[] TAB_TITLES = {"spookd_gallery_tab_posts", "spookd_gallery_tab_reels",
+    /** Null is All. */
+    private static final GalleryTab[] TABS = {null, GalleryTab.POSTS, GalleryTab.REELS, GalleryTab.STORIES,
+            GalleryTab.DMS};
+    private static final String[] TAB_TITLES = {"spookd_all", "spookd_gallery_tab_posts", "spookd_gallery_tab_reels",
             "spookd_gallery_tab_stories", "spookd_gallery_tab_dms"};
+    private static final String[] SORTS = {GalleryStore.SORT_NEWEST, GalleryStore.SORT_OLDEST,
+            GalleryStore.SORT_SIZE, GalleryStore.SORT_USERNAME};
+    private static final String[] SORT_TITLES = {"spookd_gallery_sort_newest", "spookd_gallery_sort_oldest",
+            "spookd_gallery_sort_size", "spookd_gallery_sort_username"};
+    private static final int MIN_COLUMNS = 2;
+    private static final int MAX_COLUMNS = 5;
+    // Its own file, so the layout stays the same on every account of this device.
+    private static final String VIEW_PREFS = "piko_gallery_view";
 
     private PrivateGalleryActivity() {
     }
@@ -105,6 +133,7 @@ public final class PrivateGalleryActivity {
     private static final class Item {
         final long id;
         final boolean vault;
+        final GalleryTab tab;
         /** photo, video, audio or voice. */
         final String kind;
         final long time;
@@ -119,10 +148,13 @@ public final class PrivateGalleryActivity {
         final String ownerUsername;
         /** String resource of the view-once or view-twice mark; null for none. */
         final String mark;
+        /** Main thread once shown. */
+        boolean favorite;
 
         Item(GalleryStore.Entry entry) {
             id = entry.id;
             vault = false;
+            tab = entry.item.tab;
             kind = entry.item.kind;
             time = entry.savedAt;
             size = entry.sizeBytes;
@@ -133,11 +165,13 @@ public final class PrivateGalleryActivity {
             link = entry.item.link;
             ownerUsername = entry.item.ownerUsername;
             mark = null;
+            favorite = entry.favorite;
         }
 
-        Item(MediaVault.Item stored) {
+        Item(MediaVault.Item stored, boolean favorite) {
             id = stored.id;
             vault = true;
+            tab = GalleryTab.DMS;
             kind = stored.kind;
             time = stored.msgTimestamp;
             size = stored.sizeBytes;
@@ -148,6 +182,7 @@ public final class PrivateGalleryActivity {
             link = null;
             ownerUsername = stored.senderUsername;
             mark = MediaVault.markResource(stored.viewMode);
+            this.favorite = favorite;
         }
 
         /** Includes the download's file, which an overwrite replaces, so a cached thumbnail never outlives it. */
@@ -162,26 +197,85 @@ public final class PrivateGalleryActivity {
         boolean video() {
             return GalleryItem.VIDEO.equals(kind);
         }
+
+        boolean unknownOwner() {
+            return TextUtils.isEmpty(ownerUsername);
+        }
+
+        /** The filters {@link GalleryStore#list} applies in SQL, for vault items. */
+        boolean matches(String kind, boolean favoritesOnly, String username) {
+            return (kind == null || kind.equals(this.kind)) && (!favoritesOnly || favorite)
+                    && (username.isEmpty() || (!unknownOwner()
+                    && ownerUsername.toLowerCase(Locale.ROOT).contains(username)));
+        }
     }
 
-    /** Runs on the jobs thread: applies the cleanup when asked, then lists every tab; DMs merges the vault by time. */
-    private static Map<GalleryTab, List<Item>> load(boolean prune) {
-        Map<GalleryTab, List<Item>> out = new EnumMap<>(GalleryTab.class);
-        for (GalleryTab tab : TABS) out.put(tab, new ArrayList<>());
+    /** The order {@link GalleryStore#list} sorts in, for lists that merge vault items. */
+    private static Comparator<Item> order(String sort) {
+        if (GalleryStore.SORT_OLDEST.equals(sort)) return (a, b) -> Long.compare(a.time, b.time);
+        if (GalleryStore.SORT_SIZE.equals(sort)) return (a, b) -> Long.compare(b.size, a.size);
+        if (GalleryStore.SORT_USERNAME.equals(sort)) {
+            return (a, b) -> {
+                if (a.unknownOwner() != b.unknownOwner()) return a.unknownOwner() ? 1 : -1;
+                int byName = a.unknownOwner() ? 0
+                        : String.CASE_INSENSITIVE_ORDER.compare(a.ownerUsername, b.ownerUsername);
+                return byName != 0 ? byName : Long.compare(b.time, a.time);
+            };
+        }
+        return (a, b) -> Long.compare(b.time, a.time);
+    }
+
+    /** What one load found: the items the view shows, and the totals of everything saved. */
+    private static final class Loaded {
+        final List<Item> items = new ArrayList<>();
+        long count;
+        long bytes;
+        boolean dmDownloads;
+    }
+
+    /**
+     * Runs on the jobs thread: applies the cleanup when asked, then lists what the view shows. A null
+     * {@code tab} is All; vault items are matched and merged here, downloads in SQL.
+     */
+    private static Loaded load(boolean prune, GalleryTab tab, String kind, boolean favoritesOnly, String username,
+                               String sort) {
+        Loaded out = new Loaded();
         try {
             if (prune) Gallery.prune();
             GalleryStore store = GalleryStore.get();
-            for (GalleryTab tab : TABS) {
-                for (GalleryStore.Entry entry : store.list(tab)) out.get(tab).add(new Item(entry));
+            long[] totals = store.totals();
+            out.count = totals[0];
+            out.bytes = totals[1];
+            out.dmDownloads = store.has(GalleryTab.DMS);
+            for (GalleryStore.Entry entry : store.list(tab, kind, favoritesOnly, username, sort)) {
+                out.items.add(new Item(entry));
             }
         } catch (Exception e) {
             Logger.printException(() -> "Private gallery: cannot list downloads", e);
         }
         if (SettingsStatus.dmMediaVault) {
             try {
-                List<Item> dms = out.get(GalleryTab.DMS);
-                for (MediaVault.Item stored : MediaVault.get().storedItems()) dms.add(new Item(stored));
-                dms.sort((a, b) -> Long.compare(b.time, a.time));
+                boolean shown = tab == null || tab == GalleryTab.DMS;
+                Set<Long> favorites = Collections.emptySet();
+                if (shown) {
+                    try {
+                        favorites = GalleryStore.get().favoriteVaultIds();
+                    } catch (Exception e) {
+                        Logger.printException(() -> "Private gallery: cannot read DM media stars", e);
+                    }
+                }
+                boolean merged = false;
+                // shortcut: reads every stored row per load, bounded by the vault's retention and size cap; page it if either grows.
+                for (MediaVault.Item stored : MediaVault.get().storedItems()) {
+                    out.count++;
+                    out.bytes += stored.sizeBytes;
+                    if (!shown) continue;
+                    Item item = new Item(stored, favorites.contains(stored.id));
+                    if (!item.matches(kind, favoritesOnly, username)) continue;
+                    out.items.add(item);
+                    merged = true;
+                }
+                if (merged) out.items.sort(order(sort));
             } catch (Exception e) {
                 Logger.printException(() -> "Private gallery: cannot list DM media", e);
             }
@@ -192,18 +286,44 @@ public final class PrivateGalleryActivity {
     private static final class Controller {
         private final Activity activity;
         private final Handler ui = new Handler(Looper.getMainLooper());
-        private Map<GalleryTab, List<Item>> items = new EnumMap<>(GalleryTab.class);
-        private GalleryTab tab = GalleryTab.POSTS;
+        private final Runnable searchReload = () -> reload(false);
+        private List<Item> list = Collections.emptyList();
+        private boolean dmDownloads;
+        private String summaryText = "";
+        private GalleryTab tab;
+        private String kind;
+        private boolean favoritesOnly;
+        private String username = "";
+        private String sort;
+        private int columns;
+        private boolean listView;
+        private boolean overlays;
+        private SharedPreferences viewPrefs;
+        // Identity, so a reload, which makes new items, starts a new selection.
+        private final Set<Item> selected = new HashSet<>();
+        private boolean selecting;
         private TextView[] tabViews;
         private TextView summary;
         private TextView exportAll;
+        private EditText searchField;
+        private View controls;
+        private View selectionBar;
+        private TextView filterAction;
+        private TextView favoriteAction;
         private FrameLayout content;
+        private GridView grid;
+        private BaseAdapter adapter;
         private ThumbLoader thumbs;
         private float density;
         private int tileSize;
         private int loads;
         private boolean closed;
         private boolean sharing; // main thread only
+        private String photoLabel;
+        private String videoLabel;
+        private String audioLabel;
+        private String unknownLabel;
+        private String[] tabLabels;
 
         Controller(Activity activity) {
             this.activity = activity;
@@ -216,8 +336,19 @@ public final class PrivateGalleryActivity {
         }
 
         void setup() {
-            int screenWidth = activity.getResources().getDisplayMetrics().widthPixels;
-            tileSize = (screenWidth - dp(2) * (COLUMNS + 1)) / COLUMNS;
+            viewPrefs = activity.getSharedPreferences(VIEW_PREFS, Context.MODE_PRIVATE);
+            columns = Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, viewPrefs.getInt("columns", 3)));
+            listView = viewPrefs.getBoolean("list", false);
+            overlays = viewPrefs.getBoolean("overlays", true);
+            String savedSort = viewPrefs.getString("sort", GalleryStore.SORT_NEWEST);
+            sort = Arrays.asList(SORTS).contains(savedSort) ? savedSort : GalleryStore.SORT_NEWEST;
+            photoLabel = str("spookd_media_photo");
+            videoLabel = str("spookd_media_video");
+            audioLabel = str("spookd_gallery_audio");
+            unknownLabel = str("spookd_unknown");
+            tabLabels = new String[TABS.length];
+            for (int i = 0; i < TABS.length; i++) tabLabels[i] = str(TAB_TITLES[i]);
+            updateTileSize();
             thumbs = new ThumbLoader();
             LinearLayout root = buildRoot();
 
@@ -227,15 +358,23 @@ public final class PrivateGalleryActivity {
             for (int i = 0; i < TABS.length; i++) {
                 GalleryTab target = TABS[i];
                 TextView view = new TextView(activity);
-                view.setText(str(TAB_TITLES[i]));
+                view.setText(tabLabels[i]);
                 SpookdType.apply(view, SpookdType.LABEL);
                 view.setGravity(Gravity.CENTER);
-                view.setPadding(dp(4), dp(12), dp(4), dp(12));
+                view.setSingleLine(true);
+                view.setEllipsize(TextUtils.TruncateAt.END);
+                view.setPadding(dp(2), dp(12), dp(2), dp(12));
                 view.setOnClickListener(v -> select(target));
                 tabsRow.addView(view, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
                 tabViews[i] = view;
             }
             root.addView(tabsRow);
+
+            controls = buildControls();
+            root.addView(controls);
+            selectionBar = buildSelectionBar();
+            selectionBar.setVisibility(View.GONE);
+            root.addView(selectionBar);
 
             LinearLayout header = new LinearLayout(activity);
             header.setOrientation(LinearLayout.HORIZONTAL);
@@ -251,7 +390,10 @@ public final class PrivateGalleryActivity {
             exportAll.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             exportAll.setPadding(dp(16), dp(4), dp(16), dp(8));
             exportAll.setVisibility(View.GONE);
-            exportAll.setOnClickListener(v -> confirmExportAll());
+            exportAll.setOnClickListener(v -> {
+                if (selecting) toggleAll();
+                else confirmExportAll();
+            });
             header.addView(exportAll);
             root.addView(header);
 
@@ -297,7 +439,8 @@ public final class PrivateGalleryActivity {
                             new androidx.activity.OnBackPressedCallback(true) {
                                 @Override
                                 public void handleOnBackPressed() {
-                                    activity.finish();
+                                    if (selecting) cancelSelection();
+                                    else activity.finish();
                                 }
                             });
                 } catch (Throwable ignored) {
@@ -305,6 +448,84 @@ public final class PrivateGalleryActivity {
             }
             activity.setContentView(root);
             return root;
+        }
+
+        /** Username search, then Sort, Filter and View. */
+        private View buildControls() {
+            LinearLayout row = new LinearLayout(activity);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(12), 0, dp(4), 0);
+            EditText search = new EditText(activity);
+            searchField = search;
+            search.setSingleLine(true);
+            search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+            search.setHint(str("spookd_search_username"));
+            search.setHintTextColor(InstagramPreferenceStyle.secondaryTextColor());
+            search.setTextColor(InstagramPreferenceStyle.primaryTextColor());
+            SpookdType.apply(search, SpookdType.BODY);
+            GradientDrawable background = new GradientDrawable();
+            background.setColor(InstagramPreferenceStyle.searchBackgroundColor());
+            background.setCornerRadius(dp(12));
+            search.setBackground(background);
+            search.setPadding(dp(12), dp(8), dp(12), dp(8));
+            InstagramSearchStyle.applyInputStyle(search);
+            search.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
+                @Override public void onTextChanged(CharSequence s, int a, int b, int c) { }
+                @Override public void afterTextChanged(Editable s) {
+                    InstagramSearchStyle.removeBackgroundSpans(s);
+                    String typed = s.toString().trim().toLowerCase(Locale.ROOT);
+                    if (typed.startsWith("@")) typed = typed.substring(1);
+                    if (typed.equals(username)) return;
+                    username = typed;
+                    // Typing reloads once it pauses, not per letter.
+                    ui.removeCallbacks(searchReload);
+                    ui.postDelayed(searchReload, 250);
+                }
+            });
+            row.addView(search, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+            row.addView(action(str("spookd_gallery_sort"), null, v -> chooseSort()));
+            filterAction = action(str("spookd_gallery_filter"), null, v -> chooseFilter());
+            row.addView(filterAction);
+            row.addView(action(str("spookd_gallery_view"), null, v -> chooseView()));
+            return row;
+        }
+
+        /** Done, star, Share, Delete and More for the selected items. */
+        private View buildSelectionBar() {
+            LinearLayout row = new LinearLayout(activity);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.addView(action(str("spookd_gallery_done"), null, v -> cancelSelection()), weighted());
+            favoriteAction = action("☆", str("spookd_gallery_favorite"), v -> {
+                List<Item> items = selection();
+                setFavorite(items, !allFavorite(items));
+            });
+            row.addView(favoriteAction, weighted());
+            row.addView(action(str("spookd_gallery_share"), null, v -> share(selection())), weighted());
+            row.addView(action(str("spookd_delete"), null, v -> confirmDelete(selection())), weighted());
+            row.addView(action(str("spookd_gallery_more"), null, v -> showOptions(selection())), weighted());
+            return row;
+        }
+
+        private LinearLayout.LayoutParams weighted() {
+            return new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1);
+        }
+
+        private TextView action(String text, String description, View.OnClickListener click) {
+            TextView view = new TextView(activity);
+            view.setText(text);
+            view.setContentDescription(description);
+            SpookdType.apply(view, SpookdType.LABEL);
+            view.setTextColor(InstagramPreferenceStyle.primaryTextColor());
+            view.setGravity(Gravity.CENTER);
+            view.setSingleLine(true);
+            view.setEllipsize(TextUtils.TruncateAt.END);
+            view.setMinHeight(dp(SpookdType.MIN_TOUCH));
+            view.setPadding(dp(8), 0, dp(8), 0);
+            view.setOnClickListener(click);
+            return view;
         }
 
         /** Leaving the app or the screen ends it, so nothing shown outlives a stop; a rotation keeps it. */
@@ -344,42 +565,47 @@ public final class PrivateGalleryActivity {
 
         private void reload(boolean prune) {
             int generation = ++loads;
+            ui.removeCallbacks(searchReload);
+            GalleryTab tab = this.tab;
+            String kind = this.kind;
+            boolean favoritesOnly = this.favoritesOnly;
+            String username = this.username;
+            String sort = this.sort;
             JOBS.execute(() -> {
-                Map<GalleryTab, List<Item>> loaded = load(prune);
+                Loaded loaded = load(prune, tab, kind, favoritesOnly, username, sort);
                 ui.post(() -> {
                     if (!closed && generation == loads) show(loaded);
                 });
             });
         }
 
-        private void show(Map<GalleryTab, List<Item>> loaded) {
-            items = loaded;
-            int count = 0;
-            long bytes = 0;
-            for (List<Item> list : loaded.values()) {
-                for (Item item : list) {
-                    count++;
-                    bytes += item.size;
-                }
+        private void show(Loaded loaded) {
+            list = loaded.items;
+            dmDownloads = loaded.dmDownloads;
+            selected.clear();
+            selecting = false;
+            summaryText = String.format(Locale.getDefault(), str("spookd_gallery_summary"), loaded.count,
+                    Formatter.formatShortFileSize(activity, loaded.bytes));
+            if (tab == GalleryTab.DMS && !dmsShown()) {
+                tab = null;
+                updateTabs();
+                reload(false);
+                return;
             }
-            summary.setText(String.format(Locale.getDefault(), str("spookd_gallery_summary"), count,
-                    Formatter.formatShortFileSize(activity, bytes)));
-            if (tab == GalleryTab.DMS && !dmsShown()) tab = GalleryTab.POSTS;
             updateTabs();
             rebuildContent();
         }
 
         // DM downloads exist without the vault patch, so their rows keep the tab.
         private boolean dmsShown() {
-            List<Item> dms = items.get(GalleryTab.DMS);
-            return SettingsStatus.dmMediaVault || (dms != null && !dms.isEmpty());
+            return SettingsStatus.dmMediaVault || dmDownloads;
         }
 
         private void select(GalleryTab target) {
             if (tab == target) return;
             tab = target;
             updateTabs();
-            rebuildContent();
+            reload(false);
         }
 
         private void updateTabs() {
@@ -394,42 +620,235 @@ public final class PrivateGalleryActivity {
             }
         }
 
+        private void updateTileSize() {
+            int screenWidth = activity.getResources().getDisplayMetrics().widthPixels;
+            tileSize = (screenWidth - dp(2) * (columns + 1)) / columns;
+        }
+
         private void rebuildContent() {
             content.removeAllViews();
-            List<Item> list = items.get(tab);
-            boolean empty = list == null || list.isEmpty();
-            exportAll.setVisibility(empty ? View.GONE : View.VISIBLE);
-            if (empty) {
-                content.addView(message(str("spookd_gallery_empty")));
+            grid = null;
+            adapter = null;
+            updateSelection();
+            if (list.isEmpty()) {
+                boolean filtered = kind != null || favoritesOnly || !username.isEmpty();
+                content.addView(message(str(filtered ? "spookd_gallery_no_matches" : "spookd_gallery_empty")));
                 return;
             }
-            int gap = dp(2);
-            GridView grid = new GridView(activity);
-            grid.setNumColumns(COLUMNS);
-            grid.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
-            grid.setHorizontalSpacing(gap);
-            grid.setVerticalSpacing(gap);
-            grid.setPadding(gap, gap, gap, gap);
-            grid.setClipToPadding(false);
-            grid.setAdapter(new TileAdapter(list));
-            grid.setOnItemClickListener((parent, view, position, id) ->
-                    VaultViewer.showFor(activity, viewerSource(list.get(position))));
-            grid.setOnItemLongClickListener((parent, view, position, id) -> {
-                showOptions(list.get(position));
+            int gap = listView ? 0 : dp(2);
+            GridView view = new GridView(activity);
+            view.setNumColumns(listView ? 1 : columns);
+            view.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
+            view.setHorizontalSpacing(gap);
+            view.setVerticalSpacing(gap);
+            view.setPadding(gap, gap, gap, gap);
+            view.setClipToPadding(false);
+            adapter = new TileAdapter();
+            view.setAdapter(adapter);
+            view.setOnItemClickListener((parent, v, position, id) -> {
+                Item item = list.get(position);
+                if (selecting) toggleSelected(item);
+                else showViewer(item);
+            });
+            view.setOnItemLongClickListener((parent, v, position, id) -> {
+                startSelection(list.get(position));
                 return true;
             });
-            content.addView(grid, new FrameLayout.LayoutParams(
+            if (!listView) watchPinch(view);
+            grid = view;
+            content.addView(view, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         }
 
-        /** Builds only the visible tiles and reuses them while scrolling. */
-        private final class TileAdapter extends BaseAdapter {
-            private final List<Item> list;
+        /** Spreading two fingers shows fewer, larger tiles; pinching shows more. */
+        private void watchPinch(GridView view) {
+            ScaleGestureDetector pinch = new ScaleGestureDetector(activity,
+                    new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                        private float scale;
 
-            TileAdapter(List<Item> list) {
-                this.list = list;
+                        @Override
+                        public boolean onScaleBegin(ScaleGestureDetector detector) {
+                            scale = 1f;
+                            return true;
+                        }
+
+                        @Override
+                        public boolean onScale(ScaleGestureDetector detector) {
+                            scale *= detector.getScaleFactor();
+                            if (scale > 1.25f && columns > MIN_COLUMNS) {
+                                setColumns(columns - 1);
+                                scale = 1f;
+                            } else if (scale < 0.8f && columns < MAX_COLUMNS) {
+                                setColumns(columns + 1);
+                                scale = 1f;
+                            }
+                            return true;
+                        }
+                    });
+            pinch.setQuickScaleEnabled(false);
+            boolean[] cancelled = {false};
+            view.setOnTouchListener((v, event) -> {
+                pinch.onTouchEvent(event);
+                if (event.getActionMasked() == MotionEvent.ACTION_DOWN) cancelled[0] = false;
+                if (!pinch.isInProgress()) return cancelled[0];
+                // The grid would scroll, or take the held fingers for a long press, during the pinch.
+                if (!cancelled[0]) {
+                    MotionEvent cancel = MotionEvent.obtain(event);
+                    cancel.setAction(MotionEvent.ACTION_CANCEL);
+                    v.onTouchEvent(cancel);
+                    cancel.recycle();
+                    cancelled[0] = true;
+                }
+                return true;
+            });
+        }
+
+        private void setColumns(int count) {
+            columns = count;
+            viewPrefs.edit().putInt("columns", count).apply();
+            updateTileSize();
+            if (grid == null) return;
+            int first = grid.getFirstVisiblePosition();
+            grid.setNumColumns(count);
+            grid.setSelection(first);
+        }
+
+        /** Main thread: one tap per choice; a check marks what is on. */
+        private void choose(String[] labels, boolean[] checked, IntConsumer pick) {
+            CharSequence[] shown = new CharSequence[labels.length];
+            for (int i = 0; i < labels.length; i++) shown[i] = (checked[i] ? "✓ " : "") + labels[i];
+            new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
+                    .setItems(shown, (d, which) -> pick.accept(which))
+                    .show();
+        }
+
+        private void chooseSort() {
+            String[] labels = new String[SORTS.length];
+            boolean[] checked = new boolean[SORTS.length];
+            for (int i = 0; i < SORTS.length; i++) {
+                labels[i] = str(SORT_TITLES[i]);
+                checked[i] = SORTS[i].equals(sort);
             }
+            choose(labels, checked, which -> {
+                sort = SORTS[which];
+                viewPrefs.edit().putString("sort", sort).apply();
+                reload(false);
+            });
+        }
 
+        private void chooseFilter() {
+            String[] labels = {str("spookd_gallery_all_types"), str("spookd_gallery_photos"),
+                    str("spookd_gallery_videos"), str("spookd_gallery_favorites_only")};
+            boolean[] checked = {kind == null, GalleryItem.PHOTO.equals(kind), GalleryItem.VIDEO.equals(kind),
+                    favoritesOnly};
+            choose(labels, checked, which -> {
+                if (which == 3) favoritesOnly = !favoritesOnly;
+                else kind = which == 1 ? GalleryItem.PHOTO : which == 2 ? GalleryItem.VIDEO : null;
+                int active = (kind == null ? 0 : 1) + (favoritesOnly ? 1 : 0);
+                filterAction.setText(active == 0 ? str("spookd_gallery_filter")
+                        : str("spookd_gallery_filter") + " (" + active + ")");
+                reload(false);
+            });
+        }
+
+        private void chooseView() {
+            int choices = MAX_COLUMNS - MIN_COLUMNS + 1;
+            String[] labels = new String[choices + 2];
+            boolean[] checked = new boolean[choices + 2];
+            for (int i = 0; i < choices; i++) {
+                labels[i] = str("spookd_gallery_columns", MIN_COLUMNS + i);
+                checked[i] = !listView && columns == MIN_COLUMNS + i;
+            }
+            labels[choices] = str("spookd_gallery_list");
+            checked[choices] = listView;
+            labels[choices + 1] = str("spookd_gallery_overlays");
+            checked[choices + 1] = overlays;
+            choose(labels, checked, which -> {
+                if (which == choices + 1) {
+                    overlays = !overlays;
+                    viewPrefs.edit().putBoolean("overlays", overlays).apply();
+                    if (adapter != null) adapter.notifyDataSetChanged();
+                    return;
+                }
+                listView = which == choices;
+                viewPrefs.edit().putBoolean("list", listView).apply();
+                if (!listView) setColumns(MIN_COLUMNS + which);
+                rebuildContent();
+            });
+        }
+
+        private void startSelection(Item item) {
+            if (!selecting) {
+                selecting = true;
+                searchField.clearFocus();
+                InputMethodManager keyboard = (InputMethodManager)
+                        activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (keyboard != null) keyboard.hideSoftInputFromWindow(searchField.getWindowToken(), 0);
+            }
+            selected.add(item);
+            updateSelection();
+        }
+
+        private void toggleSelected(Item item) {
+            if (!selected.remove(item)) selected.add(item);
+            if (selected.isEmpty()) selecting = false;
+            updateSelection();
+        }
+
+        private void toggleAll() {
+            if (selected.size() == list.size()) {
+                selected.clear();
+                selecting = false;
+            } else {
+                selected.addAll(list);
+            }
+            updateSelection();
+        }
+
+        private void cancelSelection() {
+            selected.clear();
+            selecting = false;
+            updateSelection();
+        }
+
+        /** The selected items in the order shown. */
+        private List<Item> selection() {
+            List<Item> out = new ArrayList<>();
+            for (Item item : list) {
+                if (selected.contains(item)) out.add(item);
+            }
+            return out;
+        }
+
+        private static boolean allFavorite(List<Item> items) {
+            for (Item item : items) {
+                if (!item.favorite) return false;
+            }
+            return !items.isEmpty();
+        }
+
+        /** Shows the selection bar while selecting, else the controls, and redraws the tiles. */
+        private void updateSelection() {
+            controls.setVisibility(selecting ? View.GONE : View.VISIBLE);
+            selectionBar.setVisibility(selecting ? View.VISIBLE : View.GONE);
+            exportAll.setVisibility(list.isEmpty() ? View.GONE : View.VISIBLE);
+            if (selecting) {
+                summary.setText(str("spookd_selected_count", selected.size()));
+                exportAll.setText(str(selected.size() == list.size()
+                        ? "spookd_download_deselect_all" : "spookd_download_select_all"));
+                boolean starred = allFavorite(selection());
+                favoriteAction.setText(starred ? "★" : "☆");
+                favoriteAction.setContentDescription(str(starred
+                        ? "spookd_gallery_unfavorite" : "spookd_gallery_favorite"));
+            } else {
+                summary.setText(summaryText);
+                exportAll.setText(str("spookd_gallery_export_all"));
+            }
+            if (adapter != null) adapter.notifyDataSetChanged();
+        }
+
+        /** Builds only the visible tiles or rows and reuses them while scrolling. */
+        private final class TileAdapter extends BaseAdapter {
             @Override
             public int getCount() {
                 return list.size();
@@ -447,17 +866,61 @@ public final class PrivateGalleryActivity {
 
             @Override
             public View getView(int position, View convertView, ViewGroup parent) {
+                Item item = list.get(position);
+                if (listView) {
+                    Row row = convertView instanceof Row ? (Row) convertView : new Row();
+                    row.bind(item);
+                    return row;
+                }
                 Tile tile = convertView instanceof Tile ? (Tile) convertView : new Tile();
-                tile.bind(list.get(position));
+                tile.bind(item);
                 return tile;
             }
         }
 
-        /** A square tile: thumbnail, an audio glyph, and a play and duration badge. */
+        private String kindLabel(Item item) {
+            return item.photo() ? photoLabel : item.video() ? videoLabel : audioLabel;
+        }
+
+        private String ownerLabel(Item item) {
+            return item.unknownOwner() ? unknownLabel : "@" + item.ownerUsername;
+        }
+
+        private String sourceLabel(Item item) {
+            return tabLabels[Arrays.asList(TABS).indexOf(item.tab)];
+        }
+
+        private SelectionCheck selectionCheck(int tint) {
+            Context themed = InstagramPreferenceStyle.dialogContext(activity);
+            TypedArray attributes = themed.obtainStyledAttributes(new int[]{android.R.attr.listChoiceIndicatorMultiple});
+            try {
+                SelectionCheck check = new SelectionCheck(themed, attributes.getDrawable(0));
+                check.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                check.setImageTintList(ColorStateList.valueOf(tint));
+                return check;
+            } finally {
+                attributes.recycle();
+            }
+        }
+
+        private TextView overlayText(int role) {
+            TextView view = new TextView(activity);
+            view.setTextColor(Color.WHITE);
+            SpookdType.apply(view, role);
+            view.setShadowLayer(3, 0, 1, Color.BLACK);
+            view.setSingleLine(true);
+            view.setEllipsize(TextUtils.TruncateAt.END);
+            return view;
+        }
+
+        /** A square tile: thumbnail, an audio glyph, username and source, a star, and a play and duration badge. */
         private final class Tile extends FrameLayout {
             private final ImageView image = new ImageView(activity);
             private final TextView note = new TextView(activity);
+            private final TextView label = overlayText(SpookdType.CAPTION);
             private final TextView badge = new TextView(activity);
+            private final TextView star = overlayText(SpookdType.LABEL);
+            private final SelectionCheck check = selectionCheck(Color.WHITE);
 
             Tile() {
                 super(activity);
@@ -471,34 +934,125 @@ public final class PrivateGalleryActivity {
                 note.setGravity(Gravity.CENTER);
                 addView(note, new FrameLayout.LayoutParams(
                         FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+                LinearLayout bottom = new LinearLayout(activity);
+                bottom.setGravity(Gravity.CENTER_VERTICAL);
+                bottom.setPadding(dp(4), 0, dp(4), dp(4));
+                bottom.addView(label, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
                 badge.setTextColor(0xFFFFFFFF);
                 SpookdType.apply(badge, SpookdType.CAPTION);
                 badge.setPadding(dp(4), 0, dp(4), 0);
                 badge.setBackgroundColor(0x99000000);
-                FrameLayout.LayoutParams badgeParams = new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-                badgeParams.gravity = Gravity.BOTTOM | Gravity.END;
-                badgeParams.setMargins(0, 0, dp(4), dp(4));
-                addView(badge, badgeParams);
+                bottom.addView(badge);
+                addView(bottom, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
+                star.setText("★");
+                FrameLayout.LayoutParams starParams = new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+                        Gravity.TOP | Gravity.END);
+                starParams.setMargins(0, dp(2), dp(6), 0);
+                addView(star, starParams);
+                FrameLayout.LayoutParams checkParams = new FrameLayout.LayoutParams(dp(32), dp(32),
+                        Gravity.TOP | Gravity.START);
+                checkParams.setMargins(dp(4), dp(4), 0, 0);
+                addView(check, checkParams);
             }
 
             void bind(Item item) {
-                String what = str(item.photo() ? "spookd_media_photo"
-                        : item.video() ? "spookd_media_video" : "spookd_gallery_audio");
-                setContentDescription(item.mark == null ? what : what + ", " + str(item.mark));
+                String what = kindLabel(item);
+                if (item.mark != null) what = what + ", " + str(item.mark);
+                setContentDescription(what + ", " + ownerLabel(item));
                 note.setVisibility(item.photo() || item.video() ? View.GONE : View.VISIBLE);
                 String duration = item.durationMs == null ? "" : DateUtils.formatElapsedTime(item.durationMs / 1000);
                 String badgeText = item.video() ? ("▶ " + duration).trim() : duration;
                 if (item.mark != null) badgeText = (str(item.mark) + " " + badgeText).trim();
                 badge.setText(badgeText);
                 badge.setVisibility(badgeText.isEmpty() ? View.GONE : View.VISIBLE);
+                label.setText(tab == null ? sourceLabel(item) + " · " + ownerLabel(item) : ownerLabel(item));
+                label.setVisibility(overlays ? View.VISIBLE : View.INVISIBLE);
+                star.setVisibility(item.favorite ? View.VISIBLE : View.GONE);
+                check.setVisibility(selecting ? View.VISIBLE : View.GONE);
+                check.setChecked(selected.contains(item));
+                image.setAlpha(selecting && selected.contains(item) ? 0.6f : 1f);
                 image.setImageBitmap(null);
                 thumbs.load(item, image);
             }
 
             @Override
+            public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) {
+                super.onInitializeAccessibilityNodeInfo(info);
+                info.setCheckable(selecting);
+                info.setChecked(selecting && check.isChecked());
+            }
+
+            @Override
             protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
                 super.onMeasure(widthMeasureSpec, widthMeasureSpec);
+            }
+        }
+
+        /** A list row: thumbnail, owner, and source, kind, date, size and length. */
+        private final class Row extends LinearLayout {
+            private final SelectionCheck check = selectionCheck(InstagramPreferenceStyle.primaryTextColor());
+            private final ImageView image = new ImageView(activity);
+            private final TextView name = new TextView(activity);
+            private final TextView details = new TextView(activity);
+            private final TextView star = new TextView(activity);
+
+            Row() {
+                super(activity);
+                setOrientation(HORIZONTAL);
+                setGravity(Gravity.CENTER_VERTICAL);
+                setPadding(dp(SpookdType.SPACE_L), dp(SpookdType.SPACE_S), dp(SpookdType.SPACE_L),
+                        dp(SpookdType.SPACE_S));
+                addView(check, new LayoutParams(dp(32), dp(32)));
+                image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                image.setBackgroundColor(themed("igds_color_secondary_background", 0xFF262626));
+                LayoutParams imageParams = new LayoutParams(dp(56), dp(56));
+                imageParams.setMarginEnd(dp(SpookdType.SPACE_M));
+                addView(image, imageParams);
+                LinearLayout texts = new LinearLayout(activity);
+                texts.setOrientation(VERTICAL);
+                SpookdType.apply(name, SpookdType.BODY);
+                name.setTextColor(InstagramPreferenceStyle.primaryTextColor());
+                name.setSingleLine(true);
+                name.setEllipsize(TextUtils.TruncateAt.END);
+                SpookdType.apply(details, SpookdType.SECONDARY);
+                details.setTextColor(InstagramPreferenceStyle.secondaryTextColor());
+                details.setMaxLines(2);
+                details.setEllipsize(TextUtils.TruncateAt.END);
+                texts.addView(name);
+                texts.addView(details);
+                addView(texts, new LayoutParams(0, LayoutParams.WRAP_CONTENT, 1));
+                star.setText("★");
+                SpookdType.apply(star, SpookdType.LABEL);
+                star.setTextColor(InstagramPreferenceStyle.primaryTextColor());
+                star.setPadding(dp(SpookdType.SPACE_S), 0, 0, 0);
+                addView(star);
+            }
+
+            void bind(Item item) {
+                name.setText(ownerLabel(item));
+                StringBuilder text = new StringBuilder(sourceLabel(item)).append(" · ").append(kindLabel(item));
+                if (item.durationMs != null) {
+                    text.append(" · ").append(DateUtils.formatElapsedTime(item.durationMs / 1000));
+                }
+                if (item.mark != null) text.append(" · ").append(str(item.mark));
+                text.append(" · ").append(DateUtils.formatDateTime(activity, item.time,
+                        DateUtils.FORMAT_SHOW_DATE | DateUtils.FORMAT_ABBREV_MONTH));
+                text.append(" · ").append(Formatter.formatShortFileSize(activity, item.size));
+                details.setText(text);
+                star.setVisibility(item.favorite ? View.VISIBLE : View.GONE);
+                check.setVisibility(selecting ? View.VISIBLE : View.GONE);
+                check.setChecked(selected.contains(item));
+                image.setImageBitmap(null);
+                thumbs.load(item, image);
+            }
+
+            @Override
+            public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) {
+                super.onInitializeAccessibilityNodeInfo(info);
+                info.setCheckable(selecting);
+                info.setChecked(selecting && check.isChecked());
             }
         }
 
@@ -511,21 +1065,42 @@ public final class PrivateGalleryActivity {
             };
         }
 
-        /** Main thread. Open post and Open profile show only when the item knows its link or owner. */
-        private void showOptions(Item item) {
+        /** Main thread. The viewer's button stars or unstars the item. */
+        private void showViewer(Item item) {
+            VaultViewer.showFor(activity, viewerSource(item),
+                    () -> item.favorite ? "★ " + str("spookd_gallery_unfavorite") : "☆ " + str("spookd_gallery_favorite"),
+                    () -> setFavorite(Collections.singletonList(item), !item.favorite));
+        }
+
+        /** Main thread; the stars are written on the jobs thread, before any reload that follows. */
+        private void setFavorite(List<Item> items, boolean favorite) {
+            if (items.isEmpty()) return;
+            for (Item item : items) item.favorite = favorite;
+            JOBS.execute(() -> {
+                try {
+                    GalleryStore store = GalleryStore.get();
+                    for (Item item : items) store.setFavorite(item.vault, item.id, favorite);
+                } catch (Exception e) {
+                    failed("star", e);
+                }
+            });
+            if (favoritesOnly && !favorite) reload(false);
+            else updateSelection();
+        }
+
+        /** Main thread. Open post and Open profile show only for one item that knows its link or owner. */
+        private void showOptions(List<Item> items) {
+            if (items.isEmpty()) return;
+            Item item = items.get(0);
             List<CharSequence> labels = new ArrayList<>();
             List<Runnable> actions = new ArrayList<>();
             labels.add(str("spookd_gallery_export"));
-            actions.add(() -> export(item));
-            labels.add(str("spookd_gallery_share"));
-            actions.add(() -> share(item));
-            labels.add(str("spookd_delete"));
-            actions.add(() -> confirmDelete(item));
-            if (!TextUtils.isEmpty(item.link)) {
+            actions.add(() -> export(items));
+            if (items.size() == 1 && !TextUtils.isEmpty(item.link)) {
                 labels.add(str("spookd_gallery_open_post"));
                 actions.add(() -> view(item.link));
             }
-            if (!TextUtils.isEmpty(item.ownerUsername)) {
+            if (items.size() == 1 && !item.unknownOwner()) {
                 labels.add(str("spookd_gallery_open_profile"));
                 actions.add(() -> view(GalleryActions.profileLink(item.ownerUsername)));
             }
@@ -541,23 +1116,29 @@ public final class PrivateGalleryActivity {
             return request;
         }
 
-        private void export(Item item) {
+        private void export(List<Item> items) {
             try {
-                new MediaDownloader(activity).enqueue(exportRequest(item));
+                if (items.size() == 1) {
+                    new MediaDownloader(activity).enqueue(exportRequest(items.get(0)));
+                    return;
+                }
+                List<DownloadRequest> requests = new ArrayList<>();
+                for (Item item : items) requests.add(exportRequest(item));
+                GalleryActions.exportAll(activity, requests);
             } catch (Exception e) {
-                failed("export " + item.key(), e);
+                failed("export", e);
             }
         }
 
         private void confirmExportAll() {
-            List<Item> list = items.get(tab);
-            if (list == null || list.isEmpty()) return;
+            List<Item> items = list;
+            if (items.isEmpty()) return;
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
-                    .setMessage(str("spookd_gallery_export_all_confirm", list.size()))
+                    .setMessage(str("spookd_gallery_export_all_confirm", items.size()))
                     .setPositiveButton(str("spookd_gallery_export"), (d, which) -> {
                         try {
                             List<DownloadRequest> requests = new ArrayList<>();
-                            for (Item item : list) requests.add(exportRequest(item));
+                            for (Item item : items) requests.add(exportRequest(item));
                             GalleryActions.exportAll(activity, requests);
                         } catch (Exception e) {
                             failed("export all", e);
@@ -567,28 +1148,33 @@ public final class PrivateGalleryActivity {
                     .show();
         }
 
-        /** Copies on the jobs thread, then offers the copy to other apps from the main thread. */
-        private void share(Item item) {
-            // One share at a time: the next share clears the copy the previous chooser still offers.
-            if (sharing) return;
+        /** Copies on the jobs thread, then offers the copies to other apps from the main thread. */
+        private void share(List<Item> items) {
+            // One share at a time: the next share clears the copies the previous chooser still offers.
+            if (sharing || items.isEmpty()) return;
             sharing = true;
             Context app = activity.getApplicationContext();
             JOBS.execute(() -> {
-                Uri uri;
+                ArrayList<Uri> uris = new ArrayList<>();
+                List<String> types = new ArrayList<>();
                 try {
-                    uri = GalleryActions.shareCopy(app, item.fileName, item.vault, item.id, item.file);
+                    File dir = GalleryActions.clearShared(app);
+                    for (Item item : items) {
+                        uris.add(GalleryActions.shareCopy(app, dir, item.fileName, item.vault, item.id, item.file));
+                        types.add(GalleryActions.mimeType(item.fileName, item.kind));
+                    }
                 } catch (Exception e) {
                     ui.post(() -> sharing = false);
-                    failed("share " + item.key(), e);
+                    failed("share", e);
                     return;
                 }
                 ui.post(() -> {
                     sharing = false;
                     if (closed) return;
                     try {
-                        GalleryActions.share(activity, uri, GalleryActions.mimeType(item.fileName, item.kind));
+                        GalleryActions.share(activity, uris, GalleryActions.commonMimeType(types));
                     } catch (Exception e) {
-                        failed("share " + item.key(), e);
+                        failed("share", e);
                     }
                 });
             });
@@ -608,22 +1194,30 @@ public final class PrivateGalleryActivity {
             Utils.showToastShort(str("spookd_gallery_action_failed"));
         }
 
-        private void confirmDelete(Item item) {
+        private void confirmDelete(List<Item> items) {
+            if (items.isEmpty()) return;
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
-                    .setMessage(str("spookd_gallery_delete_confirm"))
-                    .setPositiveButton(str("spookd_delete"), (d, which) -> delete(item))
+                    .setMessage(items.size() == 1 ? str("spookd_gallery_delete_confirm")
+                            : str("spookd_gallery_delete_selected_confirm", items.size()))
+                    .setPositiveButton(str("spookd_delete"), (d, which) -> delete(items))
                     .setNegativeButton(str("spookd_cancel"), null)
                     .show();
         }
 
         /** A download is deleted only while it is still the file shown; either way the screen reloads. */
-        private void delete(Item item) {
+        private void delete(List<Item> items) {
             JOBS.execute(() -> {
-                try {
-                    if (item.vault) MediaVault.get().delete(item.id);
-                    else GalleryStore.get().delete(item.id, item.file);
-                } catch (Exception e) {
-                    Logger.printException(() -> "Private gallery: cannot delete " + item.key(), e);
+                for (Item item : items) {
+                    try {
+                        if (item.vault) {
+                            MediaVault.get().delete(item.id);
+                            GalleryStore.get().setFavorite(true, item.id, false);
+                        } else {
+                            GalleryStore.get().delete(item.id, item.file);
+                        }
+                    } catch (Exception e) {
+                        Logger.printException(() -> "Private gallery: cannot delete " + item.key(), e);
+                    }
                 }
                 ui.post(() -> {
                     if (!closed) reload(false);

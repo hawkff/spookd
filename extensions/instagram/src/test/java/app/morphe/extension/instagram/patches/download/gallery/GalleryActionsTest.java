@@ -32,6 +32,14 @@ public final class GalleryActionsTest {
     }
 
     @Test
+    public void sharedCopiesGetTheNarrowestTypeThatCoversThemAll() {
+        assertEquals("image/jpeg", GalleryActions.commonMimeType(Arrays.asList("image/jpeg", "image/jpeg")));
+        assertEquals("image/*", GalleryActions.commonMimeType(Arrays.asList("image/jpeg", "image/png")));
+        assertEquals("*/*", GalleryActions.commonMimeType(Arrays.asList("image/jpeg", "video/mp4")));
+        assertEquals("video/*", GalleryActions.commonMimeType(Arrays.asList("video/*")));
+    }
+
+    @Test
     public void profileLinkOpensTheUsersPage() {
         assertEquals("https://www.instagram.com/alice.b_1/", GalleryActions.profileLink("alice.b_1"));
     }
