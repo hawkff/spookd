@@ -106,23 +106,95 @@ public class PinnedRecipientsTest {
     @After
     public void dropKept() {
         PinnedRecipients.clearCaches();
+        PinnedRecipients.cacheAccount = null;
+        PinnedRecipients.sessionKnown = false;
+        PinnedRecipients.pinsByAccount.clear();
+        PinnedRecipients.enabled = () -> false;
+        PinnedRecipients.hiddenChatsOn = () -> false;
+        PinnedRecipients.clock = () -> NOW;
+    }
+
+    /** Search returns for an account with "direct" pinned, while pinning is on. */
+    private static void pinFor(String account) {
+        PinnedRecipients.enabled = () -> true;
+        PinnedRecipients.hiddenChatsOn = () -> false;
+        PinnedRecipients.clock = () -> NOW;
+        PinnedRecipients.pinsByAccount.put(account, pins());
+    }
+
+    private static String person(Object entry) {
+        return "friend".equals(entry) ? "friend" : null;
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static List finish(PinnedRecipients.RecentSearch search, List<Object> results) {
+        return PinnedRecipients.finishRecentSearch(search, results, PinnedRecipientsTest::person);
+    }
+
+    @Test
+    public void aSearchOfTheCurrentAccountPutsThePinnedPersonFirstAndKeepsTheEntry() {
+        pinFor("first");
+        PinnedRecipients.sessionChanged("first");
+        PinnedRecipients.RecentSearch search = PinnedRecipients.beginRecentSearch("first", true);
+        assertEquals(Arrays.asList("friend", "a"), finish(search, Arrays.asList("a", "friend")));
+        assertEquals(1, PinnedRecipients.recentEntries.size());
+    }
+
+    @Test
+    public void aSearchRunningWhilePinningIsTurnedOffKeepsNothing() {
+        pinFor("first");
+        PinnedRecipients.sessionChanged("first");
+        PinnedRecipients.RecentSearch search = PinnedRecipients.beginRecentSearch("first", true);
+        PinnedRecipients.clearCaches();
+        List<Object> results = Arrays.asList("a", "friend");
+        assertSame(results, finish(search, results));
+        assertTrue(PinnedRecipients.recentEntries.isEmpty());
+
+        // Turned off before the return, without a clear having run yet.
+        PinnedRecipients.RecentSearch next = PinnedRecipients.beginRecentSearch("first", true);
+        PinnedRecipients.enabled = () -> false;
+        assertSame(results, finish(next, results));
+        assertTrue(PinnedRecipients.recentEntries.isEmpty());
+    }
+
+    @Test
+    public void aSearchOfTheAccountBeforeASwitchKeepsNothingAndDoesNotSwitchBack() {
+        pinFor("first");
+        pinFor("second");
+        PinnedRecipients.sessionChanged("first");
+        PinnedRecipients.RecentSearch search = PinnedRecipients.beginRecentSearch("first", true);
+        PinnedRecipients.sessionChanged("second");
+        List<Object> results = Arrays.asList("a", "friend");
+        assertSame(results, finish(search, results));
+        assertEquals("second", PinnedRecipients.cacheAccount);
+        assertTrue(PinnedRecipients.recentEntries.isEmpty());
+        // A late list of the earlier account is not even started.
+        assertNull(PinnedRecipients.beginRecentSearch("first", true));
+        assertEquals("second", PinnedRecipients.cacheAccount);
     }
 
     @Test
     public void anotherAccountOrALogoutDropsWhatWasKept() {
-        PinnedRecipients.useAccount("first");
+        PinnedRecipients.sessionChanged("first");
         PinnedRecipients.shareTargets.put("direct", new PinnedRecipients.Kept<>("pin:direct", NOW));
         PinnedRecipients.recentEntries.put("friend", new PinnedRecipients.Kept<>("pin:friend", NOW));
-        PinnedRecipients.useAccount("first");
+        PinnedRecipients.sessionChanged("first");
         assertEquals(1, PinnedRecipients.shareTargets.size());
 
-        PinnedRecipients.useAccount("second");
+        PinnedRecipients.sessionChanged("second");
         assertTrue(PinnedRecipients.shareTargets.isEmpty());
         assertTrue(PinnedRecipients.recentEntries.isEmpty());
 
         PinnedRecipients.shareTargets.put("direct", new PinnedRecipients.Kept<>("pin:direct", NOW));
-        PinnedRecipients.useAccount(null);
+        PinnedRecipients.sessionChanged(null);
         assertTrue(PinnedRecipients.shareTargets.isEmpty());
+        assertNull(PinnedRecipients.beginRecentSearch("second", true));
+    }
+
+    @Test
+    public void withoutASessionReportTheFirstListedAccountIsUsed() {
+        assertEquals("first", PinnedRecipients.beginRecentSearch("first", true).account);
+        assertEquals("first", PinnedRecipients.cacheAccount);
     }
 
     @Test

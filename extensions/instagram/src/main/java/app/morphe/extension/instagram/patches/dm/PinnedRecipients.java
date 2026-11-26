@@ -9,6 +9,7 @@ package app.morphe.extension.instagram.patches.dm;
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.content.SharedPreferences;
+import android.os.SystemClock;
 
 import org.json.JSONObject;
 
@@ -26,6 +27,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
 import java.util.function.Predicate;
@@ -54,7 +56,7 @@ public final class PinnedRecipients {
     private static final String KEY_PREFIX = "pins_";
     private static final Field[] NO_FIELDS = new Field[0];
     private static final Store STORE = new Store();
-    private static final Map<String, Pins> pinsByAccount = new HashMap<>();
+    static final Map<String, Pins> pinsByAccount = new HashMap<>();
     private static final Map<Class<?>, Field[]> objectFields = new ConcurrentHashMap<>();
     // What Instagram listed for each pin of the current account, by pin, held under CACHE_LOCK for this process only.
     static final long KEEP_MS = 30 * 60 * 1000L;
@@ -62,9 +64,15 @@ public final class PinnedRecipients {
     static final Map<String, Kept<Object>> shareTargets = new HashMap<>();
     static final Map<String, Kept<Object>> recentEntries = new HashMap<>();
     static String cacheAccount;
+    // Advanced whenever kept entries are dropped, so a search that started before cannot put them back.
+    static long generation;
+    // Set once Instagram reported its current session; from then on only that report changes the account.
+    static boolean sessionKnown;
     private static boolean listening;
-    // Replaced in tests.
-    static LongSupplier clock = System::currentTimeMillis;
+    // Replaced in tests; elapsed time, so changing the device clock does not stretch or cut the expiry.
+    static LongSupplier clock = () -> SystemClock.elapsedRealtime();
+    static BooleanSupplier enabled = () -> Pref.pinRecipients();
+    static BooleanSupplier hiddenChatsOn = () -> Pref.hiddenChats();
     private static final ThreadLocal<RecentSearch> recentSearch = new ThreadLocal<>();
     // The button added to the menu opened last; menus open and are pressed on the main thread.
     private static String menuButton;
@@ -154,7 +162,7 @@ public final class PinnedRecipients {
     public static List orderShareTargets(Object adapter, List targets, String query) {
         try {
             if (targets == null || (query != null && !query.isEmpty())) return targets;
-            if (!Pref.pinRecipients()) {
+            if (!enabled.getAsBoolean()) {
                 clearCaches();
                 return targets;
             }
@@ -163,7 +171,7 @@ public final class PinnedRecipients {
             Pins pins = pins(account);
             if (pins.chats.isEmpty()) return targets;
             synchronized (CACHE_LOCK) {
-                useAccount(account);
+                if (!adopt(account)) return targets;
                 return pinFirst((List<Object>) targets, pins.chatRanks,
                         target -> pins.chatOf(HiddenChatsShare.keyOf(target), account), shareTargets, true,
                         addable(account, chat -> chat, pins.chats::get), clock.getAsLong());
@@ -179,16 +187,26 @@ public final class PinnedRecipients {
      * keeps the account and whether the query is empty for the returns of the same call.
      */
     public static void noteRecentSearch(Object dataSource, boolean emptyQuery) {
+        recentSearch.remove();
         try {
-            boolean on = Pref.pinRecipients();
-            if (!on) clearCaches();
-            String account = on ? accountOf(HiddenChats.sessionOf(dataSource)) : null;
+            if (!enabled.getAsBoolean()) {
+                clearCaches();
+                return;
+            }
             // With recents hidden, nothing is added back to the empty list.
-            if (account == null) recentSearch.remove();
-            else recentSearch.set(new RecentSearch(account, emptyQuery && !Pref.hideRecentSearches()));
+            RecentSearch search = beginRecentSearch(accountOf(HiddenChats.sessionOf(dataSource)),
+                    emptyQuery && !Pref.hideRecentSearches());
+            if (search != null) recentSearch.set(search);
         } catch (Throwable t) {
-            recentSearch.remove();
             Logger.printException(() -> "PinnedRecipients.noteRecentSearch failed", t);
+        }
+    }
+
+    /** The context of a search that starts now for the account, or null when its entries must not be used or kept. */
+    static RecentSearch beginRecentSearch(String account, boolean emptyQuery) {
+        if (account == null) return null;
+        synchronized (CACHE_LOCK) {
+            return adopt(account) ? new RecentSearch(account, emptyQuery, generation) : null;
         }
     }
 
@@ -197,23 +215,33 @@ public final class PinnedRecipients {
      * first. With an empty query, a pinned person Instagram leaves out (like after clearing recents) is added back for a
      * while after the list last showed them.
      */
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings("rawtypes")
     public static List orderRecentSearches(List results) {
         RecentSearch search = recentSearch.get();
         recentSearch.remove();
         try {
-            if (search == null || results == null) return results;
-            Pins pins = pins(search.account);
-            if (pins.people.isEmpty()) return results;
-            synchronized (CACHE_LOCK) {
-                useAccount(search.account);
-                return pinFirst((List<Object>) results, pins.people, PinnedRecipients::userIdOf, recentEntries,
-                        search.emptyQuery, addable(search.account, pins.chatOfPerson::get, person -> person),
-                        clock.getAsLong());
-            }
+            return finishRecentSearch(search, results, PinnedRecipients::userIdOf);
         } catch (Throwable t) {
             Logger.printException(() -> "PinnedRecipients.orderRecentSearches failed", t);
             return results;
+        }
+    }
+
+    /**
+     * The returned list of a search, with pinned people first; untouched, and nothing kept, when the search started
+     * before its entries were dropped (pinning off, another account) or pinning is off now.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    static List finishRecentSearch(RecentSearch search, List results, Function<Object, String> personOf) {
+        if (search == null || results == null) return results;
+        Pins pins = pins(search.account);
+        if (pins.people.isEmpty()) return results;
+        synchronized (CACHE_LOCK) {
+            if (search.generation != generation || !search.account.equals(cacheAccount) || !enabled.getAsBoolean()) {
+                return results;
+            }
+            return pinFirst((List<Object>) results, pins.people, personOf, recentEntries, search.emptyQuery,
+                    addable(search.account, pins.chatOfPerson::get, person -> person), clock.getAsLong());
         }
     }
 
@@ -286,13 +314,15 @@ public final class PinnedRecipients {
         }
     }
 
-    private static final class RecentSearch {
+    static final class RecentSearch {
         final String account;
         final boolean emptyQuery;
+        final long generation;
 
-        RecentSearch(String account, boolean emptyQuery) {
+        RecentSearch(String account, boolean emptyQuery, long generation) {
             this.account = account;
             this.emptyQuery = emptyQuery;
+            this.generation = generation;
         }
     }
 
@@ -302,7 +332,7 @@ public final class PinnedRecipients {
      */
     private static Predicate<String> addable(String account, Function<String, String> chatOfPin,
                                              Function<String, String> personOfPin) {
-        if (!Pref.hiddenChats() || HiddenChats.isOpenFor(account)) return pin -> true;
+        if (!hiddenChatsOn.getAsBoolean() || HiddenChats.isOpenFor(account)) return pin -> true;
         return notHidden(HiddenChatsPref.ids(account), HiddenChatsPref.hiddenUsers(account), chatOfPin, personOfPin);
     }
 
@@ -330,20 +360,37 @@ public final class PinnedRecipients {
     /** Called when Instagram makes a session current; another account or a logout drops what was kept. */
     public static void onCurrentSession(UserSession session) {
         try {
-            synchronized (CACHE_LOCK) {
-                useAccount(accountOf(session));
-            }
+            sessionChanged(accountOf(session));
         } catch (Throwable t) {
             Logger.printException(() -> "PinnedRecipients.onCurrentSession failed", t);
         }
     }
 
+    static void sessionChanged(String account) {
+        synchronized (CACHE_LOCK) {
+            sessionKnown = true;
+            useAccount(account);
+        }
+    }
+
+    /**
+     * Whether entries of the account may be used and kept now; called holding CACHE_LOCK. Without a session report
+     * yet, the account is taken from the list; after one, a list of another account is left alone.
+     */
+    private static boolean adopt(String account) {
+        if (account.equals(cacheAccount)) return true;
+        if (sessionKnown) return false;
+        useAccount(account);
+        return true;
+    }
+
     /** Keeps entries for one account only; called holding CACHE_LOCK. */
-    static void useAccount(String account) {
+    private static void useAccount(String account) {
         if (!Objects.equals(account, cacheAccount)) {
             shareTargets.clear();
             recentEntries.clear();
             cacheAccount = account;
+            generation++;
         }
         if (account != null && !listening) {
             try {
@@ -355,11 +402,12 @@ public final class PinnedRecipients {
         }
     }
 
+    /** Drops what was kept, when pinning is off; the current account stays known for when it is back on. */
     static void clearCaches() {
         synchronized (CACHE_LOCK) {
             shareTargets.clear();
             recentEntries.clear();
-            cacheAccount = null;
+            generation++;
         }
     }
 
