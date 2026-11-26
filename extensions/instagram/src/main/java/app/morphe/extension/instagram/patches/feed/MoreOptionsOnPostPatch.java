@@ -24,6 +24,7 @@ import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.instagram.entity.InstagramDialogBox;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.entity.UserData;
+import app.morphe.extension.instagram.utils.ExactTime;
 
 import com.instagram.common.session.UserSession;
 
@@ -37,6 +38,9 @@ public class MoreOptionsOnPostPatch {
 
             ArrayList<String> options = new ArrayList<>();
 
+            String postTime = postTime(mediaData);
+            String postTimeOption = postTime == null ? null : str("spookd_posted_at", postTime);
+            if (postTimeOption != null) options.add(postTimeOption);
             options.add(str("spookd_copy_post_description"));
             options.add(str("spookd_copy_post_owner_username"));
             options.add(str("spookd_copy_post_owner_fullname"));
@@ -51,7 +55,10 @@ public class MoreOptionsOnPostPatch {
                         String selectedOption = options.get(which);
                         String stringToCopy = null;
 
-                        if (selectedOption.equals(str("spookd_copy_post_description"))) {
+                        if (selectedOption.equals(postTimeOption)) {
+                            stringToCopy = postTime;
+
+                        } else if (selectedOption.equals(str("spookd_copy_post_description"))) {
                             stringToCopy = mediaData.getDescriptionText();
 
                         } else if (selectedOption.equals(str("spookd_copy_post_owner_username"))) {
@@ -88,6 +95,17 @@ public class MoreOptionsOnPostPatch {
 
         } catch (Exception e) {
             Logger.printException(() -> "postMoreOptions failure", e);
+        }
+    }
+
+    /** The local date and time the post was taken, or null when the media has no time. */
+    private static String postTime(MediaData mediaData) {
+        try {
+            Long seconds = mediaData.getTakenAtSeconds();
+            return seconds == null || seconds <= 0 ? null : ExactTime.format(seconds * 1000L, ExactTime.FULL_DATE);
+        } catch (Exception | LinkageError e) {
+            Logger.printException(() -> "Could not read the post time", e);
+            return null;
         }
     }
 
