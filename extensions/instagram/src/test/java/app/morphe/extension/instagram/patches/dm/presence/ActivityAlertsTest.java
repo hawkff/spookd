@@ -45,6 +45,25 @@ public class ActivityAlertsTest {
     }
 
     @Test
+    public void anEmptyReplacementEndsAnActiveStateAndAllowsTheNextComeback() {
+        ActivityAlerts.Tracker tracker = new ActivityAlerts.Tracker();
+        tracker.changed("a:1", true, 0);
+        // Nobody is active in the new snapshot, so the person has no presence.
+        assertTrue(tracker.changed("a:1", null, 10 * MINUTE));
+        assertTrue(tracker.changed("a:1", true, 20 * MINUTE));
+    }
+
+    @Test
+    public void aSessionEndForgetsOnlyThatAccount() {
+        ActivityAlerts.Tracker tracker = new ActivityAlerts.Tracker();
+        tracker.changed("a:1", true, 0);
+        tracker.changed("b:1", true, 0);
+        tracker.forget("a:");
+        assertFalse(tracker.changed("a:1", false, 10 * MINUTE));
+        assertTrue(tracker.changed("b:1", false, 10 * MINUTE));
+    }
+
+    @Test
     public void typingAndReadNotifyOncePerTwoMinutesPerKey() {
         ActivityAlerts.Tracker tracker = new ActivityAlerts.Tracker();
         assertTrue(tracker.due("a:1:typing", 0));

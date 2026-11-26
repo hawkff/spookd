@@ -160,15 +160,20 @@ val activityNotificationsPatch =
             replaceStub("presenceActive", isActive.definingClass, "iget-boolean v0, p0, $isActive", "return")
 
             PresenceStoreNotifyFingerprint.method.apply {
-                val session = classDefBy(parameterTypes.first().toString()).fields.firstOrNull { it.type == USER_SESSION_CLASS }
+                val storeFields = classDefBy(parameterTypes.first().toString()).fields
+                val session = storeFields.firstOrNull { it.type == USER_SESSION_CLASS }
                     ?: throw PatchException("Presence store has no session")
-                // v0 is free at the start and the method has two parameters, so p1 sits in a low register.
-                if (implementation!!.registerCount !in 3..16) throw PatchException("Unexpected presence store registers")
+                // Updates pass the store's own map; the session ending passes another one.
+                val storeMap = storeFields.singleOrNull { it.type == "Ljava/util/Map;" }
+                    ?: throw PatchException("Presence store has no single map")
+                // v0 and v1 are free at the start and the method has two parameters, so p1 sits in a low register.
+                if (implementation!!.registerCount !in 4..16) throw PatchException("Unexpected presence store registers")
                 addInstructions(
                     0,
                     """
                     iget-object v0, p0, $session
-                    invoke-static {v0, p1}, $EXTENSION_CLASS->onPresence(Ljava/lang/Object;Ljava/util/Map;)V
+                    iget-object v1, p0, $storeMap
+                    invoke-static {v0, p1, v1}, $EXTENSION_CLASS->onPresence(Ljava/lang/Object;Ljava/util/Map;Ljava/util/Map;)V
                     """.trimIndent(),
                 )
             }

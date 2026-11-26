@@ -82,6 +82,12 @@ public final class ActivityAlerts {
             return last == null || now - last >= QUIET_MS;
         }
 
+        /** Drops what is known about the people whose keys start with {@code prefix}, so their next state is a baseline. */
+        synchronized void forget(String prefix) {
+            active.keySet().removeIf(person -> person.startsWith(prefix));
+            changedAt.keySet().removeIf(person -> person.startsWith(prefix));
+        }
+
         /** Whether a typing or read notification for {@code key} is due: at most one per {@link #QUIET_MS}. */
         synchronized boolean due(String key, long now) {
             Long last = notifiedAt.get(key);
@@ -93,17 +99,22 @@ public final class ActivityAlerts {
 
     /**
      * Start of Instagram's presence store notifying its listeners, on the thread that updated it and under the store's
-     * lock: the presence states of everyone Instagram knows, by user id.
+     * lock: the presence states of everyone Instagram knows, by user id. Every update passes the store's own map, an
+     * empty one included; the session ending passes a different, empty map.
      */
     @SuppressWarnings("rawtypes")
-    public static void onPresence(Object session, Map presences) {
+    public static void onPresence(Object session, Map presences, Map storeMap) {
         try {
-            if (presences == null || presences.isEmpty() || !(session instanceof UserSession)) return;
+            if (presences == null || !(session instanceof UserSession)) return;
+            String account = nonEmpty(((UserSession) session).getUserId());
+            if (account == null) return;
+            if (presences != storeMap) {
+                TRACKER.forget(account + ":");
+                return;
+            }
             boolean online = Pref.activityAlert(Settings.ACTIVITY_ALERT_ONLINE);
             boolean offline = Pref.activityAlert(Settings.ACTIVITY_ALERT_OFFLINE);
             if (!online && !offline) return;
-            String account = nonEmpty(((UserSession) session).getUserId());
-            if (account == null) return;
             long now = SystemClock.elapsedRealtime();
             for (Map.Entry<String, String> listed : StoryUserList.ACTIVITY_ALERTS.all(account).entrySet()) {
                 String user = userOf(listed.getKey());
