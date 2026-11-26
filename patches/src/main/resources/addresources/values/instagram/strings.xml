@@ -296,6 +296,8 @@
     <string name="spookd_reels_stop_looping_desc">A Reel stops on its last frame instead of starting over. Tap it to watch it again from the start.</string>
     <string name="spookd_reels_tap_to_pause">Tap to pause Reels</string>
     <string name="spookd_reels_tap_to_pause_desc">Tap a Reel to pause or play it instead of turning its sound on or off. Double-tap to like and long-press work as before.</string>
+    <string name="spookd_expanded_feed_videos_muted">Start expanded feed videos muted</string>
+    <string name="spookd_expanded_feed_videos_muted_desc">A video you open full screen from the home feed starts without sound. Instagram shares one sound setting between the feed and Reels, so the feed stays muted afterwards until you turn sound back on.</string>
     <string name="spookd_speed_and_seek">Speed and seek</string>
     <string name="spookd_speed_panel_back">−10 s</string>
     <string name="spookd_speed_panel_forward">+10 s</string>

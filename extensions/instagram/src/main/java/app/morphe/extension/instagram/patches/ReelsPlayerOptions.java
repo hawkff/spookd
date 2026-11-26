@@ -7,6 +7,9 @@
 package app.morphe.extension.instagram.patches;
 
 import java.lang.ref.WeakReference;
+import java.util.Collections;
+import java.util.Set;
+import java.util.WeakHashMap;
 
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.settings.BooleanSetting;
@@ -20,11 +23,15 @@ public final class ReelsPlayerOptions {
     // The Reel item whose video reached its end and has not played since.
     private static volatile WeakReference<Object> endedItem = NONE;
 
+    // Reels viewers opened from the home feed whose sound was already turned off once.
+    private static final Set<Object> mutedFeedViewers = Collections.newSetFromMap(new WeakHashMap<>());
+
     // A holder, so the state helpers below load without the settings classes.
     private static final class Switches {
         static final Pref.Cached<Boolean> START_MUTED = cached(Settings.REELS_START_MUTED);
         static final Pref.Cached<Boolean> STOP_LOOPING = cached(Settings.REELS_STOP_LOOPING);
         static final Pref.Cached<Boolean> TAP_TO_PAUSE = cached(Settings.REELS_TAP_TO_PAUSE);
+        static final Pref.Cached<Boolean> EXPANDED_FEED_MUTED = cached(Settings.EXPANDED_FEED_VIDEOS_MUTED);
 
         private static Pref.Cached<Boolean> cached(BooleanSetting setting) {
             return new Pref.Cached<>(() -> Boolean.TRUE.equals(SharedPref.getBooleanPref(setting)), setting.key);
@@ -45,6 +52,31 @@ public final class ReelsPlayerOptions {
     /** Called on the main thread when the Reels controller would play sound. */
     public static boolean startMuted() {
         return Switches.isOn(Switches.START_MUTED);
+    }
+
+    /**
+     * Called before a Reels viewer checks whether to play sound, with the viewer's source.
+     * Returns whether to turn Instagram's sound off now: once per viewer opened from the home feed.
+     */
+    public static boolean muteExpandedFeedVideo(Object viewer, Object source) {
+        try {
+            return isHomeFeedSource(source) && Switches.isOn(Switches.EXPANDED_FEED_MUTED) && firstSoundCheck(viewer);
+        } catch (Throwable t) {
+            Logger.printException(() -> "Failed to mute an expanded feed video", t);
+            return false;
+        }
+    }
+
+    // Instagram's Reels viewer sources for videos opened from the home feed are named FEED_TIMELINE*.
+    static boolean isHomeFeedSource(Object source) {
+        return source instanceof Enum && ((Enum<?>) source).name().startsWith("FEED_TIMELINE");
+    }
+
+    static boolean firstSoundCheck(Object viewer) {
+        if (viewer == null) return false;
+        synchronized (mutedFeedViewers) {
+            return mutedFeedViewers.add(viewer);
+        }
     }
 
     /** Called when a Reels player is told to play, with Instagram's loop flag set. */

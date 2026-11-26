@@ -985,6 +985,11 @@ public class ScreenBuilder {
                     str("spookd_reels_tap_to_pause_desc"),
                     Settings.REELS_TAP_TO_PAUSE
             ));
+            addPreference(helper.switchPreference(
+                    str("spookd_expanded_feed_videos_muted"),
+                    str("spookd_expanded_feed_videos_muted_desc"),
+                    Settings.EXPANDED_FEED_VIDEOS_MUTED
+            ));
         }
         if (SettingsStatus.improveImageViewing) {
             addPreference(
