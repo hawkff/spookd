@@ -45,6 +45,15 @@ final class HeldReceipts {
         return key != null && held.containsKey(key);
     }
 
+    /** Whether the eye may show or send for the item; with the eye switch off every kept receipt is dropped unsent. */
+    boolean usable(boolean eyeOn, String key) {
+        if (!eyeOn) {
+            held.clear();
+            return false;
+        }
+        return has(key);
+    }
+
     /** Sends the receipt of the item and then forgets it; when sending throws, it stays for another try. */
     boolean send(String key, Sender sender) throws Exception {
         Object receipt = key == null ? null : held.get(key);

@@ -75,6 +75,7 @@ public final class VisualMessageSeen {
             HELD.keep(HeldReceipts.key(producerAccount, producerItemId), new Object[]{queue, receipt});
             updateButton(currentViewer.get());
         } else {
+            HELD.usable(false, null);
             EphemeralMediaPatch.markViewed(producerAccount, producerItemId);
         }
         return true;
@@ -97,7 +98,8 @@ public final class VisualMessageSeen {
         if (!(composer instanceof LinearLayout)) return;
         LinearLayout row = (LinearLayout) composer;
         View button = row.findViewWithTag(BUTTON_TAG);
-        boolean show = HELD.has(HeldReceipts.key(accountOf(sessionNative(viewer)), selectedItemId(viewer)));
+        boolean show = HELD.usable(Pref.markVisualMessagesSeenManually(),
+                HeldReceipts.key(accountOf(sessionNative(viewer)), selectedItemId(viewer)));
         if (button == null) {
             if (!show) return;
             button = createButton(row);
@@ -128,7 +130,8 @@ public final class VisualMessageSeen {
         try {
             String account = accountOf(sessionNative(viewer));
             String itemId = selectedItemId(viewer);
-            boolean sent = HELD.send(HeldReceipts.key(account, itemId), held -> {
+            String key = HeldReceipts.key(account, itemId);
+            boolean sent = HELD.usable(Pref.markVisualMessagesSeenManually(), key) && HELD.send(key, held -> {
                 Object[] queued = (Object[]) held;
                 enqueueNative(queued[0], queued[1]);
             });

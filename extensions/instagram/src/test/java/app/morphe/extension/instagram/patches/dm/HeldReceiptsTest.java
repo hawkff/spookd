@@ -60,6 +60,18 @@ public class HeldReceiptsTest {
     }
 
     @Test
+    public void turningTheEyeOffDropsKeptReceiptsUnsent() throws Exception {
+        HeldReceipts held = new HeldReceipts(4);
+        held.keep(A, "receipt a");
+        assertTrue(held.usable(true, A));
+        assertFalse(held.usable(false, A));
+        assertFalse(held.has(A));
+        // Turned back on, the old receipt is gone: nothing to show or send.
+        assertFalse(held.usable(true, A));
+        assertFalse(held.send(A, receipt -> fail("sent " + receipt)));
+    }
+
+    @Test
     public void theOldestReceiptGoesFirstWhenFull() {
         HeldReceipts held = new HeldReceipts(1);
         held.keep(A, "receipt a");
