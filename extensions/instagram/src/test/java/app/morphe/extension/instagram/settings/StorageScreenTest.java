@@ -37,7 +37,7 @@ public final class StorageScreenTest {
         assertEquals(30, StorageScreen.sizeOfContents(cache, keep));
         assertEquals(70, StorageScreen.sizeOf(cache));
 
-        StorageScreen.clearContents(cache, keep);
+        assertTrue(StorageScreen.clearContents(cache, keep));
 
         assertTrue(shared.isFile());
         assertTrue(outside.isFile());
@@ -50,6 +50,7 @@ public final class StorageScreenTest {
     public void missingFoldersMeasureAndClearAsEmpty() {
         assertEquals(0, StorageScreen.sizeOf(null));
         assertEquals(0, StorageScreen.sizeOf(new File(temp.getRoot(), "none")));
-        StorageScreen.clearContents(new File(temp.getRoot(), "none"), Collections.emptySet());
+        assertTrue(StorageScreen.clearContents(new File(temp.getRoot(), "none"), Collections.emptySet()));
+        assertTrue(StorageScreen.clearContents(null, Collections.emptySet()));
     }
 }

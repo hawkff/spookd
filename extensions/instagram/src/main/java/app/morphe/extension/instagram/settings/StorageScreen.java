@@ -15,11 +15,13 @@ import android.text.format.Formatter;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Set;
 
 import app.morphe.extension.instagram.db.SpookdInstantsDb;
-import app.morphe.extension.instagram.patches.analyzer.SpookdFollowDb;
+import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzer;
 import app.morphe.extension.instagram.patches.dm.vault.MediaVault;
 import app.morphe.extension.instagram.patches.download.gallery.GalleryStorage;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
@@ -32,8 +34,9 @@ import app.morphe.extension.shared.Utils;
  * items cleared on a background thread; dialogs run on the main thread.
  */
 public final class StorageScreen {
-    // The same name SpookdFollowDb opens.
+    // The names SpookdFollowDb and SpookdInstantsDb open.
     private static final String ANALYZER_DB = "piko_follow_snapshots.db";
+    private static final String INSTANTS_DB = "piko_instants_vault.db";
     private static final Set<String> KEEP_IN_CACHE = Collections.singleton(GalleryStorage.SHARE_DIR);
     private static final long BYTES_PER_MB = 1_000_000L;
 
@@ -124,7 +127,9 @@ public final class StorageScreen {
         if (limitMb <= 0) return;
         Context app = context.getApplicationContext();
         background(() -> {
-            if (cacheBytes(app) > limitMb * BYTES_PER_MB) clearCache(app);
+            if (cacheBytes(app) > limitMb * BYTES_PER_MB && !clearCache(app)) {
+                Logger.printInfo(() -> "Some cache files could not be deleted");
+            }
         });
     }
 
@@ -138,9 +143,16 @@ public final class StorageScreen {
                     for (MediaVault.Item stored : MediaVault.get().storedItems()) vault += stored.sizeBytes;
                     return Formatter.formatShortFileSize(context, vault);
                 case INSTANTS:
-                    return String.format(str("spookd_storage_entries"), SpookdInstantsDb.getInstance(context).getAll().size());
+                    return String.format(str("spookd_storage_entries_size"),
+                            SpookdInstantsDb.getInstance(context).getAll().size(),
+                            Formatter.formatShortFileSize(context, databaseBytes(context, INSTANTS_DB)));
                 case HISTORY:
-                    return String.format(str("spookd_storage_entries"), GalleryStorage.historyEntries());
+                    int history = GalleryStorage.historyEntries();
+                    int rows = history + GalleryStorage.galleryEntries();
+                    // Both share one file, so the history gets the part its rows are of all rows.
+                    long share = rows == 0 ? 0 : databaseBytes(context, GalleryStorage.DATABASE) * history / rows;
+                    return String.format(str("spookd_storage_history_size"), history,
+                            Formatter.formatShortFileSize(context, share));
                 case ANALYZER:
                     return Formatter.formatShortFileSize(context, databaseBytes(context, ANALYZER_DB));
                 default:
@@ -152,7 +164,7 @@ public final class StorageScreen {
         }
     }
 
-    private static boolean clearItem(Context context, Item item) {
+    private static boolean clearItem(Context context, Item item) throws Exception {
         switch (item) {
             case GALLERY:
                 GalleryStorage.clearGallery();
@@ -168,10 +180,9 @@ public final class StorageScreen {
                 GalleryStorage.clearHistory();
                 return true;
             case ANALYZER:
-                return SpookdFollowDb.deleteAll(context);
+                return ProfileAnalyzer.deleteAllData(context);
             default:
-                clearCache(context);
-                return true;
+                return clearCache(context);
         }
     }
 
@@ -179,9 +190,10 @@ public final class StorageScreen {
         return sizeOfContents(context.getCacheDir(), KEEP_IN_CACHE) + sizeOf(context.getExternalCacheDir());
     }
 
-    private static void clearCache(Context context) {
-        clearContents(context.getCacheDir(), KEEP_IN_CACHE);
-        clearContents(context.getExternalCacheDir(), Collections.emptySet());
+    /** False when a file that still exists could not be deleted. */
+    private static boolean clearCache(Context context) {
+        boolean internal = clearContents(context.getCacheDir(), KEEP_IN_CACHE);
+        return clearContents(context.getExternalCacheDir(), Collections.emptySet()) && internal;
     }
 
     private static long databaseBytes(Context context, String name) {
@@ -208,17 +220,23 @@ public final class StorageScreen {
         return total;
     }
 
-    /** Deletes everything inside {@code dir} but the entries named in {@code keep}; links are removed, not followed. */
-    static void clearContents(File dir, Set<String> keep) {
+    /**
+     * Deletes everything inside {@code dir} but the entries named in {@code keep}; links are removed,
+     * not followed. False when something that still exists could not be deleted; missing files count as gone.
+     */
+    static boolean clearContents(File dir, Set<String> keep) {
         File[] children = dir == null ? null : dir.listFiles();
-        if (children == null) return;
+        if (children == null) return dir == null || !dir.exists();
+        boolean cleared = true;
         for (File child : children) {
             if (keep.contains(child.getName())) continue;
-            if (!Files.isSymbolicLink(child.toPath()) && child.isDirectory()) {
-                clearContents(child, Collections.emptySet());
+            Path path = child.toPath();
+            if (!Files.isSymbolicLink(path) && child.isDirectory()) {
+                cleared &= clearContents(child, Collections.emptySet());
             }
-            child.delete();
+            if (!child.delete() && Files.exists(path, LinkOption.NOFOLLOW_LINKS)) cleared = false;
         }
+        return cleared;
     }
 
     private static boolean isGone(Context context) {

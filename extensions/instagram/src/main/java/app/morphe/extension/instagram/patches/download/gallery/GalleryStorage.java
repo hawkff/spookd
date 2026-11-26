@@ -4,6 +4,8 @@ package app.morphe.extension.instagram.patches.download.gallery;
 public final class GalleryStorage {
     /** The cache folder of files handed to other apps, which a cache clear must leave alone. */
     public static final String SHARE_DIR = GalleryActions.SHARE_DIR;
+    /** The database file the gallery rows and the download history share. */
+    public static final String DATABASE = GalleryDb.DB_NAME;
 
     private GalleryStorage() {
     }
@@ -13,6 +15,12 @@ public final class GalleryStorage {
         for (GalleryTab tab : GalleryTab.values()) {
             for (GalleryStore.Entry entry : GalleryStore.get().list(tab)) total += entry.sizeBytes;
         }
+        return total;
+    }
+
+    public static int galleryEntries() {
+        int total = 0;
+        for (GalleryTab tab : GalleryTab.values()) total += GalleryStore.get().list(tab).size();
         return total;
     }
 

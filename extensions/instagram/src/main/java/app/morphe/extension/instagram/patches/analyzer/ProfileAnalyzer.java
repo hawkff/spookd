@@ -18,6 +18,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.FutureTask;
 
 import app.morphe.extension.instagram.entity.ProfileInfo;
 import app.morphe.extension.instagram.entity.UserData;
@@ -152,6 +153,24 @@ public final class ProfileAnalyzer {
             return state == FollowScan.State.RUNNING || state == FollowScan.State.PAUSED
                     || state == FollowScan.State.BACKING_OFF;
         }
+    }
+
+    /**
+     * Background thread, for the storage screen: deletes every account's data after the queued
+     * analyzer database jobs. Returns false, deleting nothing, while a scan runs, since its commit
+     * would bring the data back.
+     */
+    public static boolean deleteAllData(Context context) throws Exception {
+        FutureTask<Boolean> task = new FutureTask<>(() -> {
+            // Held so no scan starts between the check and the delete.
+            synchronized (ProfileAnalyzer.class) {
+                if (isScanning()) return false;
+                SpookdFollowDb.getInstance(context).deleteEverything();
+                return true;
+            }
+        });
+        ProfileVisits.DB_QUEUE.execute(task);
+        return task.get();
     }
 
     /** Main thread, from the 'Start scan' action of the results screen in a resumed activity. */

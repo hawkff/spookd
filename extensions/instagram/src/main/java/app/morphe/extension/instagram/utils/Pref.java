@@ -923,7 +923,7 @@ public class Pref {
         return on(Settings.OPEN_SETTINGS_ON_LAUNCH);
     }
 
-    /** As stored, also while features are off, since the settings screen shows it. */
+    /** 0 when off or not a number; auto clear itself does not run while features are off. */
     public static long autoClearCacheMb() {
         try {
             return Math.max(0, Long.parseLong(SharedPref.getStringPref(Settings.AUTO_CLEAR_CACHE_MB).trim()));

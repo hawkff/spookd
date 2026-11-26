@@ -1564,9 +1564,29 @@ public class ScreenBuilder {
         });
         addPreference(storage);
 
-        addPreference(galleryLimitPreference("spookd_auto_clear_cache_mb", "spookd_auto_clear_cache_mb_desc",
-                Settings.AUTO_CLEAR_CACHE_MB,
-                Pref::autoClearCacheMb));
+        ListPref autoClearCache = new ListPref(context) {
+            @Override
+            protected void onSetInitialValue(boolean restoreValue, Object defaultValue) {
+                super.onSetInitialValue(restoreValue, defaultValue);
+                String[] megabytes = {"100", "250", "500", "1000"};
+                CharSequence[] entries = new CharSequence[megabytes.length + 1];
+                CharSequence[] values = new CharSequence[megabytes.length + 1];
+                entries[0] = str("spookd_auto_clear_cache_off");
+                values[0] = "0";
+                for (int i = 0; i < megabytes.length; i++) {
+                    entries[i + 1] = String.format(str("spookd_auto_clear_cache_over"), Integer.parseInt(megabytes[i]));
+                    values[i + 1] = megabytes[i];
+                }
+                setEntries(entries);
+                setEntryValues(values);
+            }
+        };
+        autoClearCache.setTitle(str("spookd_auto_clear_cache"));
+        autoClearCache.setDialogTitle(str("spookd_auto_clear_cache"));
+        autoClearCache.setSummary("%s");
+        autoClearCache.setKey(Settings.AUTO_CLEAR_CACHE_MB.key);
+        autoClearCache.setDefaultValue(Settings.AUTO_CLEAR_CACHE_MB.defaultValue);
+        addPreference(autoClearCache);
 
         addPreference(
                 helper.switchPreference(
