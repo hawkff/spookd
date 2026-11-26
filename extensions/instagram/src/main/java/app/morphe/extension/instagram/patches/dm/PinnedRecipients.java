@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.ToIntFunction;
+import java.util.function.Function;
 
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.crimera.sharedPreference.BaseSharedPref;
@@ -36,7 +36,8 @@ import com.instagram.model.direct.DirectThreadKey;
 /**
  * Chats each account pins from a chat's long-press menu in the inbox. Pinned chats are listed first in the share sheet
  * before anything is typed, and the people of pinned one-to-one chats come first in search's recent list. Pins are
- * kept per account id, in the order they were pinned.
+ * kept per account id, in the order they were pinned. Instagram's own entries are moved, never built: one it leaves
+ * out is added back only when it was listed earlier since Instagram started.
  */
 @SuppressWarnings("unused")
 public final class PinnedRecipients {
@@ -48,6 +49,9 @@ public final class PinnedRecipients {
     private static final Store STORE = new Store();
     private static final Map<String, Pins> pinsByAccount = new HashMap<>();
     private static final Map<Class<?>, Field[]> objectFields = new ConcurrentHashMap<>();
+    private static final Map<String, Map<String, Object>> shareTargets = new ConcurrentHashMap<>();
+    private static final Map<String, Map<String, Object>> recentEntries = new ConcurrentHashMap<>();
+    private static final ThreadLocal<RecentSearch> recentSearch = new ThreadLocal<>();
     // The button added to the menu opened last; menus open and are pressed on the main thread.
     private static String menuButton;
     private static boolean menuButtonPins;
@@ -127,51 +131,98 @@ public final class PinnedRecipients {
         }
     }
 
-    /** Called on the main thread with the share sheet's suggested recipients; returns them with the pinned ones first. */
+    /**
+     * Called on the main thread with the share sheet's suggested recipients before anything is typed; returns them with
+     * the pinned ones first. A pinned recipient Instagram leaves out is added back when the sheet listed it earlier
+     * since Instagram started; the hidden chats filter runs on the result.
+     */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static List orderShareTargets(Object adapter, List targets, String query) {
         try {
-            if (targets == null || targets.size() < 2 || (query != null && !query.isEmpty()) || !Pref.pinRecipients()) {
-                return targets;
-            }
+            if (targets == null || (query != null && !query.isEmpty()) || !Pref.pinRecipients()) return targets;
             String account = accountOf(HiddenChats.sessionOf(adapter));
             if (account == null) return targets;
             Pins pins = pins(account);
             if (pins.chats.isEmpty()) return targets;
-            return pinnedFirst((List<Object>) targets, target -> pins.rankOf(HiddenChatsShare.keyOf(target), account));
+            Map<String, Object> seen = cacheOf(shareTargets, account);
+            synchronized (seen) {
+                return pinFirst((List<Object>) targets, pins.chatRanks,
+                        target -> pins.chatOf(HiddenChatsShare.keyOf(target), account), seen, true);
+            }
         } catch (Throwable t) {
             Logger.printException(() -> "PinnedRecipients.orderShareTargets failed", t);
             return targets;
         }
     }
 
-    /** Called with search's recent entries, possibly off the main thread; returns them with pinned people first. */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public static List orderRecentSearches(Object dataSource, List results) {
+    /**
+     * Called at the start of search's recent list, possibly off the main thread, before Instagram reuses its arguments;
+     * keeps the account and whether the query is empty for the returns of the same call.
+     */
+    public static void noteRecentSearch(Object dataSource, boolean emptyQuery) {
         try {
-            if (results == null || results.size() < 2 || !Pref.pinRecipients()) return results;
-            String account = accountOf(HiddenChats.sessionOf(dataSource));
-            if (account == null) return results;
-            Pins pins = pins(account);
+            String account = Pref.pinRecipients() ? accountOf(HiddenChats.sessionOf(dataSource)) : null;
+            // With recents hidden, nothing is added back to the empty list.
+            if (account == null) recentSearch.remove();
+            else recentSearch.set(new RecentSearch(account, emptyQuery && !Pref.hideRecentSearches()));
+        } catch (Throwable t) {
+            recentSearch.remove();
+            Logger.printException(() -> "PinnedRecipients.noteRecentSearch failed", t);
+        }
+    }
+
+    /**
+     * Called with what search's recent list returns, on the thread that noted the call; returns it with pinned people
+     * first. With an empty query, a pinned person Instagram leaves out (like after clearing recents) is added back when
+     * the list showed them earlier since Instagram started.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static List orderRecentSearches(List results) {
+        RecentSearch search = recentSearch.get();
+        recentSearch.remove();
+        try {
+            if (search == null || results == null) return results;
+            Pins pins = pins(search.account);
             if (pins.people.isEmpty()) return results;
-            return pinnedFirst((List<Object>) results, result -> pins.personRank(userIdOf(result)));
+            Map<String, Object> seen = cacheOf(recentEntries, search.account);
+            synchronized (seen) {
+                return pinFirst((List<Object>) results, pins.people, PinnedRecipients::userIdOf, seen, search.emptyQuery);
+            }
         } catch (Throwable t) {
             Logger.printException(() -> "PinnedRecipients.orderRecentSearches failed", t);
             return results;
         }
     }
 
-    /** The items with a rank first, by rank and then in their own order, then the rest; the same list when none has one. */
-    static <T> List<T> pinnedFirst(List<T> items, ToIntFunction<T> rank) {
+    /**
+     * The pinned items first, by the rank of their pin and then in their own order, then the rest. Each pinned item is
+     * kept in {@code seen} by its pin; with {@code addMissing}, a pin without an item gets the one kept for it, so no
+     * pin shows twice. The same list comes back when nothing is pinned or added.
+     */
+    static <T> List<T> pinFirst(List<T> items, Map<String, Integer> ranks, Function<T, String> pinOf,
+                                Map<String, T> seen, boolean addMissing) {
         TreeMap<Integer, List<T>> pinned = new TreeMap<>();
+        Set<String> present = new HashSet<>();
         List<T> rest = new ArrayList<>(items.size());
         for (T item : items) {
-            int r = rank.applyAsInt(item);
-            if (r < 0) rest.add(item);
-            else pinned.computeIfAbsent(r, k -> new ArrayList<>()).add(item);
+            String pin = pinOf.apply(item);
+            Integer rank = pin == null ? null : ranks.get(pin);
+            if (rank == null) {
+                rest.add(item);
+                continue;
+            }
+            present.add(pin);
+            seen.put(pin, item);
+            pinned.computeIfAbsent(rank, r -> new ArrayList<>()).add(item);
+        }
+        if (addMissing) {
+            for (Map.Entry<String, Integer> pin : ranks.entrySet()) {
+                T kept = present.contains(pin.getKey()) ? null : seen.get(pin.getKey());
+                if (kept != null) pinned.computeIfAbsent(pin.getValue(), r -> new ArrayList<>()).add(kept);
+            }
         }
         if (pinned.isEmpty()) return items;
-        List<T> ordered = new ArrayList<>(items.size());
+        List<T> ordered = new ArrayList<>(items.size() + pinned.size());
         for (List<T> group : pinned.values()) ordered.addAll(group);
         ordered.addAll(rest);
         return ordered;
@@ -180,30 +231,45 @@ public final class PinnedRecipients {
     /** The pins of an account: chat id to the other person of a one-to-one chat, or "" for a group. */
     static final class Pins {
         final Map<String, String> chats;
+        // Rank of each pinned chat, and of the other person of each pinned one-to-one chat, by pin order.
+        final Map<String, Integer> chatRanks = new HashMap<>();
         final Map<String, Integer> people = new HashMap<>();
-        private final Map<String, Integer> chatRanks = new HashMap<>();
+        private final Map<String, String> chatOfPerson = new HashMap<>();
 
         Pins(Map<String, String> chats) {
             this.chats = Collections.unmodifiableMap(chats);
             int rank = 0;
             for (Map.Entry<String, String> pin : chats.entrySet()) {
                 chatRanks.put(pin.getKey(), rank);
-                if (!pin.getValue().isEmpty()) people.putIfAbsent(pin.getValue(), rank);
+                if (!pin.getValue().isEmpty() && people.putIfAbsent(pin.getValue(), rank) == null) {
+                    chatOfPerson.put(pin.getValue(), pin.getKey());
+                }
                 rank++;
             }
         }
 
-        /** A recipient is pinned by its chat, or, without a pinned chat, as the other person of a pinned one-to-one chat. */
-        int rankOf(DirectThreadKey key, String account) {
-            if (key == null) return -1;
-            Integer rank = key.A00 == null ? null : chatRanks.get(key.A00);
-            return rank != null ? rank : personRank(HiddenChatsShare.otherUser(key.A02, account));
+        /** The pinned chat of a recipient: its own chat, or, without one pinned, the chat of its one other person. */
+        String chatOf(DirectThreadKey key, String account) {
+            if (key == null) return null;
+            if (key.A00 != null && chats.containsKey(key.A00)) return key.A00;
+            String other = HiddenChatsShare.otherUser(key.A02, account);
+            return other == null ? null : chatOfPerson.get(other);
         }
+    }
 
-        int personRank(String person) {
-            Integer rank = person == null ? null : people.get(person);
-            return rank == null ? -1 : rank;
+    private static final class RecentSearch {
+        final String account;
+        final boolean emptyQuery;
+
+        RecentSearch(String account, boolean emptyQuery) {
+            this.account = account;
+            this.emptyQuery = emptyQuery;
         }
+    }
+
+    /** What Instagram listed for each pin of an account, kept only for this process. */
+    static Map<String, Object> cacheOf(Map<String, Map<String, Object>> caches, String account) {
+        return caches.computeIfAbsent(account, a -> new HashMap<>());
     }
 
     private static synchronized Pins pins(String account) {
@@ -225,9 +291,21 @@ public final class PinnedRecipients {
     private static synchronized void setPinned(String account, String chat, String person, boolean pinned) {
         Map<String, String> chats = new LinkedHashMap<>(pins(account).chats);
         if (pinned) chats.put(chat, person == null ? "" : person);
-        else chats.remove(chat);
+        else forget(account, chat, chats.remove(chat));
         STORE.setString(KEY_PREFIX + account, new JSONObject(chats).toString());
         pinsByAccount.put(account, new Pins(chats));
+    }
+
+    private static void forget(String account, String chat, String person) {
+        Map<String, Object> targets = cacheOf(shareTargets, account);
+        synchronized (targets) {
+            targets.remove(chat);
+        }
+        if (person == null || person.isEmpty()) return;
+        Map<String, Object> entries = cacheOf(recentEntries, account);
+        synchronized (entries) {
+            entries.remove(person);
+        }
     }
 
     private static String accountOf(Object session) {
@@ -245,16 +323,24 @@ public final class PinnedRecipients {
         }
     }
 
-    /** The profile of a recent search entry: a field of the entry, or of the entity it holds; null for tags and places. */
+    /**
+     * The profile of a recent search entry: held by the entry, by the entity it holds, or by what that entity holds (a
+     * profile shown as a keyword); null for tags and places.
+     */
     static Object userIn(Object entry) throws IllegalAccessException {
-        if (entry == null) return null;
-        for (Field field : objectFields(entry.getClass())) {
-            Object value = field.get(entry);
-            if (value == null) continue;
-            if (isUser(value.getClass())) return value;
-            for (Field inner : objectFields(value.getClass())) {
-                if (isUser(inner.getType())) return inner.get(value);
-            }
+        return userIn(entry, 3);
+    }
+
+    private static Object userIn(Object value, int depth) throws IllegalAccessException {
+        if (value == null || depth == 0 || isFramework(value.getClass())) return null;
+        Field[] fields = objectFields(value.getClass());
+        for (Field field : fields) {
+            Object inner = field.get(value);
+            if (inner != null && isUser(inner.getClass())) return inner;
+        }
+        for (Field field : fields) {
+            Object user = userIn(field.get(value), depth - 1);
+            if (user != null) return user;
         }
         return null;
     }

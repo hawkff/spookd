@@ -27,7 +27,9 @@ import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 private const val PINNED_RECIPIENTS_CLASS = "$PATCHES_DESCRIPTOR/dm/PinnedRecipients;"
 
@@ -57,7 +59,7 @@ private fun MutableMethod.passReturnedValues(owner: Int, call: String): Int {
 val pinRecipientsPatch =
     patch(
         name = "Pin recipients",
-        description = "Adds an option to pin chats from the chat menu in the inbox; pinned chats come first in the share sheet, and their people first in your recent searches.",
+        description = "Adds an option to pin chats from the chat menu in the inbox; pinned chats move to the top of the share sheet, and their people to the top of your recent searches, when Instagram lists them.",
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(settingsPatch, hiddenChatsSharePatch, userDataEntity)
@@ -126,9 +128,37 @@ val pinRecipientsPatch =
             )
 
             RecentSearchResultsFingerprint.method.apply {
-                val dataSource = p0Register + parameters.indexOfFirst { it.type == RECENT_SEARCH_DATA_SOURCE }
-                if (passReturnedValues(dataSource, "$PINNED_RECIPIENTS_CLASS->orderRecentSearches(Ljava/lang/Object;Ljava/util/List;)Ljava/util/List;") == 0) {
-                    throw PatchException("Recent searches have no return to hook")
+                val queryType = parameters.first().type
+                val dataSource = parameters.indexOfFirst { it.type == RECENT_SEARCH_DATA_SOURCE }
+                // Whether the query is empty: the no-argument boolean of the query the method asks first.
+                val emptyQuery = instructions.firstNotNullOfOrNull { instruction ->
+                    if (instruction.opcode != Opcode.INVOKE_VIRTUAL) return@firstNotNullOfOrNull null
+                    (instruction as ReferenceInstruction).reference.let { it as? MethodReference }?.takeIf {
+                        it.definingClass == queryType && it.returnType == "Z" && it.parameterTypes.isEmpty()
+                    }
+                } ?: throw PatchException("Recent searches do not check their query")
+                // Instagram reuses the data source's parameter register later, so the account is taken at the start.
+                addInstructions(
+                    0,
+                    """
+                    invoke-virtual/range {p0 .. p0}, $emptyQuery
+                    move-result v0
+                    move-object/from16 v1, p$dataSource
+                    invoke-static {v1, v0}, $PINNED_RECIPIENTS_CLASS->noteRecentSearch(Ljava/lang/Object;Z)V
+                    """.trimIndent(),
+                )
+                val returns = instructions.withIndex().filter { it.value.opcode == Opcode.RETURN_OBJECT }.map { it.index }
+                if (returns.isEmpty()) throw PatchException("Recent searches have no return to hook")
+                // Every return, an early one added by another patch included, hands its list through and ends the noted call.
+                for (index in returns.reversed()) {
+                    val result = getInstruction<OneRegisterInstruction>(index).registerA
+                    addInstructionsAtControlFlowLabel(
+                        index,
+                        """
+                        invoke-static/range {v$result .. v$result}, $PINNED_RECIPIENTS_CLASS->orderRecentSearches(Ljava/util/List;)Ljava/util/List;
+                        move-result-object v$result
+                        """.trimIndent(),
+                    )
                 }
             }
 
