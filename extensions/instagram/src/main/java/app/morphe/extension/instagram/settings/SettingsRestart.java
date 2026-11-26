@@ -45,25 +45,30 @@ public final class SettingsRestart {
     }
 
     /** For changes outside preferences, such as replacing the custom font file. */
-    public static synchronized void markChanged(String key, RestartPolicy restartPolicy,
-                                                Object previousValue, Object newValue) {
+    public static void markChanged(String key, RestartPolicy restartPolicy,
+                                   Object previousValue, Object newValue) {
         Objects.requireNonNull(restartPolicy);
         if (Objects.equals(previousValue, newValue)) {
             return;
         }
 
-        if (!originalValues.containsKey(key)) {
-            // Preference widgets can mutate their sets after saving.
-            originalValues.put(key, previousValue instanceof Set
-                    ? new HashSet<>((Set<?>) previousValue) : previousValue);
+        boolean pending;
+        synchronized (SettingsRestart.class) {
+            if (!originalValues.containsKey(key)) {
+                // Preference widgets can mutate their sets after saving.
+                originalValues.put(key, previousValue instanceof Set
+                        ? new HashSet<>((Set<?>) previousValue) : previousValue);
+            }
+            if (Objects.equals(originalValues.get(key), newValue)) {
+                changedSettings.remove(key);
+            } else {
+                changedSettings.put(key, restartPolicy);
+            }
+            pending = !changedSettings.isEmpty();
         }
-        if (Objects.equals(originalValues.get(key), newValue)) {
-            changedSettings.remove(key);
-        } else {
-            changedSettings.put(key, restartPolicy);
-        }
+        // Disk writes stay outside the monitor, so a slow flush never blocks the restart checks.
         flushPreferences();
-        if (!changedSettings.isEmpty()) {
+        if (pending) {
             startTaskService();
         }
     }
