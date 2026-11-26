@@ -309,6 +309,14 @@ public class Pref {
         return SettingsStatus.confirmInstantReaction && on(Settings.CONFIRM_INSTANT_REACTION);
     }
 
+    private static final Cached<Boolean> FAKE_LOCATION =
+            new Cached<>(() -> on(Settings.FAKE_LOCATION), Settings.FAKE_LOCATION.key);
+
+    /** Read for every location Instagram builds or requests, on any thread. */
+    public static boolean fakeLocation() {
+        return SettingsStatus.fakeLocation && FAKE_LOCATION.get();
+    }
+
     private static final Cached<Boolean> HIDE_REELS_TAB_HEADER =
             new Cached<>(() -> on(Settings.HIDE_REELS_TAB_HEADER), Settings.HIDE_REELS_TAB_HEADER.key);
 
