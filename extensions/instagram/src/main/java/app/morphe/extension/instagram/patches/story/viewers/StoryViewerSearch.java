@@ -178,7 +178,7 @@ public final class StoryViewerSearch {
         return false;
     }
 
-    /** Asks Instagram for the next page, as scrolling to the end of the list does. */
+    /** Asks for the next page through the call scrolling to the end uses, which does nothing while a page is out. */
     private static void loadMoreViewers(Object adapter) {
     }
 

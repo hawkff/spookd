@@ -150,6 +150,23 @@ val searchStoryViewersPatch =
                 read.takeIf { it.opcode == Opcode.IGET_OBJECT }?.getReference<FieldReference>()
                     ?.takeIf { it.definingClass == pagingClass.type && it.type == "Ljava/lang/String;" }
             } ?: throw PatchException("Could not find the viewer list cursor")
+            // Instagram's guarded next-page call: it asks only while the screen is active, no page is out,
+            // the last load did not fail and more viewers exist.
+            val guardedLoadMore = pagingClass.methods.singleOrNull { method ->
+                method.parameterTypes.isEmpty() && method.returnType == "V" && method.name != loadMore.name &&
+                    method.implementation?.instructions?.mapNotNull { it.getReference<MethodReference>() }?.let { calls ->
+                        calls.any { it.definingClass == pagingClass.type && it.name == hasMore.name } &&
+                            calls.any { it.definingClass == pagingClass.type && it.name == loadMore.name }
+                    } == true
+            } ?: throw PatchException("Could not find the guarded viewer list next page call")
+            // The in-flight flag: the first state isLoading() reads, which the guarded call checks too.
+            val busy = pagingMethod("isLoading", "Z").implementation!!.instructions.first()
+                .takeIf { it.opcode == Opcode.IGET_BOOLEAN }?.getReference<FieldReference>()
+                ?.takeIf { flag ->
+                    guardedLoadMore.implementation!!.instructions.any {
+                        it.opcode == Opcode.IGET_BOOLEAN && it.getReference<FieldReference>() == flag
+                    }
+                } ?: throw PatchException("Could not find the viewer list in-flight flag")
 
             val currentStory = DashboardCurrentStoryFingerprint.originalMethod
             val viewCreated = DashboardViewCreatedFingerprint.method
@@ -235,11 +252,22 @@ val searchStoryViewersPatch =
                 """,
             )
             stub(
+                "viewersBusy",
+                """
+                check-cast p0, $adapter
+                iget-object p0, p0, $paging
+                check-cast p0, ${pagingClass.type}
+                iget-boolean p0, p0, $busy
+                return p0
+                """,
+            )
+            stub(
                 "loadMoreViewers",
                 """
                 check-cast p0, $adapter
                 iget-object p0, p0, $paging
-                invoke-interface {p0}, $loadMore
+                check-cast p0, ${pagingClass.type}
+                invoke-virtual {p0}, $guardedLoadMore
                 return-void
                 """,
             )
