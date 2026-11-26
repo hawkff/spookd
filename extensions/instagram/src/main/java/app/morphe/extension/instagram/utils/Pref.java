@@ -281,6 +281,15 @@ public class Pref {
         return SettingsStatus.disableAppHaptics && DISABLE_APP_HAPTICS.get();
     }
 
+    private static final Cached<Boolean> STOP_VISUAL_MESSAGE_AUTO_ADVANCE = new Cached<>(
+            () -> Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.STOP_VISUAL_MESSAGE_AUTO_ADVANCE)),
+            Settings.STOP_VISUAL_MESSAGE_AUTO_ADVANCE.key);
+
+    /** Called on the main thread when the DM visual message viewer would move on by itself. */
+    public static boolean stopVisualMessageAutoAdvance() {
+        return SettingsStatus.stopVisualMessageAutoAdvance && STOP_VISUAL_MESSAGE_AUTO_ADVANCE.get();
+    }
+
     public static boolean disableReelsScrolling() {
         return lockable(Settings.DISABLE_REELS_SCROLLING) && SettingsStatus.disableReelsScrolling;
     }

@@ -305,6 +305,16 @@ public class ScreenBuilder {
             );
         }
 
+        if (SettingsStatus.stopVisualMessageAutoAdvance) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_stop_visual_message_auto_advance"),
+                            str("spookd_stop_visual_message_auto_advance_desc"),
+                            Settings.STOP_VISUAL_MESSAGE_AUTO_ADVANCE
+                    )
+            );
+        }
+
         if (SettingsStatus.markChatAsRead) {
             addPreference(
                     helper.switchPreference(
