@@ -25,6 +25,7 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.instructions
+import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.newInstance
@@ -41,6 +42,7 @@ import app.morphe.patcher.util.registersUsed
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.smali.ExternalLabel
 import app.morphe.util.indexOfFirstInstructionReversedOrThrow
+import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
@@ -236,7 +238,7 @@ private fun suppressEphemeralMediaReceipts(): Boolean {
         """.trimIndent(),
         ExternalLabel("spookd_send_receipt", producer.getInstruction(index)),
     )
-    return addManualSeenHooks(producer, eventType)
+    return addManualSeenHooks(producer, eventType, unseenReference.definingClass)
 }
 
 private const val VISUAL_MESSAGE_VIEWER = "Linstagram/features/direct/visual/internal/DirectVisualMessageViewerController;"
@@ -245,83 +247,86 @@ private const val VISUAL_SEEN = "$PATCHES_DESCRIPTOR/dm/VisualMessageSeen;"
 private fun visualSeenStub(name: String) = Fingerprint(definingClass = VISUAL_SEEN, name = name)
 
 /**
- * The eye button of the viewer: notes the item the receipt producer runs for, keeps its receipt back right before it
- * is queued, and fills the button's stubs. Returns false, changing nothing, when the viewer's code is not as expected.
+ * The eye button of the viewer: notes the item the receipt producer runs for, sends every receipt it queues (both
+ * branches) through the extension, and fills the button's stubs. Returns false, changing nothing, when the viewer's
+ * code is not as expected.
  */
-private fun addManualSeenHooks(producer: MutableMethod, eventType: String): Boolean {
+private fun addManualSeenHooks(producer: MutableMethod, eventType: String, itemType: String): Boolean {
     if (producer.definingClass != VISUAL_MESSAGE_VIEWER || producer.parameterTypes.size != 2 ||
         producer.parameterTypes[1].toString() != VISUAL_MESSAGE_VIEWER
     ) {
         return false
     }
-    val composer = classDefBy(VISUAL_MESSAGE_VIEWER).fields.singleOrNull {
-        it.name == "replyComposer" && it.type == "Landroid/view/View;"
+    val modelType = producer.parameterTypes[0].toString()
+    val viewer = classDefBy(VISUAL_MESSAGE_VIEWER)
+    val composer = viewer.fields.singleOrNull { it.name == "replyComposer" && it.type == "Landroid/view/View;" }
+        ?: return false
+    val session = viewer.fields.singleOrNull {
+        it.type == USER_SESSION_CLASS && !AccessFlags.STATIC.isSet(it.accessFlags)
     } ?: return false
 
     val code = producer.instructions
+    // The id of the item the producer runs for, read first thing from its model.
+    val modelId = code.firstNotNullOfOrNull { instruction ->
+        instruction.takeIf { it.opcode == Opcode.IGET_OBJECT }?.getReference<FieldReference>()
+            ?.takeIf { it.definingClass == modelType && it.type == "Ljava/lang/String;" }
+    } ?: return false
+
+    // The viewer's current item: its static item getter reads the selection's current model.
+    val itemGetter = viewer.methods.singleOrNull {
+        AccessFlags.STATIC.isSet(it.accessFlags) && it.returnType == itemType &&
+            it.parameterTypes.map { type -> type.toString() } == listOf(VISUAL_MESSAGE_VIEWER)
+    } ?: return false
+    val getterCode = itemGetter.implementation?.instructions?.toList() ?: return false
+    val selectedModel = getterCode.firstNotNullOfOrNull { instruction ->
+        instruction.takeIf { it.opcode == Opcode.INVOKE_VIRTUAL }?.getReference<MethodReference>()
+            ?.takeIf { it.returnType == modelType && it.parameterTypes.isEmpty() }
+    } ?: return false
+    val selection = getterCode.firstNotNullOfOrNull { instruction ->
+        instruction.takeIf { it.opcode == Opcode.IGET_OBJECT }?.getReference<FieldReference>()
+            ?.takeIf { it.definingClass == VISUAL_MESSAGE_VIEWER && it.type == selectedModel.definingClass }
+    } ?: return false
+
     val creation = code.indexOfFirst {
         it.opcode == Opcode.NEW_INSTANCE && it.getReference<TypeReference>()?.type == eventType
     }
     if (creation < 0) return false
     val event = code[creation].registersUsed.single()
-    // The receipt is queued in three steps: the queue factory, the session's queue, then the enqueue call.
-    val factory = (creation + 1 until code.size).firstOrNull { code[it].opcode == Opcode.SGET_OBJECT } ?: return false
-    if (factory + 3 >= code.size) return false
-    val factoryInstruction = code[factory]
-    val factoryField = factoryInstruction.getReference<FieldReference>() ?: return false
-    val factoryRegister = factoryInstruction.registersUsed.single()
-    val queueCall = code[factory + 1]
-    val queueMethod = queueCall.getReference<MethodReference>() ?: return false
-    val enqueueCall = code[factory + 3]
-    val enqueueMethod = enqueueCall.getReference<MethodReference>() ?: return false
-    if (queueCall.opcode != Opcode.INVOKE_VIRTUAL || code[factory + 2].opcode != Opcode.MOVE_RESULT_OBJECT ||
-        enqueueCall.opcode != Opcode.INVOKE_VIRTUAL ||
-        queueMethod.parameterTypes.map { it.toString() } != listOf(USER_SESSION_CLASS) ||
-        enqueueMethod.parameterTypes.size != 1 ||
-        queueCall.registersUsed.size != 2 || queueCall.registersUsed[0] != factoryRegister ||
-        enqueueCall.registersUsed.size != 2 || enqueueCall.registersUsed[1] != event
-    ) {
-        return false
-    }
-    val session = queueCall.registersUsed[1]
-    if (session > 15 || event > 15 || factoryRegister > 15 || factoryRegister == session || factoryRegister == event) {
-        return false
-    }
+    // Both receipt branches meet at this call, which hands the receipt to the session's request queue.
+    val enqueue = (creation + 1 until code.size).firstOrNull { index ->
+        val instruction = code[index]
+        instruction.opcode == Opcode.INVOKE_VIRTUAL && instruction.registersUsed.getOrNull(1) == event &&
+            instruction.getReference<MethodReference>()?.let { it.returnType == "Z" && it.parameterTypes.size == 1 } == true
+    } ?: return false
+    val enqueueMethod = code[enqueue].getReference<MethodReference>()!!
+    val registers = code[enqueue].registersUsed
+    val next = code.getOrNull(enqueue + 1)?.opcode ?: return false
+    // The replacement returns nothing, so Instagram must not read the call's result.
+    if (registers.size != 2 || registers.any { it > 15 } || next == Opcode.MOVE_RESULT) return false
+    val (queue, receipt) = registers
 
-    // The factory's register is written right after, so it is free here; only the receipt built above is kept back.
-    producer.addInstructionsWithLabels(
-        factory,
-        """
-        instance-of v$factoryRegister, v$event, $eventType
-        if-eqz v$factoryRegister, :spookd_queue_receipt
-        invoke-static {v$session, v$event}, $VISUAL_SEEN->holdReceipt(Ljava/lang/Object;Ljava/lang/Object;)Z
-        move-result v$factoryRegister
-        if-eqz v$factoryRegister, :spookd_queue_receipt
-        return-void
-        """.trimIndent(),
-        ExternalLabel("spookd_queue_receipt", factoryInstruction),
+    producer.replaceInstruction(
+        enqueue,
+        "invoke-static {v$queue, v$receipt}, $VISUAL_SEEN->queueReceipt(Ljava/lang/Object;Ljava/lang/Object;)V",
     )
-
-    visualSeenStub("composerNative").method.addInstructions(
+    visualSeenStub("enqueueNative").method.addInstructions(
         0,
         """
-        check-cast p0, $VISUAL_MESSAGE_VIEWER
-        iget-object p0, p0, $composer
-        return-object p0
-        """.trimIndent(),
-    )
-    visualSeenStub("sendReceiptNative").method.addInstructions(
-        0,
-        """
-        sget-object p2, $factoryField
-        check-cast p0, $USER_SESSION_CLASS
-        invoke-virtual {p2, p0}, $queueMethod
-        move-result-object p2
+        check-cast p0, ${enqueueMethod.definingClass}
         check-cast p1, ${enqueueMethod.parameterTypes.single()}
-        invoke-virtual {p2, p1}, $enqueueMethod
+        invoke-virtual {p0, p1}, $enqueueMethod
         return-void
         """.trimIndent(),
     )
+    mapOf(
+        "composerNative" to "check-cast p0, $VISUAL_MESSAGE_VIEWER\niget-object p0, p0, $composer",
+        "sessionNative" to "check-cast p0, $VISUAL_MESSAGE_VIEWER\niget-object p0, p0, $session",
+        "selectionNative" to "check-cast p0, $VISUAL_MESSAGE_VIEWER\niget-object p0, p0, $selection",
+        "selectedModelNative" to "check-cast p0, ${selectedModel.definingClass}\ninvoke-virtual {p0}, $selectedModel\nmove-result-object p0",
+        "modelIdNative" to "check-cast p0, $modelType\niget-object p0, p0, $modelId",
+    ).forEach { (name, body) ->
+        visualSeenStub(name).method.addInstructions(0, "$body\nreturn-object p0")
+    }
     VisualMessageAdvanceFingerprint.matchOrNull()?.method?.let { advance ->
         visualSeenStub("advanceNative").method.addInstructions(
             0,

@@ -17,35 +17,38 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.List;
 
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.ui.Dim;
+import com.instagram.common.session.UserSession;
 
 /**
- * The eye button next to the reply box of the DM photo and video viewer. It sends the seen receipt that Make
- * ephemeral media permanent kept back for the item on screen, the same request Instagram would have queued.
- * Every call runs on the main thread, where the viewer shows its items.
+ * Every seen receipt of the DM photo and video viewer passes through here on its way to Instagram's request queue.
+ * While Make ephemeral media permanent is on it is kept back; with the eye button switch it is kept per account and
+ * item, and the eye next to the reply box sends the one of the item on screen. Every call runs on the main thread,
+ * where the viewer shows its items.
  */
 @SuppressWarnings("unused")
 public final class VisualMessageSeen {
     private static final String BUTTON_TAG = "spookd_visual_message_seen_button";
-    private static final int MAX_HELD = 32;
-    // Receipts kept back, oldest first: {item, session, receipt}. Items are matched by identity, as their equality can change.
-    private static final List<Object[]> held = new ArrayList<>();
-    private static Object currentItem;
+    static final HeldReceipts HELD = new HeldReceipts(32);
+    // The item the viewer's receipt step runs for, which may be a deferred one rather than the item on screen.
+    private static String producerAccount;
+    private static String producerItemId;
     private static WeakReference<Object> currentViewer = new WeakReference<>(null);
 
     private VisualMessageSeen() { }
 
-    /** Start of the viewer's seen step, which it runs for each item it shows. */
-    public static void onItemShown(Object item, Object viewer) {
+    /** Start of the viewer's receipt step for an item, the one on screen or a deferred one. */
+    public static void onItemShown(Object model, Object viewer) {
+        producerAccount = null;
+        producerItemId = null;
         if (!EphemeralMediaPatch.isMakeEphemeralMediaPermanent()) return;
         try {
-            currentItem = item;
+            producerAccount = accountOf(sessionNative(viewer));
+            producerItemId = model == null ? null : (String) modelIdNative(model);
             currentViewer = new WeakReference<>(viewer);
             updateButton(viewer);
         } catch (Throwable t) {
@@ -53,21 +56,39 @@ public final class VisualMessageSeen {
         }
     }
 
-    /** Right before the viewer queues the seen receipt of the item it shows; true keeps it back. */
-    public static boolean holdReceipt(Object session, Object receipt) {
-        if (!EphemeralMediaPatch.isMakeEphemeralMediaPermanent()) return false;
+    /** Replaces the viewer's hand-over of a receipt to Instagram's request queue, for both kinds of receipt. */
+    public static void queueReceipt(Object queue, Object receipt) {
+        boolean keepBack;
         try {
-            if (Pref.markVisualMessagesSeenManually() && currentItem != null) {
-                take(currentItem);
-                held.add(new Object[]{currentItem, session, receipt});
-                if (held.size() > MAX_HELD) held.remove(0);
-                updateButton(currentViewer.get());
-            }
+            keepBack = keepBack(queue, receipt);
         } catch (Throwable t) {
-            Logger.printException(() -> "VisualMessageSeen.holdReceipt failed", t);
+            Logger.printException(() -> "VisualMessageSeen.queueReceipt failed", t);
+            keepBack = EphemeralMediaPatch.isMakeEphemeralMediaPermanent();
         }
-        // Kept back even when it could not be stored, as Make ephemeral media permanent does.
+        // Outside the try, so a failure of Instagram's own queue reaches it as before.
+        if (!keepBack) enqueueNative(queue, receipt);
+    }
+
+    private static boolean keepBack(Object queue, Object receipt) {
+        if (!EphemeralMediaPatch.isMakeEphemeralMediaPermanent()) return false;
+        if (Pref.markVisualMessagesSeenManually()) {
+            HELD.keep(HeldReceipts.key(producerAccount, producerItemId), new Object[]{queue, receipt});
+            updateButton(currentViewer.get());
+        } else {
+            EphemeralMediaPatch.markViewed(producerAccount, producerItemId);
+        }
         return true;
+    }
+
+    /** The id of the item the viewer has on screen, or null when it is unknown. */
+    private static String selectedItemId(Object viewer) {
+        Object selection = selectionNative(viewer);
+        Object model = selection == null ? null : selectedModelNative(selection);
+        return model == null ? null : (String) modelIdNative(model);
+    }
+
+    private static String accountOf(Object session) {
+        return session instanceof UserSession ? ((UserSession) session).getUserId() : null;
     }
 
     private static void updateButton(Object viewer) {
@@ -76,7 +97,7 @@ public final class VisualMessageSeen {
         if (!(composer instanceof LinearLayout)) return;
         LinearLayout row = (LinearLayout) composer;
         View button = row.findViewWithTag(BUTTON_TAG);
-        boolean show = find(currentItem) >= 0;
+        boolean show = HELD.has(HeldReceipts.key(accountOf(sessionNative(viewer)), selectedItemId(viewer)));
         if (button == null) {
             if (!show) return;
             button = createButton(row);
@@ -102,29 +123,28 @@ public final class VisualMessageSeen {
     }
 
     private static void onButtonClicked(View button) {
+        Object viewer = currentViewer.get();
+        if (viewer == null) return;
         try {
-            button.setVisibility(View.GONE);
-            Object[] receipt = take(currentItem);
-            if (receipt == null) return;
-            sendReceiptNative(receipt[1], receipt[2], null);
-            Object viewer = currentViewer.get();
-            if (viewer != null && Pref.stopVisualMessageAutoAdvance()) advanceNative(viewer, true);
+            String account = accountOf(sessionNative(viewer));
+            String itemId = selectedItemId(viewer);
+            boolean sent = HELD.send(HeldReceipts.key(account, itemId), held -> {
+                Object[] queued = (Object[]) held;
+                enqueueNative(queued[0], queued[1]);
+            });
+            if (sent) {
+                EphemeralMediaPatch.markViewed(account, itemId);
+                if (Pref.stopVisualMessageAutoAdvance()) advanceNative(viewer, true);
+            }
         } catch (Throwable t) {
             Logger.printException(() -> "VisualMessageSeen could not send the seen receipt", t);
         }
-    }
-
-    private static int find(Object item) {
-        if (item == null) return -1;
-        for (int i = 0; i < held.size(); i++) {
-            if (held.get(i)[0] == item) return i;
+        try {
+            // Shown again when the receipt is still kept, as after a failed send.
+            updateButton(viewer);
+        } catch (Throwable t) {
+            Logger.printException(() -> "VisualMessageSeen.updateButton failed", t);
         }
-        return -1;
-    }
-
-    private static Object[] take(Object item) {
-        int index = find(item);
-        return index < 0 ? null : held.remove(index);
     }
 
     // The patch replaces these bodies with reads and calls of Instagram's viewer and request queue.
@@ -132,8 +152,23 @@ public final class VisualMessageSeen {
         return null;
     }
 
-    // The third argument is only a free register for the queue.
-    private static void sendReceiptNative(Object session, Object receipt, Object queue) {
+    private static Object sessionNative(Object viewer) {
+        return null;
+    }
+
+    private static Object selectionNative(Object viewer) {
+        return null;
+    }
+
+    private static Object selectedModelNative(Object selection) {
+        return null;
+    }
+
+    private static Object modelIdNative(Object model) {
+        return null;
+    }
+
+    private static void enqueueNative(Object queue, Object receipt) {
     }
 
     private static void advanceNative(Object viewer, boolean next) {

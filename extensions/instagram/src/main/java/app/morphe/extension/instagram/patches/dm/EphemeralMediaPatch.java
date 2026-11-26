@@ -30,21 +30,35 @@ public class EphemeralMediaPatch {
 
     public static boolean shouldSuppressEphemeralMediaReceipt(UserSession session, Object item) {
         if (!MAKE_EPHEMERAL_MEDIA_PERMANENT) return false;
+        // With the eye button the receipt is built and kept back right before it is queued (VisualMessageSeen),
+        // and the item stays unviewed here until the eye sends it, so reopening it builds the receipt again.
+        if (manualSeen()) return false;
         try {
             String key = localReadKey(session.getUserId(), item);
             SharedPreferences preferences = localReadPreferences();
             if (key != null && preferences != null) preferences.edit().putBoolean(key, true).apply();
         } catch (Exception ignored) { }
+        return true;
+    }
+
+    /** Marks an item of an account viewed locally, as a kept-back receipt does. */
+    static void markViewed(String viewerId, String itemId) {
+        if (viewerId == null || viewerId.isEmpty() || itemId == null || itemId.isEmpty()) return;
+        SharedPreferences preferences = localReadPreferences();
+        if (preferences != null) preferences.edit().putBoolean(viewerId + ":" + itemId, true).apply();
+    }
+
+    private static boolean manualSeen() {
         try {
-            // With the eye button the receipt is built and kept back right before it is queued (VisualMessageSeen).
-            return !Pref.markVisualMessagesSeenManually();
+            return Pref.markVisualMessagesSeenManually();
         } catch (RuntimeException e) {
-            return true;
+            return false;
         }
     }
 
     public static boolean wasEphemeralMediaViewed(Object item, Object viewer) {
-        if (!MAKE_EPHEMERAL_MEDIA_PERMANENT) return false;
+        // Marks of earlier views are ignored with the eye button, so an item whose receipt was never sent gets one again.
+        if (!MAKE_EPHEMERAL_MEDIA_PERMANENT || manualSeen()) return false;
         try {
             String key = localReadKey(new UserData(viewer).getUserId(), item);
             SharedPreferences preferences = localReadPreferences();
