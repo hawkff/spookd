@@ -32,7 +32,8 @@ public final class FakePlaces {
     private static final String PREFS_NAME = "spookd_fake_location";
     private static final String KEY_PLACES = "places";
     private static final String KEY_ACTIVE = "active";
-    private static final String NUMBER = "(-?\\d{1,3}(?:\\.\\d+)?)";
+    // The lookahead keeps a longer number such as 1800 from being read as 180.
+    private static final String NUMBER = "(-?\\d{1,3}(?:\\.\\d+)?)(?!\\d)";
     // In order: a Google Maps place pin, an OpenStreetMap marker, an OpenStreetMap view, then any number pair.
     private static final Pattern[] COORDINATES = {
             Pattern.compile("!3d" + NUMBER + "!4d" + NUMBER),

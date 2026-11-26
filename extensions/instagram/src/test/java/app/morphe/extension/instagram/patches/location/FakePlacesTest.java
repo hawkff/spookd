@@ -28,6 +28,7 @@ public final class FakePlacesTest {
         assertPoint(48.8584, 2.2945, " 48.8584 2.2945 ");
         assertPoint(-33.8568, 151.2153, "-33.8568,151.2153");
         assertPoint(40, -74, "40, -74");
+        assertPoint(48.85, 2.29, "Meet at 48.85, 2.29.");
     }
 
     @Test
@@ -46,6 +47,11 @@ public final class FakePlacesTest {
     public void outOfRangeAndMissingCoordinatesAreRejected() {
         assertNull(FakePlaces.parseCoordinates("91, 10"));
         assertNull(FakePlaces.parseCoordinates("10, 181"));
+        assertNull(FakePlaces.parseCoordinates("48, 1800"));
+        assertNull(FakePlaces.parseCoordinates("48, -1800"));
+        assertNull(FakePlaces.parseCoordinates("1000.5, 10"));
+        assertNull(FakePlaces.parseCoordinates("https://www.google.com/maps/@48.85,1800.5,17z"));
+        assertNull(FakePlaces.parseCoordinates("https://www.google.com/maps/place/x/data=!3d48.85!4d1800.5"));
         assertNull(FakePlaces.parseCoordinates("0, 0"));
         assertNull(FakePlaces.parseCoordinates("https://maps.app.goo.gl/AbCdEf"));
         assertNull(FakePlaces.parseCoordinates("Paris"));
