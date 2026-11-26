@@ -17,6 +17,7 @@ import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
 import app.spookd.patches.instagram.utils.Constants.USER_SESSION_CLASS
 import app.spookd.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.InstructionFilter
 import app.morphe.patcher.InstructionLocation.MatchAfterImmediately
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
@@ -94,7 +95,7 @@ private object PresenceActiveNowRequestFingerprint : Fingerprint(
     filters = listOf(string("direct_v2/get_presence_active_now/")),
 )
 
-private fun refreshDelayFilters() = listOf(
+private fun refreshDelayFilters(): List<InstructionFilter> = listOf(
     literal(PRESENCE_REFRESH_INTERVAL),
     methodCall(smali = "Lcom/facebook/mobileconfig/factory/MobileConfigUnsafeContext;->Che(J)J"),
     opcode(Opcode.MOVE_RESULT_WIDE, location = MatchAfterImmediately()),
@@ -113,7 +114,7 @@ private fun presenceRefreshFingerprint(manager: String) = Fingerprint(
     name = "run",
     returnType = "V",
     parameters = emptyList(),
-    filters = listOf(methodCall(definingClass = manager, opcode = Opcode.INVOKE_STATIC, returnType = "V")) +
+    filters = listOf<InstructionFilter>(methodCall(definingClass = manager, opcode = Opcode.INVOKE_STATIC, returnType = "V")) +
         refreshDelayFilters(),
 )
 
