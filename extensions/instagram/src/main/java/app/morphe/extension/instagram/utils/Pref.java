@@ -512,7 +512,7 @@ public class Pref {
     // Only while the gallery's settings row is shown, so the entry never leads to a screen that cannot be reached.
     public static boolean homeLongPressGallery() {
         return SettingsStatus.homeLongPressSettings && SettingsStatus.downloadSection()
-                && SharedPref.getBooleanPref(Settings.HOME_LONG_PRESS_GALLERY);
+                && on(Settings.HOME_LONG_PRESS_GALLERY);
     }
     public static boolean directlyOpenMetaConfig() {
         return on(Settings.DIRECTLY_OPEN_METACONFIG);
@@ -734,7 +734,7 @@ public class Pref {
     }
 
     public static String swipeBetweenTabs() {
-        return SettingsStatus.swipeBetweenTabs ? SharedPref.getStringPref(Settings.SWIPE_BETWEEN_TABS) : "default";
+        return SettingsStatus.swipeBetweenTabs ? value(Settings.SWIPE_BETWEEN_TABS) : "default";
     }
 
     public static boolean floatingTabBarHideOnScroll() {
@@ -941,7 +941,7 @@ public class Pref {
     }
 
     private static final Cached<Boolean> PIN_RECIPIENTS =
-            new Cached<>(() -> SharedPref.getBooleanPref(Settings.PIN_RECIPIENTS), Settings.PIN_RECIPIENTS.key);
+            new Cached<>(() -> on(Settings.PIN_RECIPIENTS), Settings.PIN_RECIPIENTS.key);
 
     public static boolean pinRecipients() {
         return SettingsStatus.pinRecipients && PIN_RECIPIENTS.get();
