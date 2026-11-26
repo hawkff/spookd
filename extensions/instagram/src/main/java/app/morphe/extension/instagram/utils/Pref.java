@@ -705,6 +705,10 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR);
     }
 
+    public static String swipeBetweenTabs() {
+        return SettingsStatus.swipeBetweenTabs ? SharedPref.getStringPref(Settings.SWIPE_BETWEEN_TABS) : "default";
+    }
+
     public static boolean floatingTabBarHideOnScroll() {
         return floatingTabBar() && SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR_HIDE_ON_SCROLL);
     }

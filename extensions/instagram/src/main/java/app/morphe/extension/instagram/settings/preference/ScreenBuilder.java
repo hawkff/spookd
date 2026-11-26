@@ -1441,6 +1441,13 @@ public class ScreenBuilder {
     }
 
     public void buildNavigationSection() {
+        if (SettingsStatus.swipeBetweenTabs) {
+            addPreference(helper.listPreference(
+                    str("spookd_swipe_between_tabs"),
+                    str("spookd_swipe_between_tabs_desc"),
+                    Settings.SWIPE_BETWEEN_TABS
+            ));
+        }
         if (SettingsStatus.floatingTabBar) {
             addPreference(helper.switchPreference(
                     str("spookd_floating_tab_bar"),
@@ -1755,7 +1762,7 @@ public class ScreenBuilder {
                 )
         );
 
-        if (SettingsStatus.hideNavigationButtons || SettingsStatus.floatingTabBar){
+        if (SettingsStatus.hideNavigationButtons || SettingsStatus.floatingTabBar || SettingsStatus.swipeBetweenTabs){
             addPreference(
                     helper.categoryPreference(
                             str("spookd_category_navigation_tabs"),
