@@ -759,6 +759,24 @@ public class ScreenBuilder {
         if (SettingsStatus.hideFriendsMap) {
             addPreference(helper.switchPreference(str("spookd_hide_friends_map"), str("spookd_hide_friends_map_desc"), Settings.HIDE_FRIENDS_MAP));
         }
+        if (SettingsStatus.hideRecentSearches) {
+            addPreference(helper.switchPreference(str("spookd_hide_recent_searches"), str("spookd_hide_recent_searches_desc"), Settings.HIDE_RECENT_SEARCHES));
+        }
+        if (SettingsStatus.squareExploreGrid) {
+            addPreference(helper.switchPreference(str("spookd_square_explore_grid"), str("spookd_square_explore_grid_desc"), Settings.SQUARE_EXPLORE_GRID));
+        }
+        if (SettingsStatus.hideReelsCommentBar) {
+            addPreference(helper.switchPreference(str("spookd_hide_reels_comment_bar"), str("spookd_hide_reels_comment_bar_desc"), Settings.HIDE_REELS_COMMENT_BAR));
+        }
+        if (SettingsStatus.hideReelsTabHeader) {
+            addPreference(helper.switchPreference(str("spookd_hide_reels_tab_header"), str("spookd_hide_reels_tab_header_desc"), Settings.HIDE_REELS_TAB_HEADER));
+        }
+        if (SettingsStatus.hideChatBlendButton) {
+            addPreference(helper.switchPreference(str("spookd_hide_chat_blend_button"), str("spookd_hide_chat_blend_button_desc"), Settings.HIDE_CHAT_BLEND_BUTTON));
+        }
+        if (SettingsStatus.hideInboxInstants) {
+            addPreference(helper.switchPreference(str("spookd_hide_inbox_instants"), str("spookd_hide_inbox_instants_desc"), Settings.HIDE_INBOX_INSTANTS));
+        }
     }
 
     /** Adds a Distraction free switch, shown forced on while Focus Lock holds it. */
@@ -921,6 +939,13 @@ public class ScreenBuilder {
                     str("spookd_profile_saved_tab"),
                     str("spookd_profile_saved_tab_desc"),
                     Settings.PROFILE_SAVED_TAB
+            ));
+        }
+        if (SettingsStatus.disableAppHaptics) {
+            addPreference(helper.switchPreference(
+                    str("spookd_disable_app_haptics"),
+                    str("spookd_disable_app_haptics_desc"),
+                    Settings.DISABLE_APP_HAPTICS
             ));
         }
         if (SettingsStatus.resumeReelsAfterScrolling) {

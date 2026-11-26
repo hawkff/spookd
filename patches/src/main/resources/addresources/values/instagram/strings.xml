@@ -142,6 +142,18 @@
     <string name="spookd_hide_threads_button_desc">Removes the Threads button from the profile header</string>
     <string name="spookd_hide_friends_map">Hide Friends Map</string>
     <string name="spookd_hide_friends_map_desc">Turns off Instagram\'s Friends Map, including its entry in the inbox notes tray. Stop sharing your location in the map before you turn this on</string>
+    <string name="spookd_hide_recent_searches">Hide recent searches</string>
+    <string name="spookd_hide_recent_searches_desc">Removes your recent searches from the search screen and from the suggestions while you type</string>
+    <string name="spookd_square_explore_grid">Classic Explore grid</string>
+    <string name="spookd_square_explore_grid_desc">Uses Instagram\'s older, mostly square Explore layout instead of the tall 3:4 grid. Some sections can still be tall, tablets keep the tall grid, and the topic pills above it can go away</string>
+    <string name="spookd_hide_reels_comment_bar">Hide Reels comment bar</string>
+    <string name="spookd_hide_reels_comment_bar_desc">Removes the comment bar at the bottom of the Reels viewer</string>
+    <string name="spookd_hide_reels_tab_header">Hide Reels tab header</string>
+    <string name="spookd_hide_reels_tab_header_desc">Removes the title bar at the top of the Reels tab. Reels opened from anywhere else keep theirs, with the back button</string>
+    <string name="spookd_hide_chat_blend_button">Hide Blend button in chats</string>
+    <string name="spookd_hide_chat_blend_button_desc">Turns off Blend, which removes its button from chat headers. Blends you already have can no longer be opened</string>
+    <string name="spookd_hide_inbox_instants">Hide Instants in inbox</string>
+    <string name="spookd_hide_inbox_instants_desc">Removes the Instants stack from the inbox. Instants themselves keep working</string>
 
     <!-- Miscellaneous Section -->
     <string name="spookd_category_misc">Misc</string>
@@ -200,6 +212,8 @@
     <string name="spookd_exact_profile_counts_desc">Shows the full number of posts, followers and following on profiles, such as 12,345 instead of 12.3K</string>
     <string name="spookd_square_profile_grid">Square profile grid</string>
     <string name="spookd_square_profile_grid_desc">Shows posts on profile grids as square thumbnails instead of tall 3:4 ones</string>
+    <string name="spookd_disable_app_haptics">Disable app haptics</string>
+    <string name="spookd_disable_app_haptics_desc">Stops the vibrations Instagram plays on taps, long presses and swipes. Your phone\'s settings are not changed</string>
     <string name="spookd_profile_saved_tab">Saved tab on your profile</string>
     <string name="spookd_profile_saved_tab_desc">Adds a Saved tab after the other tabs on your own profile. Restart the app to apply.</string>
     <string name="spookd_category_confirmations">Confirmations</string>
