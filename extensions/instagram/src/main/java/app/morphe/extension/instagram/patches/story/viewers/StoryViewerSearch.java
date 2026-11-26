@@ -4,6 +4,7 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.os.SystemClock;
 import android.text.Editable;
@@ -225,13 +226,21 @@ public final class StoryViewerSearch {
             if (account == null || account.isEmpty()) return NO_SCAN;
             try {
                 SpookdFollowDb db = SpookdFollowDb.getInstance(context);
-                SpookdFollowDb.Scan scan = db.latestScan(account);
-                if (scan == null) return NO_SCAN;
-                FollowData data = new FollowData(scan.finishedAt);
-                addIds(data.followers, db.followersNotFollowedBack(account));
-                addIds(data.followers, db.mutuals(account));
-                addIds(data.notFollowingBack, db.notFollowingBack(account));
-                return data;
+                SQLiteDatabase connection = db.getReadableDatabase();
+                // One transaction, so a scan committed meanwhile cannot mix its lists with the earlier date.
+                connection.beginTransaction();
+                try {
+                    SpookdFollowDb.Scan scan = db.latestScan(account);
+                    if (scan == null) return NO_SCAN;
+                    FollowData data = new FollowData(scan.finishedAt);
+                    addIds(data.followers, db.followersNotFollowedBack(account));
+                    addIds(data.followers, db.mutuals(account));
+                    addIds(data.notFollowingBack, db.notFollowingBack(account));
+                    connection.setTransactionSuccessful();
+                    return data;
+                } finally {
+                    connection.endTransaction();
+                }
             } catch (Exception e) {
                 Logger.printException(() -> "StoryViewerSearch: could not read the scan", e);
                 return NO_SCAN;
