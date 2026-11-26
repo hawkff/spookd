@@ -1,6 +1,7 @@
 package app.morphe.extension.instagram.patches.story;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -100,6 +101,59 @@ public class StoryEarlierSeenTest {
         assertEquals(0, drain.queued());
     }
 
+    @Test
+    public void markedWithoutOwnPermitTakesNoSlot() {
+        assertEquals(StoryEarlierSeen.Outcome.SENT, StoryEarlierSeen.sendOutcome(true, true, false, false));
+        assertEquals(StoryEarlierSeen.Outcome.SENT, StoryEarlierSeen.sendOutcome(true, false, true, false));
+        assertEquals(StoryEarlierSeen.Outcome.SKIPPED, StoryEarlierSeen.sendOutcome(true, false, false, false));
+        assertEquals(StoryEarlierSeen.Outcome.FULL, StoryEarlierSeen.sendOutcome(false, false, false, true));
+        assertEquals(StoryEarlierSeen.Outcome.SKIPPED, StoryEarlierSeen.sendOutcome(false, false, false, false));
+    }
+
+    @Test
+    public void registryHoldsOnlyListenersOfLivePermits() {
+        RequestRegistry registry = new RequestRegistry(() -> 0L, 30_000L, 32, key -> {
+        });
+        StorySeenRequestScope.Listener first = new CountingListener();
+        StorySeenRequestScope.Listener second = new CountingListener();
+        Object request = new Object();
+
+        assertTrue(registry.register(request, StorySeenKey.from("1", "story"), first));
+        assertFalse(registry.register(new Object(), StorySeenKey.from("1", "story"), second));
+        assertTrue(registry.holds(first));
+        assertFalse(registry.holds(second));
+
+        registry.enter(request);
+        registry.complete(request, ignored -> true);
+        assertFalse(registry.holds(first));
+    }
+
+    @Test
+    public void itemPendingElsewhereDoesNotLeakASlot() {
+        RegistryPort port = new RegistryPort();
+        port.bridgeLike = true;
+        assertTrue(port.registry.register(new Object(), StorySeenKey.from("1", "story1"), null));
+        StoryEarlierSeen.Drain drain = new StoryEarlierSeen.Drain(stories(10), port);
+
+        drain.pump();
+        assertEquals(StoryEarlierSeen.MAX_IN_FLIGHT, drain.inFlight());
+        while (!port.ours.isEmpty()) port.completeOldest();
+
+        assertEquals(9, port.sent);
+        assertEquals(0, drain.inFlight());
+        assertEquals(0, drain.queued());
+    }
+
+    private static final class CountingListener implements StorySeenRequestScope.Listener {
+        @Override
+        public void onComplete() {
+        }
+
+        @Override
+        public void onFailure() {
+        }
+    }
+
     private static List<Object> stories(int count) {
         List<Object> items = new ArrayList<>();
         for (int i = 0; i < count; i++) items.add("story" + i);
@@ -114,6 +168,8 @@ public class StoryEarlierSeenTest {
         final List<Runnable> retries = new ArrayList<>();
         boolean active = true;
         boolean alwaysFull;
+        // Like the bridge: an item already pending reports success without registering this listener.
+        boolean bridgeLike;
         int sent;
         int maxInFlight;
 
@@ -121,18 +177,25 @@ public class StoryEarlierSeenTest {
         public StoryEarlierSeen.Outcome send(Object item, Runnable onResolved) {
             if (alwaysFull || !registry.hasCapacity()) return StoryEarlierSeen.Outcome.FULL;
             Object request = new Object();
-            boolean registered = registry.register(request, StorySeenKey.from("1", (String) item),
-                    new StorySeenRequestScope.Listener() {
-                        @Override
-                        public void onComplete() {
-                            onResolved.run();
-                        }
+            StorySeenKey key = StorySeenKey.from("1", (String) item);
+            StorySeenRequestScope.Listener listener = new StorySeenRequestScope.Listener() {
+                @Override
+                public void onComplete() {
+                    onResolved.run();
+                }
 
-                        @Override
-                        public void onFailure() {
-                            onResolved.run();
-                        }
-                    });
+                @Override
+                public void onFailure() {
+                    onResolved.run();
+                }
+            };
+            if (bridgeLike && registry.isPending(key)) {
+                StoryEarlierSeen.Outcome outcome =
+                        StoryEarlierSeen.sendOutcome(true, registry.holds(listener), false, false);
+                assertEquals(StoryEarlierSeen.Outcome.SKIPPED, outcome);
+                return outcome;
+            }
+            boolean registered = registry.register(request, key, listener);
             if (!registered) return StoryEarlierSeen.Outcome.FULL;
             ours.add(request);
             sent++;

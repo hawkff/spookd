@@ -99,6 +99,15 @@ public final class StoryEarlierSeen {
         }
     }
 
+    /**
+     * SENT only when this attempt's listener is registered or already ran, so exactly one release follows;
+     * a true result without either means the item was already marked or pending elsewhere.
+     */
+    static Outcome sendOutcome(boolean marked, boolean held, boolean resolved, boolean full) {
+        if (marked) return held || resolved ? Outcome.SENT : Outcome.SKIPPED;
+        return full ? Outcome.FULL : Outcome.SKIPPED;
+    }
+
     static List<?> itemsBefore(List<?> items, Object item) {
         int index = items.indexOf(item);
         // A copy, so marking cannot interfere with Instagram changing its live list.
@@ -137,11 +146,13 @@ public final class StoryEarlierSeen {
                             resolve.run();
                         }
                     };
-                    if (StorySeenBridge.markSeen(session, item, reel, source, listener)) {
-                        counted[0] = true;
-                        return Outcome.SENT;
-                    }
-                    return StorySeenRequestScope.hasCapacity() ? Outcome.SKIPPED : Outcome.FULL;
+                    boolean marked = StorySeenBridge.markSeen(session, item, reel, source, listener);
+                    // Held is read before resolved: a permit leaves the registry before its listener runs.
+                    boolean held = marked && StorySeenRequestScope.holds(listener);
+                    Outcome outcome = sendOutcome(
+                            marked, held, resolved.get(), !marked && !StorySeenRequestScope.hasCapacity());
+                    counted[0] = outcome == Outcome.SENT;
+                    return outcome;
                 } catch (Throwable throwable) {
                     Logger.printException(() -> "Failed to mark an earlier story as seen", throwable);
                     return Outcome.SKIPPED;
