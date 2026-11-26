@@ -17,6 +17,7 @@ import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
 import app.spookd.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.InstructionLocation.MatchAfterImmediately
+import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
@@ -28,6 +29,7 @@ import app.morphe.patcher.opcode
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.classDefByOrNull
+import app.morphe.patcher.patch.mutableClassDefBy
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.util.getReference
 import app.morphe.patcher.util.p0Register
@@ -37,6 +39,7 @@ import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.Method
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
@@ -140,16 +143,23 @@ private fun hookStoryPlayer(playerField: FieldReference, players: List<String>) 
 }
 
 // Turns the session sound check's true result false while Mute stories is on and the viewer was not asked for sound.
-private fun hookSoundDecision(method: MutableMethod, callIndex: Int, asked: Int) {
+// With [helper], only instances the story viewer created are affected.
+private fun hookSoundDecision(method: MutableMethod, callIndex: Int, asked: Int, helper: Int? = null) {
     val code = method.implementation!!.instructions
     val call = code[callIndex].registersUsed
     val result = code[callIndex + 1].registersUsed.single()
     val insertAt = callIndex + 2
     if (code[callIndex + 1].opcode != Opcode.MOVE_RESULT || call.size != 4 || call[2] != asked || asked == result ||
-        asked !in 0..15 || result !in 0..15 || insertAt >= code.size || code[insertAt].location.labels.isNotEmpty()
+        asked !in 0..15 || result !in 0..15 || insertAt >= code.size || code[insertAt].location.labels.isNotEmpty() ||
+        (helper != null && (helper !in 0..15 || helper == result))
     ) throw PatchException("Unexpected story sound decision in $method")
+    val invoke = if (helper == null) {
+        "invoke-static {v$result, v$asked}, $STORY_PLAYBACK_CLASS->storySound(ZZ)Z"
+    } else {
+        "invoke-static {v$result, v$asked, v$helper}, $STORY_PLAYBACK_CLASS->storyAudioSound(ZZLjava/lang/Object;)Z"
+    }
     method.addInstructions(insertAt, """
-        invoke-static {v$result, v$asked}, $STORY_PLAYBACK_CLASS->storySound(ZZ)Z
+        $invoke
         move-result v$result
     """)
 }
@@ -184,7 +194,8 @@ private fun sessionSoundCheckFingerprint(owner: String) = Fingerprint(
     ),
 )
 
-// The story audio manager's own player (sponsored story music) asks the session sound check with its volume-key flag.
+// The story audio manager's music helper (sponsored story music) asks the session sound check with its volume-key flag.
+// The helper class also plays feed and other sponsored audio, so the manager marks the instances it creates.
 private fun hookStoryAudioSound(managers: List<String>) {
     val owners = managers.flatMap { manager ->
         classDefBy(manager).fields.filter { !AccessFlags.STATIC.isSet(it.accessFlags) }.map { it.type }
@@ -202,7 +213,31 @@ private fun hookStoryAudioSound(managers: List<String>) {
         if (code[writer].opcode != Opcode.IGET_BOOLEAN || flag?.definingClass != owner ||
             (writer + 1..callIndex).any { code[it].location.labels.isNotEmpty() }
         ) continue
-        hookSoundDecision(match.method, callIndex, asked)
+        // The instance whose flag was read; it must still hold it at the decision.
+        val helper = (code[writer] as TwoRegisterInstruction).registerB
+        if ((writer + 1..callIndex).any { code[it].opcode.setsRegister() && code[it].registersUsed.firstOrNull() == helper }) {
+            throw PatchException("Unexpected story audio helper register in ${match.method}")
+        }
+        val marks = managers.flatMap { manager ->
+            mutableClassDefBy(manager).methods.filter { it.name == "<init>" }.mapNotNull { init ->
+                val initCode = init.implementation!!.instructions
+                val created = initCode.indices.singleOrNull { i ->
+                    initCode[i].opcode.let { it == Opcode.INVOKE_DIRECT || it == Opcode.INVOKE_DIRECT_RANGE } &&
+                        initCode[i].getReference<MethodReference>()?.let { it.name == "<init>" && it.definingClass == owner } == true
+                } ?: return@mapNotNull null
+                val instance = initCode[created].registersUsed.first()
+                if (instance !in 0..15 || initCode[created + 1].location.labels.isNotEmpty()) {
+                    throw PatchException("Unexpected story audio helper creation in $init")
+                }
+                init to created + 1
+            }
+        }
+        if (marks.isEmpty()) throw PatchException("Missing story audio helper creation")
+        for ((init, at) in marks) {
+            val instance = init.implementation!!.instructions[at - 1].registersUsed.first()
+            init.addInstruction(at, "invoke-static {v$instance}, $STORY_PLAYBACK_CLASS->markStoryAudio(Ljava/lang/Object;)V")
+        }
+        hookSoundDecision(match.method, callIndex, asked, helper)
         hooked++
     }
     if (hooked == 0) throw PatchException("Missing story audio manager sound decision")

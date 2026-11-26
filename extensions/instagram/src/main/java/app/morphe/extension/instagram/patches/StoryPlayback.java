@@ -11,6 +11,10 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 import android.content.Context;
 import android.content.DialogInterface;
 
+import java.util.Collections;
+import java.util.Set;
+import java.util.WeakHashMap;
+
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.settings.Settings;
@@ -25,6 +29,9 @@ public final class StoryPlayback {
         static final Pref.Cached<Boolean> MUTE_STORIES = new Pref.Cached<>(
                 () -> Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.MUTE_STORIES)), Settings.MUTE_STORIES.key);
     }
+
+    // Music helpers created by the story viewer's audio manager.
+    private static final Set<Object> storyAudio = Collections.newSetFromMap(new WeakHashMap<>());
 
     private StoryPlayback() {}
 
@@ -44,6 +51,29 @@ public final class StoryPlayback {
         } catch (Throwable t) {
             Logger.printException(() -> "Failed to read Mute stories", t);
             return true;
+        }
+    }
+
+    /** Called when the story viewer's audio manager creates its music helper (sponsored story music). */
+    public static void markStoryAudio(Object helper) {
+        if (helper == null) return;
+        synchronized (storyAudio) {
+            storyAudio.add(helper);
+        }
+    }
+
+    /**
+     * Called by a music helper when it decides whether to play sound. The helper class also plays feed and
+     * other sponsored audio, so only helpers the story viewer created follow Mute stories.
+     */
+    public static boolean storyAudioSound(boolean nativeSound, boolean askedForSound, Object helper) {
+        if (!nativeSound || askedForSound || !isStoryAudio(helper)) return nativeSound;
+        return storySound(true, false);
+    }
+
+    static boolean isStoryAudio(Object helper) {
+        synchronized (storyAudio) {
+            return storyAudio.contains(helper);
         }
     }
 
