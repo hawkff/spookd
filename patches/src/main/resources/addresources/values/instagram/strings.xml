@@ -360,6 +360,7 @@
     <!-- Story Section -->
     <string name="spookd_category_story">Story</string>
     <string name="spookd_view_story_mentions">View story mentions</string>
+    <string name="spookd_view_story_mentions_count">View story mentions (%1$d)</string>
     <string name="spookd_vsm_title">Story mentions</string>
     <string name="spookd_vsm_no_mentions">No mentions on this story</string>
     <string name="spookd_mark_story_seen">Mark as seen</string>
