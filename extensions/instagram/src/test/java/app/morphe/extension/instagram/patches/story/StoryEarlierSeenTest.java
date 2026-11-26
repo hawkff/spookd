@@ -177,6 +177,28 @@ public class StoryEarlierSeenTest {
         assertEquals(0, port.sent);
     }
 
+    @Test
+    public void expiredPermitsReleaseTheirSlotsWithoutOtherRegistryTraffic() {
+        RegistryPort port = new RegistryPort();
+        StoryEarlierSeen.Drain drain = new StoryEarlierSeen.Drain(stories(6), port);
+
+        drain.pump();
+        assertEquals(StoryEarlierSeen.MAX_IN_FLIGHT, drain.inFlight());
+        assertEquals(1, port.ticks.size());
+
+        port.now = 30_001L;
+        port.runTick();
+
+        assertEquals(6, port.sent);
+        assertEquals(0, drain.queued());
+        assertEquals(2, drain.inFlight());
+        assertEquals(1, port.ticks.size());
+
+        while (!port.ours.isEmpty()) port.completeOldest();
+        port.runTick();
+        assertTrue(port.ticks.isEmpty());
+    }
+
     private static final class CountingListener implements StorySeenRequestScope.Listener {
         @Override
         public void onComplete() {
@@ -195,10 +217,14 @@ public class StoryEarlierSeenTest {
 
     /** Sends through a real request registry of 32 slots; requests resolve when the test completes them. */
     private static final class RegistryPort implements StoryEarlierSeen.Port {
-        final RequestRegistry registry = new RequestRegistry(() -> 0L, 30_000L, 32, key -> {
+        long now;
+        final RequestRegistry registry = new RequestRegistry(() -> now, 30_000L, 32, key -> {
         });
         final List<Object> ours = new ArrayList<>();
         final List<Runnable> retries = new ArrayList<>();
+        final List<Runnable> ticks = new ArrayList<>();
+        // Failures are reported from inside the registry, so like the bridge they resolve later.
+        final List<Runnable> posted = new ArrayList<>();
         boolean active = true;
         long token = StoryAdvance.NO_TOKEN;
         boolean alwaysFull;
@@ -220,7 +246,8 @@ public class StoryEarlierSeenTest {
 
                 @Override
                 public void onFailure() {
-                    onResolved.run();
+                    ours.remove(request);
+                    posted.add(onResolved);
                 }
             };
             if (bridgeLike && registry.isPending(key)) {
@@ -245,6 +272,21 @@ public class StoryEarlierSeenTest {
         @Override
         public void retryLater(Runnable pump) {
             retries.add(pump);
+        }
+
+        @Override
+        public void tickLater(Runnable tick) {
+            ticks.add(tick);
+        }
+
+        @Override
+        public void expireStale() {
+            registry.expire();
+        }
+
+        void runTick() {
+            ticks.remove(0).run();
+            while (!posted.isEmpty()) posted.remove(0).run();
         }
 
         void completeOldest() {

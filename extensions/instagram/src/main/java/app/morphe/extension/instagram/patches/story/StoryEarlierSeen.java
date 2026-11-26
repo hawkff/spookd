@@ -33,6 +33,12 @@ public final class StoryEarlierSeen {
         boolean active();
 
         void retryLater(Runnable pump);
+
+        /** Runs {@code tick} on the drain's thread about a second later. */
+        void tickLater(Runnable tick);
+
+        /** Releases expired permits, whose listeners then report the failure. */
+        void expireStale();
     }
 
     /** Sends queued receipts a few at a time and waits for free request slots instead of dropping items. */
@@ -41,6 +47,7 @@ public final class StoryEarlierSeen {
         private final Port port;
         private int inFlight;
         private int fullRetries;
+        private boolean ticking;
 
         Drain(List<?> items, Port port) {
             for (Object item : items) {
@@ -50,6 +57,11 @@ public final class StoryEarlierSeen {
         }
 
         void pump() {
+            sendQueued();
+            scheduleTick();
+        }
+
+        private void sendQueued() {
             if (!port.active()) {
                 queue.clear();
                 return;
@@ -72,6 +84,20 @@ public final class StoryEarlierSeen {
         private void resolved() {
             inFlight--;
             pump();
+        }
+
+        // Expired permits are otherwise released only when other registry traffic runs, which could stall the drain.
+        private void scheduleTick() {
+            if (ticking || inFlight == 0 || !port.active()) return;
+            ticking = true;
+            port.tickLater(this::tick);
+        }
+
+        private void tick() {
+            ticking = false;
+            if (inFlight == 0 || !port.active()) return;
+            port.expireStale();
+            scheduleTick();
         }
 
         int inFlight() {
@@ -170,6 +196,16 @@ public final class StoryEarlierSeen {
             @Override
             public boolean active() {
                 return StoryAdvance.isCurrent(token);
+            }
+
+            @Override
+            public void tickLater(Runnable tick) {
+                retryLater(tick);
+            }
+
+            @Override
+            public void expireStale() {
+                StorySeenRequestScope.expire();
             }
 
             @Override

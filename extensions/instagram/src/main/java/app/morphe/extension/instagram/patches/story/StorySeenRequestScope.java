@@ -75,6 +75,10 @@ public final class StorySeenRequestScope {
         return REGISTRY.holds(listener);
     }
 
+    static void expire() {
+        REGISTRY.expire();
+    }
+
     public static boolean resolveSeenStatus(boolean seenStatus, boolean anonymousStories) {
         return anonymousStories && !isActive() ? true : seenStatus;
     }
@@ -240,6 +244,10 @@ final class RequestRegistry {
     boolean isActive() {
         ScopeFrame current = scope.get();
         return current != null && current.permitted;
+    }
+
+    synchronized void expire() {
+        removeExpired(clock.getAsLong());
     }
 
     synchronized boolean hasCapacity() {
