@@ -3,6 +3,7 @@ package app.morphe.extension.instagram.patches.download.gallery;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 
@@ -173,6 +174,10 @@ public final class DownloadHistory {
             while (c.moveToNext()) out.add(new Entry(c, galleryDir));
         }
         return out;
+    }
+
+    synchronized int count() {
+        return (int) DatabaseUtils.queryNumEntries(db, TABLE);
     }
 
     /** Deletes every row; saved files stay where they are. */

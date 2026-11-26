@@ -147,7 +147,7 @@ public final class GalleryStore {
         return publish(part, item, subFolder, fileName, conflict, null);
     }
 
-    /** {@link #publish}, also deleting the part and returning -1 when the gallery was cleared after {@code startedEpoch}. */
+    /** {@link #publish}, also deleting the part and failing when the gallery was cleared after {@code startedEpoch}. */
     public long publish(File part, GalleryItem item, String subFolder, String fileName,
                         Conflict conflict, Long startedEpoch) throws IOException {
         try {
@@ -155,9 +155,9 @@ public final class GalleryStore {
             Long durationMs = GalleryItem.PHOTO.equals(item.kind) ? null : durationMs(part);
             long size = part.length();
             synchronized (this) {
+                // A failure, not a name conflict, so the download is reported as not saved and can be retried.
                 if (startedEpoch != null && startedEpoch != clearEpoch) {
-                    part.delete();
-                    return -1;
+                    throw new IOException("The gallery was cleared during the download");
                 }
                 String file = baseName(part) + extension(fileName);
                 File target = new File(dir, file);
@@ -239,24 +239,39 @@ public final class GalleryStore {
     }
 
     /**
-     * Deletes every item: the rows, then their files and thumbnails. False when an item file that
-     * still exists could not be deleted; recovery removes it at the next start. Throws on database errors.
+     * Deletes every item: its thumbnail and file, then its row. False when a file or thumbnail that
+     * still exists could not be deleted; an item whose file stays keeps its row for the next clear.
+     * Throws on database errors.
      */
     public synchronized boolean deleteAll() {
         clearEpoch++;
         recover();
-        List<String> files = new ArrayList<>();
-        try (Cursor c = db.rawQuery("SELECT file FROM gallery_items", null)) {
-            while (c.moveToNext()) files.add(c.getString(0));
+        List<Object[]> rows = new ArrayList<>();
+        try (Cursor c = db.rawQuery("SELECT id, file FROM gallery_items", null)) {
+            while (c.moveToNext()) rows.add(new Object[]{c.getLong(0), c.getString(1)});
         }
-        db.delete("gallery_items", null, null);
         boolean deleted = true;
-        for (String file : files) {
+        for (Object[] row : rows) {
+            String file = (String) row[1];
             File item = new File(dir, file);
-            if (!item.delete() && item.exists()) deleted = false;
-            thumb(file).delete();
+            File thumb = thumb(file);
+            if (!thumb.delete() && thumb.exists()) deleted = false;
+            // A file that stays keeps its row, so the next clear tries it again.
+            if (!item.delete() && item.exists()) {
+                deleted = false;
+                continue;
+            }
+            db.delete("gallery_items", "id = ?", new String[]{String.valueOf(row[0])});
         }
         return deleted;
+    }
+
+    /** {count, total size in bytes} of the saved downloads. */
+    public synchronized long[] totals() {
+        try (Cursor c = db.rawQuery("SELECT COUNT(*), COALESCE(SUM(size_bytes), 0) FROM gallery_items", null)) {
+            c.moveToFirst();
+            return new long[]{c.getLong(0), c.getLong(1)};
+        }
     }
 
     /** {@link #delete(long)} only while {@code seen} is still the item's file, so an item overwritten meanwhile stays. */

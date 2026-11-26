@@ -11,17 +11,11 @@ public final class GalleryStorage {
     }
 
     public static long galleryBytes() {
-        long total = 0;
-        for (GalleryTab tab : GalleryTab.values()) {
-            for (GalleryStore.Entry entry : GalleryStore.get().list(tab)) total += entry.sizeBytes;
-        }
-        return total;
+        return GalleryStore.get().totals()[1];
     }
 
     public static int galleryEntries() {
-        int total = 0;
-        for (GalleryTab tab : GalleryTab.values()) total += GalleryStore.get().list(tab).size();
-        return total;
+        return (int) GalleryStore.get().totals()[0];
     }
 
     /** False when a saved file could not be deleted; throws on database errors. */
@@ -30,7 +24,7 @@ public final class GalleryStorage {
     }
 
     public static int historyEntries() {
-        return DownloadHistory.get().list().size();
+        return DownloadHistory.get().count();
     }
 
     /** Saved files stay; only the rows go. */
