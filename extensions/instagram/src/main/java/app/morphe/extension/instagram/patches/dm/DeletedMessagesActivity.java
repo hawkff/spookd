@@ -315,6 +315,7 @@ public final class DeletedMessagesActivity {
                 String messageId = message[0];
                 String body = message[3];
                 String type = message[4];
+                if (SpookdMessageDb.REMOVED_REACTION.equals(type)) return;
                 if (storedModes.containsKey(messageId)) {
                     VaultViewer.open(activity, messageId);
                 } else if (body != null && body.startsWith("http")) {
@@ -717,7 +718,13 @@ public final class DeletedMessagesActivity {
                 senderView.setText(who);
                 boolean isMediaUrl = content != null && content.startsWith("http");
                 String saved = savedLabel(msg[0]);
-                if (isMediaUrl) {
+                if (SpookdMessageDb.REMOVED_REACTION.equals(type)) {
+                    String message = isMediaUrl ? mediaLabel(msg[8], content)
+                            : content != null && !content.isEmpty() ? content
+                            : "[" + (msg[8] != null ? msg[8] : str("spookd_media_unknown")) + "]";
+                    contentView.setText(String.format(Locale.getDefault(),
+                            str("spookd_removed_reaction"), msg[7], message));
+                } else if (isMediaUrl) {
                     contentView.setText(mediaLabel(type, content) + "  ·  " + (saved != null ? saved
                             : str(isExpiredMediaUrl(content) ? "spookd_media_expired" : "spookd_tap_to_view")));
                 } else {

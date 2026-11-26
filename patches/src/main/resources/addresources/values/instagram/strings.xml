@@ -756,7 +756,7 @@
     <string name="spookd_open_share_in_instagram">Open in Instagram</string>
     <string name="spookd_open_voice_with_player">Open with music player</string>
     <string name="spookd_save_deleted_messages">Save deleted messages</string>
-    <string name="spookd_save_deleted_messages_desc">Captures incoming DMs locally as they arrive from the server. Marks messages as deleted when unsent, so you can view them even after the sender deletes them.</string>
+    <string name="spookd_save_deleted_messages_desc">Captures incoming DMs locally as they arrive from the server. Marks messages as deleted when unsent, so you can view them even after the sender deletes them. Also lists reactions that others remove from saved messages, noticed when Instagram loads the chat again.</string>
     <string name="spookd_view_deleted_messages">View deleted messages</string>
     <string name="spookd_all_deleted_messages">All deleted messages</string>
     <string name="spookd_no_deleted_messages">No deleted messages captured yet.\nEnable the feature and messages will be saved as they arrive.</string>
@@ -785,6 +785,7 @@
     <string name="spookd_media_like">like</string>
     <string name="spookd_media_link">link</string>
     <string name="spookd_media_activity">activity</string>
+    <string name="spookd_removed_reaction">Removed %1$s from: %2$s</string>
     <string name="spookd_dm_media_vault">Save DM media</string>
     <string name="spookd_dm_media_vault_desc">Downloads every received DM photo, video and voice message as it arrives, on any network, so it uses mobile data and up to 8 GB of storage. Media of messages that are not unsent is removed after 30 days, except view-once media, which stays until you delete it. After you turn this setting off, nothing new is saved, and once Instagram restarts the cleanup stops too. Saved media opens from View deleted messages after you confirm your screen lock, on Android 11 or newer.</string>
     <string name="spookd_dm_media_vault_view_once">Also save view-once media</string>

@@ -19,7 +19,11 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
 
     // Legacy stored name: existing installs keep their database under it.
     private static final String DB_NAME = "piko_dm_vault.db";
-    static final int DB_VERSION = 6;
+    static final int DB_VERSION = 7;
+    /** The message type of a removed reaction row in {@link #getDeletedMessages()}. */
+    public static final String REMOVED_REACTION = "removed_reaction";
+    /** The id prefix of a removed reaction row in {@link #getDeletedMessages()}. */
+    public static final String REACTION_ID_PREFIX = "reaction:";
     private static final String TABLE = "saved_messages";
     // sender_id → username directory. MQTT-delivered items carry only a numeric sender_id;
     // the REST path occasionally carries a full UserInfo. Every time we resolve a username we
@@ -72,6 +76,22 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
     // Version 6: the original view mode of the item (once, replayable, ...); NULL when unknown.
     static final String SAVED_MEDIA_VIEW_MODE = "ALTER TABLE saved_media ADD COLUMN view_mode TEXT";
 
+    // Version 7: the reactions seen on saved messages; removed_at is set once another user removed one.
+    static String[] reactionStatements() {
+        return new String[]{
+                "CREATE TABLE message_reactions ("
+                        + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                        + "message_id TEXT NOT NULL,"
+                        + "sender_id TEXT NOT NULL,"
+                        + "emoji TEXT NOT NULL,"
+                        + "removed_at INTEGER"
+                        + ")",
+                "CREATE UNIQUE INDEX idx_reactions_live ON message_reactions(message_id, sender_id, emoji)"
+                        + " WHERE removed_at IS NULL",
+                "CREATE INDEX idx_reactions_message ON message_reactions(message_id)"
+        };
+    }
+
     static String[] upgradeStatements(int oldVersion) {
         List<String> statements = new ArrayList<>();
         if (oldVersion < 3) {
@@ -86,6 +106,9 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         }
         if (oldVersion < 6) {
             statements.add(SAVED_MEDIA_VIEW_MODE);
+        }
+        if (oldVersion < 7) {
+            java.util.Collections.addAll(statements, reactionStatements());
         }
         return statements.toArray(new String[0]);
     }
@@ -130,6 +153,9 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
             db.execSQL(statement);
         }
         db.execSQL(SAVED_MEDIA_VIEW_MODE);
+        for (String statement : reactionStatements()) {
+            db.execSQL(statement);
+        }
     }
 
     private void createDirTable(SQLiteDatabase db) {
@@ -405,14 +431,64 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         db.beginTransaction();
         try {
             for (String messageId : messageIds) {
-                if (messageId != null) {
+                if (messageId == null) continue;
+                if (messageId.startsWith(REACTION_ID_PREFIX)) {
+                    db.delete("message_reactions", "id = ?",
+                            new String[]{messageId.substring(REACTION_ID_PREFIX.length())});
+                } else {
                     db.delete(TABLE, "message_id = ?", new String[]{messageId});
+                    db.delete("message_reactions", "message_id = ?", new String[]{messageId});
                 }
             }
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
         }
+    }
+
+    /**
+     * Stores the reactions now on a saved message, each {sender id, emoji}, and marks the stored ones
+     * that are gone as removed; the viewer's own are dropped instead. Returns how many were marked.
+     */
+    public int syncReactions(String messageId, List<String[]> current, String viewerId, long now) {
+        if (messageId == null || current == null) return 0;
+        java.util.Set<String> present = new java.util.HashSet<>();
+        for (String[] reaction : current) present.add(reaction[0] + '\u0000' + reaction[1]);
+        int marked = 0;
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            Cursor c = db.rawQuery("SELECT id, sender_id, emoji FROM message_reactions"
+                    + " WHERE message_id = ? AND removed_at IS NULL", new String[]{messageId});
+            try {
+                while (c.moveToNext()) {
+                    String sender = c.getString(1);
+                    if (present.remove(sender + '\u0000' + c.getString(2))) continue;
+                    String[] id = {c.getString(0)};
+                    if (sender.equals(viewerId)) {
+                        db.delete("message_reactions", "id = ?", id);
+                    } else {
+                        ContentValues removed = new ContentValues();
+                        removed.put("removed_at", now);
+                        marked += db.update("message_reactions", removed, "id = ?", id);
+                    }
+                }
+            } finally {
+                c.close();
+            }
+            for (String[] reaction : current) {
+                if (!present.remove(reaction[0] + '\u0000' + reaction[1])) continue;
+                ContentValues values = new ContentValues();
+                values.put("message_id", messageId);
+                values.put("sender_id", reaction[0]);
+                values.put("emoji", reaction[1]);
+                db.insertWithOnConflict("message_reactions", null, values, SQLiteDatabase.CONFLICT_IGNORE);
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+        return marked;
     }
 
     /** Marks a live row deleted and returns true only for the first successful transition. */
@@ -519,7 +595,29 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
             result.add(rowToStringArray(c, directory));
         }
         c.close();
+        addRemovedReactions(db, directory, result);
         return result;
+    }
+
+    // Adds [reaction:id, threadId, reactorUsername, messageContent, REMOVED_REACTION, removedAt,
+    // reactorId, emoji, messageType] rows, newest first among all rows.
+    private void addRemovedReactions(SQLiteDatabase db, java.util.Map<String, String> directory,
+                                     List<String[]> result) {
+        Cursor c = db.rawQuery("SELECT r.id, m.thread_id, r.sender_id, m.content, r.removed_at,"
+                + " r.emoji, m.message_type FROM message_reactions r JOIN " + TABLE
+                + " m ON m.message_id = r.message_id WHERE r.removed_at IS NOT NULL", null);
+        boolean added = false;
+        while (c.moveToNext()) {
+            String senderId = c.getString(2);
+            result.add(new String[]{
+                    REACTION_ID_PREFIX + c.getLong(0), c.getString(1), directory.get(senderId),
+                    c.getString(3), REMOVED_REACTION, String.valueOf(c.getLong(4)), senderId,
+                    c.getString(5), c.getString(6)
+            });
+            added = true;
+        }
+        c.close();
+        if (added) result.sort((a, b) -> Long.compare(Long.parseLong(b[5]), Long.parseLong(a[5])));
     }
 
     private java.util.Map<String, String> loadUsernameDirectory(SQLiteDatabase db) {

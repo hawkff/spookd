@@ -26,6 +26,8 @@ import java.util.List;
 @Config(sdk = 29, manifest = Config.NONE)
 public final class SpookdMessageDbMigrationTest {
     private static final String DB_NAME = "piko_dm_vault.db";
+    // Added in version 7.
+    private static final String[] V7_NAMES = {"message_reactions", "idx_reactions_live", "idx_reactions_message"};
 
     @Test
     public void upgradesV4WithRowsIntact() throws Exception {
@@ -35,14 +37,14 @@ public final class SpookdMessageDbMigrationTest {
 
         SpookdMessageDb helper = newHelper(context);
         SQLiteDatabase db = helper.getWritableDatabase();
-        assertEquals(6, db.getVersion());
+        assertEquals(SpookdMessageDb.DB_VERSION, db.getVersion());
         assertEquals(Arrays.asList("id", "item_id", "account_id", "kind", "url", "url_expires_at",
                 "msg_timestamp", "state", "attempts", "next_attempt_at", "size_bytes", "mime", "view_mode"),
                 columns(db, "saved_media"));
         assertTrue(hasIndex(db, "idx_media_state_time"));
         helper.close();
 
-        assertEquals(before, dump(context, "saved_media", "idx_media_state_time"));
+        assertEquals(before, dump(context, concat(V7_NAMES, "saved_media", "idx_media_state_time")));
     }
 
     @Test
@@ -85,15 +87,40 @@ public final class SpookdMessageDbMigrationTest {
 
         SpookdMessageDb helper = newHelper(context);
         SQLiteDatabase db = helper.getWritableDatabase();
-        assertEquals(6, db.getVersion());
+        assertEquals(SpookdMessageDb.DB_VERSION, db.getVersion());
         List<String> media = columns(db, "saved_media");
         assertEquals("view_mode", media.get(media.size() - 1));
         helper.close();
 
-        List<String> after = dump(context);
+        List<String> after = dump(context, V7_NAMES);
         after.removeIf(line -> line.startsWith("table saved_media "));
         assertEquals(expected, after);
         assertEquals(2, after.stream().filter(line -> line.startsWith("saved_media|")).count());
+    }
+
+    @Test
+    public void upgradesV6WithEveryRowIntact() throws Exception {
+        Context context = RuntimeEnvironment.getApplication();
+        createV4(context, false);
+        SQLiteDatabase v6 = context.openOrCreateDatabase(DB_NAME, Context.MODE_PRIVATE, null);
+        for (String statement : SpookdMessageDb.savedMediaStatements()) v6.execSQL(statement);
+        v6.execSQL(SpookdMessageDb.SAVED_MEDIA_VIEW_MODE);
+        v6.execSQL("INSERT INTO saved_media (item_id, kind, url_expires_at, msg_timestamp, state, view_mode)"
+                + " VALUES ('31000000000000000000000000001', 'photo', 1700000000000, 1690000000000,"
+                + " 'stored', 'once')");
+        v6.setVersion(6);
+        v6.close();
+        List<String> before = dump(context);
+
+        SpookdMessageDb helper = newHelper(context);
+        SQLiteDatabase db = helper.getWritableDatabase();
+        assertEquals(SpookdMessageDb.DB_VERSION, db.getVersion());
+        assertEquals(Arrays.asList("id", "message_id", "sender_id", "emoji", "removed_at"),
+                columns(db, "message_reactions"));
+        helper.close();
+
+        assertEquals(before, dump(context, V7_NAMES));
+        assertEquals(3, before.stream().filter(line -> line.startsWith("saved_messages|")).count());
     }
 
     @Test
@@ -120,9 +147,15 @@ public final class SpookdMessageDbMigrationTest {
         older.close();
 
         SQLiteDatabase db = context.openOrCreateDatabase(DB_NAME, Context.MODE_PRIVATE, null);
-        assertEquals(6, db.getVersion());
+        assertEquals(SpookdMessageDb.DB_VERSION, db.getVersion());
         db.close();
         assertEquals(before, dump(context));
+    }
+
+    private static String[] concat(String[] first, String... second) {
+        List<String> out = new ArrayList<>(Arrays.asList(first));
+        out.addAll(Arrays.asList(second));
+        return out.toArray(new String[0]);
     }
 
     private static SpookdMessageDb newHelper(Context context) throws Exception {

@@ -317,6 +317,12 @@ public class SavedMessagesHook {
                 RevokeCache.INSTANCE.put(serverId, clientContext, messageId,
                         db.getStoredContent(messageId));
                 if (Pref.dmMediaVault()) captureMedia(item, directItem, serverId, viewerId, type, timestamp);
+                // Only full REST items are compared, since other payloads may leave the reactions out;
+                // without the viewer id an own removal would look like someone else's.
+                if (restPath && !isBlank(viewerId)) {
+                    db.syncReactions(messageId, directItem.getReactions(), viewerId,
+                            System.currentTimeMillis());
+                }
             }
         } catch (Exception e) {
             spookd("SavedMessagesHook.processReceivedItem: " + e);

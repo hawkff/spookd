@@ -6,13 +6,23 @@
 
 package app.spookd.patches.instagram.misc.dm.saveMessages
 
+import app.spookd.patches.instagram.entity.directItem.DirectItemDispatchFingerprint
+import app.spookd.patches.instagram.entity.directItem.FieldReactionEmojiExtension
+import app.spookd.patches.instagram.entity.directItem.FieldReactionEmojisExtension
+import app.spookd.patches.instagram.entity.directItem.FieldReactionLikesExtension
+import app.spookd.patches.instagram.entity.directItem.FieldReactionsExtension
+import app.spookd.patches.instagram.entity.directItem.ReactionSenderMethodExtension
+import app.spookd.patches.instagram.entity.directItem.ReactionWriterFingerprint
 import app.spookd.patches.instagram.entity.directItem.directItemEntity
+import app.spookd.patches.instagram.entity.directItem.jsonKeyFieldFingerprint
+import app.spookd.patches.instagram.entity.directItem.reactionListsFingerprint
 import app.spookd.patches.instagram.entity.userdata.userDataEntity
 import app.spookd.patches.instagram.misc.settings.settingsPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
 import app.spookd.patches.instagram.utils.Constants.USER_SESSION_CLASS
 import app.spookd.patches.instagram.utils.enableSettings
+import app.crimera.utils.changeFirstString
 import app.crimera.utils.changeString
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
@@ -141,6 +151,23 @@ val saveDeletedMessagesPatch =
                         """.trimIndent(),
                     )
                 }
+            }
+
+            // Reactions, compared to log removed ones; a miss leaves them unread and changes nothing else.
+            val parserClass = DirectItemDispatchFingerprint.originalClassDef.type
+            val reactionsField = jsonKeyFieldFingerprint("reactions", parserClass).matchOrNull()
+                ?.instructionMatches?.last()?.fieldReference
+            val itemIdField = jsonKeyFieldFingerprint("item_id", parserClass).instructionMatches.last().fieldReference
+            val reactionLists = reactionsField?.let { reactionListsFingerprint(parserClass, it.type).matchOrNull() }
+            val reactionWriter = ReactionWriterFingerprint.matchOrNull()
+            if (reactionsField != null && reactionsField.definingClass == itemIdField.definingClass &&
+                reactionLists != null && reactionWriter != null
+            ) {
+                FieldReactionsExtension.changeFirstString(reactionsField.name)
+                FieldReactionLikesExtension.changeFirstString(reactionLists.instructionMatches[2].fieldReference.name)
+                FieldReactionEmojisExtension.changeFirstString(reactionLists.instructionMatches[3].fieldReference.name)
+                ReactionSenderMethodExtension.changeFirstString(reactionWriter.instructionMatches[1].methodReference.name)
+                FieldReactionEmojiExtension.changeFirstString(reactionWriter.instructionMatches[4].fieldReference.name)
             }
 
             enableSettings("saveDeletedMessages")
