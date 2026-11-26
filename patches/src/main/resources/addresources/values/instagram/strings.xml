@@ -94,8 +94,6 @@
     <string name="spookd_fake_location_label_hint">Name (optional)</string>
     <string name="spookd_fake_location_save">Save</string>
     <string name="spookd_fake_location_invalid">No coordinates found. Latitude goes from -90 to 90 and longitude from -180 to 180. Short maps links can\'t be read, so open the link and copy the full one</string>
-    <string name="spookd_hidden_account_privacy_options">Hidden account privacy options</string>
-    <string name="spookd_hidden_account_privacy_options_desc">Shows Instagram\'s own options to hide your followers and following lists and to hide you from other people\'s lists in Settings, Account privacy. Instagram offers them only to some teen accounts in the UK, and the server decides whether a change is kept. Using options the server did not offer your account can put it at risk</string>
     <string name="spookd_turn_on_all_ghost_modes">Turn on all ghost modes</string>
     <string name="spookd_turn_on_all_ghost_modes_desc">Turns on the ghost modes available in this build</string>
     <string name="spookd_ghost_modes_on">Ghost mode: ON</string>
