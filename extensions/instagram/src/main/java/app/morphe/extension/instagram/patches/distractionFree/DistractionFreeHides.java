@@ -42,6 +42,20 @@ public final class DistractionFreeHides {
         }
     }
 
+    /** Whether the Reels comment bar's direct show call takes its hide branch instead. */
+    public static boolean hideReelsCommentBar() {
+        return hideReelsCommentBar(false);
+    }
+
+    /** Takes the visibility Instagram picked for the CTA container next to the comment bar. */
+    public static int reelsCommentBarCtaVisibility(int visibility) {
+        return commentBarVisibility(hideReelsCommentBar(), visibility);
+    }
+
+    static int commentBarVisibility(boolean hidden, int visibility) {
+        return hidden ? View.GONE : visibility;
+    }
+
     /** Takes whether the inbox shows its Instants stack. */
     public static boolean showInboxInstants(boolean show) {
         try {

@@ -22,6 +22,14 @@ public class DistractionFreeHidesTest {
     }
 
     @Test
+    public void hiddenCommentBarStaysGoneWhenADismissedDrawerShowsItAgain() {
+        assertEquals(View.GONE, DistractionFreeHides.commentBarVisibility(true, View.GONE));
+        // A dismissed drawer asks for the bar and its CTA container to be shown again.
+        assertEquals(View.GONE, DistractionFreeHides.commentBarVisibility(true, View.VISIBLE));
+        assertEquals(View.VISIBLE, DistractionFreeHides.commentBarVisibility(false, View.VISIBLE));
+    }
+
+    @Test
     public void unmarkedHeadersKeepTheirVisibility() {
         assertEquals(View.VISIBLE, DistractionFreeHides.reelsHeaderVisibility(null, View.VISIBLE));
         assertEquals(View.INVISIBLE, DistractionFreeHides.reelsHeaderVisibility(null, View.INVISIBLE));
