@@ -18,6 +18,15 @@ public final class PrivateGalleryActivityTest {
     }
 
     @Test
+    public void aThumbnailOfASmallSourceIsAsLargeAsItCanBe() {
+        assertEquals(200, PrivateGalleryActivity.bestShorterSide(400, 200, 300, true));
+        assertEquals(300, PrivateGalleryActivity.bestShorterSide(1200, 600, 300, true));
+        assertEquals(200, PrivateGalleryActivity.bestShorterSide(200, 400, 300, false));
+        assertEquals(300, PrivateGalleryActivity.bestShorterSide(1920, 1080, 300, false));
+        assertEquals(Integer.MAX_VALUE, PrivateGalleryActivity.bestShorterSide(0, 0, 300, true));
+    }
+
+    @Test
     public void scaledVideoFramesStillCoverTheTileOnTheirShorterSide() {
         assertEquals(300, PrivateGalleryActivity.frameBox(1080, 1080, 300));
         assertEquals(533, PrivateGalleryActivity.frameBox(1920, 1080, 300));

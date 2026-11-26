@@ -1360,8 +1360,12 @@ public final class PrivateGalleryActivity {
                 File cached = item.vault ? null : GalleryStore.get().thumb(item.file.getName());
                 if (cached != null && cached.isFile()) {
                     Bitmap disk = decodeFile(cached, size);
-                    // A copy made for smaller tiles is made again from the original, then saved over.
-                    if (disk != null && Math.min(disk.getWidth(), disk.getHeight()) >= size) return disk;
+                    // A copy made for smaller tiles is made again from the original, then saved over,
+                    // unless the original is no larger than that copy.
+                    if (disk != null) {
+                        int shorter = Math.min(disk.getWidth(), disk.getHeight());
+                        if (shorter >= size || shorter + 1 >= sourceShorterSide(item, size)) return disk;
+                    }
                 }
                 ViewerMedia media;
                 if (item.vault) {
@@ -1398,6 +1402,33 @@ public final class PrivateGalleryActivity {
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, size);
             return BitmapFactory.decodeStream(media.openStream(), null, options);
+        }
+
+        /** Pool thread: the shorter side a thumbnail made now from the download's file would have. */
+        private static int sourceShorterSide(Item item, int size) {
+            int width = 0;
+            int height = 0;
+            if (item.photo()) {
+                BitmapFactory.Options bounds = new BitmapFactory.Options();
+                bounds.inJustDecodeBounds = true;
+                BitmapFactory.decodeFile(item.file.getPath(), bounds);
+                width = bounds.outWidth;
+                height = bounds.outHeight;
+            } else {
+                MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+                try {
+                    retriever.setDataSource(item.file.getPath());
+                    width = dimension(retriever, MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH);
+                    height = dimension(retriever, MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT);
+                } catch (RuntimeException ignored) {
+                } finally {
+                    try {
+                        retriever.release();
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+            return bestShorterSide(width, height, size, item.photo());
         }
 
         private static Bitmap decodeFile(File file, int size) {
@@ -1438,6 +1469,16 @@ public final class PrivateGalleryActivity {
                 }
             }
         }
+    }
+
+    /**
+     * The shorter side of a thumbnail for {@code size} tiles from a {@code width} by {@code height}
+     * photo, sampled down, or video frame, never scaled up; above any size when the source's is unknown.
+     */
+    static int bestShorterSide(int width, int height, int size, boolean photo) {
+        if (width <= 0 || height <= 0) return Integer.MAX_VALUE;
+        int shorter = Math.min(width, height);
+        return photo ? shorter / sampleSize(width, height, size) : Math.min(shorter, size);
     }
 
     /** The largest power-of-two step that keeps both sides at least {@code size}. */
