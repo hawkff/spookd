@@ -584,6 +584,10 @@ public class Pref {
         return SettingsStatus.homeLongPressSettings && SettingsStatus.downloadSection()
                 && on(Settings.HOME_LONG_PRESS_GALLERY);
     }
+    // Same condition as the Home entry: the gallery's settings row must be shown.
+    public static boolean galleryPicker() {
+        return SettingsStatus.galleryPicker && SettingsStatus.downloadSection() && on(Settings.GALLERY_PICKER);
+    }
     public static boolean directlyOpenMetaConfig() {
         return on(Settings.DIRECTLY_OPEN_METACONFIG);
     }

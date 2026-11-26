@@ -1455,6 +1455,16 @@ public class ScreenBuilder {
             );
         }
 
+        if (SettingsStatus.galleryPicker) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_gallery_picker"),
+                            str("spookd_gallery_picker_desc"),
+                            Settings.GALLERY_PICKER
+                    )
+            );
+        }
+
         addPreference(
                 helper.buttonPreference(
                         str("spookd_download_history"),
