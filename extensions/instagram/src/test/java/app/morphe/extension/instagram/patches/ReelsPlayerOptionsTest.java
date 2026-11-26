@@ -6,6 +6,28 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class ReelsPlayerOptionsTest {
+    private enum Source { FEED_TIMELINE, FEED_TIMELINE_POST_TAP, CLIPS_TAB, FEED_CONTEXTUAL_PROFILE }
+
+    @Test
+    public void onlyHomeFeedSourcesCountAsExpandedFeedVideos() {
+        assertTrue(ReelsPlayerOptions.isHomeFeedSource(Source.FEED_TIMELINE));
+        assertTrue(ReelsPlayerOptions.isHomeFeedSource(Source.FEED_TIMELINE_POST_TAP));
+        assertFalse(ReelsPlayerOptions.isHomeFeedSource(Source.CLIPS_TAB));
+        assertFalse(ReelsPlayerOptions.isHomeFeedSource(Source.FEED_CONTEXTUAL_PROFILE));
+        assertFalse(ReelsPlayerOptions.isHomeFeedSource("FEED_TIMELINE"));
+        assertFalse(ReelsPlayerOptions.isHomeFeedSource(null));
+    }
+
+    @Test
+    public void anExpandedFeedViewerIsMutedOnlyOnItsFirstSoundCheck() {
+        Object viewer = new Object();
+
+        assertTrue(ReelsPlayerOptions.firstSoundCheck(viewer));
+        assertFalse(ReelsPlayerOptions.firstSoundCheck(viewer));
+        assertTrue(ReelsPlayerOptions.firstSoundCheck(new Object()));
+        assertFalse(ReelsPlayerOptions.firstSoundCheck(null));
+    }
+
     @Test
     public void tapRestartsOnlyTheEndedReelOnce() {
         Object ended = new Object();

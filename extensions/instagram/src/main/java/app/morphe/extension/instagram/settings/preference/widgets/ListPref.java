@@ -20,7 +20,7 @@ import android.preference.Preference;
 import app.morphe.extension.instagram.settings.preference.Helper;
 
 public class ListPref extends ListPreference {
-    private static Helper helper;
+    private final Helper helper;
 
     public ListPref(Context context) {
         super(InstagramPreferenceStyle.dialogContext(context));
@@ -88,6 +88,11 @@ public class ListPref extends ListPreference {
                         str("spookd_story_auto_save_listed")
                 };
                 entriesValues = new CharSequence[]{"off", "everyone", "listed"};
+            } else if (Settings.REELS_AUTO_SCROLL.key.equals(key)) {
+                entries = new CharSequence[]{
+                        str("spookd_array_default"), str("spookd_reels_auto_scroll_on"), str("spookd_reels_auto_scroll_off")
+                };
+                entriesValues = new CharSequence[]{"default", "on", "off"};
             }
         } else {
             entries = ResourceUtils.getStringArray("spookd_array_recmd_flag_states");

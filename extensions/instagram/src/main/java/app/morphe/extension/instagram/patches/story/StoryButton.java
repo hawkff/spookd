@@ -23,6 +23,7 @@ import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
+import app.morphe.extension.instagram.patches.StoryPlayback;
 import app.morphe.extension.crimera.ObjectBrowser;
 import app.morphe.extension.instagram.entity.MediaData;
 
@@ -66,6 +67,9 @@ public class StoryButton {
         }
         if(StoryAutoSave.showMenuItem()){
             buttonList.add(str("spookd_story_auto_save_toggle"));
+        }
+        if(StoryPlayback.showMenuItem()){
+            buttonList.add(str("spookd_speed_and_seek"));
         }
 
         return buttonList;

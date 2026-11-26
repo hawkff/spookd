@@ -305,6 +305,16 @@ public class ScreenBuilder {
             );
         }
 
+        if (SettingsStatus.stopVisualMessageAutoAdvance) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_stop_visual_message_auto_advance"),
+                            str("spookd_stop_visual_message_auto_advance_desc"),
+                            Settings.STOP_VISUAL_MESSAGE_AUTO_ADVANCE
+                    )
+            );
+        }
+
         if (SettingsStatus.markChatAsRead) {
             addPreference(
                     helper.switchPreference(
@@ -1027,6 +1037,18 @@ public class ScreenBuilder {
                     str("spookd_reels_tap_to_pause_desc"),
                     Settings.REELS_TAP_TO_PAUSE
             ));
+            addPreference(helper.switchPreference(
+                    str("spookd_expanded_feed_videos_muted"),
+                    str("spookd_expanded_feed_videos_muted_desc"),
+                    Settings.EXPANDED_FEED_VIDEOS_MUTED
+            ));
+        }
+        if (SettingsStatus.reelsAutoScroll) {
+            addPreference(helper.listPreference(
+                    str("spookd_reels_auto_scroll"),
+                    str("spookd_reels_auto_scroll_desc"),
+                    Settings.REELS_AUTO_SCROLL
+            ));
         }
         if (SettingsStatus.improveImageViewing) {
             addPreference(
@@ -1537,6 +1559,15 @@ public class ScreenBuilder {
                             str("spookd_loop_story"),
                             str("spookd_loop_story_desc"),
                             Settings.LOOP_STORY
+                    )
+            );
+        }
+        if (SettingsStatus.storyMute) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_mute_stories"),
+                            str("spookd_mute_stories_desc"),
+                            Settings.MUTE_STORIES
                     )
             );
         }

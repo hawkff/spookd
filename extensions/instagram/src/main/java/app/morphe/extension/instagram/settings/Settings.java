@@ -80,6 +80,7 @@ public class Settings {
     public static final BooleanSetting VIEW_STORY_MENTIONS = new BooleanSetting("view_story_mentions", true, REQUIRED);
     public static final BooleanSetting DISABLE_STORY_FLIPPING = new BooleanSetting("disable_story_flipping", false, NOT_REQUIRED);
     public static final BooleanSetting LOOP_STORY = new BooleanSetting("loop_story", false, NOT_REQUIRED);
+    public static final BooleanSetting MUTE_STORIES = new BooleanSetting("mute_stories", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_STORY_FOLLOW_BUTTON = new BooleanSetting("hide_story_follow_button", false, NOT_REQUIRED);
     public static final StringSetting CUSTOMISE_STORY_TIMESTAMP = new StringSetting("customise_story_timestamp", "default", REQUIRED);
     public static final StringSetting STORY_AUTO_SAVE = new StringSetting("story_auto_save", "off", NOT_REQUIRED);
@@ -88,6 +89,7 @@ public class Settings {
     public static final BooleanSetting DISABLE_DISAPPEARING_MESSAGES_GESTURE = new BooleanSetting("disable_disappearing_messages_gesture", false, REQUIRED);
     public static final BooleanSetting SEND_KEYBOARD_GIFS = new BooleanSetting("send_keyboard_gifs", true, NOT_REQUIRED);
     public static final BooleanSetting EPHEMERAL_MEDIA_CAPTION = new BooleanSetting("ephemeral_media_caption", false, NOT_REQUIRED);
+    public static final BooleanSetting STOP_VISUAL_MESSAGE_AUTO_ADVANCE = new BooleanSetting("stop_visual_message_auto_advance", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_LIKES = new BooleanSetting("hide_likes", false, REQUIRED);
     public static final BooleanSetting HIDE_SHARE_BUTTON = new BooleanSetting("hide_share_button", false, NOT_REQUIRED);
     public static final StringSetting HIDE_SAVE_BUTTON_SURFACES = new StringSetting("hide_save_button_surfaces", "", NOT_REQUIRED);
@@ -107,6 +109,9 @@ public class Settings {
     public static final BooleanSetting REELS_START_MUTED = new BooleanSetting("reels_start_muted", false, NOT_REQUIRED);
     public static final BooleanSetting REELS_STOP_LOOPING = new BooleanSetting("reels_stop_looping", false, NOT_REQUIRED);
     public static final BooleanSetting REELS_TAP_TO_PAUSE = new BooleanSetting("reels_tap_to_pause", false, NOT_REQUIRED);
+    public static final BooleanSetting EXPANDED_FEED_VIDEOS_MUTED = new BooleanSetting("expanded_feed_videos_muted", false, NOT_REQUIRED);
+    // "default", "on" or "off"; read once at startup into Instagram's flags.
+    public static final StringSetting REELS_AUTO_SCROLL = new StringSetting("reels_auto_scroll", "default", REQUIRED);
     public static final BooleanSetting COMMENT_COPY_BUTTON = new BooleanSetting("comment_copy_button", true, NOT_REQUIRED);
     public static final BooleanSetting COMMENT_SAVE_MEDIA_BUTTON = new BooleanSetting("comment_save_media_button", true, NOT_REQUIRED);
     public static final BooleanSetting HIDE_GROUP_CREATION_BUTTON_ON_SHARESHEET = new BooleanSetting("hide_group_creation_button_on_sharesheet", true, NOT_REQUIRED);

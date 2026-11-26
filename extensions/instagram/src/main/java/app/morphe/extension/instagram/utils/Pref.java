@@ -167,6 +167,19 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.PLAYBACK_SPEED_CONTROLS);
     }
 
+    /** "default", "on" or "off". */
+    public static String reelsAutoScroll() {
+        return SettingsStatus.reelsAutoScroll ? SharedPref.getStringPref(Settings.REELS_AUTO_SCROLL) : "default";
+    }
+
+    private static final Cached<Boolean> REELS_AUTO_SCROLL_OFF =
+            new Cached<>(() -> "off".equals(reelsAutoScroll()), Settings.REELS_AUTO_SCROLL.key);
+
+    /** Called when Instagram decides whether Reels auto-scroll is available; true makes it unavailable. */
+    public static boolean reelsAutoScrollOff() {
+        return SettingsStatus.reelsAutoScroll && REELS_AUTO_SCROLL_OFF.get();
+    }
+
     public static boolean disableVideoAutoplay() {
         return SharedPref.getBooleanPref(Settings.DISABLE_VIDEO_AUTOPLAY);
     }
@@ -274,6 +287,15 @@ public class Pref {
 
     public static boolean disableAppHaptics() {
         return SettingsStatus.disableAppHaptics && DISABLE_APP_HAPTICS.get();
+    }
+
+    private static final Cached<Boolean> STOP_VISUAL_MESSAGE_AUTO_ADVANCE = new Cached<>(
+            () -> Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.STOP_VISUAL_MESSAGE_AUTO_ADVANCE)),
+            Settings.STOP_VISUAL_MESSAGE_AUTO_ADVANCE.key);
+
+    /** Called on the main thread when the DM visual message viewer would move on by itself. */
+    public static boolean stopVisualMessageAutoAdvance() {
+        return SettingsStatus.stopVisualMessageAutoAdvance && STOP_VISUAL_MESSAGE_AUTO_ADVANCE.get();
     }
 
     public static boolean disableReelsScrolling() {

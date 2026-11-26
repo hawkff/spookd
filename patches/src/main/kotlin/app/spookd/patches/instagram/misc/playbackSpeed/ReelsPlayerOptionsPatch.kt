@@ -24,10 +24,12 @@ import app.morphe.patcher.patch.patch
 import app.morphe.patcher.string
 import app.morphe.patcher.util.getReference
 import app.morphe.patcher.util.registersUsed
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.BuilderOffsetInstruction
+import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
@@ -37,6 +39,8 @@ private const val OPTIONS = "$PATCHES_DESCRIPTOR/ReelsPlayerOptions;"
 private const val OBJECT = "Ljava/lang/Object;"
 private const val STRING = "Ljava/lang/String;"
 private const val USER_SESSION = "Lcom/instagram/common/session/UserSession;"
+private const val CLIPS_VIEWER_CONFIG = "Lcom/instagram/clips/intf/ClipsViewerConfig;"
+private const val CLIPS_VIEWER_SOURCE = "Lcom/instagram/clips/intf/ClipsViewerSource;"
 private const val TAP_DECISION = "android_purge_26_q3_ClipsGestureNavigator_enableAudioToggleOnSingleTap"
 
 private val BRANCHES = setOf(
@@ -159,11 +163,42 @@ private fun hookStartMuted(controller: String) {
         invoke-direct {p0, v$enabled}, $muted
         move-result v$enabled
     """)
-    guardAutomaticSoundOn(sessionAudio.definingClass)
+    val setSound = guardAutomaticSoundOn(sessionAudio.definingClass)
+    hookExpandedFeedMuted(controller, audio.method, session, sessionAudioOf, setSound)
+}
+
+// A Reels viewer opened from the home feed turns the session sound off once, before its first sound check.
+private fun hookExpandedFeedMuted(
+    controller: String, audio: MutableMethod, session: FieldReference, sessionAudioOf: MethodReference, setSound: Method,
+) {
+    fun instanceField(owner: String, type: String) = classDefBy(owner).fields.single {
+        it.type == type && !AccessFlags.STATIC.isSet(it.accessFlags)
+    }
+    val config = instanceField(controller, CLIPS_VIEWER_CONFIG)
+    val source = instanceField(CLIPS_VIEWER_CONFIG, CLIPS_VIEWER_SOURCE)
+    val mute = addReelMethod(
+        controller, "spookdMuteExpandedFeedVideo", emptyList(), "V", registers = 3,
+        instructions = """
+            iget-object v0, p0, $config
+            if-eqz v0, :done
+            iget-object v0, v0, $source
+            invoke-static {p0, v0}, $OPTIONS->muteExpandedFeedVideo($OBJECT$OBJECT)Z
+            move-result v0
+            if-eqz v0, :done
+            iget-object v0, p0, $session
+            invoke-static {v0}, $sessionAudioOf
+            move-result-object v0
+            const/4 v1, 0x0
+            invoke-virtual {v0, v1}, $setSound
+            :done
+            return-void
+        """,
+    )
+    audio.addInstruction(0, "invoke-direct/range {p0 .. p0}, $mute")
 }
 
 // The session store turns sound on by itself (other media playing on return to the app, a timer); user choices come from outside it.
-private fun guardAutomaticSoundOn(store: String) {
+private fun guardAutomaticSoundOn(store: String): Method {
     val setter = classDefBy(store).methods.single {
         it.parameters() == listOf("Z") && it.returnType == "V" && !AccessFlags.STATIC.isSet(it.accessFlags)
     }
@@ -189,6 +224,7 @@ private fun guardAutomaticSoundOn(store: String) {
         val (receiver, value) = method.implementation!!.instructions[index].registersUsed
         method.replaceInstruction(index, "invoke-direct {v$receiver, v$value}, $guard")
     }
+    return setter
 }
 
 // A single tap restarts an ended Reel, and can pause or resume a Reel instead of toggling its sound.
@@ -321,7 +357,7 @@ private fun hookReelTap(controller: String) {
 val reelsPlayerOptionsPatch =
     patch(
         name = "Reels player options",
-        description = "Adds switches to start Reels muted, stop Reels from looping, and tap a Reel to pause it instead of muting it.",
+        description = "Adds switches to start Reels and expanded feed videos muted, stop Reels from looping, and tap a Reel to pause it instead of muting it.",
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(settingsPatch, defaultPlaybackSpeedPatch)

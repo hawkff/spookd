@@ -13,6 +13,8 @@ import app.spookd.patches.instagram.utils.Constants.DOWNLOAD_DESCRIPTOR
 import app.spookd.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.patch.classDefBy
@@ -22,6 +24,7 @@ import app.morphe.patcher.resourceLiteral
 import app.morphe.patcher.string
 import app.morphe.patcher.util.getReference
 import app.morphe.patcher.util.registersUsed
+import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
@@ -126,15 +129,21 @@ private fun hookStoryToolbarBinder() {
     binder.addInstructions(
         0,
         """
+        ${moveObject(session, binder.parameterRegister(USER_SESSION_DESCRIPTOR))}
+        ${moveObject(reel, binder.parameterRegister(reelType))}
+        invoke-static {v$container, v$media, v$session, v$reel}, $DOWNLOAD_UTILS_DESCRIPTOR->addStoryDownloadButton($VIEW_DESCRIPTOR$OBJECT_DESCRIPTOR$USER_SESSION_DESCRIPTOR$OBJECT_DESCRIPTOR)V
+        """.trimIndent(),
+    )
+    // Inserted before the call above; a story without media skips the media read and goes straight to it.
+    binder.addInstructionsWithLabels(
+        0,
+        """
         ${moveObject(container, binder.parameterRegister(holder.originalClassDef.type))}
         iget-object v$container, v$container, $containerField
         ${moveObject(media, binder.parameterRegister(REEL_ITEM_DESCRIPTOR))}
         if-eqz v$media, :spookd_story_media
         iget-object v$media, v$media, $mediaField
-        :spookd_story_media
-        ${moveObject(session, binder.parameterRegister(USER_SESSION_DESCRIPTOR))}
-        ${moveObject(reel, binder.parameterRegister(reelType))}
-        invoke-static {v$container, v$media, v$session, v$reel}, $DOWNLOAD_UTILS_DESCRIPTOR->addStoryDownloadButton($VIEW_DESCRIPTOR$OBJECT_DESCRIPTOR$USER_SESSION_DESCRIPTOR$OBJECT_DESCRIPTOR)V
         """.trimIndent(),
+        ExternalLabel("spookd_story_media", binder.getInstruction(0)),
     )
 }

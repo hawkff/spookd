@@ -304,6 +304,12 @@
     <string name="spookd_reels_stop_looping_desc">A Reel stops on its last frame instead of starting over. Tap it to watch it again from the start.</string>
     <string name="spookd_reels_tap_to_pause">Tap to pause Reels</string>
     <string name="spookd_reels_tap_to_pause_desc">Tap a Reel to pause or play it instead of turning its sound on or off. Double-tap to like and long-press work as before.</string>
+    <string name="spookd_expanded_feed_videos_muted">Start expanded feed videos muted</string>
+    <string name="spookd_expanded_feed_videos_muted_desc">A video you open full screen from the home feed starts without sound. Instagram shares one sound setting between the feed and Reels, so the feed stays muted afterwards until you turn sound back on.</string>
+    <string name="spookd_reels_auto_scroll">Reels auto-scroll</string>
+    <string name="spookd_reels_auto_scroll_desc">On adds Instagram\'s Auto scroll switch to the Reels menu even if Instagram has not turned it on for your account; Reels then move on by themselves once you switch it on there. Off removes it. Default leaves it to Instagram.</string>
+    <string name="spookd_reels_auto_scroll_on">On</string>
+    <string name="spookd_reels_auto_scroll_off">Off</string>
     <string name="spookd_speed_and_seek">Speed and seek</string>
     <string name="spookd_speed_panel_back">−10 s</string>
     <string name="spookd_speed_panel_forward">+10 s</string>
@@ -354,6 +360,8 @@
     <string name="spookd_send_keyboard_gifs_desc">Sends GIFs picked in the keyboard\'s GIF picker as animated images, instead of showing \"Tap the sticker icon to find and send GIFs\"</string>
     <string name="spookd_unlimited_replays">Make ephemeral media permanent</string>
     <string name="spookd_unlimited_replays_desc">Changes unexpired view once, view twice media to permanent view</string>
+    <string name="spookd_stop_visual_message_auto_advance">Don\'t auto-advance view-once messages</string>
+    <string name="spookd_stop_visual_message_auto_advance_desc">Photos and videos you open in a chat stay on screen after their time runs out. Tap to go to the next one or to close the viewer.</string>
     <string name="spookd_ephemeral_caption">Show how ephemeral media was received</string>
     <string name="spookd_ephemeral_caption_desc">Adds a line under photos and videos that were sent as ephemeral media saying how they were sent and until when they are available</string>
     <string name="spookd_ephemeral_received_once">Received to view once</string>
@@ -382,6 +390,10 @@
     <string name="spookd_disable_story_flipping_desc">Disable automatic flipping/moving to next story</string>
     <string name="spookd_loop_story">Loop story</string>
     <string name="spookd_loop_story_desc">Replay the current story when it ends</string>
+    <string name="spookd_story_playback_options">Story playback options</string>
+    <string name="spookd_mute_stories">Mute stories</string>
+    <string name="spookd_mute_stories_desc">Stories play without sound until you turn sound on in the story viewer, for example with the volume buttons. Reels and feed videos are not muted by this.</string>
+    <string name="spookd_story_speed_panel_photo">Speed and seek works on video stories only</string>
     <string name="spookd_hide_story_follow_button">Hide story follow button</string>
     <string name="spookd_hide_story_follow_button_desc">Hides the follow button at the top of stories from accounts you do not follow</string>
     <string name="spookd_story_auto_save">Auto-save stories</string>

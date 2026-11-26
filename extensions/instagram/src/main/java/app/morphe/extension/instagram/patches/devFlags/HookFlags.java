@@ -232,6 +232,13 @@ public class HookFlags {
         }
     }
 
+    private static void reelsAutoScrollFlags() {
+        // Off is applied at Instagram's final availability check instead, which a server text setting can also turn on.
+        if ("on".equals(Pref.reelsAutoScroll())) {
+            BOOL_FLAGS.put("83371::0", true); //ig_reels_android_hands_free_mode::enabled (Reels menu Auto scroll switch and the auto-scroller)
+        }
+    }
+
     private static void addRecommendedFlags(){
         if(SettingsStatus.recommendedFlags) {
             Map<String, Boolean> recFlags = FlagsSharedPref.getAll();
