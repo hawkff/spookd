@@ -163,8 +163,8 @@ final class DownloadSelectionSheet {
         download.setStateListAnimator(null);
         download.setElevation(0);
         download.setPadding(dp(20), 0, dp(20), 0);
-        download.setMinHeight(dp(40));
-        download.setMinimumHeight(dp(40));
+        download.setMinHeight(dp(SpookdType.MIN_TOUCH));
+        download.setMinimumHeight(dp(SpookdType.MIN_TOUCH));
         download.setOnClickListener(v -> {
             List<Integer> indexes = selectedIndexes();
             if (indexes.isEmpty()) return;

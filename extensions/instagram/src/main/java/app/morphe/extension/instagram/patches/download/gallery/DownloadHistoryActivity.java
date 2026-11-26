@@ -125,6 +125,8 @@ public final class DownloadHistoryActivity {
             SpookdType.apply(clear, SpookdType.BODY);
             clear.setTextColor(InstagramPreferenceStyle.primaryTextColor());
             clear.setPadding(dp(12), dp(8), dp(4), dp(8));
+            clear.setMinHeight(dp(SpookdType.MIN_TOUCH));
+            clear.setGravity(Gravity.CENTER_VERTICAL);
             clear.setOnClickListener(v -> confirmClear());
             clear.setVisibility(unlocked ? View.VISIBLE : View.GONE);
             toolbar.addView(back);
@@ -368,6 +370,8 @@ public final class DownloadHistoryActivity {
                 SpookdType.apply(retryButton, SpookdType.LABEL);
                 retryButton.setTextColor(InstagramPreferenceStyle.primaryTextColor());
                 retryButton.setPadding(dp(12), dp(8), dp(8), dp(8));
+                retryButton.setMinHeight(dp(SpookdType.MIN_TOUCH));
+                retryButton.setGravity(Gravity.CENTER_VERTICAL);
                 // A clickable child that takes focus would stop the row's own taps.
                 retryButton.setFocusable(false);
                 addView(retryButton);

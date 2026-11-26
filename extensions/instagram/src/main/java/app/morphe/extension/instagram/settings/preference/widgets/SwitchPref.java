@@ -17,7 +17,7 @@ import android.widget.CompoundButton;
 import app.morphe.extension.instagram.settings.preference.Helper;
 
 public class SwitchPref extends SwitchPreference {
-    private static Helper helper;
+    private final Helper helper;
     private View rowView;
     private CompoundButton switchView;
     private boolean clickInProgress;
@@ -27,7 +27,7 @@ public class SwitchPref extends SwitchPreference {
 
     public SwitchPref(Context context) {
         super(context);
-        this.helper = new Helper(context);
+        helper = new Helper(context);
         init();
     }
 
