@@ -289,6 +289,14 @@ public class Pref {
         return SettingsStatus.disableAppHaptics && DISABLE_APP_HAPTICS.get();
     }
 
+    private static final Cached<Boolean> TRACK_VISITED_PROFILES =
+            new Cached<>(() -> SharedPref.getBooleanPref(Settings.TRACK_VISITED_PROFILES), Settings.TRACK_VISITED_PROFILES.key);
+
+    /** Read on every profile header bind. */
+    public static boolean trackVisitedProfiles() {
+        return SettingsStatus.profileAnalyzer && TRACK_VISITED_PROFILES.get();
+    }
+
     private static final Cached<Boolean> EXACT_LAST_ACTIVE =
             new Cached<>(() -> SharedPref.getBooleanPref(Settings.EXACT_LAST_ACTIVE), Settings.EXACT_LAST_ACTIVE.key);
 

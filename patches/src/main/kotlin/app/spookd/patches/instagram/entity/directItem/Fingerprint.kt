@@ -50,6 +50,12 @@ internal object FieldVisualMediaExtension : Fingerprint(name = "fieldVisualMedia
 // xma reshare: item List field + the permalink String field on each element (JSON key "target_url").
 internal object FieldXmaExtension : Fingerprint(name = "fieldXma", definingClass = DIRECT_ITEM_CLASS)
 internal object FieldXmaLinkExtension : Fingerprint(name = "fieldXmaLink", definingClass = DIRECT_ITEM_CLASS)
+// Reactions, resolved by "Save deleted messages" only.
+internal object FieldReactionsExtension : Fingerprint(name = "fieldReactions", definingClass = DIRECT_ITEM_CLASS)
+internal object FieldReactionLikesExtension : Fingerprint(name = "fieldReactionLikes", definingClass = DIRECT_ITEM_CLASS)
+internal object FieldReactionEmojisExtension : Fingerprint(name = "fieldReactionEmojis", definingClass = DIRECT_ITEM_CLASS)
+internal object ReactionSenderMethodExtension : Fingerprint(name = "reactionSenderMethod", definingClass = DIRECT_ITEM_CLASS)
+internal object FieldReactionEmojiExtension : Fingerprint(name = "fieldReactionEmoji", definingClass = DIRECT_ITEM_CLASS)
 
 internal object DirectItemDispatchFingerprint : Fingerprint(
     returnType = "V",
@@ -127,6 +133,50 @@ internal fun directItemSubTextFingerprint(itemClass: String, itemTypeClass: Stri
             opcode = Opcode.IPUT_OBJECT,
             location = MatchAfterImmediately(),
         ),
+    ),
+)
+
+/**
+ * The DM item writer of [definingClass] writes the likes list of the reactions object of [reactionsType],
+ * then its emoji list.
+ */
+internal fun reactionListsFingerprint(definingClass: String, reactionsType: String) = Fingerprint(
+    definingClass = definingClass,
+    filters = listOf(
+        string("likes"),
+        methodCall(opcode = Opcode.INVOKE_STATIC, location = MatchAfterImmediately()),
+        // Likes.
+        fieldAccess(
+            definingClass = reactionsType,
+            type = "Ljava/util/List;",
+            opcode = Opcode.IGET_OBJECT,
+            location = MatchAfterImmediately(),
+        ),
+        // Emojis.
+        fieldAccess(definingClass = reactionsType, type = "Ljava/util/List;", opcode = Opcode.IGET_OBJECT),
+    ),
+)
+
+/**
+ * Writes one DM reaction: its sender id from a getter, then its emoji when set.
+ */
+internal object ReactionWriterFingerprint : Fingerprint(
+    returnType = "V",
+    parameters = listOf("L", "L"),
+    filters = listOf(
+        string("sender_id"),
+        // Sender id getter.
+        methodCall(parameters = listOf(), returnType = "Ljava/lang/String;", location = MatchAfterImmediately()),
+        opcode(Opcode.MOVE_RESULT_OBJECT, location = MatchAfterImmediately()),
+        methodCall(
+            parameters = listOf("Ljava/lang/String;", "Ljava/lang/String;"),
+            returnType = "V",
+            location = MatchAfterImmediately(),
+        ),
+        // Emoji.
+        fieldAccess(type = "Ljava/lang/String;", opcode = Opcode.IGET_OBJECT, location = MatchAfterImmediately()),
+        opcode(Opcode.IF_EQZ, location = MatchAfterImmediately()),
+        string("emoji", location = MatchAfterImmediately()),
     ),
 )
 

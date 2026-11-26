@@ -176,6 +176,40 @@ public class DirectItem extends Entity {
         }
     }
 
+    // Reactions: the reactions object on the base class, its likes and emoji lists, and on each
+    // reaction the sender id getter and the emoji. Left as placeholders when the patch did not find them.
+    private String fieldReactions()       { return "fieldName"; }
+    private String fieldReactionLikes()   { return "fieldName"; }
+    private String fieldReactionEmojis()  { return "fieldName"; }
+    private String reactionSenderMethod() { return "methodName"; }
+    private String fieldReactionEmoji()   { return "fieldName"; }
+
+    /** {sender id, emoji} of each like (as a heart) and emoji reaction; null without a reactions object or on failure. */
+    public java.util.List<String[]> getReactions() {
+        try {
+            Object reactions = this.readBaseField(this.fieldReactions());
+            if (reactions == null) return null;
+            java.util.List<String[]> out = new java.util.ArrayList<>();
+            addReactions(out, super.getField(reactions, this.fieldReactionLikes()));
+            addReactions(out, super.getField(reactions, this.fieldReactionEmojis()));
+            return out;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void addReactions(java.util.List<String[]> out, Object list) throws Exception {
+        if (!(list instanceof java.util.List)) return;
+        for (Object reaction : (java.util.List<?>) list) {
+            if (reaction == null) continue;
+            Object sender = super.getMethod(reaction, this.reactionSenderMethod());
+            if (!(sender instanceof String) || ((String) sender).isEmpty()) continue;
+            Object emoji = super.getField(reaction, this.fieldReactionEmoji());
+            out.add(new String[]{(String) sender,
+                    emoji instanceof String && !((String) emoji).isEmpty() ? (String) emoji : "\u2764"});
+        }
+    }
+
     /** The DirectThreadKey object, or null. */
     private Object getThreadKey() throws Exception {
         return this.readBaseField("fieldName");

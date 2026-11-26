@@ -364,6 +364,8 @@ public class SettingsStatus {
     public static void reelDownloadButton() {reelDownloadButton = true;}
     public static boolean storyDownloadButton = false;
     public static void storyDownloadButton() {storyDownloadButton = true;}
+    public static boolean audioPageDownloadButton = false;
+    public static void audioPageDownloadButton() {audioPageDownloadButton = true;}
     public static boolean downloadVoiceMessage = false;
     public static void downloadVoiceMessage() { downloadVoiceMessage = true; }
     public static boolean downloadWithExternalDownloader = false;

@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import app.morphe.extension.instagram.entity.ProfileInfo;
 import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.instagram.settings.SettingsStatus;
+import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 
@@ -82,12 +83,15 @@ public final class ProfileAnalyzer {
         updateNotification(null, 0, 0);
     }
 
-    /** Main thread, inside Instagram's profile header bind: records the own account's counts. */
+    /** Main thread, inside Instagram's profile header bind: records the own account's counts, or the visit. */
     public static void onProfileHeaderBound(Object profileInfoObject) {
         if (!SettingsStatus.profileAnalyzer) return;
         try {
             ProfileInfo profile = new ProfileInfo(profileInfoObject);
-            if (!profile.isSelfProfile()) return;
+            if (!profile.isSelfProfile()) {
+                if (Pref.trackVisitedProfiles()) ProfileVisits.onVisited(profile);
+                return;
+            }
             UserSession session = profile.getUserSession();
             String accountId = session == null ? null : session.getUserId();
             if (accountId == null || accountId.isEmpty()) return;

@@ -11,6 +11,7 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Application;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
@@ -30,6 +31,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.AbsListView;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -42,22 +44,32 @@ import android.os.Build;
 import android.window.OnBackInvokedDispatcher;
 import androidx.annotation.RequiresApi;
 
+import com.instagram.common.session.UserSession;
+
+import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.db.SpookdMessageDb;
+import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.instagram.patches.dm.vault.MediaVault;
 import app.morphe.extension.instagram.patches.dm.vault.VaultViewer;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
@@ -75,15 +87,19 @@ public final class DeletedMessagesActivity {
     private static final Map<Activity, Controller> sControllers = new WeakHashMap<>();
     // Serial, so a delete queued by a screen that was closed runs before a reopened screen loads.
     private static final Executor sDbJobs = Executors.newSingleThreadExecutor();
+    private static final long PICTURE_REQUEST_GAP_MS = 1500;
+    private static final long PROFILE_FETCH_TIMEOUT_SECONDS = 20;
+    private static final ExecutorService sPictureRefresh = Executors.newSingleThreadExecutor();
+    // Cached, so a profile request that never returns blocks only its own thread.
+    private static final ExecutorService sProfileFetch = Executors.newCachedThreadPool();
+    private static final int PAGE_SIZE = SpookdMessageDb.DELETED_PAGE_SIZE;
+    // Rows within this distance of the end load the next page.
+    private static final int LOAD_MORE_AHEAD = 20;
 
     private DeletedMessagesActivity() {}
 
     static boolean areAllSelected(int checkedCount, int itemCount) {
         return itemCount > 0 && checkedCount == itemCount;
-    }
-
-    static boolean shouldSelectAll(int checkedCount, int itemCount) {
-        return !areAllSelected(checkedCount, itemCount);
     }
 
     static void refreshVisibleSelectionRows(ListView list, boolean selectionMode) {
@@ -175,6 +191,7 @@ public final class DeletedMessagesActivity {
                 public void onActivityDestroyed(Activity a) {
                     if (a == activity) {
                         VaultViewer.close(a);
+                        controller.close();
                         a.getApplication().unregisterActivityLifecycleCallbacks(this);
                         synchronized (sControllers) {
                             sControllers.remove(activity);
@@ -197,10 +214,57 @@ public final class DeletedMessagesActivity {
         return false;
     }
 
+    /**
+     * Picture refresh thread: the cached avatar of each user when it has not expired, else one
+     * profile request per user, paced and time-limited; a request that times out moves on to the
+     * next user. Stops when interrupted. Returns how many pictures were stored.
+     */
+    private static int refreshPictureUrls(Context context, UserSession session, String viewerId,
+                                          Set<String> userIds) {
+        int updated = 0;
+        boolean requested = false;
+        SpookdMessageDb db = SpookdMessageDb.getInstance(context);
+        for (String userId : userIds) {
+            if (Thread.currentThread().isInterrupted()) break;
+            Future<UserData> fetch = null;
+            try {
+                UserData user = SavedMessagesHook.cachedUser(session, userId, viewerId);
+                String url = user == null ? null : user.getAvatarUrl();
+                if (url == null) {
+                    // A pause between requests, so a long list is not fetched in a burst.
+                    if (requested) Thread.sleep(PICTURE_REQUEST_GAP_MS);
+                    if (Thread.currentThread().isInterrupted()) break;
+                    requested = true;
+                    fetch = sProfileFetch.submit(() -> UserData.fetchProfile(session, userId));
+                    user = fetch.get(PROFILE_FETCH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    url = user == null ? null : user.getAvatarUrl();
+                }
+                if (url != null && db.putPicture(userId, user.getUsername(), url)) updated++;
+            } catch (TimeoutException e) {
+                // One profile that does not answer leaves the others to refresh.
+                fetch.cancel(true);
+            } catch (InterruptedException e) {
+                if (fetch != null) fetch.cancel(true);
+                break;
+            } catch (Exception e) {
+                Logger.printException(() -> "refreshPictureUrls: ", e);
+            }
+        }
+        return updated;
+    }
+
     private static class Controller {
         private final Activity activity;
         private List<String[]> messages;
         private Map<String, String> storedModes = Collections.emptyMap();
+        private Map<String, String> pictures = Collections.emptyMap();
+        private final AvatarLoader avatars = new AvatarLoader();
+        private View moreAction;
+        private boolean refreshingPictures;
+        private Future<?> refreshJob;
+        private boolean hasMore;
+        // The user chose All: every row of the log, loaded or not, is meant.
+        private boolean wholeLogSelected;
         private ListView messageList;
         private MessageAdapter adapter;
         private SimpleDateFormat timestampFormatter;
@@ -213,7 +277,8 @@ public final class DeletedMessagesActivity {
         private Button deleteAction;
         private boolean selectionMode;
         private boolean selectionToolbarVisible;
-        private boolean loading;
+        private final DeletedLogLoads loads = new DeletedLogLoads();
+        private View pendingEmpty;
 
         Controller(Activity activity) {
             this.activity = activity;
@@ -284,12 +349,20 @@ public final class DeletedMessagesActivity {
             cancelSelection.setOnClickListener(v -> cancelSelection());
             cancelSelectionAction = cancelSelection;
 
+            ImageView more = new ImageView(activity);
+            UI.setThemedIcon(more, "instagram_more_vertical_outline_24");
+            more.setScaleType(ImageView.ScaleType.CENTER);
+            more.setContentDescription(str("spookd_more_options"));
+            more.setOnClickListener(v -> showMoreOptions());
+            moreAction = more;
+
             toolbar.addView(back);
             toolbar.addView(selectAll, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
             toolbar.addView(toolbarTitle);
             toolbar.addView(cancelSelection, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT, Dim.dp48));
+            toolbar.addView(more, new LinearLayout.LayoutParams(Dim.dp48, Dim.dp48));
             root.addView(toolbar);
 
             FrameLayout content = new FrameLayout(activity);
@@ -315,6 +388,7 @@ public final class DeletedMessagesActivity {
                 String messageId = message[0];
                 String body = message[3];
                 String type = message[4];
+                if (SpookdMessageDb.REMOVED_REACTION.equals(type)) return;
                 if (storedModes.containsKey(messageId)) {
                     VaultViewer.open(activity, messageId);
                 } else if (body != null && body.startsWith("http")) {
@@ -322,6 +396,13 @@ public final class DeletedMessagesActivity {
                 } else if (type != null && !"text".equals(type)) {
                     Toast.makeText(activity, str("spookd_media_not_available"),
                             Toast.LENGTH_SHORT).show();
+                }
+            });
+            messageList.setOnScrollListener(new AbsListView.OnScrollListener() {
+                @Override public void onScrollStateChanged(AbsListView view, int scrollState) {}
+                @Override
+                public void onScroll(AbsListView view, int first, int visible, int total) {
+                    if (total > 0 && first + visible >= total - LOAD_MORE_AHEAD) loadMore();
                 }
             });
             messageList.setOnItemLongClickListener((parent, view, position, id) -> {
@@ -338,7 +419,6 @@ public final class DeletedMessagesActivity {
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
             content.addView(empty, match);
             content.addView(messageList, match);
-            loadMessages(null, empty);
             root.addView(content, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
 
@@ -363,6 +443,8 @@ public final class DeletedMessagesActivity {
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
             deleteParams.setMargins(Dim.dp16, Dim.dp8, Dim.dp16, Dim.dp12);
             root.addView(deleteAction, deleteParams);
+            // After every control exists, since a load updates them.
+            loadMessages(null, empty);
 
             root.setOnApplyWindowInsetsListener((v, insets) -> {
                 v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(),
@@ -408,16 +490,35 @@ public final class DeletedMessagesActivity {
 
         /** Deletes and reloads off the main thread; the empty view is attached once rows are known. */
         private void loadMessages(List<String> deleteIds, View empty) {
-            // One job at a time; parallel jobs could apply an older snapshot last.
-            if (loading) return;
-            loading = true;
+            // One job at a time; parallel jobs could apply an older snapshot last, so a later one waits.
+            if (!loads.startReload(deleteIds)) {
+                if (empty != null) pendingEmpty = empty;
+                updateSelectionUi();
+                return;
+            }
+            // Delete stays disabled until the reload is in.
+            updateSelectionUi();
+            // Reloads as many rows as are shown, page by page, so the list keeps its length.
+            int wanted = Math.max(PAGE_SIZE, messages.size());
+            Context app = activity.getApplicationContext();
             sDbJobs.execute(() -> {
                 List<String[]> loaded = null;
                 Map<String, String> stored = Collections.emptyMap();
+                Map<String, String> loadedPictures = Collections.emptyMap();
+                boolean more = false;
                 try {
-                    SpookdMessageDb db = SpookdMessageDb.getInstance(activity);
+                    SpookdMessageDb db = SpookdMessageDb.getInstance(app);
                     if (deleteIds != null) SavedMessagesHook.deleteSavedMessages(deleteIds);
-                    loaded = db.getDeletedMessages();
+                    List<String[]> rows = new ArrayList<>();
+                    List<String[]> page;
+                    do {
+                        page = db.getDeletedMessages(PAGE_SIZE,
+                                rows.isEmpty() ? null : rows.get(rows.size() - 1));
+                        rows.addAll(page);
+                    } while (page.size() == PAGE_SIZE && rows.size() < wanted);
+                    more = page.size() == PAGE_SIZE;
+                    loaded = rows;
+                    loadedPictures = db.getPictureUrls();
                     if (Pref.dmMediaVault()) MediaVault.get().start();
                     stored = MediaVault.get().storedMessages();
                 } catch (Exception e) {
@@ -425,20 +526,78 @@ public final class DeletedMessagesActivity {
                 }
                 List<String[]> result = loaded;
                 Map<String, String> storedResult = stored;
+                Map<String, String> picturesResult = loadedPictures;
+                boolean moreResult = more;
                 Utils.runOnMainThread(() -> {
-                    loading = false;
-                    if (activity.isFinishing() || activity.isDestroyed()) return;
-                    if (result == null) {
-                        updateSelectionUi();
+                    List<String> queued = loads.finish();
+                    if (activity.isFinishing() || activity.isDestroyed()) {
+                        runQueued(queued);
                         return;
                     }
-                    messages = result;
-                    storedModes = storedResult;
-                    adapter.notifyDataSetChanged();
-                    if (empty != null) messageList.setEmptyView(empty);
-                    cancelSelection();
+                    if (result != null) {
+                        messages = result;
+                        storedModes = storedResult;
+                        pictures = picturesResult;
+                        hasMore = moreResult;
+                        adapter.notifyDataSetChanged();
+                        if (empty != null) messageList.setEmptyView(empty);
+                        cancelSelection();
+                    } else {
+                        updateSelectionUi();
+                    }
+                    runQueued(queued);
                 });
             });
+        }
+
+        /** Appends the next page off the main thread; nothing while another load runs. */
+        private void loadMore() {
+            if (!hasMore || !loads.startAppend()) return;
+            // Delete stays disabled until the page is in.
+            updateSelectionUi();
+            int offset = messages.size();
+            String[] last = offset == 0 ? null : messages.get(offset - 1);
+            Context app = activity.getApplicationContext();
+            sDbJobs.execute(() -> {
+                List<String[]> loaded = null;
+                try {
+                    loaded = SpookdMessageDb.getInstance(app).getDeletedMessages(PAGE_SIZE, last);
+                } catch (Exception e) {
+                    Logger.printException(() -> "loadMore: ", e);
+                }
+                List<String[]> page = loaded;
+                Utils.runOnMainThread(() -> {
+                    List<String> queued = loads.finish();
+                    if (activity.isFinishing() || activity.isDestroyed()) {
+                        runQueued(queued);
+                        return;
+                    }
+                    if (page != null && messages.size() == offset) {
+                        List<String[]> rows = new ArrayList<>(messages);
+                        rows.addAll(page);
+                        messages = rows;
+                        hasMore = page.size() == PAGE_SIZE;
+                        // A whole-log selection covers the rows that just came in.
+                        if (wholeLogSelected) {
+                            for (int position = offset; position < rows.size(); position++) {
+                                messageList.setItemChecked(position, true);
+                            }
+                        }
+                        adapter.notifyDataSetChanged();
+                    }
+                    updateSelectionUi();
+                    runQueued(queued);
+                });
+            });
+        }
+
+        /** Main thread: runs the reload or delete asked for while the last load ran; a closed screen only deletes. */
+        private void runQueued(List<String> deletes) {
+            if (deletes == null) return;
+            if (deletes.isEmpty() && (activity.isFinishing() || activity.isDestroyed())) return;
+            View empty = pendingEmpty;
+            pendingEmpty = null;
+            loadMessages(deletes.isEmpty() ? null : deletes, empty);
         }
 
         /** The saved label of a message whose media is stored, with its view-once mark; null when none is stored. */
@@ -462,39 +621,48 @@ public final class DeletedMessagesActivity {
 
         void cancelSelection() {
             selectionMode = false;
+            wholeLogSelected = false;
             messageList.clearChoices();
             messageList.setChoiceMode(ListView.CHOICE_MODE_NONE);
             updateSelectionUi();
         }
 
+        /** Selects the whole log, rows not loaded yet included, or clears the selection. */
         private void toggleAll() {
-            boolean checked = shouldSelectAll(
-                    messageList.getCheckedItemCount(), messages.size());
+            boolean allSelected = wholeLogSelected
+                    || (!hasMore && areAllSelected(messageList.getCheckedItemCount(), messages.size()));
+            boolean checked = !allSelected && !messages.isEmpty();
             for (int position = 0; position < messages.size(); position++) {
                 messageList.setItemChecked(position, checked);
             }
+            wholeLogSelected = checked;
             updateSelectionUi();
         }
 
         private void updateSelectionUi() {
+            if (deleteAction == null) return;
             int checkedCount = messageList.getCheckedItemCount();
+            // Unchecking a row ends a whole-log selection.
+            if (wholeLogSelected && checkedCount < messages.size()) wholeLogSelected = false;
             boolean selecting = isSelecting();
             boolean hasSelection = checkedCount > 0;
             if (selectionToolbarVisible != selecting) {
                 applySelectionToolbarLayout(selecting);
                 selectionToolbarVisible = selecting;
             }
-            toolbarTitle.setText(selecting
-                    ? String.format(Locale.getDefault(), str("spookd_selected_count"), checkedCount)
-                    : str("spookd_all_deleted_messages"));
+            toolbarTitle.setText(!selecting ? str("spookd_all_deleted_messages")
+                    : wholeLogSelected && hasMore ? str("spookd_whole_log_selected")
+                    : String.format(Locale.getDefault(), str("spookd_selected_count"), checkedCount));
             backAction.setVisibility(selecting ? View.GONE : View.VISIBLE);
             selectAllAction.setVisibility(selecting ? View.VISIBLE : View.GONE);
-            selectAllCheck.setChecked(areAllSelected(
-                    checkedCount, messages.size()));
+            // Checked only when the whole log is selected, not just the loaded pages.
+            selectAllCheck.setChecked(wholeLogSelected
+                    || (!hasMore && areAllSelected(checkedCount, messages.size())));
             cancelSelectionAction.setVisibility(selecting ? View.VISIBLE : View.GONE);
+            moreAction.setVisibility(selecting ? View.GONE : View.VISIBLE);
             deleteAction.setVisibility(selecting ? View.VISIBLE : View.GONE);
-            deleteAction.setEnabled(hasSelection && !loading);
-            deleteAction.setAlpha(hasSelection && !loading ? 1f : 0.5f);
+            deleteAction.setEnabled(hasSelection && !loads.isBusy());
+            deleteAction.setAlpha(hasSelection && !loads.isBusy() ? 1f : 0.5f);
             refreshVisibleSelectionRows(messageList, selecting);
         }
 
@@ -523,6 +691,10 @@ public final class DeletedMessagesActivity {
         }
 
         private void confirmDeleteSelected() {
+            if (wholeLogSelected && hasMore) {
+                confirmDeleteWholeLog();
+                return;
+            }
             SparseBooleanArray checked = messageList.getCheckedItemPositions();
             ArrayList<String> selectedIds = new ArrayList<>();
             for (int position = 0; position < messages.size(); position++) {
@@ -540,6 +712,103 @@ public final class DeletedMessagesActivity {
                     })
                     .setNegativeButton(str("spookd_cancel"), null)
                     .show();
+        }
+
+        /**
+         * Reads the ids of every unsent message and removed reaction off the main thread, then asks to
+         * delete exactly those; stored view-once media of live messages is never part of it.
+         */
+        private void confirmDeleteWholeLog() {
+            if (loads.isBusy()) return;
+            Context app = activity.getApplicationContext();
+            sDbJobs.execute(() -> {
+                List<String> ids = null;
+                try {
+                    ids = SpookdMessageDb.getInstance(app).getDeletedLogIds();
+                } catch (Exception e) {
+                    Logger.printException(() -> "confirmDeleteWholeLog: ", e);
+                }
+                List<String> result = ids;
+                Utils.runOnMainThread(() -> {
+                    if (activity.isFinishing() || activity.isDestroyed()) return;
+                    if (result == null || result.isEmpty() || !wholeLogSelected) return;
+                    new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
+                            .setMessage(String.format(Locale.getDefault(),
+                                    str("spookd_delete_whole_log_confirm"), result.size()))
+                            .setPositiveButton(str("spookd_delete"), (dialog, which) -> {
+                                // Serial with the reload below, so the reload sees the rows gone.
+                                sDbJobs.execute(() -> {
+                                    try {
+                                        SavedMessagesHook.deleteDeletedLogEntries(result);
+                                    } catch (Exception e) {
+                                        Logger.printException(() -> "deleteWholeLog: ", e);
+                                    }
+                                });
+                                loadMessages(null, null);
+                                updateSelectionUi();
+                            })
+                            .setNegativeButton(str("spookd_cancel"), null)
+                            .show();
+                });
+            });
+        }
+
+        private void showMoreOptions() {
+            new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
+                    .setItems(new CharSequence[]{str("spookd_refresh_profile_pictures")},
+                            (dialog, which) -> refreshPictures())
+                    .show();
+        }
+
+        /**
+         * Refreshes the picture of each listed sender once, from Instagram's in-memory user cache when
+         * it has the user, else with one profile request; sequential on a background thread, and it
+         * stops when the screen closes.
+         */
+        private void refreshPictures() {
+            if (refreshingPictures) return;
+            UserSession session = SavedMessagesHook.currentSession();
+            if (session == null) {
+                Toast.makeText(activity, str("spookd_refresh_profile_pictures_unavailable"),
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            Set<String> userIds = new LinkedHashSet<>();
+            for (String[] message : messages) {
+                if (message[6] != null && !message[6].isEmpty()) userIds.add(message[6]);
+            }
+            if (userIds.isEmpty()) return;
+            refreshingPictures = true;
+            Toast.makeText(activity, str("spookd_refresh_profile_pictures_started"),
+                    Toast.LENGTH_SHORT).show();
+            String viewerId = session.getUserId();
+            Context app = activity.getApplicationContext();
+            // Weak, so a refresh still running holds neither this screen nor its activity.
+            WeakReference<Controller> owner = new WeakReference<>(this);
+            refreshJob = sPictureRefresh.submit(() -> {
+                int updated = refreshPictureUrls(app, session, viewerId, userIds);
+                Utils.runOnMainThread(() -> {
+                    Controller controller = owner.get();
+                    if (controller != null) controller.onPicturesRefreshed(updated);
+                });
+            });
+        }
+
+        /** Main thread, once a refresh ended or was cancelled. */
+        private void onPicturesRefreshed(int updated) {
+            refreshingPictures = false;
+            refreshJob = null;
+            if (activity.isFinishing() || activity.isDestroyed()) return;
+            Toast.makeText(activity, String.format(Locale.getDefault(),
+                    str("spookd_refresh_profile_pictures_done"), updated), Toast.LENGTH_SHORT).show();
+            avatars.clearFailures();
+            loadMessages(null, null);
+        }
+
+        /** Main thread, when the screen is destroyed. */
+        void close() {
+            avatars.close();
+            if (refreshJob != null) refreshJob.cancel(true);
         }
 
         private void showMediaOptions(String messageId, String url, String type) {
@@ -669,6 +938,20 @@ public final class DeletedMessagesActivity {
                     checkParams.setMarginEnd(Dim.dp8);
                     row.addView(selectionView, checkParams);
 
+                    ImageView avatarView = new ImageView(activity);
+                    avatarView.setTag("avatar");
+                    avatarView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    GradientDrawable circle = new GradientDrawable();
+                    circle.setShape(GradientDrawable.OVAL);
+                    circle.setColor(InstagramPreferenceStyle.pressedBackgroundColor());
+                    avatarView.setBackground(circle);
+                    avatarView.setClipToOutline(true);
+                    avatarView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+                    LinearLayout.LayoutParams avatarParams = new LinearLayout.LayoutParams(
+                            Dim.dp40, Dim.dp40);
+                    avatarParams.setMarginEnd(Dim.dp12);
+                    row.addView(avatarView, avatarParams);
+
                     contentColumn = new LinearLayout(activity);
                     contentColumn.setOrientation(LinearLayout.VERTICAL);
 
@@ -702,6 +985,7 @@ public final class DeletedMessagesActivity {
                 }
 
                 String[] msg = messages.get(position);
+                avatars.load(msg[6] != null ? pictures.get(msg[6]) : null, row.findViewWithTag("avatar"));
                 String sender    = msg[2];
                 String content   = msg[3];
                 String type      = msg[4];
@@ -717,7 +1001,13 @@ public final class DeletedMessagesActivity {
                 senderView.setText(who);
                 boolean isMediaUrl = content != null && content.startsWith("http");
                 String saved = savedLabel(msg[0]);
-                if (isMediaUrl) {
+                if (SpookdMessageDb.REMOVED_REACTION.equals(type)) {
+                    String message = isMediaUrl ? mediaLabel(msg[8], content)
+                            : content != null && !content.isEmpty() ? content
+                            : "[" + (msg[8] != null ? msg[8] : str("spookd_media_unknown")) + "]";
+                    contentView.setText(String.format(Locale.getDefault(),
+                            str("spookd_removed_reaction"), msg[7], message));
+                } else if (isMediaUrl) {
                     contentView.setText(mediaLabel(type, content) + "  ·  " + (saved != null ? saved
                             : str(isExpiredMediaUrl(content) ? "spookd_media_expired" : "spookd_tap_to_view")));
                 } else {

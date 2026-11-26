@@ -36,6 +36,10 @@ public class SavedMessagesHook {
     static final String NOTIFICATION_CHANNEL_ID = "piko_deleted_messages";
 
     private static volatile String sMyUserId;
+    private static volatile java.lang.ref.WeakReference<UserSession> sCurrentSession =
+            new java.lang.ref.WeakReference<>(null);
+    // Senders whose picture was stored in this process; worker thread only.
+    private static final java.util.Set<String> sPictureSaved = new java.util.HashSet<>();
     private static android.os.HandlerThread sWorkerThread;
     private static android.os.Handler sWorker;
 
@@ -51,6 +55,16 @@ public class SavedMessagesHook {
         } catch (Exception e) {
             spookd("SavedMessagesHook.openDeletedMessages: " + e);
         }
+    }
+
+    /** Called just before Instagram's session manager returns the session it made current. */
+    public static void onCurrentSession(UserSession session) {
+        sCurrentSession = new java.lang.ref.WeakReference<>(session);
+    }
+
+    /** The session Instagram made current last, or null when the hook is missing. */
+    static UserSession currentSession() {
+        return sCurrentSession.get();
     }
 
     /** Harvest participant id-to-username mappings from the thread user list. */
@@ -155,6 +169,8 @@ public class SavedMessagesHook {
         if (item == null || !enabled) return;
         boolean acceptedClass = item.getClass().getName().startsWith("X.");
         if (!acceptedClass) return;
+        // Only the item's own session names its account: a REST response may belong to an account
+        // that was switched away from while it loaded, so the current session is never used for it.
         String sessionUserId = null;
         try {
             sessionUserId = userSession != null ? userSession.getUserId() : null;
@@ -235,6 +251,31 @@ public class SavedMessagesHook {
         return null;
     }
 
+    /** A user from Instagram's in-memory cache of the session's account, or null; no network. */
+    static UserData cachedUser(UserSession session, String userId, String viewerId) throws Exception {
+        if (session == null || isBlank(userId)
+                || isBlank(viewerId) || !viewerId.equals(session.getUserId())) return null;
+        Object user = lookupCachedUser(session, userId);
+        if (user == null) return null;
+        UserData data = new UserData(user);
+        return userId.equals(data.getUserId()) ? data : null;
+    }
+
+    /** Worker thread: stores the sender's picture from the in-memory user cache, once per sender and process. */
+    private static void savePicture(SpookdMessageDb db, String senderId, UserSession session,
+                                    String viewerId) {
+        if (isBlank(senderId) || sPictureSaved.contains(senderId)) return;
+        try {
+            UserData data = cachedUser(session, senderId, viewerId);
+            if (data == null) return;
+            String url = data.getAvatarUrl();
+            if (url != null && db.putPicture(senderId, data.getUsername(), url)) {
+                sPictureSaved.add(senderId);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     private static String resolveSenderUsername(SpookdMessageDb db, String senderId,
                                                 String threadId, UserSession session,
                                                 String viewerId) {
@@ -242,11 +283,8 @@ public class SavedMessagesHook {
         if (username == null) username = db.getThreadUsername(threadId, senderId);
         if (username != null || isBlank(senderId) || session == null) return username;
         try {
-            if (isBlank(viewerId) || !viewerId.equals(session.getUserId())) return null;
-            Object user = lookupCachedUser(session, senderId);
-            if (user == null) return null;
-            UserData data = new UserData(user);
-            if (!senderId.equals(data.getUserId())) return null;
+            UserData data = cachedUser(session, senderId, viewerId);
+            if (data == null) return null;
             username = data.getUsername();
             if (!isBlank(username)) {
                 db.putUsername(senderId, username);
@@ -264,6 +302,7 @@ public class SavedMessagesHook {
             DirectItem directItem = new DirectItem(item);
             String senderId = directItem.getUserId();
             boolean sentByViewer = directItem.isSentByViewer();
+            // REST items fall back to the remembered id, which after an account switch may name the other account.
             String viewerId = resolveViewerId(sentByViewer, senderId, sessionViewerId);
             if (!shouldCaptureReceived(sentByViewer, senderId, viewerId)) return;
 
@@ -317,6 +356,14 @@ public class SavedMessagesHook {
                 RevokeCache.INSTANCE.put(serverId, clientContext, messageId,
                         db.getStoredContent(messageId));
                 if (Pref.dmMediaVault()) captureMedia(item, directItem, serverId, viewerId, type, timestamp);
+                savePicture(db, senderId, session, viewerId);
+                // Only items whose own session names the account are compared; a REST response may
+                // belong to an account that was switched away from while it loaded.
+                String reactionViewer = ReactionViewer.forComparison(restPath, sessionViewerId);
+                if (reactionViewer != null) {
+                    db.syncReactions(messageId, directItem.getReactions(), reactionViewer,
+                            System.currentTimeMillis());
+                }
             }
         } catch (Exception e) {
             spookd("SavedMessagesHook.processReceivedItem: " + e);
@@ -434,10 +481,26 @@ public class SavedMessagesHook {
 
     /** Deletes stored media, rows and their cached text on the worker and waits; never call from the main thread. */
     public static void deleteSavedMessages(final java.util.List<String> messageIds) throws Exception {
+        deleteOnWorker(messageIds, false);
+    }
+
+    /**
+     * The whole-log delete: like {@link #deleteSavedMessages}, but only for unsent messages and removed
+     * reactions, so live view-once media and its message stay. Never call from the main thread.
+     */
+    public static void deleteDeletedLogEntries(final java.util.List<String> ids) throws Exception {
+        deleteOnWorker(ids, true);
+    }
+
+    private static void deleteOnWorker(final java.util.List<String> ids, final boolean deletedOnly)
+            throws Exception {
         java.util.concurrent.FutureTask<Void> task = new java.util.concurrent.FutureTask<Void>(() -> {
+            SpookdMessageDb db = SpookdMessageDb.getInstance(PikoUtils.getContext());
+            // Checked here, so a message that is live when the delete runs keeps its media and row.
+            java.util.List<String> messageIds = deletedOnly ? db.onlyDeletedLogEntries(ids) : ids;
             // On the worker, so no capture of these messages can slip in between the media and the rows.
             MediaVault.get().deleteForMessages(messageIds);
-            SpookdMessageDb.getInstance(PikoUtils.getContext()).deleteSaved(messageIds);
+            db.deleteSaved(messageIds);
             RevokeCache.INSTANCE.removeMessages(messageIds);
             return null;
         });

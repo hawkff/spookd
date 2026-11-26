@@ -33,11 +33,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
+import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.shared.ui.Dim;
@@ -50,8 +50,9 @@ public final class ProfileAnalyzerActivity {
     private static final int DELETE_DATA = 2;
     // History survives scan pruning; older changes stay stored but are not listed.
     private static final int HISTORY_LIMIT = 500;
-    // Serial, so a clear or delete runs before the reload that follows it.
-    private static final Executor DB_JOBS = Executors.newSingleThreadExecutor();
+    // Shared with visit writes and serial, so a clear or delete runs before the reload that
+    // follows it, and a visit queued before a delete can't bring deleted visits back.
+    private static final Executor DB_JOBS = ProfileVisits.DB_QUEUE;
 
     private ProfileAnalyzerActivity() {
     }
@@ -181,14 +182,16 @@ public final class ProfileAnalyzerActivity {
         final List<Object> rows;
         final Map<String, String> usernames;
         final boolean hasHistory;
+        final boolean hasVisits;
 
         Loaded(String accountId, SpookdFollowDb.Scan scan, List<Object> rows,
-               Map<String, String> usernames, boolean hasHistory) {
+               Map<String, String> usernames, boolean hasHistory, boolean hasVisits) {
             this.accountId = accountId;
             this.scan = scan;
             this.rows = rows;
             this.usernames = usernames;
             this.hasHistory = hasHistory;
+            this.hasVisits = hasVisits;
         }
     }
 
@@ -207,7 +210,7 @@ public final class ProfileAnalyzerActivity {
         private TextView summary;
         private Button startAction, clearAction, deleteAction;
         private RowsAdapter adapter;
-        private boolean hasScan, hasHistory, wasScanning, paused;
+        private boolean hasScan, hasHistory, hasVisits, wasScanning, paused;
 
         Controller(Activity activity) {
             this.activity = activity;
@@ -317,6 +320,7 @@ public final class ProfileAnalyzerActivity {
             usernames = new HashMap<>();
             hasScan = false;
             hasHistory = false;
+            hasVisits = false;
             adapter.notifyDataSetChanged();
             int actions = account == null ? View.GONE : View.VISIBLE;
             startAction.setVisibility(actions);
@@ -374,7 +378,7 @@ public final class ProfileAnalyzerActivity {
             setActionEnabled(startAction, str(ProfileAnalyzer.ROW_START).equals(state));
             setActionEnabled(clearAction, hasHistory);
             // A scan that commits after a delete would bring the data back.
-            setActionEnabled(deleteAction, (hasScan || hasHistory) && !scanning);
+            setActionEnabled(deleteAction, (hasScan || hasHistory || hasVisits) && !scanning);
             boolean ended = wasScanning && !scanning;
             wasScanning = scanning;
             if (ended) load(LOAD, accountId);
@@ -407,8 +411,12 @@ public final class ProfileAnalyzerActivity {
                     List<Object> found = scan == null ? new ArrayList<>() : rows(
                             db.notFollowingBack(account), db.followersNotFollowedBack(account),
                             db.mutuals(account), history);
+                    List<SpookdFollowDb.Visit> visits = db.visits(account);
+                    if (!visits.isEmpty() || Pref.trackVisitedProfiles()) {
+                        section(found, "spookd_profile_analyzer_visited", visits);
+                    }
                     loaded = new Loaded(account, scan, found, latestUsernames(history),
-                            !history.isEmpty());
+                            !history.isEmpty(), !visits.isEmpty());
                 } catch (Exception e) {
                     String error = e.getClass().getSimpleName();
                     Logger.printException(() -> "ProfileAnalyzerActivity: load failed: " + error);
@@ -430,6 +438,7 @@ public final class ProfileAnalyzerActivity {
         private void bind(Loaded loaded) {
             hasScan = loaded.scan != null;
             hasHistory = loaded.hasHistory;
+            hasVisits = loaded.hasVisits;
             summary.setText(loaded.scan == null ? str("spookd_profile_analyzer_no_scan")
                     : str("spookd_profile_analyzer_last_scan",
                     dateFormat.format(new Date(loaded.scan.finishedAt)),
@@ -445,7 +454,8 @@ public final class ProfileAnalyzerActivity {
             if (!sameAccount() || accountId == null) return;
             String username = item instanceof FollowUser ? ((FollowUser) item).username
                     : item instanceof SpookdFollowDb.Change
-                    ? usernames.get(((SpookdFollowDb.Change) item).userId) : null;
+                    ? usernames.get(((SpookdFollowDb.Change) item).userId)
+                    : item instanceof SpookdFollowDb.Visit ? ((SpookdFollowDb.Visit) item).username : null;
             if (username == null || username.isEmpty()) return;
             PikoUtils.openUrl("instagram://user?username=" + Uri.encode(username), true);
         }
@@ -470,6 +480,13 @@ public final class ProfileAnalyzerActivity {
                     views.change.setVisibility(View.GONE);
                     views.note.setVisibility(View.GONE);
                     views.date.setVisibility(View.GONE);
+                } else if (item instanceof SpookdFollowDb.Visit) {
+                    SpookdFollowDb.Visit visit = (SpookdFollowDb.Visit) item;
+                    bindUser(views, null, visit.username);
+                    views.change.setVisibility(View.GONE);
+                    views.note.setVisibility(View.GONE);
+                    views.date.setText(dateFormat.format(new Date(visit.visitedAt)));
+                    views.date.setVisibility(View.VISIBLE);
                 } else {
                     SpookdFollowDb.Change change = (SpookdFollowDb.Change) item;
                     bindUser(views, change.user, usernames.get(change.userId));

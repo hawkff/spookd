@@ -22,8 +22,9 @@ public final class SpookdFollowDb extends SQLiteOpenHelper {
 
     // Legacy stored name: existing installs keep their database under it.
     static final String DB_NAME = "piko_follow_snapshots.db";
-    private static final int DB_VERSION = 1;
+    static final int DB_VERSION = 2;
     static final int KEPT_SCANS = 10;
+    static final int KEPT_VISITS = 500;
 
     public static final int LIST_FOLLOWERS = 0;
     public static final int LIST_FOLLOWING = 1;
@@ -59,6 +60,19 @@ public final class SpookdFollowDb extends SQLiteOpenHelper {
             this.newValue = newValue;
             this.seenAt = seenAt;
             this.user = user;
+        }
+    }
+
+    /** A profile the account opened, with the time it was last opened. */
+    public static final class Visit {
+        public final String userId;
+        public final String username;
+        public final long visitedAt;
+
+        Visit(String userId, String username, long visitedAt) {
+            this.userId = userId;
+            this.username = username;
+            this.visitedAt = visitedAt;
         }
     }
 
@@ -114,6 +128,15 @@ public final class SpookdFollowDb extends SQLiteOpenHelper {
         };
     }
 
+    // Version 2: one row per opened profile and account, with the latest visit.
+    static final String PROFILE_VISITS_TABLE = "CREATE TABLE profile_visits ("
+            + "account_id TEXT NOT NULL,"
+            + "user_id TEXT NOT NULL,"
+            + "username TEXT,"
+            + "visited_at INTEGER NOT NULL,"
+            + "PRIMARY KEY (account_id, user_id)"
+            + ") WITHOUT ROWID";
+
     public static synchronized SpookdFollowDb getInstance(Context context) {
         if (instance == null) {
             instance = new SpookdFollowDb(context.getApplicationContext());
@@ -139,10 +162,44 @@ public final class SpookdFollowDb extends SQLiteOpenHelper {
         for (String statement : schemaStatements()) {
             db.execSQL(statement);
         }
+        db.execSQL(PROFILE_VISITS_TABLE);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        if (oldVersion < 2) db.execSQL(PROFILE_VISITS_TABLE);
+    }
+
+    /** Stores the latest visit of a profile, then keeps only this account's newest {@link #KEPT_VISITS}. */
+    public void recordVisit(String accountId, String userId, String username, long visitedAt) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            ContentValues values = new ContentValues();
+            values.put("account_id", accountId);
+            values.put("user_id", userId);
+            values.put("username", username);
+            values.put("visited_at", visitedAt);
+            db.insertWithOnConflict("profile_visits", null, values, SQLiteDatabase.CONFLICT_REPLACE);
+            db.execSQL("DELETE FROM profile_visits WHERE account_id = ? AND user_id NOT IN"
+                    + " (SELECT user_id FROM profile_visits WHERE account_id = ?"
+                    + " ORDER BY visited_at DESC LIMIT " + KEPT_VISITS + ")",
+                    new Object[]{accountId, accountId});
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    /** This account's visited profiles, newest first. */
+    public List<Visit> visits(String accountId) {
+        List<Visit> out = new ArrayList<>();
+        try (Cursor c = getReadableDatabase().rawQuery("SELECT user_id, username, visited_at"
+                + " FROM profile_visits WHERE account_id = ? ORDER BY visited_at DESC",
+                new String[]{accountId})) {
+            while (c.moveToNext()) out.add(new Visit(c.getString(0), c.getString(1), c.getLong(2)));
+        }
+        return out;
     }
 
     /**
@@ -272,7 +329,7 @@ public final class SpookdFollowDb extends SQLiteOpenHelper {
         getWritableDatabase().delete("follow_changes", "account_id = ?", new String[]{accountId});
     }
 
-    /** Deletes every scan, identity and change of one account. */
+    /** Deletes every scan, identity, change and visit of one account. */
     public void deleteAccount(String accountId) {
         String[] args = {accountId};
         SQLiteDatabase db = getWritableDatabase();
@@ -283,6 +340,7 @@ public final class SpookdFollowDb extends SQLiteOpenHelper {
             db.delete("follow_scans", "account_id = ?", args);
             db.delete("follow_users", "account_id = ?", args);
             db.delete("follow_changes", "account_id = ?", args);
+            db.delete("profile_visits", "account_id = ?", args);
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();

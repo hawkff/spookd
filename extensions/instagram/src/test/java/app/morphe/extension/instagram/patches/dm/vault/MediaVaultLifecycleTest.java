@@ -768,8 +768,12 @@ public final class MediaVaultLifecycleTest {
 
     @Test
     public void ordinaryAndMigratedMediaWithoutAModeIsSweptAndEvicted() throws Exception {
-        // A version 5 saved_media table, upgraded to version 6 as an app update does.
+        // A version 5 database, upgraded to the current version as an app update does.
         db.execSQL("DROP TABLE saved_media");
+        db.execSQL("DROP TABLE message_reactions");
+        db.execSQL("DROP INDEX idx_deleted_time");
+        db.execSQL("DROP TABLE user_directory");
+        db.execSQL("CREATE TABLE user_directory (sender_id TEXT PRIMARY KEY, username TEXT NOT NULL)");
         java.lang.reflect.Method v5 = SpookdMessageDb.class.getDeclaredMethod("savedMediaStatements");
         v5.setAccessible(true);
         for (String statement : (String[]) v5.invoke(null)) db.execSQL(statement);
@@ -781,7 +785,7 @@ public final class MediaVaultLifecycleTest {
         constructor.setAccessible(true);
         messages = constructor.newInstance(RuntimeEnvironment.getApplication());
         db = messages.getWritableDatabase();
-        assertEquals(6, db.getVersion());
+        assertEquals(9, db.getVersion());
         assertNull(column("view_mode", migrated));
         restart();
 
@@ -948,6 +952,48 @@ public final class MediaVaultLifecycleTest {
         assertEquals("spookd_media_view_twice", MediaVault.markResource(stored.get("twice")));
         assertNull(MediaVault.markResource("keep_in_chat"));
         assertNull(MediaVault.markResource(null));
+    }
+
+    @Test
+    public void wholeLogDeleteKeepsLiveViewOnceMediaBeyondTheFirstPage() throws IOException {
+        // More unsent messages than one page, newer than the live view-once message.
+        int unsent = SpookdMessageDb.DELETED_PAGE_SIZE + 5;
+        for (int i = 0; i < unsent; i++) unsend("unsent" + i);
+        long unsentMedia = storedRow("unsent0", 1000, NOW - 1000);
+        viewMode(unsentMedia, "once");
+        messages.upsertMessage("liveOnce", null, "thread", "42", "bob", "", "visual_media", NOW - 5000);
+        long liveMedia = storedRow("liveOnce", 1000, NOW - 5000);
+        viewMode(liveMedia, "once");
+        // A reaction someone removed from the live message is a log entry of its own.
+        messages.syncReactions("liveOnce", Collections.singletonList(new String[]{"7", "x"}), "42", NOW - 4000);
+        messages.syncReactions("liveOnce", Collections.emptyList(), "42", NOW - 3000);
+        vault.recover();
+
+        List<String> firstPage = new ArrayList<>();
+        for (String[] row : messages.getDeletedMessages()) firstPage.add(row[0]);
+        assertFalse(firstPage.contains("liveOnce"));
+
+        List<String> ids = messages.getDeletedLogIds();
+        assertEquals(unsent + 1, ids.size());
+        assertFalse(ids.contains("liveOnce"));
+
+        // The delete path checks again, so even a list that names the live message leaves it alone.
+        List<String> asked = new ArrayList<>(ids);
+        asked.add("liveOnce");
+        List<String> deletable = messages.onlyDeletedLogEntries(asked);
+        assertEquals(ids, deletable);
+        vault.deleteForMessages(deletable);
+        messages.deleteSaved(deletable);
+
+        assertEquals("stored", column("state", liveMedia));
+        assertTrue(pkv(liveMedia).exists());
+        assertEquals("dropped", column("state", unsentMedia));
+        assertFalse(pkv(unsentMedia).exists());
+        assertEquals(1, DatabaseUtils.longForQuery(db,
+                "SELECT COUNT(*) FROM saved_messages WHERE message_id = 'liveOnce'", null));
+        List<String> left = new ArrayList<>();
+        for (String[] row : messages.getDeletedMessages()) left.add(row[0]);
+        assertEquals(Collections.singletonList("liveOnce"), left);
     }
 
     @Test

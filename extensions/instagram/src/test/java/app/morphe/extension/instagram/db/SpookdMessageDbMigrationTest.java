@@ -26,6 +26,11 @@ import java.util.List;
 @Config(sdk = 29, manifest = Config.NONE)
 public final class SpookdMessageDbMigrationTest {
     private static final String DB_NAME = "piko_dm_vault.db";
+    // Added in version 9.
+    private static final String[] V9_NAMES = {"idx_deleted_time", "idx_reactions_removed_time"};
+    // Added in versions 7 and 9.
+    private static final String[] V7_NAMES = concat(V9_NAMES,
+            "message_reactions", "idx_reactions_live", "idx_reactions_message");
 
     @Test
     public void upgradesV4WithRowsIntact() throws Exception {
@@ -35,14 +40,15 @@ public final class SpookdMessageDbMigrationTest {
 
         SpookdMessageDb helper = newHelper(context);
         SQLiteDatabase db = helper.getWritableDatabase();
-        assertEquals(6, db.getVersion());
+        assertEquals(SpookdMessageDb.DB_VERSION, db.getVersion());
         assertEquals(Arrays.asList("id", "item_id", "account_id", "kind", "url", "url_expires_at",
                 "msg_timestamp", "state", "attempts", "next_attempt_at", "size_bytes", "mime", "view_mode"),
                 columns(db, "saved_media"));
         assertTrue(hasIndex(db, "idx_media_state_time"));
         helper.close();
 
-        assertEquals(before, dump(context, "saved_media", "idx_media_state_time"));
+        assertEquals(upgradedDirectory(before),
+                withoutDirectorySchema(dump(context, concat(V7_NAMES, "saved_media", "idx_media_state_time"))));
     }
 
     @Test
@@ -85,15 +91,132 @@ public final class SpookdMessageDbMigrationTest {
 
         SpookdMessageDb helper = newHelper(context);
         SQLiteDatabase db = helper.getWritableDatabase();
-        assertEquals(6, db.getVersion());
+        assertEquals(SpookdMessageDb.DB_VERSION, db.getVersion());
         List<String> media = columns(db, "saved_media");
         assertEquals("view_mode", media.get(media.size() - 1));
         helper.close();
 
-        List<String> after = dump(context);
+        List<String> after = withoutDirectorySchema(dump(context, V7_NAMES));
         after.removeIf(line -> line.startsWith("table saved_media "));
-        assertEquals(expected, after);
+        assertEquals(upgradedDirectory(expected), after);
         assertEquals(2, after.stream().filter(line -> line.startsWith("saved_media|")).count());
+    }
+
+    @Test
+    public void upgradesV6WithEveryRowIntact() throws Exception {
+        Context context = RuntimeEnvironment.getApplication();
+        createV4(context, false);
+        SQLiteDatabase v6 = context.openOrCreateDatabase(DB_NAME, Context.MODE_PRIVATE, null);
+        for (String statement : SpookdMessageDb.savedMediaStatements()) v6.execSQL(statement);
+        v6.execSQL(SpookdMessageDb.SAVED_MEDIA_VIEW_MODE);
+        v6.execSQL("INSERT INTO saved_media (item_id, kind, url_expires_at, msg_timestamp, state, view_mode)"
+                + " VALUES ('31000000000000000000000000001', 'photo', 1700000000000, 1690000000000,"
+                + " 'stored', 'once')");
+        v6.setVersion(6);
+        v6.close();
+        List<String> before = dump(context);
+
+        SpookdMessageDb helper = newHelper(context);
+        SQLiteDatabase db = helper.getWritableDatabase();
+        assertEquals(SpookdMessageDb.DB_VERSION, db.getVersion());
+        assertEquals(Arrays.asList("id", "message_id", "sender_id", "emoji", "removed_at"),
+                columns(db, "message_reactions"));
+        helper.close();
+
+        assertEquals(upgradedDirectory(before), withoutDirectorySchema(dump(context, V7_NAMES)));
+        assertEquals(3, before.stream().filter(line -> line.startsWith("saved_messages|")).count());
+    }
+
+    @Test
+    public void upgradesV7WithEveryRowIntactAndNoPictures() throws Exception {
+        Context context = RuntimeEnvironment.getApplication();
+        createV4(context, false);
+        SQLiteDatabase v7 = context.openOrCreateDatabase(DB_NAME, Context.MODE_PRIVATE, null);
+        for (String statement : SpookdMessageDb.savedMediaStatements()) v7.execSQL(statement);
+        v7.execSQL(SpookdMessageDb.SAVED_MEDIA_VIEW_MODE);
+        for (String statement : SpookdMessageDb.reactionStatements()) v7.execSQL(statement);
+        v7.execSQL("INSERT INTO message_reactions (message_id, sender_id, emoji, removed_at) VALUES"
+                + " ('31000000000000000000000000001', '1234567', 'x', 1690000005000),"
+                + " ('31000000000000000000000000001', '7654321', 'y', NULL)");
+        v7.setVersion(7);
+        v7.close();
+        List<String> before = dump(context);
+
+        SpookdMessageDb helper = newHelper(context);
+        SQLiteDatabase db = helper.getWritableDatabase();
+        assertEquals(SpookdMessageDb.DB_VERSION, db.getVersion());
+        assertEquals(Arrays.asList("sender_id", "username", "pic_url"), columns(db, "user_directory"));
+        helper.close();
+
+        assertEquals(upgradedDirectory(before), withoutDirectorySchema(dump(context, V9_NAMES)));
+        assertEquals(2, before.stream().filter(line -> line.startsWith("message_reactions|")).count());
+        assertEquals(2, before.stream().filter(line -> line.startsWith("user_directory|")).count());
+    }
+
+    @Test
+    public void upgradesV8WithEveryRowIntactAndAddsTheLogIndexes() throws Exception {
+        Context context = RuntimeEnvironment.getApplication();
+        SpookdMessageDb current = newHelper(context);
+        SQLiteDatabase v8 = current.getWritableDatabase();
+        insertMessages(v8);
+        v8.execSQL("UPDATE user_directory SET pic_url = 'https://x.fbcdn.net/p.jpg' WHERE sender_id = '1234567'");
+        v8.execSQL("INSERT INTO message_reactions (message_id, sender_id, emoji, removed_at) VALUES"
+                + " ('31000000000000000000000000001', '7654321', 'x', 1690000005000)");
+        for (String name : V9_NAMES) v8.execSQL("DROP INDEX " + name);
+        v8.setVersion(8);
+        current.close();
+        List<String> before = dump(context);
+
+        SpookdMessageDb helper = newHelper(context);
+        SQLiteDatabase db = helper.getWritableDatabase();
+        assertEquals(SpookdMessageDb.DB_VERSION, db.getVersion());
+        for (String name : V9_NAMES) assertTrue(hasIndex(db, name));
+        helper.close();
+
+        assertEquals(before, dump(context, V9_NAMES));
+        assertEquals(3, before.stream().filter(line -> line.startsWith("saved_messages|")).count());
+    }
+
+    @Test
+    public void deletedLogPagesSeekTheirIndexes() throws Exception {
+        SpookdMessageDb helper = newHelper(RuntimeEnvironment.getApplication());
+        SQLiteDatabase db = helper.getWritableDatabase();
+        insertMessages(db);
+        db.execSQL("UPDATE saved_messages SET content = 'once' WHERE message_id = '31000000000000000000000000003'");
+        db.execSQL("INSERT INTO saved_media (item_id, kind, url_expires_at, msg_timestamp, state, view_mode)"
+                + " VALUES ('31000000000000000000000000003', 'photo', 1700000000000, 1690000002000, 'stored', 'once')");
+        String[] cursor = {"31000000000000000000000000001", "t", "u", "c", "text", "1690000000000", "1", "5"};
+        for (String[] after : new String[][]{null, cursor}) {
+            StringBuilder plan = new StringBuilder();
+            Cursor rows = db.rawQuery("EXPLAIN QUERY PLAN " + SpookdMessageDb.deletedPageQuery(200, after), null);
+            while (rows.moveToNext()) plan.append(rows.getString(rows.getColumnCount() - 1)).append('\n');
+            rows.close();
+            assertTrue(plan.toString(), plan.indexOf("idx_deleted_time") >= 0);
+            assertTrue(plan.toString(), plan.indexOf("idx_reactions_removed_time") >= 0);
+            // The stored media branch looks each vault row's message up by its server id.
+            assertTrue(plan.toString(), plan.indexOf("idx_server_id") >= 0);
+        }
+        // The stored view-once message is listed once, through that branch.
+        assertEquals(1, helper.getDeletedMessages().stream()
+                .filter(row -> "31000000000000000000000000003".equals(row[0])).count());
+        helper.close();
+    }
+
+    @Test
+    public void storedPictureSurvivesAUsernameChange() throws Exception {
+        Context context = RuntimeEnvironment.getApplication();
+        SpookdMessageDb helper = newHelper(context);
+        helper.putUsername("1234567", "alice");
+        assertTrue(helper.putPicture("1234567", null, "https://x.fbcdn.net/p.jpg"));
+        helper.putUsername("1234567", "alice2");
+        assertEquals("alice2", helper.getUsername("1234567"));
+        assertEquals("https://x.fbcdn.net/p.jpg", helper.getPictureUrls().get("1234567"));
+        // Without a directory row the username creates one.
+        assertFalse(helper.putPicture("7654321", null, "https://x.fbcdn.net/q.jpg"));
+        assertTrue(helper.putPicture("7654321", "bob", "https://x.fbcdn.net/q.jpg"));
+        assertEquals("bob", helper.getUsername("7654321"));
+        assertEquals(2, helper.getPictureUrls().size());
+        helper.close();
     }
 
     @Test
@@ -120,9 +243,31 @@ public final class SpookdMessageDbMigrationTest {
         older.close();
 
         SQLiteDatabase db = context.openOrCreateDatabase(DB_NAME, Context.MODE_PRIVATE, null);
-        assertEquals(6, db.getVersion());
+        assertEquals(SpookdMessageDb.DB_VERSION, db.getVersion());
         db.close();
         assertEquals(before, dump(context));
+    }
+
+    /** The rows as version 8 keeps them: each directory row gains an empty picture link. */
+    private static List<String> upgradedDirectory(List<String> before) {
+        List<String> out = new ArrayList<>();
+        for (String line : withoutDirectorySchema(before)) {
+            out.add(line.startsWith("user_directory|") ? line + "|NULL" : line);
+        }
+        return out;
+    }
+
+    /** Drops the directory schema line, which version 8 changes. */
+    private static List<String> withoutDirectorySchema(List<String> lines) {
+        List<String> out = new ArrayList<>(lines);
+        out.removeIf(line -> line.startsWith("table user_directory "));
+        return out;
+    }
+
+    private static String[] concat(String[] first, String... second) {
+        List<String> out = new ArrayList<>(Arrays.asList(first));
+        out.addAll(Arrays.asList(second));
+        return out.toArray(new String[0]);
     }
 
     private static SpookdMessageDb newHelper(Context context) throws Exception {
