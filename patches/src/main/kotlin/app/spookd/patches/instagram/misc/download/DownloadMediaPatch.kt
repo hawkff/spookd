@@ -18,6 +18,7 @@ import app.spookd.patches.instagram.misc.overflowMenuButton.posts.addOverflowMen
 import app.spookd.patches.instagram.misc.overflowMenuButton.posts.debugOverflowButton.debugOverflowMenuButtonPatch
 import app.spookd.patches.instagram.misc.overflowMenuButton.posts.hookOverflowMenuButton
 import app.spookd.patches.instagram.misc.overflowMenuButton.reels.hookReelOverflowMenuButton
+import app.spookd.patches.instagram.misc.settings.accountSettingsPatch
 import app.spookd.patches.instagram.misc.settings.settingsPatch
 import app.spookd.patches.instagram.misc.stories.handleStoryButtonPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
@@ -40,6 +41,7 @@ val downloadMediaPatch =
     ) {
         dependsOn(
             settingsPatch,
+            accountSettingsPatch,
             instagramDialogBoxEntity,
             mediaDataEntity,
             videoDataEntity,

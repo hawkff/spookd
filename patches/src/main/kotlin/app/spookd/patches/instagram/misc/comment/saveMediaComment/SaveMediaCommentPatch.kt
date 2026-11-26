@@ -16,6 +16,7 @@ import app.spookd.patches.instagram.misc.comment.chatButtonConstructorFingerprin
 import app.spookd.patches.instagram.misc.comment.commentButtonClickCheckPatch
 import app.spookd.patches.instagram.misc.comment.debugComment.debugCommentPatch
 import app.spookd.patches.instagram.misc.comment.nativeChatButtonResources
+import app.spookd.patches.instagram.misc.settings.accountSettingsPatch
 import app.spookd.patches.instagram.misc.settings.settingsPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.enableSettings
@@ -31,6 +32,7 @@ val saveMediaCommentPatch =
         compatibleWith(COMPATIBILITY_INSTAGRAM)
         dependsOn(
             settingsPatch,
+            accountSettingsPatch,
             addCommentPatch,
             commentButtonClickCheckPatch,
             commentDataEntity,

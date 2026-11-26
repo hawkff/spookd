@@ -12,6 +12,7 @@ import app.spookd.patches.instagram.misc.dm.MenuButtonsLabelsFingerprint
 import app.spookd.patches.instagram.misc.dm.MenuOpenFingerprint
 import app.spookd.patches.instagram.misc.dm.passReturnedValues
 import app.spookd.patches.instagram.misc.settings.SetCurrentUserSessionFingerprint
+import app.spookd.patches.instagram.misc.settings.accountSettingsPatch
 import app.spookd.patches.instagram.misc.settings.settingsPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
@@ -152,7 +153,7 @@ val activityNotificationsPatch =
             "and a setting for how often Instagram refreshes active status.",
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
-        dependsOn(settingsPatch)
+        dependsOn(settingsPatch, accountSettingsPatch)
 
         execute {
             // Presence: whether a state says active, and every change of the store, with the store's account.
