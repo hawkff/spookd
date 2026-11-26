@@ -127,6 +127,8 @@ public class Settings {
     public static final BooleanSetting EXPANDED_FEED_VIDEOS_MUTED = new BooleanSetting("expanded_feed_videos_muted", false, NOT_REQUIRED);
     // "default", "on" or "off"; read once at startup into Instagram's flags.
     public static final StringSetting REELS_AUTO_SCROLL = new StringSetting("reels_auto_scroll", "default", REQUIRED);
+    // Each Reels viewer sets up picture-in-picture when it is created; read once per process.
+    public static final BooleanSetting PIP_FOR_VIDEOS = new BooleanSetting("pip_for_videos", false, REQUIRED);
     public static final BooleanSetting COMMENT_COPY_BUTTON = new BooleanSetting("comment_copy_button", true, NOT_REQUIRED);
     public static final BooleanSetting COMMENT_SAVE_MEDIA_BUTTON = new BooleanSetting("comment_save_media_button", true, NOT_REQUIRED);
     public static final BooleanSetting HIDE_GROUP_CREATION_BUTTON_ON_SHARESHEET = new BooleanSetting("hide_group_creation_button_on_sharesheet", true, NOT_REQUIRED);

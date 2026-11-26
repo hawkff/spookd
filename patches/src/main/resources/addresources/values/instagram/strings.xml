@@ -346,6 +346,8 @@
     <string name="spookd_reels_auto_scroll_desc">On adds Instagram\'s Auto scroll switch to the Reels menu even if Instagram has not turned it on for your account; Reels then move on by themselves once you switch it on there. Off removes it. Default leaves it to Instagram.</string>
     <string name="spookd_reels_auto_scroll_on">On</string>
     <string name="spookd_reels_auto_scroll_off">Off</string>
+    <string name="spookd_pip_for_videos">Picture-in-picture for videos</string>
+    <string name="spookd_pip_for_videos_desc">When you leave Instagram, for example with the home gesture, while a Reel or a full-screen feed video plays, it keeps playing in a small window; expand the window to go back. Uses Instagram\'s own picture-in-picture for Reels; it only works if picture-in-picture is allowed for Instagram in Android settings.</string>
     <string name="spookd_speed_and_seek">Speed and seek</string>
     <string name="spookd_speed_panel_back">−10 s</string>
     <string name="spookd_speed_panel_forward">+10 s</string>

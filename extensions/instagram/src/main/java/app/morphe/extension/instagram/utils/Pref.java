@@ -198,6 +198,10 @@ public class Pref {
         return on(Settings.DISABLE_VIDEO_AUTOPLAY);
     }
 
+    public static boolean pipForVideos() {
+        return SettingsStatus.pipForVideos && on(Settings.PIP_FOR_VIDEOS);
+    }
+
     public
     static boolean disableStories() {
         return on(Settings.DISABLE_STORIES);
