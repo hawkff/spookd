@@ -70,6 +70,21 @@ public final class GalleryStoreTest {
     }
 
     @Test
+    public void aDownloadStartedBeforeAClearIsNotPublished() throws Exception {
+        long started = store.clearEpoch();
+        File part = part("abc");
+        assertTrue(store.deleteAll());
+
+        assertEquals(-1, store.publish(part, POST, "alice", "alice_1.JPG", GalleryStore.Conflict.RENAME, started));
+        assertFalse(part.exists());
+        assertTrue(store.list(GalleryTab.POSTS).isEmpty());
+
+        File later = part("def");
+        assertTrue(store.publish(later, POST, "alice", "alice_2.JPG", GalleryStore.Conflict.RENAME,
+                store.clearEpoch()) > 0);
+    }
+
+    @Test
     public void publishInsertsRowAndMovesPartToItsFile() throws Exception {
         File part = part("abc");
         assertEquals(dir, part.getParentFile());

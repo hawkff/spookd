@@ -24,6 +24,7 @@ import app.morphe.extension.instagram.db.SpookdInstantsDb;
 import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzer;
 import app.morphe.extension.instagram.patches.dm.vault.MediaVault;
 import app.morphe.extension.instagram.patches.download.gallery.GalleryStorage;
+import app.morphe.extension.instagram.patches.instants.InstantsDownloadHook;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
@@ -171,7 +172,7 @@ public final class StorageScreen {
             case VAULT:
                 return MediaVault.get().deleteAll();
             case INSTANTS:
-                return SpookdInstantsDb.getInstance(context).clearAll();
+                return InstantsDownloadHook.clearVault(SpookdInstantsDb.getInstance(context));
             case HISTORY:
                 GalleryStorage.clearHistory();
                 return true;

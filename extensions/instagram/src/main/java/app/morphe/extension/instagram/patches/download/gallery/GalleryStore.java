@@ -76,6 +76,8 @@ public final class GalleryStore {
     private final File thumbDir;
     private final LongSupplier clock;
     private boolean recovered;
+    // Bumped by deleteAll, so a download that started before a clear never publishes after it.
+    private long clearEpoch;
 
     GalleryStore(SQLiteDatabase db, File dir, File thumbDir, LongSupplier clock) {
         this.db = db;
@@ -134,14 +136,29 @@ public final class GalleryStore {
         return publish(part, item, subFolder, fileName, overwrite ? Conflict.OVERWRITE : Conflict.RENAME);
     }
 
+    /** The clear epoch a download reads when it starts and hands back to {@link #publish}. */
+    public synchronized long clearEpoch() {
+        return clearEpoch;
+    }
+
     /** {@link #publish} that with SKIP deletes the part and returns -1 when the name is taken, checked under the store's lock. */
     public long publish(File part, GalleryItem item, String subFolder, String fileName,
                         Conflict conflict) throws IOException {
+        return publish(part, item, subFolder, fileName, conflict, null);
+    }
+
+    /** {@link #publish}, also deleting the part and returning -1 when the gallery was cleared after {@code startedEpoch}. */
+    public long publish(File part, GalleryItem item, String subFolder, String fileName,
+                        Conflict conflict, Long startedEpoch) throws IOException {
         try {
             if (!part.isFile()) throw new IOException("Missing " + part);
             Long durationMs = GalleryItem.PHOTO.equals(item.kind) ? null : durationMs(part);
             long size = part.length();
             synchronized (this) {
+                if (startedEpoch != null && startedEpoch != clearEpoch) {
+                    part.delete();
+                    return -1;
+                }
                 String file = baseName(part) + extension(fileName);
                 File target = new File(dir, file);
                 ContentValues values = new ContentValues();
@@ -226,6 +243,7 @@ public final class GalleryStore {
      * still exists could not be deleted; recovery removes it at the next start. Throws on database errors.
      */
     public synchronized boolean deleteAll() {
+        clearEpoch++;
         recover();
         List<String> files = new ArrayList<>();
         try (Cursor c = db.rawQuery("SELECT file FROM gallery_items", null)) {

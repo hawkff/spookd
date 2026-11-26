@@ -58,9 +58,14 @@ public final class Gallery {
                 : policy == DownloadRequest.ConflictPolicy.OVERWRITE ? GalleryStore.Conflict.OVERWRITE
                 : GalleryStore.Conflict.RENAME;
         return new DownloadRequest.PrivateTarget() {
+            // Read when the download starts, so a gallery clear meanwhile drops this download.
+            private long startedEpoch;
+
             @Override
             public File partFile() {
-                return GalleryStore.get().partFile();
+                GalleryStore store = GalleryStore.get();
+                startedEpoch = store.clearEpoch();
+                return store.partFile();
             }
 
             @Override
@@ -70,7 +75,7 @@ public final class Gallery {
 
             @Override
             public boolean publish(File part) throws IOException {
-                long id = GalleryStore.get().publish(part, item, subFolder, fileName, conflict);
+                long id = GalleryStore.get().publish(part, item, subFolder, fileName, conflict, startedEpoch);
                 if (id == -1) return false;
                 published.accept(id);
                 prune();
