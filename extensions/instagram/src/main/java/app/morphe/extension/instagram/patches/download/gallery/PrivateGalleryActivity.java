@@ -1240,7 +1240,7 @@ public final class PrivateGalleryActivity {
 
         /**
          * Copies the item on the jobs thread into the share folder, then returns its URI to the picker
-         * from the main thread. Earlier copies stay until the gallery's next open clears them.
+         * from the main thread. The copy stays for an hour, so Instagram's later import still finds it.
          */
         private void pick(Item item) {
             if (sharing) return;
@@ -1250,7 +1250,7 @@ public final class PrivateGalleryActivity {
                 Uri uri;
                 try {
                     File dir = new File(app.getCacheDir(), GalleryActions.SHARE_DIR);
-                    uri = GalleryActions.shareCopy(app, dir, item.fileName, item.vault, item.id, item.file);
+                    uri = GalleryActions.pickCopy(app, dir, item.fileName, item.vault, item.id, item.file);
                 } catch (Exception e) {
                     ui.post(() -> sharing = false);
                     failed("pick", e);

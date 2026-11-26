@@ -35,6 +35,10 @@ import app.morphe.extension.shared.Utils;
 /** Export, share and open actions of the private gallery. */
 final class GalleryActions {
     static final String SHARE_DIR = "piko_share";
+    // Folders of items returned to Instagram's picker, which imports them later on its own thread.
+    static final String PICK_PREFIX = "pick-";
+    // shortcut: a fixed hour instead of knowing when Instagram's import ended; long enough for any video copy.
+    static final long PICK_KEEP_MS = 60 * 60_000L;
     // The manifest keeps this class name even when the code is minified; clones rename only the authority.
     private static final String FILE_PROVIDER = "androidx.core.content.FileProvider";
 
@@ -88,18 +92,26 @@ final class GalleryActions {
         }.enqueueBatch(requests);
     }
 
-    /** Deletes earlier share copies and returns their directory. Runs on the caller's background thread. */
+    /**
+     * Deletes earlier share copies, except picks younger than {@link #PICK_KEEP_MS}, and returns their
+     * directory. Runs on the caller's background thread.
+     */
     static File clearShared(Context context) {
         File dir = new File(context.getCacheDir(), SHARE_DIR);
+        clearShared(dir, System.currentTimeMillis());
+        return dir;
+    }
+
+    static void clearShared(File dir, long now) {
         File[] entries = dir.listFiles();
         if (entries != null) {
             for (File entry : entries) {
+                if (entry.getName().startsWith(PICK_PREFIX) && now - entry.lastModified() < PICK_KEEP_MS) continue;
                 File[] inner = entry.listFiles();
                 if (inner != null) for (File file : inner) file.delete();
                 entry.delete();
             }
         }
-        return dir;
     }
 
     /**
@@ -107,9 +119,19 @@ final class GalleryActions {
      * URI through the app's own file provider. Runs on the caller's background thread.
      */
     static Uri shareCopy(Context context, File dir, String name, boolean vault, long id, File file) throws Exception {
+        return copy(context, dir, "", name, vault, id, file);
+    }
+
+    /** {@link #shareCopy} for Instagram's picker: the copy outlives the next clear for {@link #PICK_KEEP_MS}. */
+    static Uri pickCopy(Context context, File dir, String name, boolean vault, long id, File file) throws Exception {
+        return copy(context, dir, PICK_PREFIX, name, vault, id, file);
+    }
+
+    private static Uri copy(Context context, File dir, String prefix, String name, boolean vault, long id, File file)
+            throws Exception {
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cannot create " + dir);
         // A fresh random folder per share: a URI granted earlier never points at a later item.
-        File folder = new File(dir, UUID.randomUUID().toString());
+        File folder = new File(dir, prefix + UUID.randomUUID());
         if (!folder.mkdirs()) throw new IOException("Cannot create " + folder);
         File copy = new File(folder, name.replace('/', '_'));
         try (InputStream in = open(vault, id, file); OutputStream out = new FileOutputStream(copy)) {
