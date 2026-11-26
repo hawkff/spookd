@@ -680,7 +680,13 @@ public final class ActionConfirm {
                 Logger.printException(() -> "Cancel cleanup failed", t);
             }
         });
-        dialog.show();
+        try {
+            dialog.show();
+        } catch (RuntimeException e) {
+            // A dialog that never showed is never dismissed, so its callback would stay registered.
+            application.unregisterActivityLifecycleCallbacks(closeOnPause);
+            throw e;
+        }
         return true;
     }
 
