@@ -247,12 +247,6 @@ public class HookFlags {
         }
     }
 
-    private static void hiddenAccountPrivacyOptionsFlags() {
-        if (Pref.hiddenAccountPrivacyOptions()) {
-            BOOL_FLAGS.put("139212::1", true); //ig_hide_connection_lists::is_rollout_enabled (Account privacy follow list rows)
-        }
-    }
-
     private static void addRecommendedFlags(){
         if(SettingsStatus.recommendedFlags) {
             Map<String, Boolean> recFlags = FlagsSharedPref.getAll();

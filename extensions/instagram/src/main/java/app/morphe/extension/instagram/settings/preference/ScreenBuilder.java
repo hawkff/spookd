@@ -690,15 +690,6 @@ public class ScreenBuilder {
             addPreference(places);
             FakePlaces.whenLoaded(() -> places.setSummary(FakeLocationScreen.summary()));
         }
-        if (SettingsStatus.hiddenAccountPrivacyOptions) {
-            addPreference(
-                    helper.switchPreference(
-                            str("spookd_hidden_account_privacy_options"),
-                            str("spookd_hidden_account_privacy_options_desc"),
-                            Settings.HIDDEN_ACCOUNT_PRIVACY_OPTIONS
-                    )
-            );
-        }
 
     }
 
