@@ -25,6 +25,7 @@ public final class FakeLocationScreen {
 
     /** The places row's summary: the chosen place, or that a Mojave Desert point is used until one is chosen. */
     public static String summary() {
+        if (!FakePlaces.isLoaded()) return str("spookd_fake_location_loading");
         FakePlaces.Place active = FakePlaces.active();
         return active == null
                 ? str("spookd_fake_location_no_place")
@@ -33,6 +34,10 @@ public final class FakeLocationScreen {
 
     /** The list of saved places; {@code changed} runs after every edit. */
     public static void showPlaces(Context context, Runnable changed) {
+        if (!FakePlaces.isLoaded()) {
+            FakePlaces.whenLoaded(() -> showPlaces(context, changed));
+            return;
+        }
         List<FakePlaces.Place> places = FakePlaces.all();
         FakePlaces.Place active = FakePlaces.active();
         CharSequence[] rows = new CharSequence[places.size()];
@@ -99,8 +104,8 @@ public final class FakeLocationScreen {
         EditText coordinates = new EditText(dialogContext);
         if (fallback != null) {
             coordinates.setHint(str("spookd_fake_location_coordinates_hint", FakePlaces.format(fallback[0], fallback[1])));
-            form.addView(coordinates);
         }
+        if (place == null) form.addView(coordinates);
         EditText label = new EditText(dialogContext);
         label.setSingleLine(true);
         label.setHint(str("spookd_fake_location_label_hint"));

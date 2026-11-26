@@ -36,6 +36,7 @@ import app.morphe.extension.instagram.patches.story.StoryGhostList;
 import app.morphe.extension.instagram.patches.dm.DmGhostChats;
 import app.morphe.extension.instagram.patches.instants.InstantsMenu;
 import app.morphe.extension.instagram.patches.location.FakeLocationScreen;
+import app.morphe.extension.instagram.patches.location.FakePlaces;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.RestartPolicy;
 import app.morphe.extension.instagram.settings.SafeStartup;
@@ -648,6 +649,7 @@ public class ScreenBuilder {
                 return true;
             });
             addPreference(places);
+            FakePlaces.whenLoaded(() -> places.setSummary(FakeLocationScreen.summary()));
         }
 
     }

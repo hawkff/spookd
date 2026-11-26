@@ -8,6 +8,8 @@ package app.morphe.extension.instagram.patches.location;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Looper;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -16,19 +18,22 @@ import org.json.JSONObject;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 
 /**
  * The places Fake location can show and the one chosen, kept in {@code spookd_fake_location} on this device for
- * every account. Read from disk once; afterwards every read is from memory.
+ * every account. Read once on a background thread; every read, from hooks or the settings screen, is from memory.
  */
 public final class FakePlaces {
     private static final String PREFS_NAME = "spookd_fake_location";
@@ -62,29 +67,80 @@ public final class FakePlaces {
         }
     }
 
-    private static final List<Place> places = new ArrayList<>();
-    private static volatile Place active;
-    private static volatile boolean loaded;
-    private static boolean loading;
-    private static double[] defaultPoint;
+    /** What was read from disk, replaced as a whole on every change, so readers never take a lock. */
+    private static final class Snapshot {
+        final List<Place> places;
+        final Place active;
+        final double[] defaultPoint;
+
+        Snapshot(List<Place> places, Place active, double[] defaultPoint) {
+            this.places = Collections.unmodifiableList(new ArrayList<>(places));
+            this.active = active;
+            this.defaultPoint = defaultPoint;
+        }
+    }
+
+    // Guards changes and the waiting callbacks; never held while the disk is read.
+    private static final Object LOCK = new Object();
+    private static final AtomicBoolean loading = new AtomicBoolean();
+    private static final List<Runnable> whenLoaded = new ArrayList<>();
+    private static volatile Snapshot snapshot;
+    private static int generation;
     private static SharedPreferences preferencesForTest;
 
     private FakePlaces() {
     }
 
-    /** Starts reading the saved places on a background thread, so location hooks never wait for the disk. */
-    public static synchronized void preload() {
-        if (loaded || loading) return;
-        loading = true;
-        new Thread(() -> {
-            try {
-                load();
-            } finally {
-                synchronized (FakePlaces.class) {
-                    loading = false;
-                }
+    /** Starts reading the saved places on a background thread, once; returns at once on any thread. */
+    public static void preload() {
+        if (snapshot != null || !loading.compareAndSet(false, true)) return;
+        int started;
+        synchronized (LOCK) {
+            started = generation;
+        }
+        new Thread(() -> read(started), "spookd-fake-location").start();
+    }
+
+    private static void read(int started) {
+        Snapshot read = null;
+        try {
+            SharedPreferences preferences = preferences();
+            if (preferences != null) {
+                List<Place> places = parse(preferences.getString(KEY_PLACES, "[]"));
+                read = new Snapshot(places, find(places, preferences.getString(KEY_ACTIVE, null)),
+                        parseCoordinates(preferences.getString(KEY_DEFAULT, "")));
             }
-        }, "spookd-fake-location").start();
+        } catch (Throwable t) {
+            Logger.printException(() -> "FakePlaces.read failed", t);
+        }
+        List<Runnable> callbacks;
+        synchronized (LOCK) {
+            if (started != generation) return;
+            loading.set(false);
+            // Without a context yet, the next reader starts another read.
+            if (read == null || snapshot != null) return;
+            snapshot = read;
+            callbacks = new ArrayList<>(whenLoaded);
+            whenLoaded.clear();
+        }
+        Handler main = new Handler(Looper.getMainLooper());
+        for (Runnable callback : callbacks) main.post(callback);
+    }
+
+    public static boolean isLoaded() {
+        return snapshot != null;
+    }
+
+    /** Runs {@code callback} on the main thread once the places are read; at once when they already are. */
+    public static void whenLoaded(Runnable callback) {
+        synchronized (LOCK) {
+            if (snapshot == null) {
+                whenLoaded.add(callback);
+                preload();
+                return;
+            }
+        }
+        callback.run();
     }
 
     /**
@@ -92,87 +148,120 @@ public final class FakePlaces {
      * Mojave Desert one when none is chosen. Null only while the saved places are still being read.
      */
     public static Place chosen() {
-        if (!loaded) {
+        Snapshot current = snapshot;
+        if (current == null) {
             preload();
             return null;
         }
-        Place place = active;
-        return place != null ? place : chooseDefault();
+        return current.active != null ? current.active : chooseDefault();
     }
 
-    /** The chosen place, or null when none is chosen; reads the disk the first time, so for the settings screen. */
+    /** The chosen place, or null when none is chosen or the places are still being read. */
     public static Place active() {
-        if (!loaded) load();
-        return active;
+        Snapshot current = snapshot;
+        if (current == null) preload();
+        return current == null ? null : current.active;
     }
 
-    public static synchronized List<Place> all() {
-        load();
-        return new ArrayList<>(places);
+    /** The saved places, or none while they are still being read. */
+    public static List<Place> all() {
+        Snapshot current = snapshot;
+        if (current == null) preload();
+        return current == null ? Collections.emptyList() : current.places;
     }
 
     /** Saves a new place and chooses it. */
-    public static synchronized void add(String label, double latitude, double longitude) {
-        load();
-        Place place = new Place(UUID.randomUUID().toString(), labelOr(label, latitude, longitude), latitude, longitude);
-        places.add(place);
-        active = place;
-        save();
+    public static void add(String label, double latitude, double longitude) {
+        synchronized (LOCK) {
+            Snapshot current = snapshot;
+            if (current == null) return;
+            Place place = new Place(UUID.randomUUID().toString(), labelOr(label, latitude, longitude), latitude, longitude);
+            List<Place> places = new ArrayList<>(current.places);
+            places.add(place);
+            publish(new Snapshot(places, place, current.defaultPoint));
+        }
     }
 
-    public static synchronized void rename(String id, String label) {
-        load();
-        for (int i = 0; i < places.size(); i++) {
-            Place place = places.get(i);
-            if (!place.id.equals(id)) continue;
-            Place renamed = new Place(id, labelOr(label, place.latitude, place.longitude), place.latitude, place.longitude);
-            places.set(i, renamed);
-            if (place == active) active = renamed;
+    public static void rename(String id, String label) {
+        synchronized (LOCK) {
+            Snapshot current = snapshot;
+            if (current == null) return;
+            List<Place> places = new ArrayList<>(current.places);
+            Place active = current.active;
+            for (int i = 0; i < places.size(); i++) {
+                Place place = places.get(i);
+                if (!place.id.equals(id)) continue;
+                Place renamed = new Place(id, labelOr(label, place.latitude, place.longitude), place.latitude, place.longitude);
+                places.set(i, renamed);
+                if (place == active) active = renamed;
+            }
+            publish(new Snapshot(places, active, current.defaultPoint));
         }
-        save();
     }
 
     /**
      * Deletes a place. Deleting the chosen one chooses the first place left; with none left and {@code keepChosen}
      * (Fake location is on) a new Mojave Desert point is made, so the real location stays hidden.
      */
-    public static synchronized void remove(String id, boolean keepChosen) {
-        load();
-        places.removeIf(place -> place.id.equals(id));
-        if (DEFAULT_ID.equals(id)) defaultPoint = null;
-        if (active != null && active.id.equals(id)) active = places.isEmpty() ? null : places.get(0);
-        if (active == null && keepChosen) chooseDefault();
-        else save();
-    }
-
-    public static synchronized void choose(String id) {
-        load();
-        Place place = find(places, id);
-        if (place != null) active = place;
-        save();
-    }
-
-    /** Where the Mojave Desert place is, made once and kept until that place is deleted; also the add form's default. */
-    public static synchronized double[] defaultPoint() {
-        load();
-        if (defaultPoint == null) {
-            defaultPoint = randomMojavePoint(ThreadLocalRandom.current());
-            save();
+    public static void remove(String id, boolean keepChosen) {
+        synchronized (LOCK) {
+            Snapshot current = snapshot;
+            if (current == null) return;
+            List<Place> places = new ArrayList<>(current.places);
+            places.removeIf(place -> place.id.equals(id));
+            double[] point = DEFAULT_ID.equals(id) ? null : current.defaultPoint;
+            Place active = current.active;
+            if (active != null && active.id.equals(id)) active = places.isEmpty() ? null : places.get(0);
+            Snapshot next = new Snapshot(places, active, point);
+            publish(active == null && keepChosen ? withDefaultChosen(next) : next);
         }
-        return defaultPoint.clone();
     }
 
-    private static synchronized Place chooseDefault() {
-        if (active != null) return active;
-        Place place = find(places, DEFAULT_ID);
+    public static void choose(String id) {
+        synchronized (LOCK) {
+            Snapshot current = snapshot;
+            Place place = current == null ? null : find(current.places, id);
+            if (place != null) publish(new Snapshot(current.places, place, current.defaultPoint));
+        }
+    }
+
+    /**
+     * Where the Mojave Desert place is, made once and kept until that place is deleted; also the add form's
+     * default. Null while the places are still being read.
+     */
+    public static double[] defaultPoint() {
+        synchronized (LOCK) {
+            Snapshot current = snapshot;
+            if (current == null) return null;
+            if (current.defaultPoint == null) {
+                current = new Snapshot(current.places, current.active, randomMojavePoint(ThreadLocalRandom.current()));
+                publish(current);
+            }
+            return current.defaultPoint.clone();
+        }
+    }
+
+    private static Place chooseDefault() {
+        synchronized (LOCK) {
+            Snapshot current = snapshot;
+            if (current == null) return null;
+            if (current.active != null) return current.active;
+            Snapshot next = withDefaultChosen(current);
+            publish(next);
+            return next.active;
+        }
+    }
+
+    private static Snapshot withDefaultChosen(Snapshot current) {
+        Place place = find(current.places, DEFAULT_ID);
+        double[] point = current.defaultPoint != null ? current.defaultPoint
+                : randomMojavePoint(ThreadLocalRandom.current());
+        List<Place> places = new ArrayList<>(current.places);
         if (place == null) {
-            double[] point = defaultPoint();
             place = new Place(DEFAULT_ID, DEFAULT_LABEL, point[0], point[1]);
             places.add(place);
         }
-        active = place;
-        save();
-        return place;
+        return new Snapshot(places, place, point);
     }
 
     /** A point inside the Mojave National Preserve, away from towns, to 5 decimals. */
@@ -187,26 +276,15 @@ public final class FakePlaces {
         return Math.round(value * 100_000d) / 100_000d;
     }
 
-    private static synchronized void load() {
-        if (loaded) return;
+    // apply() changes the in-memory copy, already read by then, at once and writes the file in the background.
+    private static void publish(Snapshot next) {
+        snapshot = next;
         SharedPreferences preferences = preferences();
         if (preferences == null) return;
-        places.clear();
-        places.addAll(parse(preferences.getString(KEY_PLACES, "[]")));
-        defaultPoint = parseCoordinates(preferences.getString(KEY_DEFAULT, ""));
-        active = find(places, preferences.getString(KEY_ACTIVE, null));
-        loaded = true;
-    }
-
-    // apply() changes the in-memory copy at once and writes the file in the background.
-    private static void save() {
-        SharedPreferences preferences = preferences();
-        if (preferences == null) return;
-        Place chosen = active;
-        double[] point = defaultPoint;
+        double[] point = next.defaultPoint;
         preferences.edit()
-                .putString(KEY_PLACES, toJson(places))
-                .putString(KEY_ACTIVE, chosen == null ? null : chosen.id)
+                .putString(KEY_PLACES, toJson(next.places))
+                .putString(KEY_ACTIVE, next.active == null ? null : next.active.id)
                 .putString(KEY_DEFAULT, point == null ? null : format(point[0], point[1]))
                 .apply();
     }
@@ -218,12 +296,14 @@ public final class FakePlaces {
     }
 
     /** Forgets what is in memory and reads {@code preferences} next, as after a restart. */
-    static synchronized void useForTest(SharedPreferences preferences) {
-        preferencesForTest = preferences;
-        places.clear();
-        active = null;
-        defaultPoint = null;
-        loaded = false;
+    static void useForTest(SharedPreferences preferences) {
+        synchronized (LOCK) {
+            generation++;
+            preferencesForTest = preferences;
+            snapshot = null;
+            loading.set(false);
+            whenLoaded.clear();
+        }
     }
 
     private static Place find(List<Place> places, String id) {

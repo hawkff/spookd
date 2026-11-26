@@ -9,15 +9,21 @@ import static org.junit.Assert.assertTrue;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowLooper;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 29, manifest = Config.NONE)
@@ -102,12 +108,26 @@ public final class FakePlacesTest {
         }
     }
 
-    @Test
-    public void withoutAChoiceTheMojavePlaceIsMadeOnceAndKept() {
+    private static SharedPreferences emptyPreferences() {
         SharedPreferences preferences = RuntimeEnvironment.getApplication()
                 .getSharedPreferences("fake_location_test", Context.MODE_PRIVATE);
         preferences.edit().clear().commit();
+        return preferences;
+    }
+
+    // As after a restart: forget memory, start the background read and wait for it.
+    private static void reload(SharedPreferences preferences) throws InterruptedException {
         FakePlaces.useForTest(preferences);
+        FakePlaces.preload();
+        long deadline = System.currentTimeMillis() + 5_000;
+        while (!FakePlaces.isLoaded() && System.currentTimeMillis() < deadline) Thread.sleep(5);
+        assertTrue(FakePlaces.isLoaded());
+    }
+
+    @Test
+    public void withoutAChoiceTheMojavePlaceIsMadeOnceAndKept() throws InterruptedException {
+        SharedPreferences preferences = emptyPreferences();
+        reload(preferences);
         assertNull(FakePlaces.active());
 
         FakePlaces.Place first = FakePlaces.chosen();
@@ -117,8 +137,7 @@ public final class FakePlacesTest {
         assertInMojave(first);
         assertEquals(first.latitude, FakePlaces.chosen().latitude, 0);
 
-        // As after a restart.
-        FakePlaces.useForTest(preferences);
+        reload(preferences);
         assertEquals(1, FakePlaces.all().size());
         FakePlaces.Place reloaded = FakePlaces.chosen();
         assertEquals(first.latitude, reloaded.latitude, 0);
@@ -133,6 +152,49 @@ public final class FakePlacesTest {
 
         FakePlaces.add("Home", 48.8584, 2.2945);
         assertEquals("Home", FakePlaces.chosen().label);
+        FakePlaces.useForTest(null);
+    }
+
+    @Test
+    public void readersNeverWaitForABlockedRead() throws Exception {
+        SharedPreferences real = emptyPreferences();
+        real.edit().putString("places", "[{\"id\":\"h\",\"label\":\"Home\",\"lat\":48.8584,\"lng\":2.2945}]")
+                .putString("active", "h").commit();
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch reading = new CountDownLatch(1);
+        SharedPreferences blocked = (SharedPreferences) Proxy.newProxyInstance(
+                SharedPreferences.class.getClassLoader(), new Class<?>[]{SharedPreferences.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("getString")) {
+                        reading.countDown();
+                        release.await();
+                    }
+                    try {
+                        return method.invoke(real, args);
+                    } catch (InvocationTargetException e) {
+                        throw e.getCause();
+                    }
+                });
+        FakePlaces.useForTest(blocked);
+        AtomicReference<String> summaryAfterLoad = new AtomicReference<>();
+        FakePlaces.whenLoaded(() -> summaryAfterLoad.set(FakePlaces.active().label));
+        assertTrue(reading.await(5, TimeUnit.SECONDS));
+
+        long start = System.nanoTime();
+        assertNull(FakePlaces.chosen());
+        assertNull(FakePlaces.active());
+        assertTrue(FakePlaces.all().isEmpty());
+        assertNull(FakePlaces.defaultPoint());
+        FakePlaces.preload();
+        assertTrue(System.nanoTime() - start < TimeUnit.SECONDS.toNanos(1));
+        assertNull(summaryAfterLoad.get());
+
+        release.countDown();
+        long deadline = System.currentTimeMillis() + 5_000;
+        while (!FakePlaces.isLoaded() && System.currentTimeMillis() < deadline) Thread.sleep(5);
+        assertEquals("Home", FakePlaces.chosen().label);
+        ShadowLooper.idleMainLooper();
+        assertEquals("Home", summaryAfterLoad.get());
         FakePlaces.useForTest(null);
     }
 }
