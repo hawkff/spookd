@@ -71,12 +71,10 @@ public final class VisualMessageSeen {
 
     private static boolean keepBack(Object queue, Object receipt) {
         if (!EphemeralMediaPatch.isMakeEphemeralMediaPermanent()) return false;
+        EphemeralMediaPatch.markViewed(producerAccount, producerItemId);
         if (Pref.markVisualMessagesSeenManually()) {
             HELD.keep(HeldReceipts.key(producerAccount, producerItemId), new Object[]{queue, receipt});
             updateButton(currentViewer.get());
-        } else {
-            HELD.usable(false, null);
-            EphemeralMediaPatch.markViewed(producerAccount, producerItemId);
         }
         return true;
     }
@@ -135,10 +133,7 @@ public final class VisualMessageSeen {
                 Object[] queued = (Object[]) held;
                 enqueueNative(queued[0], queued[1]);
             });
-            if (sent) {
-                EphemeralMediaPatch.markViewed(account, itemId);
-                if (Pref.stopVisualMessageAutoAdvance()) advanceNative(viewer, true);
-            }
+            if (sent && Pref.stopVisualMessageAutoAdvance()) advanceNative(viewer, true);
         } catch (Throwable t) {
             Logger.printException(() -> "VisualMessageSeen could not send the seen receipt", t);
         }

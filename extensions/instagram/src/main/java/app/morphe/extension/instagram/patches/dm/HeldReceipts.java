@@ -29,7 +29,7 @@ final class HeldReceipts {
         return account + ":" + itemId;
     }
 
-    /** Keeps the newest receipt of an item; a new viewer builds a new one for the same item. */
+    /** Keeps the newest receipt of an item. */
     void keep(String key, Object receipt) {
         if (key == null) return;
         held.remove(key);
@@ -45,13 +45,9 @@ final class HeldReceipts {
         return key != null && held.containsKey(key);
     }
 
-    /** Whether the eye may show or send for the item; with the eye switch off every kept receipt is dropped unsent. */
+    /** Whether the eye may show or send for the item; with the eye switch off kept receipts wait unsent for it to return. */
     boolean usable(boolean eyeOn, String key) {
-        if (!eyeOn) {
-            held.clear();
-            return false;
-        }
-        return has(key);
+        return eyeOn && has(key);
     }
 
     /** Sends the receipt of the item and then forgets it; when sending throws, it stays for another try. */

@@ -33,7 +33,7 @@ public class HeldReceiptsTest {
     }
 
     @Test
-    public void reopeningAnItemFindsItsReceiptByIdAndKeepsTheNewest() throws Exception {
+    public void aReceiptIsFoundByItsIdAndTheNewestIsKept() throws Exception {
         HeldReceipts held = new HeldReceipts(4);
         held.keep(HeldReceipts.key("me", "a"), "first viewer");
         held.keep(HeldReceipts.key("me", "a"), "second viewer");
@@ -60,15 +60,15 @@ public class HeldReceiptsTest {
     }
 
     @Test
-    public void turningTheEyeOffDropsKeptReceiptsUnsent() throws Exception {
+    public void turningTheEyeOffHidesItAndTurningItBackOnSendsTheKeptReceipt() throws Exception {
         HeldReceipts held = new HeldReceipts(4);
         held.keep(A, "receipt a");
-        assertTrue(held.usable(true, A));
         assertFalse(held.usable(false, A));
-        assertFalse(held.has(A));
-        // Turned back on, the old receipt is gone: nothing to show or send.
-        assertFalse(held.usable(true, A));
-        assertFalse(held.send(A, receipt -> fail("sent " + receipt)));
+        assertTrue(held.has(A));
+        assertTrue(held.usable(true, A));
+        List<Object> sent = new ArrayList<>();
+        assertTrue(held.send(A, sent::add));
+        assertEquals("receipt a", sent.get(0));
     }
 
     @Test

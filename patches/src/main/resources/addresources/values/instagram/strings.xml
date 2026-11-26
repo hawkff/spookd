@@ -387,7 +387,7 @@
     <string name="spookd_unlimited_replays_desc">Changes unexpired view once, view twice media to permanent view</string>
     <string name="spookd_stop_visual_message_auto_advance">Don\'t auto-advance view-once messages</string>
     <string name="spookd_mark_visual_messages_seen_manually">Mark view-once messages as seen by hand</string>
-    <string name="spookd_mark_visual_messages_seen_manually_desc">While Make ephemeral media permanent is on, adds an eye button next to the reply box of photos and videos you open in a chat. Tapping it tells the sender you saw the one on screen; with Don\'t auto-advance view-once messages on, it then goes to the next one. View direct messages anonymously does not hide these receipts</string>
+    <string name="spookd_mark_visual_messages_seen_manually_desc">While Make ephemeral media permanent is on, adds an eye button next to the reply box of photos and videos you open in a chat. Tapping it tells the sender you saw the one on screen; with Don\'t auto-advance view-once messages on, it then goes to the next one. View direct messages anonymously does not hide these receipts. Kept receipts last until the app is closed</string>
     <string name="spookd_mark_visual_message_seen">Mark as seen</string>
     <string name="spookd_stop_visual_message_auto_advance_desc">Photos and videos you open in a chat stay on screen after their time runs out. Tap to go to the next one or to close the viewer.</string>
     <string name="spookd_exact_last_active">Exact last active time</string>
