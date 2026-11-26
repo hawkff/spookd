@@ -37,7 +37,7 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 private const val PINNED_RECIPIENTS_CLASS = "$PATCHES_DESCRIPTOR/dm/PinnedRecipients;"
 
 /** Passes every object the method returns through [call], which takes [owner] and that object; returns how many were hooked. */
-private fun MutableMethod.passReturnedValues(owner: Int, call: String): Int {
+internal fun MutableMethod.passReturnedValues(owner: Int, call: String): Int {
     val returns = instructions.withIndex().filter { it.value.opcode == Opcode.RETURN_OBJECT }.map { it.index }
     var hooked = 0
     for (index in returns.reversed()) {

@@ -14,6 +14,7 @@ import app.spookd.patches.instagram.utils.Constants.PREF_DESCRIPTOR
 import app.spookd.patches.instagram.utils.enableSettings
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
+import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.util.smali.ExternalLabel
 import app.morphe.patcher.util.getFreeRegisterProvider
@@ -29,6 +30,10 @@ val viewDmAnonymouslyPatch =
 
         execute {
             DMSeenFingerprint.method.apply {
+                // The chat id decides whether the chosen-chats mode keeps this receipt back.
+                if (parameterTypes.getOrNull(2)?.toString() != "Ljava/lang/String;") {
+                    throw PatchException("Unexpected DM seen request parameters")
+                }
                 val shouldDisableRegister =
                     getFreeRegisterProvider(
                         index = 1,
@@ -38,7 +43,7 @@ val viewDmAnonymouslyPatch =
                 addInstructionsWithLabels(
                     1,
                     """
-                    invoke-static {}, $PREF_DESCRIPTOR->viewDmAnonymously()Z
+                    invoke-static/range {p2 .. p2}, $PREF_DESCRIPTOR->viewDmAnonymously(Ljava/lang/String;)Z
                     move-result v$shouldDisableRegister
                     if-eqz v$shouldDisableRegister, :spookd_continue
                     return-void

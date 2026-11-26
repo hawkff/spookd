@@ -17,6 +17,7 @@ import android.preference.PreferenceCategory;
 import java.util.TreeMap;
 import java.util.Map;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 import app.morphe.extension.instagram.patches.devFlags.Flag;
 import app.morphe.extension.instagram.patches.devFlags.RecommendedFlags;
@@ -32,6 +33,7 @@ import app.morphe.extension.instagram.patches.focusLock.FocusLock;
 import app.morphe.extension.instagram.patches.focusLock.FocusLockTargets;
 import app.morphe.extension.instagram.patches.story.StoryAutoSave;
 import app.morphe.extension.instagram.patches.story.StoryGhostList;
+import app.morphe.extension.instagram.patches.dm.DmGhostChats;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.RestartPolicy;
 import app.morphe.extension.instagram.settings.SafeStartup;
@@ -574,6 +576,30 @@ public class ScreenBuilder {
                             Settings.VIEW_DM_ANONYMOUSLY
                     )
             );
+        }
+        if (SettingsStatus.dmGhostChats) {
+            BooleanSupplier dmGhostOn = () -> SharedPref.getBooleanPref(Settings.VIEW_DM_ANONYMOUSLY)
+                    || SharedPref.getBooleanPref(Settings.TURN_ON_ALL_GHOST_MODES);
+            addPreference(
+                    helper.availableWhen(
+                            helper.listPreference(
+                                    str("spookd_dm_ghost_mode"),
+                                    "%s",
+                                    Settings.DM_GHOST_MODE
+                            ),
+                            dmGhostOn
+                    )
+            );
+            Preference dmGhostChats = helper.buttonPreference(
+                    str("spookd_dm_ghost_chats"),
+                    str("spookd_dm_ghost_chats_desc"),
+                    "spookd_dm_ghost_chats"
+            );
+            dmGhostChats.setOnPreferenceClickListener(preference -> {
+                DmGhostChats.showList(preference.getContext());
+                return true;
+            });
+            addPreference(helper.availableWhen(dmGhostChats, dmGhostOn));
         }
         if (SettingsStatus.markAsReadAfterReply) {
             addPreference(

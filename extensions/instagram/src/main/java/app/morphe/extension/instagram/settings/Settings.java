@@ -47,6 +47,8 @@ public class Settings {
     public static final BooleanSetting DISABLE_SCREENSHOT_DETECTION = new BooleanSetting("disable_screenshot_detection", false, NOT_REQUIRED);
     public static final BooleanSetting VIEW_DM_ANONYMOUSLY = new BooleanSetting("view_dm_anonymously", false, NOT_REQUIRED);
     public static final BooleanSetting MARK_AS_READ_AFTER_REPLY = new BooleanSetting("mark_as_read_after_reply", false, NOT_REQUIRED);
+    public static final StringSetting DM_GHOST_MODE = new StringSetting("dm_ghost_mode", "everyone", NOT_REQUIRED);
+    public static final StringSetting DM_GHOST_CHATS = new StringSetting("dm_ghost_chats", "{}", NOT_REQUIRED);
     public static final BooleanSetting INSTANTS_DOWNLOAD = new BooleanSetting("instants_download", false, NOT_REQUIRED);
     public static final BooleanSetting SAVE_DELETED_MESSAGES = new BooleanSetting("save_deleted_messages", false, NOT_REQUIRED);
     public static final BooleanSetting DM_MEDIA_VAULT = new BooleanSetting("dm_media_vault", false, NOT_REQUIRED);

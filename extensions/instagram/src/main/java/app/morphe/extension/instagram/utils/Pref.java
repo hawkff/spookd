@@ -33,6 +33,7 @@ import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
 import app.morphe.extension.instagram.patches.download.ReelDownload;
+import app.morphe.extension.instagram.patches.dm.DmGhostChats;
 
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.shared.MarkChatAsReadScope;
@@ -149,6 +150,16 @@ public class Pref {
                 Pref.getTurnOnAllGhostModes(),
                 enableMarkChatAsReadOption() || markAsReadAfterReply()
         );
+    }
+
+    /** The seen request of one chat: true blocks it, as {@link #viewDmAnonymously()} limited to the chats the mode covers. */
+    public static boolean viewDmAnonymously(String threadId) {
+        return viewDmAnonymously() && DmGhostChats.appliesTo(dmGhostMode(), threadId);
+    }
+
+    /** "everyone", "except_listed" or "only_listed": the chats View DMs anonymously covers. */
+    public static String dmGhostMode() {
+        return SettingsStatus.dmGhostChats ? value(Settings.DM_GHOST_MODE) : Settings.DM_GHOST_MODE.defaultValue;
     }
 
     static boolean shouldBlockDmSeen(
