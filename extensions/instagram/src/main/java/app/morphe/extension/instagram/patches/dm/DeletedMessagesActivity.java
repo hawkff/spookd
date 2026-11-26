@@ -691,7 +691,7 @@ public final class DeletedMessagesActivity {
         }
 
         private void confirmDeleteSelected() {
-            if (wholeLogSelected && hasMore) {
+            if (wholeLogSelected) {
                 confirmDeleteWholeLog();
                 return;
             }
@@ -731,7 +731,12 @@ public final class DeletedMessagesActivity {
                 List<String> result = ids;
                 Utils.runOnMainThread(() -> {
                     if (activity.isFinishing() || activity.isDestroyed()) return;
-                    if (result == null || result.isEmpty() || !wholeLogSelected) return;
+                    if (!wholeLogSelected) return;
+                    if (result == null || result.isEmpty()) {
+                        Utils.showToastShort(str(result == null
+                                ? "spookd_delete_log_failed" : "spookd_delete_log_nothing"));
+                        return;
+                    }
                     new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                             .setMessage(String.format(Locale.getDefault(),
                                     str("spookd_delete_whole_log_confirm"), result.size()))
@@ -742,6 +747,8 @@ public final class DeletedMessagesActivity {
                                         SavedMessagesHook.deleteDeletedLogEntries(result);
                                     } catch (Exception e) {
                                         Logger.printException(() -> "deleteWholeLog: ", e);
+                                        Utils.runOnMainThread(() ->
+                                                Utils.showToastShort(str("spookd_delete_log_failed")));
                                     }
                                 });
                                 loadMessages(null, null);

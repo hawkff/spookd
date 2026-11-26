@@ -28,19 +28,19 @@ import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 private const val EXTENSION_CLASS = "$PATCHES_DESCRIPTOR/dm/HiddenChatsShare;"
 
 // The share sheet's recipient adapter; the only class that tags the new group button this way.
-private object ShareSheetAdapterFingerprint : Fingerprint(
+internal object ShareSheetAdapterFingerprint : Fingerprint(
     filters = listOf(string("direct_share_sheet_new_group_pog_view")),
 )
 
 // Fills the share sheet's rows from its finished lists, after Instagram's late additions like the media author.
-private object ShareSheetListsFingerprint : Fingerprint(
+internal object ShareSheetListsFingerprint : Fingerprint(
     classFingerprint = ShareSheetAdapterFingerprint,
     returnType = "V",
     parameters = List(6) { "Ljava/util/List;" } + "Z",
 )
 
 // Stores the query the share sheet shows; it is set before the rows of a search are filled.
-private object ShareSheetQueryFingerprint : Fingerprint(
+internal object ShareSheetQueryFingerprint : Fingerprint(
     classFingerprint = ShareSheetAdapterFingerprint,
     returnType = "V",
     parameters = listOf("Ljava/lang/String;", "Z", "Z"),

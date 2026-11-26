@@ -389,6 +389,16 @@ public class ScreenBuilder {
             );
         }
 
+        if (SettingsStatus.pinRecipients) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_pin_recipients"),
+                            str("spookd_pin_recipients_desc"),
+                            Settings.PIN_RECIPIENTS
+                    )
+            );
+        }
+
         if (SettingsStatus.saveDeletedMessages) {
             addPreference(
                     helper.switchPreference(
@@ -1294,6 +1304,16 @@ public class ScreenBuilder {
                 )
         );
 
+        if (SettingsStatus.homeLongPressSettings) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_home_long_press_gallery"),
+                            str("spookd_home_long_press_gallery_desc"),
+                            Settings.HOME_LONG_PRESS_GALLERY
+                    )
+            );
+        }
+
         addPreference(
                 helper.buttonPreference(
                         str("spookd_download_history"),
@@ -1445,6 +1465,13 @@ public class ScreenBuilder {
     }
 
     public void buildNavigationSection() {
+        if (SettingsStatus.swipeBetweenTabs) {
+            addPreference(helper.listPreference(
+                    str("spookd_swipe_between_tabs"),
+                    str("spookd_swipe_between_tabs_desc"),
+                    Settings.SWIPE_BETWEEN_TABS
+            ));
+        }
         if (SettingsStatus.floatingTabBar) {
             addPreference(helper.switchPreference(
                     str("spookd_floating_tab_bar"),
@@ -1825,7 +1852,7 @@ public class ScreenBuilder {
                 )
         );
 
-        if (SettingsStatus.hideNavigationButtons || SettingsStatus.floatingTabBar){
+        if (SettingsStatus.hideNavigationButtons || SettingsStatus.floatingTabBar || SettingsStatus.swipeBetweenTabs){
             addPreference(
                     helper.categoryPreference(
                             str("spookd_category_navigation_tabs"),
