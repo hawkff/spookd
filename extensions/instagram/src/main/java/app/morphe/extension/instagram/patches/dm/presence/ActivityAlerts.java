@@ -165,13 +165,12 @@ public final class ActivityAlerts {
         }
     }
 
+    // Only the offered choices count; anything else, such as an imported value, keeps Instagram's wait.
     static long refreshMs(String minutes, long instagramMs) {
-        try {
-            long parsed = Long.parseLong(minutes);
-            return parsed > 0 ? parsed * 60 * 1000L : instagramMs;
-        } catch (NumberFormatException e) {
-            return instagramMs;
+        if ("1".equals(minutes) || "5".equals(minutes) || "15".equals(minutes)) {
+            return Long.parseLong(minutes) * 60 * 1000L;
         }
+        return instagramMs;
     }
 
     static boolean recent(String readAtMs, long now) {

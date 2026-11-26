@@ -87,6 +87,9 @@ public class ActivityAlertsTest {
         assertEquals(5 * MINUTE, ActivityAlerts.refreshMs("5", 30_000L));
         assertEquals(30_000L, ActivityAlerts.refreshMs("0", 30_000L));
         assertEquals(30_000L, ActivityAlerts.refreshMs(null, 30_000L));
+        assertEquals(15 * MINUTE, ActivityAlerts.refreshMs("15", 30_000L));
+        assertEquals(30_000L, ActivityAlerts.refreshMs("2", 30_000L));
+        assertEquals(30_000L, ActivityAlerts.refreshMs(String.valueOf(Long.MAX_VALUE), 30_000L));
     }
 
     @Test
