@@ -714,23 +714,17 @@ public final class DeletedMessagesActivity {
                     .show();
         }
 
-        /** Reads every row id of the log off the main thread, then asks to delete exactly those. */
+        /**
+         * Reads the ids of every unsent message and removed reaction off the main thread, then asks to
+         * delete exactly those; stored view-once media of live messages is never part of it.
+         */
         private void confirmDeleteWholeLog() {
             if (loads.isBusy()) return;
             Context app = activity.getApplicationContext();
             sDbJobs.execute(() -> {
                 List<String> ids = null;
                 try {
-                    SpookdMessageDb db = SpookdMessageDb.getInstance(app);
-                    List<String> all = new ArrayList<>();
-                    String[] last = null;
-                    List<String[]> page;
-                    do {
-                        page = db.getDeletedMessages(PAGE_SIZE, last);
-                        for (String[] row : page) all.add(row[0]);
-                        if (!page.isEmpty()) last = page.get(page.size() - 1);
-                    } while (page.size() == PAGE_SIZE);
-                    ids = all;
+                    ids = SpookdMessageDb.getInstance(app).getDeletedLogIds();
                 } catch (Exception e) {
                     Logger.printException(() -> "confirmDeleteWholeLog: ", e);
                 }
@@ -742,7 +736,15 @@ public final class DeletedMessagesActivity {
                             .setMessage(String.format(Locale.getDefault(),
                                     str("spookd_delete_whole_log_confirm"), result.size()))
                             .setPositiveButton(str("spookd_delete"), (dialog, which) -> {
-                                loadMessages(result, null);
+                                // Serial with the reload below, so the reload sees the rows gone.
+                                sDbJobs.execute(() -> {
+                                    try {
+                                        SavedMessagesHook.deleteDeletedLogEntries(result);
+                                    } catch (Exception e) {
+                                        Logger.printException(() -> "deleteWholeLog: ", e);
+                                    }
+                                });
+                                loadMessages(null, null);
                                 updateSelectionUi();
                             })
                             .setNegativeButton(str("spookd_cancel"), null)

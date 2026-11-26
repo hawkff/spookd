@@ -955,6 +955,48 @@ public final class MediaVaultLifecycleTest {
     }
 
     @Test
+    public void wholeLogDeleteKeepsLiveViewOnceMediaBeyondTheFirstPage() throws IOException {
+        // More unsent messages than one page, newer than the live view-once message.
+        int unsent = SpookdMessageDb.DELETED_PAGE_SIZE + 5;
+        for (int i = 0; i < unsent; i++) unsend("unsent" + i);
+        long unsentMedia = storedRow("unsent0", 1000, NOW - 1000);
+        viewMode(unsentMedia, "once");
+        messages.upsertMessage("liveOnce", null, "thread", "42", "bob", "", "visual_media", NOW - 5000);
+        long liveMedia = storedRow("liveOnce", 1000, NOW - 5000);
+        viewMode(liveMedia, "once");
+        // A reaction someone removed from the live message is a log entry of its own.
+        messages.syncReactions("liveOnce", Collections.singletonList(new String[]{"7", "x"}), "42", NOW - 4000);
+        messages.syncReactions("liveOnce", Collections.emptyList(), "42", NOW - 3000);
+        vault.recover();
+
+        List<String> firstPage = new ArrayList<>();
+        for (String[] row : messages.getDeletedMessages()) firstPage.add(row[0]);
+        assertFalse(firstPage.contains("liveOnce"));
+
+        List<String> ids = messages.getDeletedLogIds();
+        assertEquals(unsent + 1, ids.size());
+        assertFalse(ids.contains("liveOnce"));
+
+        // The delete path checks again, so even a list that names the live message leaves it alone.
+        List<String> asked = new ArrayList<>(ids);
+        asked.add("liveOnce");
+        List<String> deletable = messages.onlyDeletedLogEntries(asked);
+        assertEquals(ids, deletable);
+        vault.deleteForMessages(deletable);
+        messages.deleteSaved(deletable);
+
+        assertEquals("stored", column("state", liveMedia));
+        assertTrue(pkv(liveMedia).exists());
+        assertEquals("dropped", column("state", unsentMedia));
+        assertFalse(pkv(unsentMedia).exists());
+        assertEquals(1, DatabaseUtils.longForQuery(db,
+                "SELECT COUNT(*) FROM saved_messages WHERE message_id = 'liveOnce'", null));
+        List<String> left = new ArrayList<>();
+        for (String[] row : messages.getDeletedMessages()) left.add(row[0]);
+        assertEquals(Collections.singletonList("liveOnce"), left);
+    }
+
+    @Test
     public void retentionSweepDuringAWriteLeavesItsPartFile() throws IOException {
         long tenDaysAgo = NOW - TimeUnit.DAYS.toMillis(10);
         long kept = storedRow("kept", 1000, tenDaysAgo);

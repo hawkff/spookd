@@ -480,10 +480,26 @@ public class SavedMessagesHook {
 
     /** Deletes stored media, rows and their cached text on the worker and waits; never call from the main thread. */
     public static void deleteSavedMessages(final java.util.List<String> messageIds) throws Exception {
+        deleteOnWorker(messageIds, false);
+    }
+
+    /**
+     * The whole-log delete: like {@link #deleteSavedMessages}, but only for unsent messages and removed
+     * reactions, so live view-once media and its message stay. Never call from the main thread.
+     */
+    public static void deleteDeletedLogEntries(final java.util.List<String> ids) throws Exception {
+        deleteOnWorker(ids, true);
+    }
+
+    private static void deleteOnWorker(final java.util.List<String> ids, final boolean deletedOnly)
+            throws Exception {
         java.util.concurrent.FutureTask<Void> task = new java.util.concurrent.FutureTask<Void>(() -> {
+            SpookdMessageDb db = SpookdMessageDb.getInstance(PikoUtils.getContext());
+            // Checked here, so a message that is live when the delete runs keeps its media and row.
+            java.util.List<String> messageIds = deletedOnly ? db.onlyDeletedLogEntries(ids) : ids;
             // On the worker, so no capture of these messages can slip in between the media and the rows.
             MediaVault.get().deleteForMessages(messageIds);
-            SpookdMessageDb.getInstance(PikoUtils.getContext()).deleteSaved(messageIds);
+            db.deleteSaved(messageIds);
             RevokeCache.INSTANCE.removeMessages(messageIds);
             return null;
         });

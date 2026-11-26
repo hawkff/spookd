@@ -547,6 +547,45 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         return marked;
     }
 
+    /**
+     * Every id the whole-log delete removes: unsent messages and removed reactions as the log lists
+     * them, never a message whose view-once media is only stored.
+     */
+    public List<String> getDeletedLogIds() {
+        List<String> ids = new ArrayList<>();
+        Cursor c = getReadableDatabase().rawQuery("SELECT m.message_id FROM " + TABLE
+                + " m WHERE m.is_deleted = 1" + HAS_CONTENT
+                + " UNION ALL SELECT '" + REACTION_ID_PREFIX + "' || r.id FROM message_reactions r JOIN "
+                + TABLE + " m ON m.message_id = r.message_id WHERE r.removed_at IS NOT NULL", null);
+        try {
+            while (c.moveToNext()) ids.add(c.getString(0));
+        } finally {
+            c.close();
+        }
+        return ids;
+    }
+
+    /** The ids among these that are unsent messages or removed reactions right now; the rest are dropped. */
+    public List<String> onlyDeletedLogEntries(List<String> ids) {
+        List<String> out = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        for (String id : ids) {
+            if (id == null) continue;
+            boolean reaction = id.startsWith(REACTION_ID_PREFIX);
+            Cursor c = reaction
+                    ? db.rawQuery("SELECT 1 FROM message_reactions WHERE id = ? AND removed_at IS NOT NULL",
+                            new String[]{id.substring(REACTION_ID_PREFIX.length())})
+                    : db.rawQuery("SELECT 1 FROM " + TABLE + " WHERE message_id = ? AND is_deleted = 1",
+                            new String[]{id});
+            try {
+                if (c.moveToFirst()) out.add(id);
+            } finally {
+                c.close();
+            }
+        }
+        return out;
+    }
+
     /** Marks a live row deleted and returns true only for the first successful transition. */
     public boolean markDeleted(String messageId) {
         if (messageId == null) return false;
