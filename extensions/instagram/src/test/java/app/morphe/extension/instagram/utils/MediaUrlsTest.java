@@ -29,4 +29,16 @@ public class MediaUrlsTest {
         assertEquals(0L, MediaUrls.expiresAt("https://x.fbcdn.net/a.jpg?shoe=1#&oe=65A1B2C3"));
         assertEquals(0L, MediaUrls.expiresAt("https://x.fbcdn.net/a.jpg#?oe=65A1B2C3"));
     }
+
+    @Test
+    public void avatarPrefersTheOrdinaryPictureAndFallsBackToHd() {
+        // A cached user without HD info still has its ordinary picture.
+        assertEquals("https://x.fbcdn.net/s.jpg", MediaUrls.avatar("https://x.fbcdn.net/s.jpg", ""));
+        assertEquals("https://x.fbcdn.net/s.jpg",
+                MediaUrls.avatar("https://x.fbcdn.net/s.jpg", "https://x.fbcdn.net/hd.jpg"));
+        assertEquals("https://x.fbcdn.net/hd.jpg", MediaUrls.avatar(null, "https://x.fbcdn.net/hd.jpg"));
+        // Neither usable: the refresh falls back to one profile request.
+        assertEquals(null, MediaUrls.avatar("", ""));
+        assertEquals(null, MediaUrls.avatar(null, null));
+    }
 }

@@ -27,6 +27,12 @@ public final class MediaUrls {
         return path.endsWith(".mp4") || path.endsWith(".mov");
     }
 
+    /** The link for a small avatar: the ordinary picture, else the HD one; null when neither is a web link. */
+    public static String avatar(String ordinary, String hd) {
+        if (ordinary != null && ordinary.startsWith("http")) return ordinary;
+        return hd != null && hd.startsWith("http") ? hd : null;
+    }
+
     /** Removes the CDN's forced-download flag without rewriting signed query values. */
     public static String forViewing(String url) {
         return without(url, "dl=1"::equals);

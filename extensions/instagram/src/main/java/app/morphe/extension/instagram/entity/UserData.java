@@ -10,6 +10,8 @@ package app.morphe.extension.instagram.entity;
 import com.instagram.common.session.UserSession;
 import com.instagram.common.typedurl.ImageUrl;
 
+import app.morphe.extension.instagram.utils.MediaUrls;
+
 public class UserData extends Entity {
     private final Object obj;
 
@@ -78,6 +80,23 @@ public class UserData extends Entity {
     private Object fetchProfileUser(UserSession session, String userId) {
         // Replaced with Instagram's synchronous profile request. Called on the image worker.
         return null;
+    }
+
+    /** The ordinary profile picture link, else the HD one; null when neither is set. */
+    public String getAvatarUrl() {
+        String ordinary = null;
+        try {
+            Object picture = getLowResProfilePicture();
+            Object url = picture == null ? null : picture.getClass().getMethod("getUrl").invoke(picture);
+            if (url instanceof String) ordinary = (String) url;
+        } catch (Exception ignored) {
+        }
+        String hd = null;
+        try {
+            hd = getProfilePictureUrl();
+        } catch (Exception ignored) {
+        }
+        return MediaUrls.avatar(ordinary, hd);
     }
 
     public ImageUrl getLowResProfilePicture() throws Exception {

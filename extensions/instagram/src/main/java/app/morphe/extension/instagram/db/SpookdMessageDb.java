@@ -373,6 +373,14 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
             values.put("is_deleted", 1);
             db.update(TABLE, values, "message_id = ?", new String[]{primaryId});
         }
+        // The secondary's reactions move over; a live one the primary also has is a duplicate.
+        db.execSQL("DELETE FROM message_reactions WHERE message_id = ? AND removed_at IS NULL"
+                + " AND EXISTS (SELECT 1 FROM message_reactions p WHERE p.message_id = ?"
+                + " AND p.removed_at IS NULL AND p.sender_id = message_reactions.sender_id"
+                + " AND p.emoji = message_reactions.emoji)", new Object[]{secondaryId, primaryId});
+        ContentValues reparented = new ContentValues();
+        reparented.put("message_id", primaryId);
+        db.update("message_reactions", reparented, "message_id = ?", new String[]{secondaryId});
         db.delete(TABLE, "message_id = ?", new String[]{secondaryId});
     }
 
@@ -612,45 +620,56 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         " AND (COALESCE(content, '') <> '' OR COALESCE(sender_id, '') <> ''"
             + " OR COALESCE(sender_username, '') <> '')";
 
-    // Returns [messageId, threadId, senderUsername, content, messageType, timestamp, senderId]
+    /** The largest page {@link #getDeletedMessages(int, int)} returns. */
+    public static final int DELETED_PAGE_SIZE = 200;
+
+    /** The first page of the deleted log. */
     public List<String[]> getDeletedMessages() {
+        return getDeletedMessages(DELETED_PAGE_SIZE, 0);
+    }
+
+    /**
+     * One page of the deleted log, newest first in a stable order, at most {@link #DELETED_PAGE_SIZE} rows.
+     * Message rows are [messageId, threadId, senderUsername, content, messageType, timestamp, senderId];
+     * removed reaction rows are [reaction:id, threadId, reactorUsername, messageContent, REMOVED_REACTION,
+     * removedAt, reactorId, emoji, messageType].
+     */
+    public List<String[]> getDeletedMessages(int limit, int offset) {
         List<String[]> result = new ArrayList<>();
         SQLiteDatabase db = getReadableDatabase();
         // Load the whole sender_id -> username directory once instead of letting each row
         // that lacks a stored username fall back to its own query - this list can grow to
         // hundreds/thousands of rows over time, which turned that fallback into an N+1 query.
         java.util.Map<String, String> directory = loadUsernameDirectory(db);
+        int pageSize = Math.max(1, Math.min(limit, DELETED_PAGE_SIZE));
         // Stored view-once and view-twice media is listed too, whether or not its message was unsent.
-        Cursor c = db.query(TABLE, null, "(is_deleted = 1 OR server_id IN (SELECT item_id FROM saved_media"
-                + " WHERE state = 'stored' AND view_mode IN ('once', 'replayable')))" + HAS_CONTENT,
-                null, null, null, "timestamp DESC");
-        while (c.moveToNext()) {
-            result.add(rowToStringArray(c, directory));
+        Cursor c = db.rawQuery("SELECT * FROM ("
+                + "SELECT 0 AS kind, id AS row_id, message_id, thread_id, sender_username, content,"
+                + " message_type, timestamp AS at, sender_id, NULL AS emoji, NULL AS reacted_type FROM " + TABLE
+                + " WHERE (is_deleted = 1 OR server_id IN (SELECT item_id FROM saved_media"
+                + " WHERE state = 'stored' AND view_mode IN ('once', 'replayable')))" + HAS_CONTENT
+                + " UNION ALL SELECT 1, r.id, NULL, m.thread_id, NULL, m.content, NULL, r.removed_at,"
+                + " r.sender_id, r.emoji, m.message_type FROM message_reactions r JOIN " + TABLE
+                + " m ON m.message_id = r.message_id WHERE r.removed_at IS NOT NULL"
+                + ") ORDER BY at DESC, kind DESC, row_id DESC LIMIT " + pageSize + " OFFSET " + Math.max(0, offset),
+                null);
+        try {
+            while (c.moveToNext()) {
+                String senderId = c.getString(8);
+                if (c.getInt(0) == 0) {
+                    result.add(new String[]{c.getString(2), c.getString(3),
+                            resolveUsername(c.getString(4), senderId, directory), c.getString(5),
+                            c.getString(6), String.valueOf(c.getLong(7)), senderId});
+                } else {
+                    result.add(new String[]{REACTION_ID_PREFIX + c.getLong(1), c.getString(3),
+                            directory.get(senderId), c.getString(5), REMOVED_REACTION,
+                            String.valueOf(c.getLong(7)), senderId, c.getString(9), c.getString(10)});
+                }
+            }
+        } finally {
+            c.close();
         }
-        c.close();
-        addRemovedReactions(db, directory, result);
         return result;
-    }
-
-    // Adds [reaction:id, threadId, reactorUsername, messageContent, REMOVED_REACTION, removedAt,
-    // reactorId, emoji, messageType] rows, newest first among all rows.
-    private void addRemovedReactions(SQLiteDatabase db, java.util.Map<String, String> directory,
-                                     List<String[]> result) {
-        Cursor c = db.rawQuery("SELECT r.id, m.thread_id, r.sender_id, m.content, r.removed_at,"
-                + " r.emoji, m.message_type FROM message_reactions r JOIN " + TABLE
-                + " m ON m.message_id = r.message_id WHERE r.removed_at IS NOT NULL", null);
-        boolean added = false;
-        while (c.moveToNext()) {
-            String senderId = c.getString(2);
-            result.add(new String[]{
-                    REACTION_ID_PREFIX + c.getLong(0), c.getString(1), directory.get(senderId),
-                    c.getString(3), REMOVED_REACTION, String.valueOf(c.getLong(4)), senderId,
-                    c.getString(5), c.getString(6)
-            });
-            added = true;
-        }
-        c.close();
-        if (added) result.sort((a, b) -> Long.compare(Long.parseLong(b[5]), Long.parseLong(a[5])));
     }
 
     private java.util.Map<String, String> loadUsernameDirectory(SQLiteDatabase db) {
@@ -661,19 +680,6 @@ public class SpookdMessageDb extends SQLiteOpenHelper {
         }
         c.close();
         return directory;
-    }
-
-    private String[] rowToStringArray(Cursor c, java.util.Map<String, String> directory) {
-        String senderId = c.getString(c.getColumnIndexOrThrow("sender_id"));
-        return new String[]{
-            c.getString(c.getColumnIndexOrThrow("message_id")),
-            c.getString(c.getColumnIndexOrThrow("thread_id")),
-            resolveUsername(c.getString(c.getColumnIndexOrThrow("sender_username")), senderId, directory),
-            c.getString(c.getColumnIndexOrThrow("content")),
-            c.getString(c.getColumnIndexOrThrow("message_type")),
-            String.valueOf(c.getLong(c.getColumnIndexOrThrow("timestamp"))),
-            senderId
-        };
     }
 
     private String resolveUsername(String storedUsername, String senderId, java.util.Map<String, String> directory) {

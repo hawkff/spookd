@@ -169,15 +169,19 @@ public class SavedMessagesHook {
         if (item == null || !enabled) return;
         boolean acceptedClass = item.getClass().getName().startsWith("X.");
         if (!acceptedClass) return;
-        String sessionUserId = null;
+        // REST items carry no session, so the one current while they are parsed names their account.
+        final UserSession session = userSession != null ? userSession : restPath ? currentSession() : null;
+        String itemSessionId = null;
+        String currentSessionId = null;
         try {
-            sessionUserId = userSession != null ? userSession.getUserId() : null;
-            if (!isBlank(sessionUserId)) rememberMyUserId(sessionUserId);
+            itemSessionId = userSession != null ? userSession.getUserId() : null;
+            currentSessionId = session != null ? session.getUserId() : null;
         } catch (Exception ignored) {}
-        final String viewerId = sessionUserId;
+        final String viewerId = ReactionViewer.atEnqueue(itemSessionId, currentSessionId, restPath);
+        if (!isBlank(viewerId)) rememberMyUserId(viewerId);
         final boolean restHidden = restPath && restoreRevokedItem(item);
         getWorker().post(() -> processReceivedItem(
-                item, resolveThreadIdHint(delta), viewerId, userSession, restPath, restHidden));
+                item, resolveThreadIdHint(delta), viewerId, session, restPath, restHidden));
     }
 
     /** Runs on the REST parser thread before the item is returned; memory lookups only. */
@@ -264,10 +268,10 @@ public class SavedMessagesHook {
                                     String viewerId) {
         if (isBlank(senderId) || sPictureSaved.contains(senderId)) return;
         try {
-            UserData data = cachedUser(session != null ? session : currentSession(), senderId, viewerId);
+            UserData data = cachedUser(session, senderId, viewerId);
             if (data == null) return;
-            String url = data.getProfilePictureUrl();
-            if (url != null && url.startsWith("http") && db.putPicture(senderId, data.getUsername(), url)) {
+            String url = data.getAvatarUrl();
+            if (url != null && db.putPicture(senderId, data.getUsername(), url)) {
                 sPictureSaved.add(senderId);
             }
         } catch (Exception ignored) {
@@ -355,9 +359,10 @@ public class SavedMessagesHook {
                 if (Pref.dmMediaVault()) captureMedia(item, directItem, serverId, viewerId, type, timestamp);
                 savePicture(db, senderId, session, viewerId);
                 // Only full REST items are compared, since other payloads may leave the reactions out;
-                // without the viewer id an own removal would look like someone else's.
-                if (restPath && !isBlank(viewerId)) {
-                    db.syncReactions(messageId, directItem.getReactions(), viewerId,
+                // without the session's viewer id an own removal would look like someone else's.
+                String reactionViewer = ReactionViewer.forComparison(restPath, sessionViewerId);
+                if (reactionViewer != null) {
+                    db.syncReactions(messageId, directItem.getReactions(), reactionViewer,
                             System.currentTimeMillis());
                 }
             }
