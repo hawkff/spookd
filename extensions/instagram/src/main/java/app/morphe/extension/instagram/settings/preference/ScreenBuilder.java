@@ -32,6 +32,7 @@ import app.morphe.extension.instagram.patches.focusLock.FocusLock;
 import app.morphe.extension.instagram.patches.focusLock.FocusLockTargets;
 import app.morphe.extension.instagram.patches.story.StoryAutoSave;
 import app.morphe.extension.instagram.patches.story.StoryGhostList;
+import app.morphe.extension.instagram.patches.instants.InstantsMenu;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.RestartPolicy;
 import app.morphe.extension.instagram.settings.SafeStartup;
@@ -1191,6 +1192,36 @@ public class ScreenBuilder {
                     )
             );
         }
+        if (SettingsStatus.instantsSeen) {
+            addPreference(helper.switchPreference(
+                    str("spookd_instants_dont_mark_seen"), str("spookd_instants_dont_mark_seen_desc"), Settings.INSTANTS_DONT_MARK_SEEN));
+            Preference always = helper.buttonPreference(
+                    str("spookd_instants_always_seen_users"), str("spookd_instants_always_seen_users_desc"), "spookd_instants_always_seen_users");
+            always.setOnPreferenceClickListener(preference -> {
+                InstantsMenu.showUserList(preference.getContext(), true);
+                return true;
+            });
+            addPreference(always);
+            Preference never = helper.buttonPreference(
+                    str("spookd_instants_never_seen_users"), str("spookd_instants_never_seen_users_desc"), "spookd_instants_never_seen_users");
+            never.setOnPreferenceClickListener(preference -> {
+                InstantsMenu.showUserList(preference.getContext(), false);
+                return true;
+            });
+            addPreference(never);
+        }
+        if (SettingsStatus.disableInstantsCreation) {
+            addPreference(helper.switchPreference(
+                    str("spookd_disable_instants_creation"), str("spookd_disable_instants_creation_desc"), Settings.DISABLE_INSTANTS_CREATION));
+        }
+        if (SettingsStatus.confirmInstantVideo) {
+            addPreference(helper.switchPreference(
+                    str("spookd_confirm_instant_video"), str("spookd_confirm_instant_video_desc"), Settings.CONFIRM_INSTANT_VIDEO));
+        }
+        if (SettingsStatus.confirmInstantReaction) {
+            addPreference(helper.switchPreference(
+                    str("spookd_confirm_instant_reaction"), str("spookd_confirm_instant_reaction_desc"), Settings.CONFIRM_INSTANT_REACTION));
+        }
     }
 
     public void buildDownloadSection() {
@@ -1834,7 +1865,7 @@ public class ScreenBuilder {
             );
         }
 
-        if (SettingsStatus.instantsDownload){
+        if (SettingsStatus.instantsSection()){
             addPreference(
                     helper.categoryPreference(
                             str("spookd_instants_title"),

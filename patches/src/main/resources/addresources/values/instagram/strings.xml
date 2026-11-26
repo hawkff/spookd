@@ -800,6 +800,29 @@
     <string name="spookd_search_username">Search by username</string>
     <string name="spookd_saved_on">Saved on</string>
 
+    <!-- Instants seen, creation and confirmations -->
+    <string name="spookd_patch_instants_seen">Instants seen</string>
+    <string name="spookd_instants_dont_mark_seen">Don\'t mark Instants seen</string>
+    <string name="spookd_instants_dont_mark_seen_desc">Instagram is not told you opened an Instant, so it stays unseen for its sender. Senders on the Always mark seen list are still told.</string>
+    <string name="spookd_instants_always_seen_users">Always mark seen</string>
+    <string name="spookd_instants_always_seen_users_desc">Senders whose Instants are marked seen even while Don\'t mark Instants seen is on</string>
+    <string name="spookd_instants_never_seen_users">Never mark seen</string>
+    <string name="spookd_instants_never_seen_users_desc">Senders whose Instants are never marked seen</string>
+    <string name="spookd_instants_seen_users_empty">No senders yet. Open some Instants and their senders show up here to pick.</string>
+    <string name="spookd_instants_menu_stop_saving">Turn off Save Instants</string>
+    <string name="spookd_instants_menu_start_saving">Turn on Save Instants</string>
+    <string name="spookd_instants_menu_stop_marking">Stop marking Instants seen</string>
+    <string name="spookd_instants_menu_start_marking">Mark Instants seen again</string>
+    <string name="spookd_disable_instants_creation">Disable Instants creation</string>
+    <string name="spookd_disable_instants_creation_desc">Instants you capture are discarded when they would be sent. The Instants camera still opens.</string>
+    <string name="spookd_disable_instants_creation_discarded">Instants creation is off, so this Instant was not sent</string>
+    <string name="spookd_confirm_instant_video">Confirm Instant videos</string>
+    <string name="spookd_confirm_instant_video_desc">Asks before a recorded Instant video is sent. Leaving the camera while asked discards the video.</string>
+    <string name="spookd_confirm_instant_video_title">Send this Instant video?</string>
+    <string name="spookd_confirm_instant_video_action">Send</string>
+    <string name="spookd_confirm_instant_reaction">Confirm Instant reactions</string>
+    <string name="spookd_confirm_instant_reaction_desc">Asks before an emoji reaction to an Instant is sent</string>
+
     <!-- Save & view deleted (unsent) direct messages -->
     <string name="spookd_open_share_in_instagram">Open in Instagram</string>
     <string name="spookd_open_voice_with_player">Open with music player</string>

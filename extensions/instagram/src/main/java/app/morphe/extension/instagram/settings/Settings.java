@@ -48,6 +48,12 @@ public class Settings {
     public static final BooleanSetting VIEW_DM_ANONYMOUSLY = new BooleanSetting("view_dm_anonymously", false, NOT_REQUIRED);
     public static final BooleanSetting MARK_AS_READ_AFTER_REPLY = new BooleanSetting("mark_as_read_after_reply", false, NOT_REQUIRED);
     public static final BooleanSetting INSTANTS_DOWNLOAD = new BooleanSetting("instants_download", false, NOT_REQUIRED);
+    public static final BooleanSetting INSTANTS_DONT_MARK_SEEN = new BooleanSetting("instants_dont_mark_seen", false, NOT_REQUIRED);
+    public static final StringSetting INSTANTS_ALWAYS_SEEN_USERS = new StringSetting("instants_always_seen_users", "{}", NOT_REQUIRED);
+    public static final StringSetting INSTANTS_NEVER_SEEN_USERS = new StringSetting("instants_never_seen_users", "{}", NOT_REQUIRED);
+    public static final BooleanSetting DISABLE_INSTANTS_CREATION = new BooleanSetting("disable_instants_creation", false, NOT_REQUIRED);
+    public static final BooleanSetting CONFIRM_INSTANT_VIDEO = new BooleanSetting("confirm_instant_video", false, NOT_REQUIRED);
+    public static final BooleanSetting CONFIRM_INSTANT_REACTION = new BooleanSetting("confirm_instant_reaction", false, NOT_REQUIRED);
     public static final BooleanSetting SAVE_DELETED_MESSAGES = new BooleanSetting("save_deleted_messages", false, NOT_REQUIRED);
     public static final BooleanSetting DM_MEDIA_VAULT = new BooleanSetting("dm_media_vault", false, NOT_REQUIRED);
     public static final BooleanSetting DM_MEDIA_VAULT_VIEW_ONCE = new BooleanSetting("dm_media_vault_view_once", true, NOT_REQUIRED);
