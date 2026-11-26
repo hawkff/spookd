@@ -72,8 +72,7 @@ public class PikoSharedPrefCategory {
 
     public boolean clearAll(){
         try{
-            preferences.edit().clear().commit();
-            return true;
+            return preferences.edit().clear().commit();
         }catch(Exception e){
             Utils.showToastShort(e.toString());
             return false;

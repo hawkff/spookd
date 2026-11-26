@@ -1544,15 +1544,12 @@ public class ScreenBuilder {
         disableAll.setOnPreferenceChangeListener((preference, newValue) -> {
             boolean enabled = Boolean.TRUE.equals(newValue);
             boolean previous = disableAll.isChecked();
-            Utils.runOnBackgroundThread(() -> {
+            SafeStartup.runSave(() -> {
                 boolean saved = SafeStartup.setDisableAll(enabled);
+                if (saved) SettingsRestart.markChanged(SafeStartup.DISABLE_ALL_KEY, RestartPolicy.REQUIRED, previous, enabled);
                 Utils.runOnMainThread(() -> {
-                    if (!saved) {
-                        Utils.showToastShort(str("spookd_setting_save_failed"));
-                        return;
-                    }
-                    disableAll.setChecked(enabled);
-                    SettingsRestart.markChanged(SafeStartup.DISABLE_ALL_KEY, RestartPolicy.REQUIRED, previous, enabled);
+                    if (saved) disableAll.setChecked(enabled);
+                    else Utils.showToastShort(str("spookd_setting_save_failed"));
                 });
             });
             // Rejected for now; the switch flips once the value is on disk.

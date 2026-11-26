@@ -129,8 +129,7 @@ public abstract class BaseSharedPref {
         try {
             PikoSharedPrefCategory preferences = preferences();
             if (preferences != null) {
-                preferences.clearAll();
-                return true;
+                return preferences.clearAll();
             }
         } catch (Exception ex) {
             Utils.showToastShort(ex.toString());

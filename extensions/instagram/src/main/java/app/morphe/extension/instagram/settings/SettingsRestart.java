@@ -104,9 +104,9 @@ public final class SettingsRestart {
             if (manager == null || !manager.getAppTasks().isEmpty()) return;
             if (!flushPreferences()) return;
             // A delayed callback must not terminate an app that has already been reopened.
-            if (manager.getAppTasks().isEmpty()) {
-                Process.killProcess(Process.myPid());
-            }
+            SafeStartup.runSave(() -> {
+                if (manager.getAppTasks().isEmpty()) Process.killProcess(Process.myPid());
+            });
         } catch (RuntimeException e) {
             Logger.printException(() -> "Failed to prepare the process restart", e);
         }
@@ -130,7 +130,8 @@ public final class SettingsRestart {
                     .setTitle(str("spookd_restart_app"))
                     .setPositiveButton(str("spookd_ok"), (dialog, which) -> {
                         clearPendingRestart();
-                        InstaUtils.restartApp(activity);
+                        // After any queued startup-state save, so the restart can't drop it.
+                        SafeStartup.runSave(() -> InstaUtils.restartApp(activity));
                     })
                     .setNegativeButton(str("spookd_cancel"), (dialog, which) -> {
                         activity.finish();

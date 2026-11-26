@@ -14,6 +14,10 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import app.morphe.extension.instagram.settings.preference.fragments.FragmentHook;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.instagram.utils.InstaUtils;
@@ -38,6 +42,9 @@ public final class SafeStartup {
     private static final String PREFS_NAME = "spookd_startup";
     private static final long CACHE_CLEANUP_DELAY_MS = 5000;
     private static final String MAIN_ACTIVITY = "com.instagram.mainactivity.InstagramMainActivity";
+
+    // Startup-state saves that a restart must wait for run here, in order.
+    private static final ExecutorService SAVES = Executors.newSingleThreadExecutor();
 
     private static volatile Boolean featuresOff;
     // Guarded by the class lock.
@@ -65,8 +72,7 @@ public final class SafeStartup {
         boolean off;
         try {
             SharedPreferences startup = prefs(context);
-            if (isForegroundStart()) openAttempt(startup);
-            safeModeThisProcess = readBoolean(startup, SAFE_MODE_KEY);
+            safeModeThisProcess = startsInSafeMode(startup, isForegroundStart());
             off = safeModeThisProcess || readBoolean(startup, DISABLE_ALL_KEY);
         } catch (Throwable t) {
             Logger.printException(() -> "SafeStartup: unreadable startup state, starting in safe mode", t);
@@ -115,6 +121,17 @@ public final class SafeStartup {
             Logger.printException(() -> "SafeStartup.disableAllStored failure", t);
             return false;
         }
+    }
+
+    /** Runs a startup-state save, or a restart that must follow every save queued before it, off the main thread. */
+    public static void runSave(Runnable task) {
+        SAVES.execute(() -> {
+            try {
+                task.run();
+            } catch (Throwable t) {
+                Logger.printException(() -> "SafeStartup: save failed", t);
+            }
+        });
     }
 
     /** Background thread, from the settings row; true once the value is on disk. */
@@ -171,7 +188,7 @@ public final class SafeStartup {
                 .setNegativeButton(str("spookd_reset_pref"),
                         (dialog, which) -> InstaUtils.showResetSettingsDialog(activity))
                 .setNeutralButton(str("spookd_safe_mode_turn_on"), (dialog, which) ->
-                        Utils.runOnBackgroundThread(() -> {
+                        runSave(() -> {
                             boolean saved = startup.edit().putBoolean(SAFE_MODE_KEY, false).commit();
                             Utils.runOnMainThread(() -> {
                                 if (saved) InstaUtils.restartApp(activity);
@@ -203,6 +220,37 @@ public final class SafeStartup {
             startup.edit().putInt(key, 0).apply();
             return 0;
         }
+    }
+
+    /**
+     * The process's safe-mode decision: repairs startup keys stored with a wrong type, which then
+     * start this process in safe mode, opens the attempt of a foreground start, and reads the flag.
+     */
+    static boolean startsInSafeMode(SharedPreferences startup, boolean foreground) {
+        boolean malformed = repairMalformed(startup);
+        if (foreground) openAttempt(startup);
+        return malformed || readBoolean(startup, SAFE_MODE_KEY);
+    }
+
+    /** Rewrites each startup key of the wrong type with its default; true when one was found. Absent keys are fine. */
+    static boolean repairMalformed(SharedPreferences startup) {
+        Map<String, ?> all = startup.getAll();
+        SharedPreferences.Editor editor = startup.edit();
+        boolean malformed = false;
+        for (String key : new String[]{SAFE_MODE_KEY, DISABLE_ALL_KEY, ATTEMPT_OPEN_KEY}) {
+            Object value = all.get(key);
+            if (value != null && !(value instanceof Boolean)) {
+                editor.putBoolean(key, false);
+                malformed = true;
+            }
+        }
+        Object failed = all.get(FAILED_STARTS_KEY);
+        if (failed != null && !(failed instanceof Integer)) {
+            editor.putInt(FAILED_STARTS_KEY, 0);
+            malformed = true;
+        }
+        if (malformed) editor.apply();
+        return malformed;
     }
 
     /** Counts a still-open previous attempt as failed, turns safe mode on at the limit and opens this one. */

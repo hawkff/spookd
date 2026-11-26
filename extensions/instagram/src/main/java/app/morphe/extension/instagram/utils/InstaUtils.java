@@ -26,6 +26,7 @@ import java.net.HttpURLConnection;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.entity.DeveloperOptions;
 import app.morphe.extension.instagram.patches.customise.font.FontStorage;
+import app.morphe.extension.instagram.settings.SafeStartup;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.patches.dm.InboxLock;
@@ -75,7 +76,7 @@ public class InstaUtils {
                 .setNegativeButton(str("spookd_cancel"), null)
                 .setPositiveButton(
                         str("spookd_ok"),
-                        (dialogInterface, which) -> Utils.runOnBackgroundThread(InstaUtils::deletePref)
+                        (dialogInterface, which) -> SafeStartup.runSave(InstaUtils::deletePref)
                 )
                 .show();
     }

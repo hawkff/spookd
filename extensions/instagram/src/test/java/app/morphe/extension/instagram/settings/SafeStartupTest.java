@@ -6,6 +6,10 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.SharedPreferences;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
@@ -64,5 +68,48 @@ public final class SafeStartupTest {
         assertFalse(startup.getBoolean(SafeStartup.DISABLE_ALL_KEY, true));
         assertTrue(startup.getBoolean(SafeStartup.ATTEMPT_OPEN_KEY, false));
         assertEquals(0, startup.getInt(SafeStartup.FAILED_STARTS_KEY, -1));
+    }
+
+    @Test
+    public void aMalformedKeyStartsThisProcessInSafeModeAndIsRepaired() {
+        startup.edit().putString(SafeStartup.DISABLE_ALL_KEY, "on").commit();
+
+        assertTrue(SafeStartup.startsInSafeMode(startup, true));
+        assertFalse(startup.getBoolean(SafeStartup.DISABLE_ALL_KEY, true));
+        assertFalse(startup.getBoolean(SafeStartup.SAFE_MODE_KEY, false));
+        // Repaired, so the next start is normal again.
+        SafeStartup.closeAttempt(startup);
+        assertFalse(SafeStartup.startsInSafeMode(startup, true));
+    }
+
+    @Test
+    public void absentKeysStartNormally() {
+        assertFalse(SafeStartup.startsInSafeMode(startup, false));
+        assertFalse(SafeStartup.startsInSafeMode(startup, true));
+    }
+
+    @Test
+    public void aRestartQueuedBehindASaveWaitsForIt() throws InterruptedException {
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicBoolean saved = new AtomicBoolean();
+        AtomicBoolean restartSawSave = new AtomicBoolean();
+        CountDownLatch restarted = new CountDownLatch(1);
+        SafeStartup.runSave(() -> {
+            try {
+                release.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            saved.set(true);
+        });
+        SafeStartup.runSave(() -> {
+            restartSawSave.set(saved.get());
+            restarted.countDown();
+        });
+
+        assertFalse(restarted.await(200, TimeUnit.MILLISECONDS));
+        release.countDown();
+        assertTrue(restarted.await(5, TimeUnit.SECONDS));
+        assertTrue(restartSawSave.get());
     }
 }
