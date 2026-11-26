@@ -207,9 +207,11 @@ public final class MaterialYouTheme {
     public static Function1<Integer, Unit> wrapNativeThemeCallback(
             Function1<Integer, Unit> callback
     ) {
+        // While features are off, Instagram's own theme choice runs untouched.
         if (Build.VERSION.SDK_INT < 31
                 || callback == null
-                || callback instanceof NativeThemeCallback) {
+                || callback instanceof NativeThemeCallback
+                || SafeStartup.featuresOff()) {
             return callback;
         }
         return new NativeThemeCallback(callback);
@@ -232,7 +234,8 @@ public final class MaterialYouTheme {
     ) {
         if (Build.VERSION.SDK_INT < 31
                 || listener == null
-                || listener instanceof LegacyNativeThemeController) {
+                || listener instanceof LegacyNativeThemeController
+                || SafeStartup.featuresOff()) {
             return listener;
         }
         return new LegacyNativeThemeController(
@@ -244,6 +247,7 @@ public final class MaterialYouTheme {
     }
 
     public static String getLegacySelectedRadioId(String nativeId, int packedIds) {
+        if (SafeStartup.featuresOff()) return nativeId;
         Integer observedNativeMode =
                 MaterialYouState.nativeModeForLegacySelectionId(nativeId, packedIds);
         if (observedNativeMode != null) {

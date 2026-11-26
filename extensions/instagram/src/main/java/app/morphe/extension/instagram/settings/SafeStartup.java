@@ -189,7 +189,8 @@ public final class SafeStartup {
                         (dialog, which) -> InstaUtils.showResetSettingsDialog(activity))
                 .setNeutralButton(str("spookd_safe_mode_turn_on"), (dialog, which) ->
                         runSave(() -> {
-                            boolean saved = startup.edit().putBoolean(SAFE_MODE_KEY, false).commit();
+                            boolean saved = startup.edit()
+                                    .putBoolean(SAFE_MODE_KEY, false).putBoolean(DISABLE_ALL_KEY, false).commit();
                             Utils.runOnMainThread(() -> {
                                 if (saved) InstaUtils.restartApp(activity);
                                 else Utils.showToastShort(str("spookd_setting_save_failed"));

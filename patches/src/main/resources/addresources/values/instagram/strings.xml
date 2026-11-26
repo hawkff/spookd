@@ -612,7 +612,7 @@
     <string name="spookd_auto_clear_cache_off">Off</string>
     <string name="spookd_auto_clear_cache_over">At launch, when over %1$d MB. Saved data is never cleared</string>
     <string name="spookd_safe_mode_title">Safe startup mode</string>
-    <string name="spookd_safe_mode_message">The app crashed 3 times in a row while starting, so spookd features are off for now. Your settings are unchanged.</string>
+    <string name="spookd_safe_mode_message">spookd features are off for now because the app did not finish starting several times in a row, or its startup state could not be read. Your settings are unchanged.</string>
     <string name="spookd_safe_mode_keep">Keep features off</string>
     <string name="spookd_safe_mode_turn_on">Turn features on</string>
     <string name="spookd_setting_save_failed">Couldn\'t save the setting</string>
