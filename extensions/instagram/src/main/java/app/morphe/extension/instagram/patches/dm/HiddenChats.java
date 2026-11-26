@@ -28,6 +28,7 @@ import java.lang.reflect.Modifier;
 import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -672,7 +673,12 @@ public final class HiddenChats {
         return NO_PATH;
     }
 
+    // Field lists by class, kept for failed searches too, since a miss is searched again on the next call.
+    private static final Map<Class<?>, List<Field>> fieldLists = new ConcurrentHashMap<>();
+
     private static List<Field> fieldsOf(Class<?> type) {
+        List<Field> cached = fieldLists.get(type);
+        if (cached != null) return cached;
         List<Field> fields = new ArrayList<>();
         for (Class<?> c = type; c != null && !isFramework(c); c = c.getSuperclass()) {
             for (Field field : c.getDeclaredFields()) {
@@ -682,6 +688,8 @@ public final class HiddenChats {
                 fields.add(field);
             }
         }
+        fields = Collections.unmodifiableList(fields);
+        fieldLists.put(type, fields);
         return fields;
     }
 

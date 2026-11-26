@@ -903,8 +903,11 @@ public class Pref {
         return SettingsStatus.pinRecipients && PIN_RECIPIENTS.get();
     }
 
+    private static final Cached<Boolean> HIDDEN_CHATS =
+            new Cached<>(() -> SharedPref.getBooleanPref(Settings.HIDDEN_CHATS), Settings.HIDDEN_CHATS.key);
+
     public static boolean hiddenChats() {
-        return SharedPref.getBooleanPref(Settings.HIDDEN_CHATS);
+        return HIDDEN_CHATS.get();
     }
 
     public static boolean hiddenChatsMute() {
