@@ -16,6 +16,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.media.MediaDataSource;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -1345,7 +1346,7 @@ public final class PrivateGalleryActivity {
                 if (!item.photo() && !item.video()) return null;
                 File cached = item.vault ? null : GalleryStore.get().thumb(item.file.getName());
                 if (cached != null && cached.isFile()) {
-                    Bitmap disk = BitmapFactory.decodeFile(cached.getPath());
+                    Bitmap disk = decodeFile(cached, size);
                     if (disk != null) return disk;
                 }
                 ViewerMedia media;
@@ -1380,18 +1381,35 @@ public final class PrivateGalleryActivity {
             bounds.inJustDecodeBounds = true;
             BitmapFactory.decodeStream(media.openStream(), null, bounds);
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
-            int sample = 1;
-            while (bounds.outWidth / (sample * 2) >= size && bounds.outHeight / (sample * 2) >= size) sample *= 2;
             BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inSampleSize = sample;
+            options.inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, size);
             return BitmapFactory.decodeStream(media.openStream(), null, options);
+        }
+
+        private static Bitmap decodeFile(File file, int size) {
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(file.getPath(), bounds);
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, size);
+            return BitmapFactory.decodeFile(file.getPath(), options);
         }
 
         private static Bitmap frame(ViewerMedia media, int size) {
             MediaMetadataRetriever retriever = new MediaMetadataRetriever();
             try {
                 retriever.setDataSource(new Source(media));
-                Bitmap frame = retriever.getFrameAtTime(0);
+                Bitmap frame = null;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                    int box = frameBox(dimension(retriever, MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH),
+                            dimension(retriever, MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT), size);
+                    if (box > 0) {
+                        frame = retriever.getScaledFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
+                                box, box);
+                    }
+                }
+                if (frame == null) frame = retriever.getFrameAtTime(0);
                 if (frame == null) return null;
                 float scale = (float) size / Math.min(frame.getWidth(), frame.getHeight());
                 if (scale >= 1) return frame;
@@ -1405,6 +1423,30 @@ public final class PrivateGalleryActivity {
                 } catch (Exception ignored) {
                 }
             }
+        }
+    }
+
+    /** The largest power-of-two step that keeps both sides at least {@code size}. */
+    static int sampleSize(int width, int height, int size) {
+        int sample = 1;
+        while (width / (sample * 2) >= size && height / (sample * 2) >= size) sample *= 2;
+        return sample;
+    }
+
+    /**
+     * The square a scaled frame is fit into so its shorter side still covers {@code size}, at most
+     * four times {@code size} for very long frames; 0 when the video's size is unknown.
+     */
+    static int frameBox(int width, int height, int size) {
+        if (width <= 0 || height <= 0 || size <= 0) return 0;
+        return (int) Math.min((long) size * Math.max(width, height) / Math.min(width, height), size * 4L);
+    }
+
+    private static int dimension(MediaMetadataRetriever retriever, int key) {
+        try {
+            return Integer.parseInt(retriever.extractMetadata(key));
+        } catch (RuntimeException e) {
+            return 0;
         }
     }
 
