@@ -37,13 +37,26 @@ private fun storyViewerLifecycleFingerprint(name: String) = Fingerprint(
 )
 
 /**
- * Tracks the resumed story viewer so the advance settings can tap forward on it. Optional; the settings show only when it applies.
+ * Story viewer hooks: lifecycle tracking first, which both the advance and the earlier-seen drain need
+ * (the drain stops on pause); each part is optional and its setting shows only when it applies.
  */
-internal fun addStoryAdvanceHooks() {
-    val tapForward = StoryTapForwardFingerprint.matchOrNull()?.method ?: return
+internal fun addStoryViewerHooks(reelParentClass: String) {
     val resume = storyViewerLifecycleFingerprint("onResume").matchOrNull()?.method ?: return
     val pause = storyViewerLifecycleFingerprint("onPause").matchOrNull()?.method ?: return
+    resume.addInstruction(
+        0,
+        "invoke-static/range {p0 .. p0}, $STORY_ADVANCE_DESCRIPTOR->onViewerResumed(Ljava/lang/Object;)V",
+    )
+    pause.addInstruction(
+        0,
+        "invoke-static/range {p0 .. p0}, $STORY_ADVANCE_DESCRIPTOR->onViewerPaused(Ljava/lang/Object;)V",
+    )
+    addStoryEarlierSeenHook(reelParentClass)
+    addStoryAdvanceHook()
+}
 
+private fun addStoryAdvanceHook() {
+    val tapForward = StoryTapForwardFingerprint.matchOrNull()?.method ?: return
     Fingerprint(definingClass = STORY_ADVANCE_DESCRIPTOR, name = "advanceNative").method.addInstructions(
         0,
         """
@@ -53,21 +66,13 @@ internal fun addStoryAdvanceHooks() {
         return-void
         """.trimIndent(),
     )
-    resume.addInstruction(
-        0,
-        "invoke-static/range {p0 .. p0}, $STORY_ADVANCE_DESCRIPTOR->onViewerResumed(Ljava/lang/Object;)V",
-    )
-    pause.addInstruction(
-        0,
-        "invoke-static/range {p0 .. p0}, $STORY_ADVANCE_DESCRIPTOR->onViewerPaused(Ljava/lang/Object;)V",
-    )
     enableSettings("advanceStory")
 }
 
 /**
  * Gives the eye button the reel's ordered items, so it can mark the ones before the selected item.
  */
-internal fun addStoryEarlierSeenHook(reelParentClass: String) {
+private fun addStoryEarlierSeenHook(reelParentClass: String) {
     val items = storyViewerItemList()
     if (items.definingClass != reelParentClass) return
 

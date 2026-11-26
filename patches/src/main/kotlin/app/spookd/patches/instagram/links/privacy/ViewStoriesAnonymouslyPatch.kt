@@ -286,8 +286,7 @@ val viewStoriesAnonymouslyPatch =
             }
 
             addStoryGhostListHooks(reelParentClass, mediaField)
-            addStoryEarlierSeenHook(reelParentClass)
-            addStoryAdvanceHooks()
+            addStoryViewerHooks(reelParentClass)
 
             enableSettings("viewStoriesAnonymously")
         }

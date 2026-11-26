@@ -93,7 +93,8 @@ public final class StoryEarlierSeen {
                     || !SharedPref.getBooleanPref(Settings.MARK_EARLIER_STORIES_SEEN)) return;
             List<?> items = itemsNative(reel, session);
             if (items == null) return;
-            new Drain(itemsBefore(items, item), bridgePort(session, reel, source)).pump();
+            long token = StoryAdvance.lifecycleToken();
+            start(token, itemsBefore(items, item), bridgePort(session, reel, source, token));
         } catch (Throwable throwable) {
             Logger.printException(() -> "Failed to mark earlier stories as seen", throwable);
         }
@@ -108,15 +109,22 @@ public final class StoryEarlierSeen {
         return full ? Outcome.FULL : Outcome.SKIPPED;
     }
 
+    /** Null and nothing sent without a lifecycle token, since pausing the viewer could not stop such a drain. */
+    static Drain start(long token, List<?> items, Port port) {
+        if (token == StoryAdvance.NO_TOKEN) return null;
+        Drain drain = new Drain(items, port);
+        drain.pump();
+        return drain;
+    }
+
     static List<?> itemsBefore(List<?> items, Object item) {
         int index = items.indexOf(item);
         // A copy, so marking cannot interfere with Instagram changing its live list.
         return index > 0 ? new ArrayList<Object>(items.subList(0, index)) : Collections.emptyList();
     }
 
-    private static Port bridgePort(Object session, Object reel, Object source) {
-        // Without the viewer hooks there is nothing to watch, and the drain ends with its list.
-        Object viewer = StoryAdvance.currentViewer();
+    // Holds only the resume token, not the viewer, so outstanding results and retries keep no UI alive.
+    private static Port bridgePort(Object session, Object reel, Object source, long token) {
         return new Port() {
             @Override
             public Outcome send(Object item, Runnable onResolved) {
@@ -161,7 +169,7 @@ public final class StoryEarlierSeen {
 
             @Override
             public boolean active() {
-                return viewer == null || StoryAdvance.currentViewer() == viewer;
+                return StoryAdvance.isCurrent(token);
             }
 
             @Override

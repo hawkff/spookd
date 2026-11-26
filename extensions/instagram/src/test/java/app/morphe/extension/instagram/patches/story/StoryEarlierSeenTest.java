@@ -2,6 +2,7 @@ package app.morphe.extension.instagram.patches.story;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
@@ -144,6 +145,38 @@ public class StoryEarlierSeenTest {
         assertEquals(0, drain.queued());
     }
 
+    @Test
+    public void pauseAndResumeBeforeAResultStopsTheOldDrainForGood() {
+        Object viewer = new Object();
+        StoryAdvance.onViewerResumed(viewer);
+        RegistryPort port = new RegistryPort();
+        port.token = StoryAdvance.lifecycleToken();
+        StoryEarlierSeen.Drain drain = StoryEarlierSeen.start(port.token, stories(10), port);
+        assertEquals(StoryEarlierSeen.MAX_IN_FLIGHT, port.sent);
+
+        StoryAdvance.onViewerPaused(viewer);
+        StoryAdvance.onViewerResumed(viewer);
+        assertFalse(StoryAdvance.isCurrent(port.token));
+        while (!port.ours.isEmpty()) port.completeOldest();
+
+        assertEquals(StoryEarlierSeen.MAX_IN_FLIGHT, port.sent);
+        assertEquals(0, drain.queued());
+        assertEquals(0, drain.inFlight());
+        StoryAdvance.onViewerPaused(viewer);
+    }
+
+    @Test
+    public void noLifecycleTokenStartsNoDrain() {
+        Object viewer = new Object();
+        StoryAdvance.onViewerResumed(viewer);
+        StoryAdvance.onViewerPaused(viewer);
+        assertEquals(StoryAdvance.NO_TOKEN, StoryAdvance.lifecycleToken());
+        RegistryPort port = new RegistryPort();
+
+        assertNull(StoryEarlierSeen.start(StoryAdvance.lifecycleToken(), stories(3), port));
+        assertEquals(0, port.sent);
+    }
+
     private static final class CountingListener implements StorySeenRequestScope.Listener {
         @Override
         public void onComplete() {
@@ -167,6 +200,7 @@ public class StoryEarlierSeenTest {
         final List<Object> ours = new ArrayList<>();
         final List<Runnable> retries = new ArrayList<>();
         boolean active = true;
+        long token = StoryAdvance.NO_TOKEN;
         boolean alwaysFull;
         // Like the bridge: an item already pending reports success without registering this listener.
         boolean bridgeLike;
@@ -205,7 +239,7 @@ public class StoryEarlierSeenTest {
 
         @Override
         public boolean active() {
-            return active;
+            return active && (token == StoryAdvance.NO_TOKEN || StoryAdvance.isCurrent(token));
         }
 
         @Override

@@ -17,7 +17,10 @@ import app.morphe.extension.shared.Utils;
 
 /** Moves the resumed story viewer to the next item through Instagram's own tap-forward path. */
 public final class StoryAdvance {
+    static final long NO_TOKEN = 0L;
     private static volatile WeakReference<Object> resumedViewer = new WeakReference<>(null);
+    private static long generation;
+    private static volatile long resumeToken = NO_TOKEN;
 
     private StoryAdvance() {
     }
@@ -25,16 +28,24 @@ public final class StoryAdvance {
     /** Start of the story viewer's onResume, on the main thread. */
     public static void onViewerResumed(Object viewer) {
         resumedViewer = new WeakReference<>(viewer);
+        resumeToken = ++generation;
     }
 
     /** Start of the story viewer's onPause, on the main thread. */
     public static void onViewerPaused(Object viewer) {
-        if (resumedViewer.get() == viewer) resumedViewer = new WeakReference<>(null);
+        if (resumedViewer.get() != viewer) return;
+        resumedViewer = new WeakReference<>(null);
+        resumeToken = NO_TOKEN;
     }
 
-    /** The resumed story viewer, or null when none is open or the viewer hooks did not apply. */
-    static Object currentViewer() {
-        return resumedViewer.get();
+    /** A number for the current resume of the viewer; NO_TOKEN when none is resumed or the hooks did not apply. */
+    static long lifecycleToken() {
+        return resumeToken;
+    }
+
+    /** False for good once the viewer paused after {@code token} was taken, even if it resumed again. */
+    static boolean isCurrent(long token) {
+        return token != NO_TOKEN && token == resumeToken;
     }
 
     static void afterMarkSeen() {
