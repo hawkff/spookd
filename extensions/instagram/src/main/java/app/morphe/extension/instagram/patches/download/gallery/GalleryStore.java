@@ -268,6 +268,7 @@ public final class GalleryStore {
 
     /** {count, total size in bytes} of the saved downloads. */
     public synchronized long[] totals() {
+        recover();
         try (Cursor c = db.rawQuery("SELECT COUNT(*), COALESCE(SUM(size_bytes), 0) FROM gallery_items", null)) {
             c.moveToFirst();
             return new long[]{c.getLong(0), c.getLong(1)};
