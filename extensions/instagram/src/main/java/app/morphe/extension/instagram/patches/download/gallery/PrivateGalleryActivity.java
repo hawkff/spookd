@@ -1250,6 +1250,11 @@ public final class PrivateGalleryActivity {
                 Uri uri;
                 try {
                     File dir = new File(app.getCacheDir(), GalleryActions.SHARE_DIR);
+                    if (!GalleryActions.fitsPickBudget(GalleryActions.pickBytes(dir), item.size)) {
+                        ui.post(() -> sharing = false);
+                        Utils.showToastShort(str("spookd_gallery_pick_full"));
+                        return;
+                    }
                     uri = GalleryActions.pickCopy(app, dir, item.fileName, item.vault, item.id, item.file);
                 } catch (Exception e) {
                     ui.post(() -> sharing = false);

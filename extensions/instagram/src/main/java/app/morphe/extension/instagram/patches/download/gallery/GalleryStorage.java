@@ -18,6 +18,11 @@ public final class GalleryStorage {
         return (int) GalleryStore.get().totals()[0];
     }
 
+    /** Deletes picks Instagram had an hour to import. */
+    public static void sweepPicks(android.content.Context context) {
+        GalleryActions.sweepPicks(context);
+    }
+
     /** False when a saved file could not be deleted; throws on database errors. */
     public static boolean clearGallery() {
         return GalleryStore.get().deleteAll();

@@ -39,6 +39,8 @@ final class GalleryActions {
     static final String PICK_PREFIX = "pick-";
     // shortcut: a fixed hour instead of knowing when Instagram's import ended; long enough for any video copy.
     static final long PICK_KEEP_MS = 60 * 60_000L;
+    // Picks waiting for that hour may not take more than this; a pick past it is refused, nothing is evicted.
+    static final long PICK_BUDGET_BYTES = 1_000_000_000L;
     // The manifest keeps this class name even when the code is minified; clones rename only the authority.
     private static final String FILE_PROVIDER = "androidx.core.content.FileProvider";
 
@@ -98,15 +100,21 @@ final class GalleryActions {
      */
     static File clearShared(Context context) {
         File dir = new File(context.getCacheDir(), SHARE_DIR);
-        clearShared(dir, System.currentTimeMillis());
+        clearShared(dir, System.currentTimeMillis(), false);
         return dir;
     }
 
-    static void clearShared(File dir, long now) {
+    /** Deletes picks older than {@link #PICK_KEEP_MS} only; runs on the caller's background thread. */
+    static void sweepPicks(Context context) {
+        clearShared(new File(context.getCacheDir(), SHARE_DIR), System.currentTimeMillis(), true);
+    }
+
+    static void clearShared(File dir, long now, boolean expiredPicksOnly) {
         File[] entries = dir.listFiles();
         if (entries != null) {
             for (File entry : entries) {
-                if (entry.getName().startsWith(PICK_PREFIX) && now - entry.lastModified() < PICK_KEEP_MS) continue;
+                boolean pick = entry.getName().startsWith(PICK_PREFIX);
+                if (pick ? now - entry.lastModified() < PICK_KEEP_MS : expiredPicksOnly) continue;
                 File[] inner = entry.listFiles();
                 if (inner != null) for (File file : inner) file.delete();
                 entry.delete();
@@ -120,6 +128,23 @@ final class GalleryActions {
      */
     static Uri shareCopy(Context context, File dir, String name, boolean vault, long id, File file) throws Exception {
         return copy(context, dir, "", name, vault, id, file);
+    }
+
+    /** Bytes the picks in {@code dir} still hold; runs on the caller's background thread. */
+    static long pickBytes(File dir) {
+        long total = 0;
+        File[] entries = dir.listFiles();
+        if (entries == null) return 0;
+        for (File entry : entries) {
+            File[] inner = entry.getName().startsWith(PICK_PREFIX) ? entry.listFiles() : null;
+            if (inner != null) for (File file : inner) total += file.length();
+        }
+        return total;
+    }
+
+    /** Whether a pick of {@code size} bytes fits next to {@code used} bytes of waiting picks. */
+    static boolean fitsPickBudget(long used, long size) {
+        return size >= 0 && used + size <= PICK_BUDGET_BYTES;
     }
 
     /** {@link #shareCopy} for Instagram's picker: the copy outlives the next clear for {@link #PICK_KEEP_MS}. */
