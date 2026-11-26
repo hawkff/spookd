@@ -266,6 +266,13 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.HIDE_REELS_TAB_HEADER) && SettingsStatus.hideReelsTabHeader;
     }
 
+    private static final Cached<Boolean> DISABLE_APP_HAPTICS =
+            new Cached<>(() -> SharedPref.getBooleanPref(Settings.DISABLE_APP_HAPTICS), Settings.DISABLE_APP_HAPTICS.key);
+
+    public static boolean disableAppHaptics() {
+        return SettingsStatus.disableAppHaptics && DISABLE_APP_HAPTICS.get();
+    }
+
     public static boolean disableReelsScrolling() {
         return lockable(Settings.DISABLE_REELS_SCROLLING) && SettingsStatus.disableReelsScrolling;
     }

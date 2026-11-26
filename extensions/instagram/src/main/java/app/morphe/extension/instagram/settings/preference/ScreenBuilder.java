@@ -941,6 +941,13 @@ public class ScreenBuilder {
                     Settings.PROFILE_SAVED_TAB
             ));
         }
+        if (SettingsStatus.disableAppHaptics) {
+            addPreference(helper.switchPreference(
+                    str("spookd_disable_app_haptics"),
+                    str("spookd_disable_app_haptics_desc"),
+                    Settings.DISABLE_APP_HAPTICS
+            ));
+        }
         if (SettingsStatus.resumeReelsAfterScrolling) {
             addPreference(helper.switchPreference(
                     str("spookd_resume_reels_after_scrolling"),

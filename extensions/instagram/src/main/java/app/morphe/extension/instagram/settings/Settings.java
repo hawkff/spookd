@@ -180,4 +180,5 @@ public class Settings {
     public static final BooleanSetting HIDE_CHAT_BLEND_BUTTON = new BooleanSetting("hide_chat_blend_button", false, REQUIRED);
     public static final BooleanSetting HIDE_INBOX_INSTANTS = new BooleanSetting("hide_inbox_instants", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_REELS_TAB_HEADER = new BooleanSetting("hide_reels_tab_header", false, REQUIRED);
+    public static final BooleanSetting DISABLE_APP_HAPTICS = new BooleanSetting("disable_app_haptics", false, NOT_REQUIRED);
 }

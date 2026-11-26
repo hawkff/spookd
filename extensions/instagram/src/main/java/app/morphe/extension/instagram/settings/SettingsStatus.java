@@ -317,7 +317,9 @@ public class SettingsStatus {
     public static void moreOptionsOnPost() { moreOptionsOnPost = true; }
     public static boolean moreOptionsOnProfile = false;
     public static void moreOptionsOnProfile() { moreOptionsOnProfile = true; }
-    public static boolean miscSection() {return ( moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || defaultPlaybackSpeed || reelsPlayerOptions || followBackIndicator || followListNonFollowerBadge || profileAnalyzer || exactProfileCounts || squareProfileGrid || profileSavedTab || confirmationsSection() || customFont);}
+    public static boolean disableAppHaptics = false;
+    public static void disableAppHaptics() { disableAppHaptics = true; }
+    public static boolean miscSection() {return ( disableAppHaptics || moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || defaultPlaybackSpeed || reelsPlayerOptions || followBackIndicator || followListNonFollowerBadge || profileAnalyzer || exactProfileCounts || squareProfileGrid || profileSavedTab || confirmationsSection() || customFont);}
 
     //Font section.
     public static boolean customFont = false;
@@ -457,6 +459,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_hide_chat_blend_button"), SettingsStatus.hideChatBlendButton);
         FLAGS.put(str("spookd_hide_inbox_instants"), SettingsStatus.hideInboxInstants);
         FLAGS.put(str("spookd_hide_reels_tab_header"), SettingsStatus.hideReelsTabHeader);
+        FLAGS.put(str("spookd_disable_app_haptics"), SettingsStatus.disableAppHaptics);
 
         FLAGS.put(str("spookd_view_dm_anonymously"),SettingsStatus.viewDmAnonymously);
         FLAGS.put(str("spookd_mark_as_read_after_reply"), SettingsStatus.markAsReadAfterReply);

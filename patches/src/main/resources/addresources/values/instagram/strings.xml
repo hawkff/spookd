@@ -212,6 +212,8 @@
     <string name="spookd_exact_profile_counts_desc">Shows the full number of posts, followers and following on profiles, such as 12,345 instead of 12.3K</string>
     <string name="spookd_square_profile_grid">Square profile grid</string>
     <string name="spookd_square_profile_grid_desc">Shows posts on profile grids as square thumbnails instead of tall 3:4 ones</string>
+    <string name="spookd_disable_app_haptics">Disable app haptics</string>
+    <string name="spookd_disable_app_haptics_desc">Stops the vibrations Instagram plays on taps, long presses and swipes. Your phone\'s settings are not changed</string>
     <string name="spookd_profile_saved_tab">Saved tab on your profile</string>
     <string name="spookd_profile_saved_tab_desc">Adds a Saved tab after the other tabs on your own profile. Restart the app to apply.</string>
     <string name="spookd_category_confirmations">Confirmations</string>
