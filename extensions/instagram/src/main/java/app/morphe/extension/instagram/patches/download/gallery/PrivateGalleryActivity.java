@@ -1242,8 +1242,7 @@ public final class PrivateGalleryActivity {
         private void confirmDelete(List<Item> items) {
             if (items.isEmpty()) return;
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
-                    .setMessage(items.size() == 1 ? str("spookd_gallery_delete_confirm")
-                            : str("spookd_gallery_delete_selected_confirm", items.size()))
+                    .setMessage(str("spookd_gallery_delete_selected_confirm", items.size()))
                     .setPositiveButton(str("spookd_delete"), (d, which) -> delete(items))
                     .setNegativeButton(str("spookd_cancel"), null)
                     .show();

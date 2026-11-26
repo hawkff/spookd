@@ -631,7 +631,7 @@
     <string name="spookd_gallery_done">Done</string>
     <string name="spookd_gallery_more">More</string>
     <string name="spookd_gallery_no_matches">Nothing matches these filters.</string>
-    <string name="spookd_gallery_delete_selected_confirm">Delete %1$d items from the private gallery?</string>
+    <string name="spookd_gallery_delete_selected_confirm">Delete from the private gallery? Items: %1$d</string>
     <string name="spookd_download_with_external_downloader">Download with external downloader</string>
     <string name="spookd_external_downloader_package_name">External downloader package name</string>
     <string name="spookd_external_downloader_package_name_not_found">External downloader package name not found</string>
