@@ -31,7 +31,7 @@ import app.morphe.extension.instagram.settings.preference.widgets.InstagramPrefe
 import com.instagram.common.session.UserSession;
 
 /**
- * A list of story owners: usernames by user id, oldest first; or of DM chats: titles by chat id.
+ * A list of story owners or Instants senders: usernames by user id, oldest first; or of DM chats: titles by chat id.
  * It lives in the settings file, so per-account settings give every account its own list. The chat list is also
  * stored under the account id, because an account seen for the first time starts with a copy of the settings file.
  */
@@ -51,6 +51,10 @@ public final class StoryUserList {
     private final boolean perAccount;
     private String cachedJson;
     private Map<String, String> cachedUsers = Collections.emptyMap();
+
+    public StoryUserList(StringSetting setting, String titleKey, String removeConfirmKey) {
+        this(setting, titleKey, removeConfirmKey, "@", "spookd_story_ghost_users_empty", false);
+    }
 
     private StoryUserList(StringSetting setting, String titleKey, String removeConfirmKey, String namePrefix,
                           String emptyKey, boolean perAccount) {
@@ -85,7 +89,7 @@ public final class StoryUserList {
     }
 
     /** Parsed again only after the stored list changes, so story paths stay in memory. */
-    synchronized Map<String, String> all() {
+    public synchronized Map<String, String> all() {
         return all(null);
     }
 
@@ -99,7 +103,7 @@ public final class StoryUserList {
     }
 
     /** False when the user is already listed. */
-    synchronized boolean add(String userId, String username) {
+    public synchronized boolean add(String userId, String username) {
         return add(null, userId, username);
     }
 
@@ -113,7 +117,7 @@ public final class StoryUserList {
         return true;
     }
 
-    synchronized void remove(String userId) {
+    public synchronized void remove(String userId) {
         remove(null, userId);
     }
 

@@ -35,7 +35,7 @@ import app.morphe.extension.shared.Utils;
 
 /**
  * Asks before a like, follow, unfollow, repost, comment, reaction, call, follow request approval, pull to
- * refresh or disappearing messages switch goes through. Every entry point runs on the main thread from
+ * refresh, disappearing messages switch or Instant video goes through. Every entry point runs on the main thread from
  * Instagram's own click, gesture and refresh handlers and returns true, letting the action run, on any
  * failure.
  */
@@ -52,6 +52,7 @@ public final class ActionConfirm {
     static final String FOLLOW_REQUEST = "follow_request";
     static final String REFRESH = "refresh";
     static final String DISAPPEARING = "disappearing";
+    static final String INSTANT_VIDEO = "instant_video";
 
     // Set only while an approved action runs again: what it was about, and how it looked when asked.
     private static Object pendingToken;
@@ -559,6 +560,22 @@ public final class ActionConfirm {
         } catch (Throwable t) {
             Logger.printException(() -> "allowDisappearingMessagesSwitch failure", t);
             return true;
+        }
+    }
+
+    /**
+     * From an Instant's video or emoji reaction send, on the main thread; {@code emoji} is null for a video.
+     * False when nothing was asked, so the caller sends it now. Otherwise {@code send} runs on approval and
+     * {@code cancel} once the dialog closes without it; the caller makes sure only the first of them acts.
+     */
+    public static boolean askInstantSend(String emoji, Object token, Runnable send, Runnable cancel) {
+        try {
+            String title = emoji == null
+                    ? str("spookd_confirm_instant_video_title") : str("spookd_confirm_reaction_title", emoji);
+            return ask(null, emoji == null ? INSTANT_VIDEO : REACTION, title, token, Collections.emptyList(), send, cancel);
+        } catch (Throwable t) {
+            Logger.printException(() -> "askInstantSend failure", t);
+            return false;
         }
     }
 

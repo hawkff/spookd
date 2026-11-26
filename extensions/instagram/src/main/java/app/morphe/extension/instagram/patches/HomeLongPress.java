@@ -14,7 +14,11 @@ import android.content.ContextWrapper;
 import android.content.DialogInterface;
 import android.view.View;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import app.morphe.extension.instagram.entity.InstagramDialogBox;
+import app.morphe.extension.instagram.patches.instants.InstantsMenu;
 import app.morphe.extension.instagram.settings.ActivityHook;
 import app.morphe.extension.instagram.settings.preference.fragments.FragmentHook;
 import app.morphe.extension.instagram.utils.Pref;
@@ -38,8 +42,9 @@ public class HomeLongPress {
         try {
             boolean devOptions = Pref.enableDevOptions();
             boolean gallery = Pref.homeLongPressGallery();
-            if (devOptions || gallery) {
-                showChoiceDialog(view, devOptions, gallery);
+            boolean instants = InstantsMenu.available();
+            if (devOptions || gallery || instants) {
+                showChoiceDialog(view, devOptions, gallery, instants);
             } else {
                 FragmentHook.startSettings();
             }
@@ -50,21 +55,29 @@ public class HomeLongPress {
         }
     }
 
-    private static void showChoiceDialog(View view, boolean devOptions, boolean gallery) {
-        InstagramDialogBox dialog = new InstagramDialogBox(activityOf(view.getContext()));
+    private static void showChoiceDialog(View view, boolean devOptions, boolean gallery, boolean instants) {
+        Activity activity = activityOf(view.getContext());
+        InstagramDialogBox dialog = new InstagramDialogBox(activity);
 
-        CharSequence[] items = gallery && devOptions
-                ? new CharSequence[]{str("spookd_title_settings"), str("spookd_private_gallery"), str("spookd_category_dev_options")}
-                : new CharSequence[]{str("spookd_title_settings"), str(gallery ? "spookd_private_gallery" : "spookd_category_dev_options")};
+        List<String> keys = new ArrayList<>();
+        keys.add("spookd_title_settings");
+        if (gallery) keys.add("spookd_private_gallery");
+        if (instants) keys.add("spookd_instants_title");
+        if (devOptions) keys.add("spookd_category_dev_options");
+        CharSequence[] items = new CharSequence[keys.size()];
+        for (int i = 0; i < items.length; i++) items[i] = str(keys.get(i));
         dialog.addDialogMenuItems(items, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface d, int which) {
                 try {
-                    if (which == 0) {
+                    String key = keys.get(which);
+                    if (key.equals("spookd_title_settings")) {
                         FragmentHook.startSettings();
-                    } else if (gallery && which == 1) {
+                    } else if (key.equals("spookd_private_gallery")) {
                         // The gallery screen asks for the screen lock itself before showing anything.
                         ActivityHook.startPrivateGalleryActivity(view.getContext());
+                    } else if (key.equals("spookd_instants_title")) {
+                        InstantsMenu.show(activity);
                     } else {
                         replayingLongPress = true;
                         try {

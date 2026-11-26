@@ -383,6 +383,17 @@ public class SettingsStatus {
     public static void instantsDownload() {
         instantsDownload = true;
     }
+    public static boolean instantsSeen = false;
+    public static void instantsSeen() { instantsSeen = true; }
+    public static boolean disableInstantsCreation = false;
+    public static void disableInstantsCreation() { disableInstantsCreation = true; }
+    public static boolean confirmInstantVideo = false;
+    public static void confirmInstantVideo() { confirmInstantVideo = true; }
+    public static boolean confirmInstantReaction = false;
+    public static void confirmInstantReaction() { confirmInstantReaction = true; }
+    public static boolean instantsSection() {
+        return instantsDownload || instantsSeen || disableInstantsCreation || confirmInstantVideo || confirmInstantReaction;
+    }
 
     //Navigation Section
     public static boolean hideNavigationButtons = false;
@@ -518,6 +529,10 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_view_live_anonymously"),SettingsStatus.viewLiveAnonymously);
         FLAGS.put(str("spookd_view_stories_anonymously"),SettingsStatus.viewStoriesAnonymously);
         FLAGS.put(str("spookd_instants_title"),SettingsStatus.instantsDownload);
+        FLAGS.put(str("spookd_patch_instants_seen"), SettingsStatus.instantsSeen);
+        FLAGS.put(str("spookd_disable_instants_creation"), SettingsStatus.disableInstantsCreation);
+        FLAGS.put(str("spookd_confirm_instant_video"), SettingsStatus.confirmInstantVideo);
+        FLAGS.put(str("spookd_confirm_instant_reaction"), SettingsStatus.confirmInstantReaction);
 
         FLAGS.put(str("spookd_sanitize_share_links"),SettingsStatus.sanitizeShareLinks);
         FLAGS.put(str("spookd_custom_sharing_domain"),SettingsStatus.customSharingDomain);

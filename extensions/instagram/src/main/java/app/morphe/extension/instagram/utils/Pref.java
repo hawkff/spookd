@@ -289,6 +289,26 @@ public class Pref {
         return SettingsStatus.hideInboxInstants && HIDE_INBOX_INSTANTS.get();
     }
 
+    public static boolean instantsDontMarkSeen() {
+        return instantsDontMarkSeen(SettingsStatus.instantsSeen, on(Settings.INSTANTS_DONT_MARK_SEEN), getTurnOnAllGhostModes());
+    }
+
+    static boolean instantsDontMarkSeen(boolean applied, boolean dontMarkSeen, boolean allGhostModes) {
+        return applied && (dontMarkSeen || allGhostModes);
+    }
+
+    public static boolean disableInstantsCreation() {
+        return SettingsStatus.disableInstantsCreation && on(Settings.DISABLE_INSTANTS_CREATION);
+    }
+
+    public static boolean confirmInstantVideo() {
+        return SettingsStatus.confirmInstantVideo && on(Settings.CONFIRM_INSTANT_VIDEO);
+    }
+
+    public static boolean confirmInstantReaction() {
+        return SettingsStatus.confirmInstantReaction && on(Settings.CONFIRM_INSTANT_REACTION);
+    }
+
     private static final Cached<Boolean> HIDE_REELS_TAB_HEADER =
             new Cached<>(() -> on(Settings.HIDE_REELS_TAB_HEADER), Settings.HIDE_REELS_TAB_HEADER.key);
 
