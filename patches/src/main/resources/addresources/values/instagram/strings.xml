@@ -357,7 +357,7 @@
     <string name="spookd_hidden_chats_mute">Mute hidden chats</string>
     <string name="spookd_hidden_chats_mute_desc">Don\'t show notifications for messages from chats you have hidden</string>
     <string name="spookd_pin_recipients">Pin recipients</string>
-    <string name="spookd_pin_recipients_desc">Adds Pin to the menu you get by holding a chat in your inbox. Pinned chats move to the top of the share sheet before you type, and the people of pinned one-to-one chats to the top of your recent searches, when Instagram lists them. One Instagram has listed there since it started stays on top even when Instagram leaves it out later, like after clearing recents. Each account has its own pins.</string>
+    <string name="spookd_pin_recipients_desc">Adds Pin to the menu you get by holding a chat in your inbox. Pinned chats move to the top of the share sheet before you type, and the people of pinned one-to-one chats to the top of your recent searches, when Instagram lists them. One Instagram listed there stays on top for 30 minutes after it last did, even when Instagram leaves it out, like after clearing recents; a hidden chat is not brought back while your hidden chats are closed. Each account has its own pins.</string>
     <string name="spookd_pin_recipients_pin">Pin in share sheet and search</string>
     <string name="spookd_pin_recipients_unpin">Unpin from share sheet and search</string>
     <string name="spookd_pin_recipients_pinned">Pinned</string>

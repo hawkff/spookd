@@ -8,6 +8,8 @@ package app.morphe.extension.instagram.patches.dm;
 
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
+import android.content.SharedPreferences;
+
 import org.json.JSONObject;
 
 import java.lang.reflect.Field;
@@ -20,15 +22,19 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.crimera.sharedPreference.BaseSharedPref;
+import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.entity.UserData;
+import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
 import com.instagram.common.session.UserSession;
@@ -38,7 +44,7 @@ import com.instagram.model.direct.DirectThreadKey;
  * Chats each account pins from a chat's long-press menu in the inbox. Pinned chats are listed first in the share sheet
  * before anything is typed, and the people of pinned one-to-one chats come first in search's recent list. Pins are
  * kept per account id, in the order they were pinned. Instagram's own entries are moved, never built: one it leaves
- * out is added back only when it was listed earlier since Instagram started.
+ * out is added back for 30 minutes after Instagram last listed it.
  */
 @SuppressWarnings("unused")
 public final class PinnedRecipients {
@@ -50,8 +56,15 @@ public final class PinnedRecipients {
     private static final Store STORE = new Store();
     private static final Map<String, Pins> pinsByAccount = new HashMap<>();
     private static final Map<Class<?>, Field[]> objectFields = new ConcurrentHashMap<>();
-    private static final Map<String, Map<String, Object>> shareTargets = new ConcurrentHashMap<>();
-    private static final Map<String, Map<String, Object>> recentEntries = new ConcurrentHashMap<>();
+    // What Instagram listed for each pin of the current account, by pin, held under CACHE_LOCK for this process only.
+    static final long KEEP_MS = 30 * 60 * 1000L;
+    private static final Object CACHE_LOCK = new Object();
+    static final Map<String, Kept<Object>> shareTargets = new HashMap<>();
+    static final Map<String, Kept<Object>> recentEntries = new HashMap<>();
+    static String cacheAccount;
+    private static boolean listening;
+    // Replaced in tests.
+    static LongSupplier clock = System::currentTimeMillis;
     private static final ThreadLocal<RecentSearch> recentSearch = new ThreadLocal<>();
     // The button added to the menu opened last; menus open and are pressed on the main thread.
     private static String menuButton;
@@ -134,22 +147,26 @@ public final class PinnedRecipients {
 
     /**
      * Called on the main thread with the share sheet's suggested recipients before anything is typed; returns them with
-     * the pinned ones first. A pinned recipient Instagram leaves out is added back when the sheet listed it earlier
-     * since Instagram started; the hidden chats filter runs on the result.
+     * the pinned ones first. A pinned recipient Instagram leaves out is added back for a while after the sheet last
+     * listed it; the hidden chats filter runs on the result.
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static List orderShareTargets(Object adapter, List targets, String query) {
         try {
-            if (targets == null || (query != null && !query.isEmpty()) || !Pref.pinRecipients()) return targets;
+            if (targets == null || (query != null && !query.isEmpty())) return targets;
+            if (!Pref.pinRecipients()) {
+                clearCaches();
+                return targets;
+            }
             String account = accountOf(HiddenChats.sessionOf(adapter));
             if (account == null) return targets;
             Pins pins = pins(account);
             if (pins.chats.isEmpty()) return targets;
-            Map<String, Object> seen = cacheOf(shareTargets, account);
-            synchronized (seen) {
+            synchronized (CACHE_LOCK) {
+                useAccount(account);
                 return pinFirst((List<Object>) targets, pins.chatRanks,
-                        target -> pins.chatOf(HiddenChatsShare.keyOf(target), account), seen, true,
-                        addable(account, chat -> chat, pins.chats::get));
+                        target -> pins.chatOf(HiddenChatsShare.keyOf(target), account), shareTargets, true,
+                        addable(account, chat -> chat, pins.chats::get), clock.getAsLong());
             }
         } catch (Throwable t) {
             Logger.printException(() -> "PinnedRecipients.orderShareTargets failed", t);
@@ -163,7 +180,9 @@ public final class PinnedRecipients {
      */
     public static void noteRecentSearch(Object dataSource, boolean emptyQuery) {
         try {
-            String account = Pref.pinRecipients() ? accountOf(HiddenChats.sessionOf(dataSource)) : null;
+            boolean on = Pref.pinRecipients();
+            if (!on) clearCaches();
+            String account = on ? accountOf(HiddenChats.sessionOf(dataSource)) : null;
             // With recents hidden, nothing is added back to the empty list.
             if (account == null) recentSearch.remove();
             else recentSearch.set(new RecentSearch(account, emptyQuery && !Pref.hideRecentSearches()));
@@ -175,8 +194,8 @@ public final class PinnedRecipients {
 
     /**
      * Called with what search's recent list returns, on the thread that noted the call; returns it with pinned people
-     * first. With an empty query, a pinned person Instagram leaves out (like after clearing recents) is added back when
-     * the list showed them earlier since Instagram started.
+     * first. With an empty query, a pinned person Instagram leaves out (like after clearing recents) is added back for a
+     * while after the list last showed them.
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public static List orderRecentSearches(List results) {
@@ -186,10 +205,11 @@ public final class PinnedRecipients {
             if (search == null || results == null) return results;
             Pins pins = pins(search.account);
             if (pins.people.isEmpty()) return results;
-            Map<String, Object> seen = cacheOf(recentEntries, search.account);
-            synchronized (seen) {
-                return pinFirst((List<Object>) results, pins.people, PinnedRecipients::userIdOf, seen, search.emptyQuery,
-                        addable(search.account, pins.chatOfPerson::get, person -> person));
+            synchronized (CACHE_LOCK) {
+                useAccount(search.account);
+                return pinFirst((List<Object>) results, pins.people, PinnedRecipients::userIdOf, recentEntries,
+                        search.emptyQuery, addable(search.account, pins.chatOfPerson::get, person -> person),
+                        clock.getAsLong());
             }
         } catch (Throwable t) {
             Logger.printException(() -> "PinnedRecipients.orderRecentSearches failed", t);
@@ -199,11 +219,12 @@ public final class PinnedRecipients {
 
     /**
      * The pinned items first, by the rank of their pin and then in their own order, then the rest. Each pinned item is
-     * kept in {@code seen} by its pin; with {@code addMissing}, a pin without an item that {@code mayAdd} accepts gets
-     * the one kept for it, so no pin shows twice. The same list comes back when nothing is pinned or added.
+     * kept in {@code seen} by its pin, with the time Instagram listed it; with {@code addMissing}, a pin without an
+     * item that {@code mayAdd} accepts gets the one kept for it, so no pin shows twice, until {@link #KEEP_MS} after
+     * Instagram last listed it. The same list comes back when nothing is pinned or added.
      */
     static <T> List<T> pinFirst(List<T> items, Map<String, Integer> ranks, Function<T, String> pinOf,
-                                Map<String, T> seen, boolean addMissing, Predicate<String> mayAdd) {
+                                Map<String, Kept<T>> seen, boolean addMissing, Predicate<String> mayAdd, long now) {
         TreeMap<Integer, List<T>> pinned = new TreeMap<>();
         Set<String> present = new HashSet<>();
         List<T> rest = new ArrayList<>(items.size());
@@ -215,13 +236,18 @@ public final class PinnedRecipients {
                 continue;
             }
             present.add(pin);
-            seen.put(pin, item);
+            seen.put(pin, new Kept<>(item, now));
             pinned.computeIfAbsent(rank, r -> new ArrayList<>()).add(item);
         }
         if (addMissing) {
             for (Map.Entry<String, Integer> pin : ranks.entrySet()) {
-                T kept = present.contains(pin.getKey()) || !mayAdd.test(pin.getKey()) ? null : seen.get(pin.getKey());
-                if (kept != null) pinned.computeIfAbsent(pin.getValue(), r -> new ArrayList<>()).add(kept);
+                Kept<T> kept = present.contains(pin.getKey()) ? null : seen.get(pin.getKey());
+                if (kept == null) continue;
+                if (now - kept.listedAt >= KEEP_MS) {
+                    seen.remove(pin.getKey());
+                    continue;
+                }
+                if (mayAdd.test(pin.getKey())) pinned.computeIfAbsent(pin.getValue(), r -> new ArrayList<>()).add(kept.item);
             }
         }
         if (pinned.isEmpty()) return items;
@@ -290,9 +316,60 @@ public final class PinnedRecipients {
         };
     }
 
-    /** What Instagram listed for each pin of an account, kept only for this process. */
-    static Map<String, Object> cacheOf(Map<String, Map<String, Object>> caches, String account) {
-        return caches.computeIfAbsent(account, a -> new HashMap<>());
+    /** An entry Instagram listed for a pin, with when it last did. */
+    static final class Kept<T> {
+        final T item;
+        final long listedAt;
+
+        Kept(T item, long listedAt) {
+            this.item = item;
+            this.listedAt = listedAt;
+        }
+    }
+
+    /** Called when Instagram makes a session current; another account or a logout drops what was kept. */
+    public static void onCurrentSession(UserSession session) {
+        try {
+            synchronized (CACHE_LOCK) {
+                useAccount(accountOf(session));
+            }
+        } catch (Throwable t) {
+            Logger.printException(() -> "PinnedRecipients.onCurrentSession failed", t);
+        }
+    }
+
+    /** Keeps entries for one account only; called holding CACHE_LOCK. */
+    static void useAccount(String account) {
+        if (!Objects.equals(account, cacheAccount)) {
+            shareTargets.clear();
+            recentEntries.clear();
+            cacheAccount = account;
+        }
+        if (account != null && !listening) {
+            try {
+                listening = SharedPref.registerOnSharedPreferenceChangeListener(PinOff.LISTENER);
+            } catch (Throwable t) {
+                // Without a listener the caches are still dropped on the next use while the switch is off.
+                listening = true;
+            }
+        }
+    }
+
+    static void clearCaches() {
+        synchronized (CACHE_LOCK) {
+            shareTargets.clear();
+            recentEntries.clear();
+            cacheAccount = null;
+        }
+    }
+
+    // Held apart so the listener type is only loaded once there is something to drop.
+    private static final class PinOff {
+        static final SharedPreferences.OnSharedPreferenceChangeListener LISTENER = (preferences, key) -> {
+            if (key == null || (Settings.PIN_RECIPIENTS.key.equals(key) && !SharedPref.getBooleanPref(Settings.PIN_RECIPIENTS))) {
+                clearCaches();
+            }
+        };
     }
 
     private static synchronized Pins pins(String account) {
@@ -320,14 +397,10 @@ public final class PinnedRecipients {
     }
 
     private static void forget(String account, String chat, String person) {
-        Map<String, Object> targets = cacheOf(shareTargets, account);
-        synchronized (targets) {
-            targets.remove(chat);
-        }
-        if (person == null || person.isEmpty()) return;
-        Map<String, Object> entries = cacheOf(recentEntries, account);
-        synchronized (entries) {
-            entries.remove(person);
+        synchronized (CACHE_LOCK) {
+            if (!account.equals(cacheAccount)) return;
+            shareTargets.remove(chat);
+            if (person != null) recentEntries.remove(person);
         }
     }
 

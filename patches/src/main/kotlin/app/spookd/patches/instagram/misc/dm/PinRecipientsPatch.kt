@@ -9,11 +9,13 @@ package app.spookd.patches.instagram.misc.dm
 import app.spookd.patches.instagram.entity.userdata.userDataEntity
 import app.spookd.patches.instagram.misc.distractionFree.RECENT_SEARCH_DATA_SOURCE
 import app.spookd.patches.instagram.misc.distractionFree.RecentSearchResultsFingerprint
+import app.spookd.patches.instagram.misc.settings.SetCurrentUserSessionFingerprint
 import app.spookd.patches.instagram.misc.settings.settingsPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
 import app.spookd.patches.instagram.utils.Constants.USER_SESSION_CLASS
 import app.spookd.patches.instagram.utils.enableSettings
+import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
@@ -25,6 +27,7 @@ import app.morphe.patcher.util.getReference
 import app.morphe.patcher.util.p0Register
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.smali.ExternalLabel
+import app.morphe.util.findInstructionIndicesReversedOrThrow
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
@@ -160,6 +163,18 @@ val pinRecipientsPatch =
                         """.trimIndent(),
                     )
                 }
+            }
+
+            // Kept entries are dropped when another account becomes current; optional, they also expire on their own.
+            SetCurrentUserSessionFingerprint.matchOrNull()?.method?.apply {
+                val returnIndex = findInstructionIndicesReversedOrThrow(Opcode.RETURN_OBJECT).singleOrNull()
+                    ?: return@apply
+                val register = getInstruction<OneRegisterInstruction>(returnIndex).registerA
+                addInstruction(
+                    returnIndex,
+                    "invoke-static/range { v$register .. v$register }, " +
+                        "$PINNED_RECIPIENTS_CLASS->onCurrentSession($USER_SESSION_CLASS)V",
+                )
             }
 
             enableSettings("pinRecipients")

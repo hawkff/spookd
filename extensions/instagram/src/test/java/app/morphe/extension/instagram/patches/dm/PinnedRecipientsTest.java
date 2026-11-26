@@ -3,6 +3,7 @@ package app.morphe.extension.instagram.patches.dm;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import com.instagram.model.direct.DirectThreadKey;
 import com.instagram.user.model.User;
@@ -18,10 +19,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import org.junit.After;
 import org.junit.Test;
 
 public class PinnedRecipientsTest {
     private static final Predicate<String> ANY = pin -> true;
+    private static final long NOW = 1_000_000L;
     private static PinnedRecipients.Pins pins() {
         Map<String, String> chats = new LinkedHashMap<>();
         chats.put("group", "");
@@ -63,52 +66,84 @@ public class PinnedRecipientsTest {
     @Test
     public void pinnedItemsComeFirstInPinOrderAndTheRestKeepTheirOrder() {
         List<String> items = Arrays.asList("a", "pin:direct", "b", "pin:group", "c");
-        List<String> ordered = PinnedRecipients.pinFirst(items, ranks(), PinnedRecipientsTest::self, new HashMap<>(), true, ANY);
+        List<String> ordered = PinnedRecipients.pinFirst(items, ranks(), PinnedRecipientsTest::self, new HashMap<>(), true, ANY, NOW);
         assertEquals(Arrays.asList("pin:group", "pin:direct", "a", "b", "c"), ordered);
     }
 
     @Test
     public void aListWithoutPinnedItemsIsReturnedAsItIs() {
         List<String> items = Collections.unmodifiableList(Arrays.asList("a", "b"));
-        assertSame(items, PinnedRecipients.pinFirst(items, ranks(), PinnedRecipientsTest::self, new HashMap<>(), true, ANY));
+        assertSame(items, PinnedRecipients.pinFirst(items, ranks(), PinnedRecipientsTest::self, new HashMap<>(), true, ANY, NOW));
     }
 
     @Test
     public void emptySuggestionsGetThePinnedRecipientsListedBefore() {
-        Map<String, String> seen = new HashMap<>();
-        PinnedRecipients.pinFirst(Arrays.asList("a", "pin:direct"), ranks(), PinnedRecipientsTest::self, seen, true, ANY);
+        Map<String, PinnedRecipients.Kept<String>> seen = new HashMap<>();
+        PinnedRecipients.pinFirst(Arrays.asList("a", "pin:direct"), ranks(), PinnedRecipientsTest::self, seen, true, ANY, NOW);
         assertEquals(Collections.singletonList("pin:direct"),
-                PinnedRecipients.pinFirst(new ArrayList<>(), ranks(), PinnedRecipientsTest::self, seen, true, ANY));
+                PinnedRecipients.pinFirst(new ArrayList<>(), ranks(), PinnedRecipientsTest::self, seen, true, ANY, NOW));
     }
 
     @Test
     public void clearedRecentsKeepThePinnedPersonButATypedSearchAddsNothing() {
-        Map<String, String> seen = new HashMap<>();
-        PinnedRecipients.pinFirst(Arrays.asList("pin:direct", "a"), ranks(), PinnedRecipientsTest::self, seen, true, ANY);
+        Map<String, PinnedRecipients.Kept<String>> seen = new HashMap<>();
+        PinnedRecipients.pinFirst(Arrays.asList("pin:direct", "a"), ranks(), PinnedRecipientsTest::self, seen, true, ANY, NOW);
         List<String> cleared = Collections.emptyList();
         assertEquals(Collections.singletonList("pin:direct"),
-                PinnedRecipients.pinFirst(cleared, ranks(), PinnedRecipientsTest::self, seen, true, ANY));
-        assertSame(cleared, PinnedRecipients.pinFirst(cleared, ranks(), PinnedRecipientsTest::self, seen, false, ANY));
+                PinnedRecipients.pinFirst(cleared, ranks(), PinnedRecipientsTest::self, seen, true, ANY, NOW));
+        assertSame(cleared, PinnedRecipients.pinFirst(cleared, ranks(), PinnedRecipientsTest::self, seen, false, ANY, NOW));
     }
 
     @Test
     public void aListedPinIsNotAddedTwice() {
-        Map<String, String> seen = new HashMap<>();
-        seen.put("direct", "pin:direct");
+        Map<String, PinnedRecipients.Kept<String>> seen = new HashMap<>();
+        seen.put("direct", new PinnedRecipients.Kept<>("pin:direct", NOW));
         List<String> ordered = PinnedRecipients.pinFirst(Arrays.asList("a", "pin:direct"), ranks(),
-                PinnedRecipientsTest::self, seen, true, ANY);
+                PinnedRecipientsTest::self, seen, true, ANY, NOW);
         assertEquals(Arrays.asList("pin:direct", "a"), ordered);
     }
 
+    @After
+    public void dropKept() {
+        PinnedRecipients.clearCaches();
+    }
+
     @Test
-    public void anotherAccountDoesNotGetWhatTheFirstOneListed() {
-        Map<String, Map<String, Object>> caches = new HashMap<>();
-        Map<String, Object> first = PinnedRecipients.cacheOf(caches, "first");
-        first.put("direct", "pin:direct");
-        Map<String, Object> second = PinnedRecipients.cacheOf(caches, "second");
-        List<Object> none = new ArrayList<>();
-        assertSame(none, PinnedRecipients.pinFirst(none, ranks(), item -> null, second, true, ANY));
-        assertSame(first, PinnedRecipients.cacheOf(caches, "first"));
+    public void anotherAccountOrALogoutDropsWhatWasKept() {
+        PinnedRecipients.useAccount("first");
+        PinnedRecipients.shareTargets.put("direct", new PinnedRecipients.Kept<>("pin:direct", NOW));
+        PinnedRecipients.recentEntries.put("friend", new PinnedRecipients.Kept<>("pin:friend", NOW));
+        PinnedRecipients.useAccount("first");
+        assertEquals(1, PinnedRecipients.shareTargets.size());
+
+        PinnedRecipients.useAccount("second");
+        assertTrue(PinnedRecipients.shareTargets.isEmpty());
+        assertTrue(PinnedRecipients.recentEntries.isEmpty());
+
+        PinnedRecipients.shareTargets.put("direct", new PinnedRecipients.Kept<>("pin:direct", NOW));
+        PinnedRecipients.useAccount(null);
+        assertTrue(PinnedRecipients.shareTargets.isEmpty());
+    }
+
+    @Test
+    public void aKeptEntryExpiresThirtyMinutesAfterInstagramLastListedIt() {
+        Map<String, PinnedRecipients.Kept<String>> seen = new HashMap<>();
+        PinnedRecipients.pinFirst(Arrays.asList("pin:direct"), ranks(), PinnedRecipientsTest::self, seen, true, ANY, NOW);
+        List<String> empty = Collections.emptyList();
+        long almost = NOW + PinnedRecipients.KEEP_MS - 1;
+        // Adding it back does not make it fresh again.
+        assertEquals(Collections.singletonList("pin:direct"),
+                PinnedRecipients.pinFirst(empty, ranks(), PinnedRecipientsTest::self, seen, true, ANY, almost));
+        assertSame(empty, PinnedRecipients.pinFirst(empty, ranks(), PinnedRecipientsTest::self, seen, true, ANY,
+                NOW + PinnedRecipients.KEEP_MS));
+        assertTrue(seen.isEmpty());
+
+        // Listed again by Instagram, it is kept from that time.
+        long later = NOW + 2 * PinnedRecipients.KEEP_MS;
+        PinnedRecipients.pinFirst(Arrays.asList("pin:direct"), ranks(), PinnedRecipientsTest::self, seen, true, ANY, later);
+        assertEquals(Collections.singletonList("pin:direct"),
+                PinnedRecipients.pinFirst(empty, ranks(), PinnedRecipientsTest::self, seen, true, ANY,
+                        later + PinnedRecipients.KEEP_MS - 1));
     }
 
     @Test
@@ -133,21 +168,21 @@ public class PinnedRecipientsTest {
 
     @Test
     public void aPinnedChatHiddenAfterItWasListedIsNotAddedBackUntilHiddenChatsOpen() {
-        Map<String, String> seen = new HashMap<>();
-        PinnedRecipients.pinFirst(Arrays.asList("pin:direct", "a"), ranks(), PinnedRecipientsTest::self, seen, true, ANY);
+        Map<String, PinnedRecipients.Kept<String>> seen = new HashMap<>();
+        PinnedRecipients.pinFirst(Arrays.asList("pin:direct", "a"), ranks(), PinnedRecipientsTest::self, seen, true, ANY, NOW);
         PinnedRecipients.Pins pins = pins();
         Set<String> hiddenChats = new HashSet<>(Collections.singletonList("direct"));
         Map<String, String> hiddenUsers = Collections.singletonMap("direct", "friend");
         Predicate<String> closed = PinnedRecipients.notHidden(hiddenChats, hiddenUsers, chat -> chat, pins.chats::get);
 
         List<String> empty = Collections.emptyList();
-        assertSame(empty, PinnedRecipients.pinFirst(empty, ranks(), PinnedRecipientsTest::self, seen, true, closed));
+        assertSame(empty, PinnedRecipients.pinFirst(empty, ranks(), PinnedRecipientsTest::self, seen, true, closed, NOW));
         // What Instagram lists itself still moves up; the hidden chats filter decides on it afterwards.
         assertEquals(Arrays.asList("pin:direct", "a"), PinnedRecipients.pinFirst(Arrays.asList("a", "pin:direct"),
-                ranks(), PinnedRecipientsTest::self, seen, true, closed));
+                ranks(), PinnedRecipientsTest::self, seen, true, closed, NOW));
         // With the hidden chats open, everything may come back.
         assertEquals(Collections.singletonList("pin:direct"),
-                PinnedRecipients.pinFirst(empty, ranks(), PinnedRecipientsTest::self, seen, true, ANY));
+                PinnedRecipients.pinFirst(empty, ranks(), PinnedRecipientsTest::self, seen, true, ANY, NOW));
     }
 
     @Test
@@ -157,9 +192,9 @@ public class PinnedRecipientsTest {
         Predicate<String> closed = PinnedRecipients.notHidden(Collections.emptySet(), hiddenUsers,
                 pins.chatOfPerson::get, person -> person);
         Map<String, Integer> people = Collections.singletonMap("friend", 1);
-        Map<String, String> seen = new HashMap<>();
-        seen.put("friend", "pin:friend");
+        Map<String, PinnedRecipients.Kept<String>> seen = new HashMap<>();
+        seen.put("friend", new PinnedRecipients.Kept<>("pin:friend", NOW));
         List<String> cleared = Collections.emptyList();
-        assertSame(cleared, PinnedRecipients.pinFirst(cleared, people, PinnedRecipientsTest::self, seen, true, closed));
+        assertSame(cleared, PinnedRecipients.pinFirst(cleared, people, PinnedRecipientsTest::self, seen, true, closed, NOW));
     }
 }
