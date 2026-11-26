@@ -172,6 +172,14 @@ public class Pref {
         return SettingsStatus.reelsAutoScroll ? SharedPref.getStringPref(Settings.REELS_AUTO_SCROLL) : "default";
     }
 
+    private static final Cached<Boolean> REELS_AUTO_SCROLL_OFF =
+            new Cached<>(() -> "off".equals(reelsAutoScroll()), Settings.REELS_AUTO_SCROLL.key);
+
+    /** Called when Instagram decides whether Reels auto-scroll is available; true makes it unavailable. */
+    public static boolean reelsAutoScrollOff() {
+        return SettingsStatus.reelsAutoScroll && REELS_AUTO_SCROLL_OFF.get();
+    }
+
     public static boolean disableVideoAutoplay() {
         return SharedPref.getBooleanPref(Settings.DISABLE_VIDEO_AUTOPLAY);
     }
