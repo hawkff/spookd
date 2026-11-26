@@ -617,6 +617,15 @@ public class ScreenBuilder {
                     )
             );
         }
+        if (SettingsStatus.holdSendCopyLink) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_hold_send_copy_link"),
+                            str("spookd_hold_send_copy_link_desc"),
+                            Settings.HOLD_SEND_COPY_LINK
+                    )
+            );
+        }
     }
 
     public void distractionFreeSection() {

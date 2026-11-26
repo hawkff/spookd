@@ -146,8 +146,10 @@ public class SettingsStatus {
     public static void customSharingDomain() {customSharingDomain = true;}
     public static boolean detectLinksInText = false;
     public static void detectLinksInText() { detectLinksInText = true; }
+    public static boolean holdSendCopyLink = false;
+    public static void holdSendCopyLink() { holdSendCopyLink = true; }
     public static boolean linksSection() {
-        return (openLinksExternally || sanitizeShareLinks || customSharingDomain || detectLinksInText);
+        return (openLinksExternally || sanitizeShareLinks || customSharingDomain || detectLinksInText || holdSendCopyLink);
     }
 
     //Distraction-Free section.
@@ -507,6 +509,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_custom_sharing_domain"),SettingsStatus.customSharingDomain);
         FLAGS.put(str("spookd_open_links_externally"),SettingsStatus.openLinksExternally);
         FLAGS.put(str("spookd_detect_links_in_text"), SettingsStatus.detectLinksInText);
+        FLAGS.put(str("spookd_hold_send_copy_link"), SettingsStatus.holdSendCopyLink);
         FLAGS.put(str("spookd_enable_dev_options"),SettingsStatus.enableDeveloperOptions);
 
         FLAGS.put(str("spookd_enable_mark_chat_as_read"),SettingsStatus.markChatAsRead);

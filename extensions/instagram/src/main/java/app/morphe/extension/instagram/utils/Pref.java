@@ -296,6 +296,13 @@ public class Pref {
         return SettingsStatus.exactLastActive && EXACT_LAST_ACTIVE.get();
     }
 
+    private static final Cached<Boolean> HOLD_SEND_COPY_LINK =
+            new Cached<>(() -> SharedPref.getBooleanPref(Settings.HOLD_SEND_COPY_LINK), Settings.HOLD_SEND_COPY_LINK.key);
+
+    public static boolean holdSendCopyLink() {
+        return SettingsStatus.holdSendCopyLink && HOLD_SEND_COPY_LINK.get();
+    }
+
     private static final Cached<Boolean> STOP_VISUAL_MESSAGE_AUTO_ADVANCE = new Cached<>(
             () -> Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.STOP_VISUAL_MESSAGE_AUTO_ADVANCE)),
             Settings.STOP_VISUAL_MESSAGE_AUTO_ADVANCE.key);
