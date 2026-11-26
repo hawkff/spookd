@@ -127,7 +127,6 @@ node_modules/
 
 # Ignore IDEA files
 .idea/
-/src/main/kotlin/crimera/patches/twitter/test*
 bin/
 
 *.bak

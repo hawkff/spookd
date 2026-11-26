@@ -27,8 +27,6 @@
 package app.morphe.patches.all.misc.updates
 
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
-import app.crimera.patches.newx.utils.Constants.COMPATIBILITY_NEW_X
-import app.crimera.patches.twitter.utils.Constants.COMPATIBILITY_X
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
@@ -60,7 +58,7 @@ internal val disablePlayStoreUpdatesPatch = patch(
     default = true
 ) {
 
-    compatibleWith(COMPATIBILITY_X, COMPATIBILITY_NEW_X, COMPATIBILITY_INSTAGRAM)
+    compatibleWith(COMPATIBILITY_INSTAGRAM)
 
     extendWith("extensions/all/versioncode/change-version-code.mpe")
 

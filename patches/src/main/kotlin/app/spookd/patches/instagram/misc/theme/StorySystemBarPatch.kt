@@ -6,7 +6,7 @@
 
 package app.spookd.patches.instagram.misc.theme
 
-import app.crimera.patches.instagram.utils.typeReference
+import app.spookd.patches.instagram.utils.typeReference
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.InstructionLocation.MatchAfterImmediately
 import app.morphe.patcher.InstructionLocation.MatchAfterWithin

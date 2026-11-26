@@ -51,10 +51,7 @@ internal fun main(args: Array<String>) {
     val localizedAppIds =
         listOf(
             "instagram",
-            "newx",
             "shared",
-            "twitter",
-            "twitter-bring-back",
         )
 
     localizedAppIds.forEach { appId ->

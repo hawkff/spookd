@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Feature requests are accepted only for Instagram and Twitter.
+        Feature requests are accepted only for Instagram.
         Search open and closed issues before posting. Keep the title prefix unchanged.
 
   - type: textarea

@@ -42,7 +42,7 @@ def pkg_emoji(pkg):
     return "📦"
 
 # Group patches by (packageName, compatibility name) so distinct app variants sharing a package
-# (e.g. Twitter and NewX) keep their own sections and supported versions. Patches with no
+# keep their own sections and supported versions. Patches with no
 # compatiblePackages are universal.
 # JSON structure: compatiblePackages is a list of objects with
 # { packageName, name, targets: [{ version, isExperimental, description }] }
@@ -153,16 +153,8 @@ def build_content(expanded=False):
         f"{total} patches total"
     ]
 
-    def section_sort_key(item):
-        name = item[1]["name"]
-        if name == "NewX":
-            return 0
-        if name == "Twitter":
-            return 2
-        return 1
-
-    # One spoiler per app, placing NewX first and legacy Twitter at the bottom
-    for _key, entry in sorted(by_pkg.items(), key=section_sort_key):
+    # One spoiler per app
+    for _key, entry in by_pkg.items():
         patches = list(entry["patches"].values())
         label   = f"{entry['emoji']} {entry['name']}"
         lines.append(spoiler(label, len(patches), entry["targets"], patches_table(patches), expanded))

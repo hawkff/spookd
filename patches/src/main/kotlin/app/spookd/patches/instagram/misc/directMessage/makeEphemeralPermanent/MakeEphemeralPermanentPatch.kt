@@ -16,7 +16,7 @@ import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
 import app.spookd.patches.instagram.utils.Constants.USER_SESSION_CLASS
 import app.spookd.patches.instagram.utils.enableSettings
-import app.crimera.patches.instagram.utils.typeReference
+import app.spookd.patches.instagram.utils.typeReference
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.InstructionLocation.MatchAfterImmediately
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
