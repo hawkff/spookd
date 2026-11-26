@@ -937,12 +937,34 @@ public final class PrivateGalleryActivity {
             return view;
         }
 
-        /** A square tile: thumbnail, an audio glyph, username and source, a star, and a play and duration badge. */
+        private TextView badge() {
+            TextView view = new TextView(activity);
+            view.setTextColor(Color.WHITE);
+            SpookdType.apply(view, SpookdType.CAPTION);
+            view.setPadding(dp(4), 0, dp(4), 0);
+            view.setBackgroundColor(0x99000000);
+            view.setSingleLine(true);
+            view.setEllipsize(TextUtils.TruncateAt.END);
+            return view;
+        }
+
+        private FrameLayout.LayoutParams corner(int gravity) {
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, gravity);
+            params.setMargins(dp(4), dp(4), dp(4), 0);
+            return params;
+        }
+
+        /**
+         * A square tile: thumbnail and audio glyph; source and play, duration and mark badges at the top,
+         * each up to half the width; the owner and a star on their own line at the bottom.
+         */
         private final class Tile extends FrameLayout {
             private final ImageView image = new ImageView(activity);
             private final TextView note = new TextView(activity);
             private final TextView label = overlayText(SpookdType.CAPTION);
-            private final TextView badge = new TextView(activity);
+            private final TextView sourceBadge = badge();
+            private final TextView badge = badge();
             private final TextView star = overlayText(SpookdType.LABEL);
             private final SelectionCheck check = selectionCheck(Color.WHITE);
 
@@ -960,21 +982,14 @@ public final class PrivateGalleryActivity {
                         FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
                 LinearLayout bottom = new LinearLayout(activity);
                 bottom.setGravity(Gravity.CENTER_VERTICAL);
-                bottom.setPadding(dp(4), 0, dp(4), dp(4));
+                bottom.setPadding(dp(4), 0, dp(4), dp(2));
                 bottom.addView(label, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-                badge.setTextColor(0xFFFFFFFF);
-                SpookdType.apply(badge, SpookdType.CAPTION);
-                badge.setPadding(dp(4), 0, dp(4), 0);
-                badge.setBackgroundColor(0x99000000);
-                bottom.addView(badge);
+                star.setText("★");
+                bottom.addView(star);
                 addView(bottom, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
                         FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
-                star.setText("★");
-                FrameLayout.LayoutParams starParams = new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
-                        Gravity.TOP | Gravity.END);
-                starParams.setMargins(0, dp(2), dp(6), 0);
-                addView(star, starParams);
+                addView(sourceBadge, corner(Gravity.TOP | Gravity.START));
+                addView(badge, corner(Gravity.TOP | Gravity.END));
                 FrameLayout.LayoutParams checkParams = new FrameLayout.LayoutParams(dp(32), dp(32),
                         Gravity.TOP | Gravity.START);
                 checkParams.setMargins(dp(4), dp(4), 0, 0);
@@ -989,9 +1004,15 @@ public final class PrivateGalleryActivity {
                 String duration = item.durationMs == null ? "" : DateUtils.formatElapsedTime(item.durationMs / 1000);
                 String badgeText = item.video() ? ("▶ " + duration).trim() : duration;
                 if (item.mark != null) badgeText = (str(item.mark) + " " + badgeText).trim();
+                int half = Math.max(1, tileSize / 2 - dp(4));
+                badge.setMaxWidth(half);
                 badge.setText(badgeText);
                 badge.setVisibility(badgeText.isEmpty() ? View.GONE : View.VISIBLE);
-                label.setText(source == null ? sourceLabel(item) + " · " + ownerLabel(item) : ownerLabel(item));
+                sourceBadge.setMaxWidth(half);
+                sourceBadge.setText(sourceLabel(item));
+                // Only All mixes sources, and the selection check takes this corner.
+                sourceBadge.setVisibility(overlays && source == null && !selecting ? View.VISIBLE : View.GONE);
+                label.setText(ownerLabel(item));
                 label.setVisibility(overlays ? View.VISIBLE : View.INVISIBLE);
                 star.setVisibility(item.favorite ? View.VISIBLE : View.GONE);
                 check.setVisibility(selecting ? View.VISIBLE : View.GONE);
