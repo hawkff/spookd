@@ -102,10 +102,6 @@ public final class DeletedMessagesActivity {
         return itemCount > 0 && checkedCount == itemCount;
     }
 
-    static boolean shouldSelectAll(int checkedCount, int itemCount) {
-        return !areAllSelected(checkedCount, itemCount);
-    }
-
     static void refreshVisibleSelectionRows(ListView list, boolean selectionMode) {
         int firstPosition = list.getFirstVisiblePosition();
         for (int childIndex = 0; childIndex < list.getChildCount(); childIndex++) {
@@ -263,6 +259,8 @@ public final class DeletedMessagesActivity {
         private boolean refreshingPictures;
         private Future<?> refreshJob;
         private boolean hasMore;
+        // The user chose All: every row of the log, loaded or not, is meant.
+        private boolean wholeLogSelected;
         private ListView messageList;
         private MessageAdapter adapter;
         private SimpleDateFormat timestampFormatter;
@@ -417,7 +415,6 @@ public final class DeletedMessagesActivity {
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
             content.addView(empty, match);
             content.addView(messageList, match);
-            loadMessages(null, empty);
             root.addView(content, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, 0, 1));
 
@@ -442,6 +439,8 @@ public final class DeletedMessagesActivity {
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
             deleteParams.setMargins(Dim.dp16, Dim.dp8, Dim.dp16, Dim.dp12);
             root.addView(deleteAction, deleteParams);
+            // After every control exists, since a load updates them.
+            loadMessages(null, empty);
 
             root.setOnApplyWindowInsetsListener((v, insets) -> {
                 v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(),
@@ -574,6 +573,12 @@ public final class DeletedMessagesActivity {
                         rows.addAll(page);
                         messages = rows;
                         hasMore = page.size() == PAGE_SIZE;
+                        // A whole-log selection covers the rows that just came in.
+                        if (wholeLogSelected) {
+                            for (int position = offset; position < rows.size(); position++) {
+                                messageList.setItemChecked(position, true);
+                            }
+                        }
                         adapter.notifyDataSetChanged();
                     }
                     updateSelectionUi();
@@ -612,35 +617,43 @@ public final class DeletedMessagesActivity {
 
         void cancelSelection() {
             selectionMode = false;
+            wholeLogSelected = false;
             messageList.clearChoices();
             messageList.setChoiceMode(ListView.CHOICE_MODE_NONE);
             updateSelectionUi();
         }
 
+        /** Selects the whole log, rows not loaded yet included, or clears the selection. */
         private void toggleAll() {
-            boolean checked = shouldSelectAll(
-                    messageList.getCheckedItemCount(), messages.size());
+            boolean allSelected = wholeLogSelected
+                    || (!hasMore && areAllSelected(messageList.getCheckedItemCount(), messages.size()));
+            boolean checked = !allSelected && !messages.isEmpty();
             for (int position = 0; position < messages.size(); position++) {
                 messageList.setItemChecked(position, checked);
             }
+            wholeLogSelected = checked;
             updateSelectionUi();
         }
 
         private void updateSelectionUi() {
+            if (deleteAction == null) return;
             int checkedCount = messageList.getCheckedItemCount();
+            // Unchecking a row ends a whole-log selection.
+            if (wholeLogSelected && checkedCount < messages.size()) wholeLogSelected = false;
             boolean selecting = isSelecting();
             boolean hasSelection = checkedCount > 0;
             if (selectionToolbarVisible != selecting) {
                 applySelectionToolbarLayout(selecting);
                 selectionToolbarVisible = selecting;
             }
-            toolbarTitle.setText(selecting
-                    ? String.format(Locale.getDefault(), str("spookd_selected_count"), checkedCount)
-                    : str("spookd_all_deleted_messages"));
+            toolbarTitle.setText(!selecting ? str("spookd_all_deleted_messages")
+                    : wholeLogSelected && hasMore ? str("spookd_whole_log_selected")
+                    : String.format(Locale.getDefault(), str("spookd_selected_count"), checkedCount));
             backAction.setVisibility(selecting ? View.GONE : View.VISIBLE);
             selectAllAction.setVisibility(selecting ? View.VISIBLE : View.GONE);
-            selectAllCheck.setChecked(areAllSelected(
-                    checkedCount, messages.size()));
+            // Checked only when the whole log is selected, not just the loaded pages.
+            selectAllCheck.setChecked(wholeLogSelected
+                    || (!hasMore && areAllSelected(checkedCount, messages.size())));
             cancelSelectionAction.setVisibility(selecting ? View.VISIBLE : View.GONE);
             moreAction.setVisibility(selecting ? View.GONE : View.VISIBLE);
             deleteAction.setVisibility(selecting ? View.VISIBLE : View.GONE);
@@ -674,6 +687,10 @@ public final class DeletedMessagesActivity {
         }
 
         private void confirmDeleteSelected() {
+            if (wholeLogSelected && hasMore) {
+                confirmDeleteWholeLog();
+                return;
+            }
             SparseBooleanArray checked = messageList.getCheckedItemPositions();
             ArrayList<String> selectedIds = new ArrayList<>();
             for (int position = 0; position < messages.size(); position++) {
@@ -691,6 +708,43 @@ public final class DeletedMessagesActivity {
                     })
                     .setNegativeButton(str("spookd_cancel"), null)
                     .show();
+        }
+
+        /** Reads every row id of the log off the main thread, then asks to delete exactly those. */
+        private void confirmDeleteWholeLog() {
+            if (loads.isBusy()) return;
+            Context app = activity.getApplicationContext();
+            sDbJobs.execute(() -> {
+                List<String> ids = null;
+                try {
+                    SpookdMessageDb db = SpookdMessageDb.getInstance(app);
+                    List<String> all = new ArrayList<>();
+                    String[] last = null;
+                    List<String[]> page;
+                    do {
+                        page = db.getDeletedMessages(PAGE_SIZE, last);
+                        for (String[] row : page) all.add(row[0]);
+                        if (!page.isEmpty()) last = page.get(page.size() - 1);
+                    } while (page.size() == PAGE_SIZE);
+                    ids = all;
+                } catch (Exception e) {
+                    Logger.printException(() -> "confirmDeleteWholeLog: ", e);
+                }
+                List<String> result = ids;
+                Utils.runOnMainThread(() -> {
+                    if (activity.isFinishing() || activity.isDestroyed()) return;
+                    if (result == null || result.isEmpty() || !wholeLogSelected) return;
+                    new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
+                            .setMessage(String.format(Locale.getDefault(),
+                                    str("spookd_delete_whole_log_confirm"), result.size()))
+                            .setPositiveButton(str("spookd_delete"), (dialog, which) -> {
+                                loadMessages(result, null);
+                                updateSelectionUi();
+                            })
+                            .setNegativeButton(str("spookd_cancel"), null)
+                            .show();
+                });
+            });
         }
 
         private void showMoreOptions() {
