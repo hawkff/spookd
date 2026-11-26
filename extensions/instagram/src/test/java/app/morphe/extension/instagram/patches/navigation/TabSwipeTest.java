@@ -45,4 +45,20 @@ public class TabSwipeTest {
         assertFalse(TabSwipe.swipeTabs(false));
         assertEquals("off", TabSwipe.mode());
     }
+
+    @Test
+    public void aFailedFirstReadKeepsInstagramsAnswerForTheWholeProcess() {
+        TabSwipe.frozen = null;
+        boolean[] failed = {false};
+        TabSwipe.reader = () -> {
+            if (!failed[0]) {
+                failed[0] = true;
+                throw new IllegalStateException("settings not ready");
+            }
+            return "off";
+        };
+        assertTrue(TabSwipe.swipeTabs(true));
+        assertEquals("default", TabSwipe.mode());
+        assertTrue(TabSwipe.swipeTabs(true));
+    }
 }

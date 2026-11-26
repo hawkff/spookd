@@ -36,7 +36,12 @@ public final class TabSwipe {
         if (mode != null) return mode;
         synchronized (TabSwipe.class) {
             if (frozen == null) {
-                String read = reader.get();
+                String read = null;
+                try {
+                    read = reader.get();
+                } catch (Throwable ignored) {
+                    // An unreadable setting is frozen as Default too, so a later read cannot change the built tabs.
+                }
                 frozen = read == null ? "default" : read;
             }
             return frozen;
