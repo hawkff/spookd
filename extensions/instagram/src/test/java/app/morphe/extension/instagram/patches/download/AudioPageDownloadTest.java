@@ -1,11 +1,16 @@
 package app.morphe.extension.instagram.patches.download;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+
+import android.view.View;
+import android.widget.LinearLayout;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 
 @RunWith(RobolectricTestRunner.class)
@@ -51,6 +56,21 @@ public final class AudioPageDownloadTest {
         SoundImpl near = new SoundImpl();
         Pair handler = new Pair(new Node(new Node(new SoundImpl())), near);
         assertSame(near, AudioPageDownload.findOriginalSound(handler, Sound.class));
+    }
+
+    @Test
+    public void aRetainedPageHidesAndShowsItsButtonWithTheSwitch() {
+        LinearLayout actionBar = new LinearLayout(RuntimeEnvironment.getApplication());
+        assertNull(AudioPageDownload.reconcile(actionBar, true));
+        View button = new View(actionBar.getContext());
+        button.setTag(AudioPageDownload.BUTTON_TAG);
+        actionBar.addView(button);
+
+        assertSame(button, AudioPageDownload.reconcile(actionBar, false));
+        assertEquals(View.GONE, button.getVisibility());
+        assertSame(button, AudioPageDownload.reconcile(actionBar, true));
+        assertEquals(View.VISIBLE, button.getVisibility());
+        assertEquals(1, actionBar.getChildCount());
     }
 
     @Test

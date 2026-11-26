@@ -35,7 +35,7 @@ import app.morphe.extension.shared.ui.Dim;
 @SuppressWarnings("unused")
 public final class AudioPageDownload {
 
-    private static final String BUTTON_TAG = "spookd_audio_page_download";
+    static final String BUTTON_TAG = "spookd_audio_page_download";
     private static final String ACTION_BAR_CLASS = "com.instagram.igds.components.actionbar.IgdsActionBar";
     private static final String ORIGINAL_SOUND_CLASS = "com.instagram.api.schemas.OriginalSoundDataIntf";
     // The page handler reaches the audio through its page model and the model's audio asset.
@@ -50,18 +50,23 @@ public final class AudioPageDownload {
         if (handler == null || !SettingsStatus.audioPageDownloadButton) return;
         Utils.runOnMainThread(() -> {
             try {
-                if (!Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.ENABLE_DOWNLOAD))
-                        || !Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.AUDIO_PAGE_DOWNLOAD_BUTTON))) {
-                    return;
-                }
                 ViewGroup actionBar = actionBar(handler);
-                if (actionBar == null || actionBar.findViewWithTag(BUTTON_TAG) != null) return;
+                if (actionBar == null) return;
+                boolean enabled = isEnabled();
+                if (reconcile(actionBar, enabled) != null || !enabled) return;
                 ImageView button = new ImageView(actionBar.getContext());
                 button.setTag(BUTTON_TAG);
                 UI.setThemedIcon(button, UI.DRAWABLE_DOWNLOAD_ICON);
                 button.setScaleType(ImageView.ScaleType.CENTER);
                 button.setContentDescription(str("spookd_download_audio"));
-                button.setOnClickListener(v -> download(v.getContext(), handler));
+                button.setOnClickListener(v -> {
+                    // The switch may have been turned off while this page stayed open.
+                    if (!isEnabled()) {
+                        v.setVisibility(View.GONE);
+                        return;
+                    }
+                    download(v.getContext(), handler);
+                });
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(Dim.dp48, Dim.dp48);
                 params.gravity = android.view.Gravity.CENTER_VERTICAL;
                 // Before the last child, where the page puts its own extra action.
@@ -70,6 +75,18 @@ public final class AudioPageDownload {
                 Logger.printException(() -> "AudioPageDownload: button failed", e);
             }
         });
+    }
+
+    private static boolean isEnabled() {
+        return Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.ENABLE_DOWNLOAD))
+                && Boolean.TRUE.equals(SharedPref.getBooleanPref(Settings.AUDIO_PAGE_DOWNLOAD_BUTTON));
+    }
+
+    /** Shows or hides the button this action bar already has and returns it, or null when it has none. */
+    static View reconcile(ViewGroup actionBar, boolean enabled) {
+        View existing = actionBar.findViewWithTag(BUTTON_TAG);
+        if (existing != null) existing.setVisibility(enabled ? View.VISIBLE : View.GONE);
+        return existing;
     }
 
     private static ViewGroup actionBar(Object handler) throws Exception {
