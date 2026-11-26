@@ -113,7 +113,9 @@ public class SettingsStatus {
     public static void stopVisualMessageAutoAdvance() { stopVisualMessageAutoAdvance = true; }
     public static boolean exactLastActive = false;
     public static void exactLastActive() { exactLastActive = true; }
-    public static boolean dmSection(){ return markChatAsRead || unlimitedReplaysOnEphemeralMedia || saveDeletedMessages || dmMediaVault || inboxLock || hiddenChats || pinRecipients || disableDisappearingMessagesGesture || sendKeyboardGifs || stopVisualMessageAutoAdvance || exactLastActive ;}
+    public static boolean activityAlerts = false;
+    public static void activityAlerts() { activityAlerts = true; }
+    public static boolean dmSection(){ return markChatAsRead || unlimitedReplaysOnEphemeralMedia || saveDeletedMessages || dmMediaVault || inboxLock || hiddenChats || pinRecipients || disableDisappearingMessagesGesture || sendKeyboardGifs || stopVisualMessageAutoAdvance || exactLastActive || activityAlerts ;}
 
     //Story section
     public static boolean customiseStoryTimestamp = false;
@@ -463,6 +465,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_stop_visual_message_auto_advance"), SettingsStatus.stopVisualMessageAutoAdvance);
         FLAGS.put(str("spookd_mark_visual_messages_seen_manually"), SettingsStatus.markVisualMessagesSeen);
         FLAGS.put(str("spookd_exact_last_active"), SettingsStatus.exactLastActive);
+        FLAGS.put(str("spookd_activity_alerts"), SettingsStatus.activityAlerts);
 
         FLAGS.put(str("spookd_customise_story_timestamp"),SettingsStatus.customiseStoryTimestamp);
         FLAGS.put(str("spookd_disable_story_flipping"),SettingsStatus.disableStoryFlipping);

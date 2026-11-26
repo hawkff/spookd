@@ -215,6 +215,13 @@ public class Settings {
     public static final BooleanSetting DISABLE_APP_HAPTICS = new BooleanSetting("disable_app_haptics", false, NOT_REQUIRED);
     public static final BooleanSetting TRACK_VISITED_PROFILES = new BooleanSetting("track_visited_profiles", false, NOT_REQUIRED);
     public static final BooleanSetting EXACT_LAST_ACTIVE = new BooleanSetting("exact_last_active", false, NOT_REQUIRED);
+    public static final BooleanSetting ACTIVITY_ALERT_ONLINE = new BooleanSetting("activity_alert_online", false, NOT_REQUIRED);
+    public static final BooleanSetting ACTIVITY_ALERT_OFFLINE = new BooleanSetting("activity_alert_offline", false, NOT_REQUIRED);
+    public static final BooleanSetting ACTIVITY_ALERT_TYPING = new BooleanSetting("activity_alert_typing", false, NOT_REQUIRED);
+    public static final BooleanSetting ACTIVITY_ALERT_READ = new BooleanSetting("activity_alert_read", false, NOT_REQUIRED);
+    public static final StringSetting ACTIVITY_ALERT_USERS = new StringSetting("activity_alert_users", "{}", NOT_REQUIRED);
+    // Minutes between Instagram's active status refreshes while the app is open, or "default".
+    public static final StringSetting PRESENCE_REFRESH_MINUTES = new StringSetting("presence_refresh_minutes", "default", NOT_REQUIRED);
     public static final BooleanSetting HOLD_SEND_COPY_LINK = new BooleanSetting("hold_send_copy_link", false, REQUIRED);
     public static final BooleanSetting OPEN_SETTINGS_ON_LAUNCH = new BooleanSetting("open_settings_on_launch", false, NOT_REQUIRED);
     // Megabytes; "0" turns it off.

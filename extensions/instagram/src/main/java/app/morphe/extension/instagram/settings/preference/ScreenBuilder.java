@@ -34,6 +34,7 @@ import app.morphe.extension.instagram.patches.focusLock.FocusLockTargets;
 import app.morphe.extension.instagram.patches.story.StoryAutoSave;
 import app.morphe.extension.instagram.patches.story.StoryGhostList;
 import app.morphe.extension.instagram.patches.dm.DmGhostChats;
+import app.morphe.extension.instagram.patches.dm.presence.ActivityAlerts;
 import app.morphe.extension.instagram.patches.instants.InstantsMenu;
 import app.morphe.extension.instagram.patches.location.FakeLocationScreen;
 import app.morphe.extension.instagram.patches.location.FakePlaces;
@@ -456,6 +457,44 @@ public class ScreenBuilder {
                                     && SharedPref.getBooleanPref(Settings.DM_MEDIA_VAULT)
                     )
             );
+        }
+
+        if (SettingsStatus.activityAlerts) {
+            addPreference(helper.switchPreference(str("spookd_activity_alert_online"),
+                    str("spookd_activity_alert_online_desc"), Settings.ACTIVITY_ALERT_ONLINE));
+            addPreference(helper.switchPreference(str("spookd_activity_alert_offline"),
+                    str("spookd_activity_alert_offline_desc"), Settings.ACTIVITY_ALERT_OFFLINE));
+            addPreference(helper.switchPreference(str("spookd_activity_alert_typing"),
+                    str("spookd_activity_alert_typing_desc"), Settings.ACTIVITY_ALERT_TYPING));
+            addPreference(helper.switchPreference(str("spookd_activity_alert_read"),
+                    str("spookd_activity_alert_read_desc"), Settings.ACTIVITY_ALERT_READ));
+            Preference activityUsers = helper.buttonPreference(
+                    str("spookd_activity_alert_users"),
+                    str("spookd_activity_alert_users_desc"),
+                    "spookd_activity_alert_users"
+            );
+            activityUsers.setOnPreferenceClickListener(preference -> {
+                ActivityAlerts.showList(preference.getContext());
+                return true;
+            });
+            addPreference(activityUsers);
+
+            ListPref presenceRefresh = new ListPref(context) {
+                @Override
+                protected void onSetInitialValue(boolean restoreValue, Object defaultValue) {
+                    super.onSetInitialValue(restoreValue, defaultValue);
+                    setEntries(new CharSequence[]{str("spookd_array_default"),
+                            str("spookd_presence_refresh_every", 1), str("spookd_presence_refresh_every", 5),
+                            str("spookd_presence_refresh_every", 15)});
+                    setEntryValues(new CharSequence[]{"default", "1", "5", "15"});
+                }
+            };
+            presenceRefresh.setTitle(str("spookd_presence_refresh"));
+            presenceRefresh.setDialogTitle(str("spookd_presence_refresh"));
+            presenceRefresh.setSummary(str("spookd_presence_refresh_desc"));
+            presenceRefresh.setKey(Settings.PRESENCE_REFRESH_MINUTES.key);
+            presenceRefresh.setDefaultValue(Settings.PRESENCE_REFRESH_MINUTES.defaultValue);
+            addPreference(presenceRefresh);
         }
     }
 

@@ -354,6 +354,17 @@ public class Pref {
         return SettingsStatus.searchStoryViewers && SEARCH_STORY_VIEWERS.get();
     }
 
+    /** One kind of activity notification: {@link Settings#ACTIVITY_ALERT_ONLINE} and the like. */
+    public static boolean activityAlert(BooleanSetting kind) {
+        return SettingsStatus.activityAlerts && on(kind);
+    }
+
+    /** "default", or the minutes between active status refreshes. */
+    public static String presenceRefreshMinutes() {
+        return SettingsStatus.activityAlerts
+                ? value(Settings.PRESENCE_REFRESH_MINUTES) : Settings.PRESENCE_REFRESH_MINUTES.defaultValue;
+    }
+
     private static final Cached<Boolean> HOLD_SEND_COPY_LINK =
             new Cached<>(() -> on(Settings.HOLD_SEND_COPY_LINK), Settings.HOLD_SEND_COPY_LINK.key);
 
