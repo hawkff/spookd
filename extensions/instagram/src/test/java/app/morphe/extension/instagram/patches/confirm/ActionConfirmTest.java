@@ -137,6 +137,14 @@ public class ActionConfirmTest {
     }
 
     @Test
+    public void onlyPullToRefreshIsAskedAmongRefreshReasons() {
+        assertTrue(ActionConfirm.isPullToRefresh("PULL_TO_REFRESH"));
+        assertFalse(ActionConfirm.isPullToRefresh("AUTO_REFRESH"));
+        assertFalse(ActionConfirm.isPullToRefresh("PILL_REFRESH"));
+        assertFalse(ActionConfirm.isPullToRefresh(null));
+    }
+
+    @Test
     public void blankCommentsAreNotAsked() {
         assertTrue(ActionConfirm.isBlank(null));
         assertTrue(ActionConfirm.isBlank(" \n "));

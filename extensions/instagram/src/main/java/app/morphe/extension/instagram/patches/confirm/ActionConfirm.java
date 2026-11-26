@@ -20,6 +20,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.WeakHashMap;
 
@@ -31,9 +32,9 @@ import app.morphe.extension.shared.ResourceUtils;
 import app.morphe.extension.shared.Utils;
 
 /**
- * Asks before a like, follow, unfollow, repost, comment, reaction, call or follow request approval goes
- * through. Every entry point runs on the main thread from Instagram's own click handlers and returns
- * true, letting the action run, on any failure.
+ * Asks before a like, follow, unfollow, repost, comment, reaction, call, follow request approval or pull
+ * to refresh goes through. Every entry point runs on the main thread from Instagram's own click and
+ * refresh handlers and returns true, letting the action run, on any failure.
  */
 @SuppressWarnings("unused")
 public final class ActionConfirm {
@@ -46,6 +47,7 @@ public final class ActionConfirm {
     static final String REACTION = "reaction";
     static final String CALL = "call";
     static final String FOLLOW_REQUEST = "follow_request";
+    static final String REFRESH = "refresh";
 
     // Set only while an approved action runs again: what it was about, and how it looked when asked.
     private static Object pendingToken;
@@ -412,6 +414,66 @@ public final class ActionConfirm {
         }
     }
 
+    /**
+     * From Home's refresh with a reason, on the main thread; only a pull to refresh is asked. On cancel
+     * {@code loading}, the spinner Instagram itself sets, stops loading.
+     */
+    public static boolean allowFeedRefresh(Object feed, Object reason, Object loading, String name) {
+        try {
+            List<Object> state = Arrays.asList(reason);
+            Boolean replay = replayVerdict(feed, state);
+            if (replay != null) return replay;
+            if (feed == null || !isPullToRefresh(enumName(reason)) || !Pref.confirmRefresh()) return true;
+            return !ask(null, REFRESH, str("spookd_confirm_refresh_title"), feed, state,
+                    invoker(feed.getClass(), name, feed, new Object[]{reason}),
+                    publicCall(loading, "setIsLoading", new Class<?>[]{boolean.class}, false));
+        } catch (Throwable t) {
+            Logger.printException(() -> "allowFeedRefresh failure", t);
+            return true;
+        }
+    }
+
+    static boolean isPullToRefresh(String reason) {
+        return "PULL_TO_REFRESH".equals(reason);
+    }
+
+    /**
+     * From Reels' refresh, on the main thread; {@code pull} is true for a pull to refresh, the only one
+     * asked. On cancel {@code stopSpinner}, which Instagram runs itself when refreshes come too fast, runs.
+     */
+    public static boolean allowReelsRefresh(Object refresh, boolean pull, Object stopSpinner, String name) {
+        try {
+            List<Object> state = Arrays.asList(pull);
+            Boolean replay = replayVerdict(refresh, state);
+            if (replay != null) return replay;
+            if (refresh == null || !pull || !Pref.confirmRefresh()) return true;
+            return !ask(null, REFRESH, str("spookd_confirm_refresh_title"), refresh, state,
+                    invoker(refresh.getClass(), name, refresh, new Object[]{true}),
+                    publicCall(stopSpinner, "invoke", new Class<?>[0]));
+        } catch (Throwable t) {
+            Logger.printException(() -> "allowReelsRefresh failure", t);
+            return true;
+        }
+    }
+
+    /**
+     * From the inbox's pull-to-refresh runnable, on the main thread. On cancel {@code stopSpinner},
+     * which Instagram posts itself when refreshes come too fast, runs.
+     */
+    public static boolean allowInboxRefresh(Runnable refresh, Runnable stopSpinner) {
+        try {
+            List<Object> state = Collections.emptyList();
+            Boolean replay = replayVerdict(refresh, state);
+            if (replay != null) return replay;
+            if (refresh == null || !Pref.confirmRefresh()) return true;
+            return !ask(null, REFRESH, str("spookd_confirm_refresh_title"), refresh, state, refresh::run, stopSpinner);
+        } catch (Throwable t) {
+            Logger.printException(() -> "allowInboxRefresh failure", t);
+            return true;
+        }
+    }
+
+
     /** What a tap on a follow button with this status asks, or null when it follows or Instagram asks itself. */
     static String unfollowAction(String status, String privacy) {
         if ("FOLLOWSTATUSREQUESTED".equals(status)) return WITHDRAW;
@@ -495,24 +557,41 @@ public final class ActionConfirm {
         return count == null ? 0 : count;
     }
 
-    /** Shows the dialog; false when it cannot be shown, so the action goes ahead. */
     private static boolean ask(View anchor, String action, String title, Object token, List<Object> state, Runnable rerun) {
+        return ask(anchor, action, title, token, state, rerun, null);
+    }
+
+    /**
+     * Shows the dialog; false when it cannot be shown, so the action goes ahead. {@code onCancel}, when
+     * set, runs once the dialog closes without the action done.
+     */
+    private static boolean ask(View anchor, String action, String title, Object token, List<Object> state, Runnable rerun,
+                               Runnable onCancel) {
         Activity activity = activityOf(anchor == null ? null : anchor.getContext());
         if (activity == null || activity.isFinishing()) return false;
+        boolean[] done = {false};
         AlertDialog dialog = new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                 .setTitle(title)
                 .setNegativeButton(str("spookd_cancel"), null)
                 .setPositiveButton(str("spookd_confirm_" + action + "_action"), (shown, which) -> {
                     // A recycled or closed screen means the prompt no longer matches what is shown.
-                    boolean done = (anchor == null || anchor.isAttachedToWindow()) && runConfirmed(token, state, rerun);
-                    if (!done) Utils.showToastShort(str("spookd_confirm_not_done"));
+                    done[0] = (anchor == null || anchor.isAttachedToWindow()) && runConfirmed(token, state, rerun);
+                    if (!done[0]) Utils.showToastShort(str("spookd_confirm_not_done"));
                 })
                 .create();
         // Leaving the screen, where Reels and the comment sheet may move on, withdraws the question.
         Application application = activity.getApplication();
         CloseOnPause closeOnPause = new CloseOnPause(activity, dialog);
         application.registerActivityLifecycleCallbacks(closeOnPause);
-        dialog.setOnDismissListener(shown -> application.unregisterActivityLifecycleCallbacks(closeOnPause));
+        dialog.setOnDismissListener(shown -> {
+            application.unregisterActivityLifecycleCallbacks(closeOnPause);
+            if (done[0] || onCancel == null) return;
+            try {
+                onCancel.run();
+            } catch (Throwable t) {
+                Logger.printException(() -> "Cancel cleanup failed", t);
+            }
+        });
         dialog.show();
         return true;
     }
@@ -576,6 +655,23 @@ public final class ActionConfirm {
             }
         }
         throw new NoSuchMethodException(owner.getName() + " feed like method");
+    }
+
+    /** Calls the public method {@code name} of {@code target}'s class, when there is a target. */
+    private static Runnable publicCall(Object target, String name, Class<?>[] types, Object... args) {
+        return () -> {
+            if (target == null) return;
+            try {
+                Method method = target.getClass().getMethod(name, types);
+                // Instagram's classes are often not public, which blocks even their public methods.
+                method.setAccessible(true);
+                method.invoke(target, args);
+            } catch (InvocationTargetException e) {
+                throw new RuntimeException(e.getCause());
+            } catch (ReflectiveOperationException e) {
+                throw new RuntimeException(e);
+            }
+        };
     }
 
     private static Runnable call(Method method, Object receiver, Object[] args) {

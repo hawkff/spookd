@@ -249,6 +249,10 @@
     <string name="spookd_confirm_follow_request_title">Accept this follow request?</string>
     <string name="spookd_confirm_follow_request_action">Accept</string>
     <string name="spookd_confirm_not_done">Nothing was done: it changed while you were deciding. Try again.</string>
+    <string name="spookd_confirm_refresh">Confirm refresh</string>
+    <string name="spookd_confirm_refresh_desc">Asks before pulling down reloads Home, Reels or your inbox. Cancel stops the spinner and keeps what is shown.</string>
+    <string name="spookd_confirm_refresh_title">Refresh now?</string>
+    <string name="spookd_confirm_refresh_action">Refresh</string>
     <string name="spookd_category_refresh">Refresh</string>
     <string name="spookd_patch_refresh_controls">Refresh controls</string>
     <string name="spookd_disable_home_tab_refresh">Don\'t refresh Home on tab tap</string>

@@ -1022,6 +1022,10 @@ public class ScreenBuilder {
                 addPreference(confirmations, helper.switchPreference(
                         str("spookd_confirm_follow_request"), str("spookd_confirm_follow_request_desc"), Settings.CONFIRM_FOLLOW_REQUEST));
             }
+            if (SettingsStatus.confirmRefresh) {
+                addPreference(confirmations, helper.switchPreference(
+                        str("spookd_confirm_refresh"), str("spookd_confirm_refresh_desc"), Settings.CONFIRM_REFRESH));
+            }
         }
         if (SettingsStatus.refreshControls) {
             PreferenceCategory refresh = addCategory(str("spookd_category_refresh"));
