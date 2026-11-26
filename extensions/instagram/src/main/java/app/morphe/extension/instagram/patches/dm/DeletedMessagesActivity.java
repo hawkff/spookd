@@ -275,7 +275,8 @@ public final class DeletedMessagesActivity {
         private Button deleteAction;
         private boolean selectionMode;
         private boolean selectionToolbarVisible;
-        private boolean loading;
+        private final DeletedLogLoads loads = new DeletedLogLoads();
+        private View pendingEmpty;
 
         Controller(Activity activity) {
             this.activity = activity;
@@ -486,9 +487,12 @@ public final class DeletedMessagesActivity {
 
         /** Deletes and reloads off the main thread; the empty view is attached once rows are known. */
         private void loadMessages(List<String> deleteIds, View empty) {
-            // One job at a time; parallel jobs could apply an older snapshot last.
-            if (loading) return;
-            loading = true;
+            // One job at a time; parallel jobs could apply an older snapshot last, so a later one waits.
+            if (!loads.startReload(deleteIds)) {
+                if (empty != null) pendingEmpty = empty;
+                updateSelectionUi();
+                return;
+            }
             // Reloads as many rows as are shown, page by page, so the list keeps its length.
             int wanted = Math.max(PAGE_SIZE, messages.size());
             Context app = activity.getApplicationContext();
@@ -520,27 +524,32 @@ public final class DeletedMessagesActivity {
                 Map<String, String> picturesResult = loadedPictures;
                 boolean moreResult = more;
                 Utils.runOnMainThread(() -> {
-                    loading = false;
-                    if (activity.isFinishing() || activity.isDestroyed()) return;
-                    if (result == null) {
-                        updateSelectionUi();
+                    List<String> queued = loads.finish();
+                    if (activity.isFinishing() || activity.isDestroyed()) {
+                        runQueued(queued);
                         return;
                     }
-                    messages = result;
-                    storedModes = storedResult;
-                    pictures = picturesResult;
-                    hasMore = moreResult;
-                    adapter.notifyDataSetChanged();
-                    if (empty != null) messageList.setEmptyView(empty);
-                    cancelSelection();
+                    if (result != null) {
+                        messages = result;
+                        storedModes = storedResult;
+                        pictures = picturesResult;
+                        hasMore = moreResult;
+                        adapter.notifyDataSetChanged();
+                        if (empty != null) messageList.setEmptyView(empty);
+                        cancelSelection();
+                    } else {
+                        updateSelectionUi();
+                    }
+                    runQueued(queued);
                 });
             });
         }
 
         /** Appends the next page off the main thread; nothing while another load runs. */
         private void loadMore() {
-            if (loading || !hasMore) return;
-            loading = true;
+            if (!hasMore || !loads.startAppend()) return;
+            // Delete stays disabled until the page is in.
+            updateSelectionUi();
             int offset = messages.size();
             String[] last = offset == 0 ? null : messages.get(offset - 1);
             Context app = activity.getApplicationContext();
@@ -553,20 +562,31 @@ public final class DeletedMessagesActivity {
                 }
                 List<String[]> page = loaded;
                 Utils.runOnMainThread(() -> {
-                    loading = false;
-                    if (activity.isFinishing() || activity.isDestroyed()) return;
-                    if (page == null || messages.size() != offset) {
-                        updateSelectionUi();
+                    List<String> queued = loads.finish();
+                    if (activity.isFinishing() || activity.isDestroyed()) {
+                        runQueued(queued);
                         return;
                     }
-                    List<String[]> rows = new ArrayList<>(messages);
-                    rows.addAll(page);
-                    messages = rows;
-                    hasMore = page.size() == PAGE_SIZE;
-                    adapter.notifyDataSetChanged();
+                    if (page != null && messages.size() == offset) {
+                        List<String[]> rows = new ArrayList<>(messages);
+                        rows.addAll(page);
+                        messages = rows;
+                        hasMore = page.size() == PAGE_SIZE;
+                        adapter.notifyDataSetChanged();
+                    }
                     updateSelectionUi();
+                    runQueued(queued);
                 });
             });
+        }
+
+        /** Main thread: runs the reload or delete asked for while the last load ran; a closed screen only deletes. */
+        private void runQueued(List<String> deletes) {
+            if (deletes == null) return;
+            if (deletes.isEmpty() && (activity.isFinishing() || activity.isDestroyed())) return;
+            View empty = pendingEmpty;
+            pendingEmpty = null;
+            loadMessages(deletes.isEmpty() ? null : deletes, empty);
         }
 
         /** The saved label of a message whose media is stored, with its view-once mark; null when none is stored. */
@@ -622,8 +642,8 @@ public final class DeletedMessagesActivity {
             cancelSelectionAction.setVisibility(selecting ? View.VISIBLE : View.GONE);
             moreAction.setVisibility(selecting ? View.GONE : View.VISIBLE);
             deleteAction.setVisibility(selecting ? View.VISIBLE : View.GONE);
-            deleteAction.setEnabled(hasSelection && !loading);
-            deleteAction.setAlpha(hasSelection && !loading ? 1f : 0.5f);
+            deleteAction.setEnabled(hasSelection && !loads.isBusy());
+            deleteAction.setAlpha(hasSelection && !loads.isBusy() ? 1f : 0.5f);
             refreshVisibleSelectionRows(messageList, selecting);
         }
 
