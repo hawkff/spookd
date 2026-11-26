@@ -32,7 +32,7 @@
     <string name="spookd_detect_links_in_text">Tappable links in captions</string>
     <string name="spookd_detect_links_in_text_desc">Underlines plain http, https and www. addresses in feed captions. Tapping one opens it in your external browser, without trackers when Sanitize share links is on</string>
     <string name="spookd_hold_send_copy_link">Hold Send to copy link</string>
-    <string name="spookd_hold_send_copy_link_desc">Long-pressing the Send button under a post in the feed copies the post link, cleaned like Copy link. A tap still opens the share sheet</string>
+    <string name="spookd_hold_send_copy_link_desc">Long-pressing the Send button under a post in the home feed copies the post link, cleaned like Copy link. A tap still opens the share sheet</string>
     <string name="spookd_post_link_copied">Copied post link</string>
 
     <!-- Ghost Section -->

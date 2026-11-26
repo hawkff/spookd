@@ -11,6 +11,7 @@ import app.spookd.patches.instagram.entity.decoder.MEDIA_ADD_INFO_CLASS_NAME
 import app.spookd.patches.instagram.entity.decoder.MEDIA_CLASS_NAME
 import app.spookd.patches.instagram.entity.decoder.decoderEntity
 import app.spookd.patches.instagram.entity.mediadata.mediaDataEntity
+import app.spookd.patches.instagram.misc.download.pinMainFeedToViewUfiPatch
 import app.spookd.patches.instagram.misc.download.requireOne
 import app.spookd.patches.instagram.misc.settings.settingsPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
@@ -67,10 +68,11 @@ private fun replaceExtensionBody(name: String, smali: String) {
 val holdSendCopyLinkPatch =
     patch(
         name = "Hold Send to copy link",
-        description = "Adds an option to copy a feed post's link by long-pressing its Send button.",
+        description = "Adds an option to copy a home feed post's link by long-pressing its Send button.",
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
-        dependsOn(settingsPatch, mediaDataEntity, decoderEntity)
+        // The hooked Send button exists only in the view UFI row, which the home feed is pinned to.
+        dependsOn(settingsPatch, mediaDataEntity, decoderEntity, pinMainFeedToViewUfiPatch)
 
         execute {
             val row = FeedButtonRowConstructorFingerprint.originalClassDef
