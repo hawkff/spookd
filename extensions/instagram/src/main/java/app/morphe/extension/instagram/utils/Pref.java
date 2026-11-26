@@ -167,6 +167,11 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.PLAYBACK_SPEED_CONTROLS);
     }
 
+    /** "default", "on" or "off". */
+    public static String reelsAutoScroll() {
+        return SettingsStatus.reelsAutoScroll ? SharedPref.getStringPref(Settings.REELS_AUTO_SCROLL) : "default";
+    }
+
     public static boolean disableVideoAutoplay() {
         return SharedPref.getBooleanPref(Settings.DISABLE_VIDEO_AUTOPLAY);
     }

@@ -312,6 +312,8 @@ public class SettingsStatus {
     public static void defaultPlaybackSpeed() { defaultPlaybackSpeed = true; }
     public static boolean reelsPlayerOptions = false;
     public static void reelsPlayerOptions() { reelsPlayerOptions = true; }
+    public static boolean reelsAutoScroll = false;
+    public static void reelsAutoScroll() { reelsAutoScroll = true; }
     public static boolean improveImageViewing = false;
     public static void improveImageViewing() {
         improveImageViewing = true;
@@ -330,7 +332,7 @@ public class SettingsStatus {
     public static void moreOptionsOnProfile() { moreOptionsOnProfile = true; }
     public static boolean disableAppHaptics = false;
     public static void disableAppHaptics() { disableAppHaptics = true; }
-    public static boolean miscSection() {return ( disableAppHaptics || moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || defaultPlaybackSpeed || reelsPlayerOptions || followBackIndicator || followListNonFollowerBadge || profileAnalyzer || exactProfileCounts || squareProfileGrid || profileSavedTab || confirmationsSection() || refreshControls || customFont);}
+    public static boolean miscSection() {return ( disableAppHaptics || moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || defaultPlaybackSpeed || reelsPlayerOptions || reelsAutoScroll || followBackIndicator || followListNonFollowerBadge || profileAnalyzer || exactProfileCounts || squareProfileGrid || profileSavedTab || confirmationsSection() || refreshControls || customFont);}
 
     //Font section.
     public static boolean customFont = false;
@@ -411,6 +413,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_playback_speed_controls"), SettingsStatus.playbackSpeedControls);
         FLAGS.put(str("spookd_default_playback_speed"), SettingsStatus.defaultPlaybackSpeed);
         FLAGS.put(str("spookd_reels_player_options"), SettingsStatus.reelsPlayerOptions);
+        FLAGS.put(str("spookd_reels_auto_scroll"), SettingsStatus.reelsAutoScroll);
         FLAGS.put(str("spookd_unlimited_replays"),SettingsStatus.unlimitedReplaysOnEphemeralMedia);
         FLAGS.put(str("spookd_disable_disappearing_messages_gesture"), SettingsStatus.disableDisappearingMessagesGesture);
         FLAGS.put(str("spookd_send_keyboard_gifs"), SettingsStatus.sendKeyboardGifs);

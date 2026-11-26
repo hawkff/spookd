@@ -232,6 +232,13 @@ public class HookFlags {
         }
     }
 
+    private static void reelsAutoScrollFlags() {
+        String mode = Pref.reelsAutoScroll();
+        if ("on".equals(mode) || "off".equals(mode)) {
+            BOOL_FLAGS.put("83371::0", "on".equals(mode)); //ig_reels_android_hands_free_mode::enabled (Reels menu Auto scroll switch and the auto-scroller)
+        }
+    }
+
     private static void addRecommendedFlags(){
         if(SettingsStatus.recommendedFlags) {
             Map<String, Boolean> recFlags = FlagsSharedPref.getAll();

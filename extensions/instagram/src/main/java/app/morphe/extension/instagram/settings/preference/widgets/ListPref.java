@@ -88,6 +88,11 @@ public class ListPref extends ListPreference {
                         str("spookd_story_auto_save_listed")
                 };
                 entriesValues = new CharSequence[]{"off", "everyone", "listed"};
+            } else if (Settings.REELS_AUTO_SCROLL.key.equals(key)) {
+                entries = new CharSequence[]{
+                        str("spookd_array_default"), str("spookd_reels_auto_scroll_on"), str("spookd_reels_auto_scroll_off")
+                };
+                entriesValues = new CharSequence[]{"default", "on", "off"};
             }
         } else {
             entries = ResourceUtils.getStringArray("spookd_array_recmd_flag_states");

@@ -991,6 +991,13 @@ public class ScreenBuilder {
                     Settings.EXPANDED_FEED_VIDEOS_MUTED
             ));
         }
+        if (SettingsStatus.reelsAutoScroll) {
+            addPreference(helper.listPreference(
+                    str("spookd_reels_auto_scroll"),
+                    str("spookd_reels_auto_scroll_desc"),
+                    Settings.REELS_AUTO_SCROLL
+            ));
+        }
         if (SettingsStatus.improveImageViewing) {
             addPreference(
                     helper.switchPreference(
