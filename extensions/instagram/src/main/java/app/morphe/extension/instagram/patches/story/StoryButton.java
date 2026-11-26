@@ -12,6 +12,7 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import android.content.Context;
 import android.content.DialogInterface;
 
@@ -89,13 +90,16 @@ public class StoryButton {
         return false;
     }
 
-    // Counts the mentions already loaded with the story; the badge is skipped when there are none.
+    // Counts the people mentioned in the story's loaded data; the badge is skipped when there are none.
     private static String mentionsLabel(Object storyMenu) {
         try {
             Object media = storyMenu == null ? null : menuMediaNative(storyMenu);
             HashSet<UserData> mentions = media == null ? null : new MediaData(media).getMentionSet();
             if (mentions != null && !mentions.isEmpty()) {
-                return str("spookd_view_story_mentions_count", mentions.size());
+                List<String> userIds = new ArrayList<>();
+                for (UserData mention : mentions) userIds.add(mention.getUserId());
+                int people = StoryMentionCount.people(userIds);
+                if (people > 0) return str("spookd_view_story_mentions_count", people);
             }
         } catch (Throwable throwable) {
             Logger.printException(() -> "Failed to count story mentions", throwable);
