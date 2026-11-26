@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.crimera.sharedPreference.BaseSharedPref;
@@ -147,7 +148,8 @@ public final class PinnedRecipients {
             Map<String, Object> seen = cacheOf(shareTargets, account);
             synchronized (seen) {
                 return pinFirst((List<Object>) targets, pins.chatRanks,
-                        target -> pins.chatOf(HiddenChatsShare.keyOf(target), account), seen, true);
+                        target -> pins.chatOf(HiddenChatsShare.keyOf(target), account), seen, true,
+                        addable(account, chat -> chat, pins.chats::get));
             }
         } catch (Throwable t) {
             Logger.printException(() -> "PinnedRecipients.orderShareTargets failed", t);
@@ -186,7 +188,8 @@ public final class PinnedRecipients {
             if (pins.people.isEmpty()) return results;
             Map<String, Object> seen = cacheOf(recentEntries, search.account);
             synchronized (seen) {
-                return pinFirst((List<Object>) results, pins.people, PinnedRecipients::userIdOf, seen, search.emptyQuery);
+                return pinFirst((List<Object>) results, pins.people, PinnedRecipients::userIdOf, seen, search.emptyQuery,
+                        addable(search.account, pins.chatOfPerson::get, person -> person));
             }
         } catch (Throwable t) {
             Logger.printException(() -> "PinnedRecipients.orderRecentSearches failed", t);
@@ -196,11 +199,11 @@ public final class PinnedRecipients {
 
     /**
      * The pinned items first, by the rank of their pin and then in their own order, then the rest. Each pinned item is
-     * kept in {@code seen} by its pin; with {@code addMissing}, a pin without an item gets the one kept for it, so no
-     * pin shows twice. The same list comes back when nothing is pinned or added.
+     * kept in {@code seen} by its pin; with {@code addMissing}, a pin without an item that {@code mayAdd} accepts gets
+     * the one kept for it, so no pin shows twice. The same list comes back when nothing is pinned or added.
      */
     static <T> List<T> pinFirst(List<T> items, Map<String, Integer> ranks, Function<T, String> pinOf,
-                                Map<String, T> seen, boolean addMissing) {
+                                Map<String, T> seen, boolean addMissing, Predicate<String> mayAdd) {
         TreeMap<Integer, List<T>> pinned = new TreeMap<>();
         Set<String> present = new HashSet<>();
         List<T> rest = new ArrayList<>(items.size());
@@ -217,7 +220,7 @@ public final class PinnedRecipients {
         }
         if (addMissing) {
             for (Map.Entry<String, Integer> pin : ranks.entrySet()) {
-                T kept = present.contains(pin.getKey()) ? null : seen.get(pin.getKey());
+                T kept = present.contains(pin.getKey()) || !mayAdd.test(pin.getKey()) ? null : seen.get(pin.getKey());
                 if (kept != null) pinned.computeIfAbsent(pin.getValue(), r -> new ArrayList<>()).add(kept);
             }
         }
@@ -234,7 +237,7 @@ public final class PinnedRecipients {
         // Rank of each pinned chat, and of the other person of each pinned one-to-one chat, by pin order.
         final Map<String, Integer> chatRanks = new HashMap<>();
         final Map<String, Integer> people = new HashMap<>();
-        private final Map<String, String> chatOfPerson = new HashMap<>();
+        final Map<String, String> chatOfPerson = new HashMap<>();
 
         Pins(Map<String, String> chats) {
             this.chats = Collections.unmodifiableMap(chats);
@@ -265,6 +268,26 @@ public final class PinnedRecipients {
             this.account = account;
             this.emptyQuery = emptyQuery;
         }
+    }
+
+    /**
+     * Which pins may be added back for an account: while its hidden chats are closed, none whose chat, or whose person
+     * through any chat, is hidden. What Instagram lists itself is left to the hidden chats filters.
+     */
+    private static Predicate<String> addable(String account, Function<String, String> chatOfPin,
+                                             Function<String, String> personOfPin) {
+        if (!Pref.hiddenChats() || HiddenChats.isOpenFor(account)) return pin -> true;
+        return notHidden(HiddenChatsPref.ids(account), HiddenChatsPref.hiddenUsers(account), chatOfPin, personOfPin);
+    }
+
+    static Predicate<String> notHidden(Set<String> hiddenChats, Map<String, String> hiddenUsers,
+                                       Function<String, String> chatOfPin, Function<String, String> personOfPin) {
+        return pin -> {
+            String chat = chatOfPin.apply(pin);
+            String person = personOfPin.apply(pin);
+            return (chat == null || !hiddenChats.contains(chat))
+                    && (person == null || person.isEmpty() || !hiddenUsers.containsValue(person));
+        };
     }
 
     /** What Instagram listed for each pin of an account, kept only for this process. */

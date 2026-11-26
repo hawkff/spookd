@@ -11,13 +11,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
 
 import org.junit.Test;
 
 public class PinnedRecipientsTest {
+    private static final Predicate<String> ANY = pin -> true;
     private static PinnedRecipients.Pins pins() {
         Map<String, String> chats = new LinkedHashMap<>();
         chats.put("group", "");
@@ -59,32 +63,32 @@ public class PinnedRecipientsTest {
     @Test
     public void pinnedItemsComeFirstInPinOrderAndTheRestKeepTheirOrder() {
         List<String> items = Arrays.asList("a", "pin:direct", "b", "pin:group", "c");
-        List<String> ordered = PinnedRecipients.pinFirst(items, ranks(), PinnedRecipientsTest::self, new HashMap<>(), true);
+        List<String> ordered = PinnedRecipients.pinFirst(items, ranks(), PinnedRecipientsTest::self, new HashMap<>(), true, ANY);
         assertEquals(Arrays.asList("pin:group", "pin:direct", "a", "b", "c"), ordered);
     }
 
     @Test
     public void aListWithoutPinnedItemsIsReturnedAsItIs() {
         List<String> items = Collections.unmodifiableList(Arrays.asList("a", "b"));
-        assertSame(items, PinnedRecipients.pinFirst(items, ranks(), PinnedRecipientsTest::self, new HashMap<>(), true));
+        assertSame(items, PinnedRecipients.pinFirst(items, ranks(), PinnedRecipientsTest::self, new HashMap<>(), true, ANY));
     }
 
     @Test
     public void emptySuggestionsGetThePinnedRecipientsListedBefore() {
         Map<String, String> seen = new HashMap<>();
-        PinnedRecipients.pinFirst(Arrays.asList("a", "pin:direct"), ranks(), PinnedRecipientsTest::self, seen, true);
+        PinnedRecipients.pinFirst(Arrays.asList("a", "pin:direct"), ranks(), PinnedRecipientsTest::self, seen, true, ANY);
         assertEquals(Collections.singletonList("pin:direct"),
-                PinnedRecipients.pinFirst(new ArrayList<>(), ranks(), PinnedRecipientsTest::self, seen, true));
+                PinnedRecipients.pinFirst(new ArrayList<>(), ranks(), PinnedRecipientsTest::self, seen, true, ANY));
     }
 
     @Test
     public void clearedRecentsKeepThePinnedPersonButATypedSearchAddsNothing() {
         Map<String, String> seen = new HashMap<>();
-        PinnedRecipients.pinFirst(Arrays.asList("pin:direct", "a"), ranks(), PinnedRecipientsTest::self, seen, true);
+        PinnedRecipients.pinFirst(Arrays.asList("pin:direct", "a"), ranks(), PinnedRecipientsTest::self, seen, true, ANY);
         List<String> cleared = Collections.emptyList();
         assertEquals(Collections.singletonList("pin:direct"),
-                PinnedRecipients.pinFirst(cleared, ranks(), PinnedRecipientsTest::self, seen, true));
-        assertSame(cleared, PinnedRecipients.pinFirst(cleared, ranks(), PinnedRecipientsTest::self, seen, false));
+                PinnedRecipients.pinFirst(cleared, ranks(), PinnedRecipientsTest::self, seen, true, ANY));
+        assertSame(cleared, PinnedRecipients.pinFirst(cleared, ranks(), PinnedRecipientsTest::self, seen, false, ANY));
     }
 
     @Test
@@ -92,7 +96,7 @@ public class PinnedRecipientsTest {
         Map<String, String> seen = new HashMap<>();
         seen.put("direct", "pin:direct");
         List<String> ordered = PinnedRecipients.pinFirst(Arrays.asList("a", "pin:direct"), ranks(),
-                PinnedRecipientsTest::self, seen, true);
+                PinnedRecipientsTest::self, seen, true, ANY);
         assertEquals(Arrays.asList("pin:direct", "a"), ordered);
     }
 
@@ -103,7 +107,7 @@ public class PinnedRecipientsTest {
         first.put("direct", "pin:direct");
         Map<String, Object> second = PinnedRecipients.cacheOf(caches, "second");
         List<Object> none = new ArrayList<>();
-        assertSame(none, PinnedRecipients.pinFirst(none, ranks(), item -> null, second, true));
+        assertSame(none, PinnedRecipients.pinFirst(none, ranks(), item -> null, second, true, ANY));
         assertSame(first, PinnedRecipients.cacheOf(caches, "first"));
     }
 
@@ -125,5 +129,37 @@ public class PinnedRecipientsTest {
         Holder(Object value) {
             this.value = value;
         }
+    }
+
+    @Test
+    public void aPinnedChatHiddenAfterItWasListedIsNotAddedBackUntilHiddenChatsOpen() {
+        Map<String, String> seen = new HashMap<>();
+        PinnedRecipients.pinFirst(Arrays.asList("pin:direct", "a"), ranks(), PinnedRecipientsTest::self, seen, true, ANY);
+        PinnedRecipients.Pins pins = pins();
+        Set<String> hiddenChats = new HashSet<>(Collections.singletonList("direct"));
+        Map<String, String> hiddenUsers = Collections.singletonMap("direct", "friend");
+        Predicate<String> closed = PinnedRecipients.notHidden(hiddenChats, hiddenUsers, chat -> chat, pins.chats::get);
+
+        List<String> empty = Collections.emptyList();
+        assertSame(empty, PinnedRecipients.pinFirst(empty, ranks(), PinnedRecipientsTest::self, seen, true, closed));
+        // What Instagram lists itself still moves up; the hidden chats filter decides on it afterwards.
+        assertEquals(Arrays.asList("pin:direct", "a"), PinnedRecipients.pinFirst(Arrays.asList("a", "pin:direct"),
+                ranks(), PinnedRecipientsTest::self, seen, true, closed));
+        // With the hidden chats open, everything may come back.
+        assertEquals(Collections.singletonList("pin:direct"),
+                PinnedRecipients.pinFirst(empty, ranks(), PinnedRecipientsTest::self, seen, true, ANY));
+    }
+
+    @Test
+    public void aRecentPersonHiddenThroughAnotherChatIsNotAddedBack() {
+        PinnedRecipients.Pins pins = pins();
+        Map<String, String> hiddenUsers = Collections.singletonMap("another-chat", "friend");
+        Predicate<String> closed = PinnedRecipients.notHidden(Collections.emptySet(), hiddenUsers,
+                pins.chatOfPerson::get, person -> person);
+        Map<String, Integer> people = Collections.singletonMap("friend", 1);
+        Map<String, String> seen = new HashMap<>();
+        seen.put("friend", "pin:friend");
+        List<String> cleared = Collections.emptyList();
+        assertSame(cleared, PinnedRecipients.pinFirst(cleared, people, PinnedRecipientsTest::self, seen, true, closed));
     }
 }
