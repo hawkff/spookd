@@ -2,7 +2,10 @@ package app.morphe.extension.instagram.settings.preference.widgets;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -10,6 +13,9 @@ import android.graphics.Typeface;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.widget.Button;
+import android.widget.CheckedTextView;
+import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import org.junit.Test;
@@ -59,20 +65,69 @@ public final class SpookdTypeTest {
     }
 
     @Test
-    public void platformDialogsUseTheTypeScale() {
+    @Config(sdk = 27)
+    public void beforeApi28SemiboldStaysApartFromBold() {
+        Typeface[] faces = SpookdType.load(RuntimeEnvironment.getApplication());
+        assertEquals(3, faces.length);
+        for (Typeface face : faces) assertNotNull(face);
+        assertNotSame(faces[1], faces[2]);
+    }
+
+    private static final int PRIMARY = 0xff010203;
+    private static final int SECONDARY = 0xff040506;
+    private static final int ACCENT = 0xff0095f6;
+
+    private static AlertDialog.Builder builder(int theme) {
         Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
-        AlertDialog dialog = new AlertDialog.Builder(
-                SpookdType.dialogContext(activity, android.R.style.Theme_DeviceDefault))
-                .setTitle("Title")
-                .setMessage("Message")
-                .setPositiveButton("Done", null)
+        return new AlertDialog.Builder(
+                SpookdType.dialogContext(activity, theme, PRIMARY, SECONDARY, ACCENT));
+    }
+
+    @Test
+    public void platformDialogsUseTheTypeScaleAndPalette() {
+        for (int theme : new int[]{
+                android.R.style.Theme_DeviceDefault, android.R.style.Theme_DeviceDefault_Light}) {
+            AlertDialog dialog = builder(theme)
+                    .setTitle("Title")
+                    .setMessage("Message")
+                    .setPositiveButton("Done", null)
+                    .create();
+            dialog.show();
+
+            TextView message = dialog.findViewById(android.R.id.message);
+            assertEquals(sp(16), message.getTextSize(), 0.01f);
+            assertEquals(SECONDARY, message.getCurrentTextColor());
+            Button done = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            assertEquals(sp(14), done.getTextSize(), 0.01f);
+            assertFalse(done.isAllCaps());
+            assertEquals(ACCENT, done.getCurrentTextColor());
+            done.setEnabled(false);
+            assertNotEquals(ACCENT, done.getCurrentTextColor());
+            dialog.dismiss();
+        }
+    }
+
+    @Test
+    public void choiceRowsUseTheBodyRoleAndAccent() {
+        AlertDialog dialog = builder(android.R.style.Theme_DeviceDefault)
+                .setSingleChoiceItems(new CharSequence[]{"One", "Two"}, 0, null)
                 .create();
         dialog.show();
+        ListView list = dialog.getListView();
+        TextView row = (TextView) list.getAdapter().getView(0, null, list);
+        assertEquals(sp(16), row.getTextSize(), 0.01f);
+        assertEquals(PRIMARY, row.getCurrentTextColor());
+        assertTrue(row instanceof CheckedTextView);
+        assertEquals(ACCENT, ((CheckedTextView) row).getCheckMarkTintList().getDefaultColor());
+    }
 
-        TextView message = dialog.findViewById(android.R.id.message);
-        assertEquals(sp(16), message.getTextSize(), 0.01f);
-        Button done = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-        assertEquals(sp(14), done.getTextSize(), 0.01f);
-        assertFalse(done.isAllCaps());
+    @Test
+    public void preferenceEditorsUseTheBodyRoleAndPrimaryColor() {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        EditText editor = new EditText(SpookdType.dialogContext(
+                activity, android.R.style.Theme_DeviceDefault, PRIMARY, SECONDARY, ACCENT));
+        SpookdType.applyDialogInput(editor);
+        assertEquals(sp(16), editor.getTextSize(), 0.01f);
+        assertEquals(PRIMARY, editor.getCurrentTextColor());
     }
 }

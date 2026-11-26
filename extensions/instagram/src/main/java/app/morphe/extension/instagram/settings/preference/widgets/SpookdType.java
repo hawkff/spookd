@@ -7,6 +7,7 @@
 package app.morphe.extension.instagram.settings.preference.widgets;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Typeface;
 import android.os.Build;
@@ -16,6 +17,7 @@ import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckedTextView;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 
@@ -85,28 +87,41 @@ public final class SpookdType {
 
     /** Regular, semibold and bold, falling back to sans-serif when Instagram's font is missing. */
     static Typeface[] load(Context context) {
-        Typeface family = null;
-        try {
-            Resources resources = context.getResources();
-            int id = resources.getIdentifier("prism_sans", "font", context.getPackageName());
-            if (id != 0) {
-                family = resources.getFont(id);
-            }
-        } catch (Exception e) {
-            Logger.printException(() -> "Instagram's interface font is unavailable", e);
-        }
-        if (family == null) {
-            family = Typeface.create("sans-serif", Typeface.NORMAL);
-        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            Typeface family = font(context, "prism_sans");
+            if (family == null) {
+                family = Typeface.create("sans-serif", Typeface.NORMAL);
+            }
             return new Typeface[]{
                     Typeface.create(family, 400, false),
                     Typeface.create(family, 600, false),
                     Typeface.create(family, 700, false),
             };
         }
-        Typeface bold = Typeface.create(family, Typeface.BOLD);
-        return new Typeface[]{family, bold, bold};
+        // Before API 28 a family cannot be asked for a weight, so each weight is its own font.
+        Typeface regular = font(context, "IGUIBetav9_Regular");
+        Typeface semibold = font(context, "IGUIBetav9_SemiBold");
+        Typeface bold = font(context, "IGUIBetav9_Bold");
+        if (regular != null && semibold != null && bold != null) {
+            return new Typeface[]{regular, semibold, bold};
+        }
+        Typeface sans = Typeface.create("sans-serif", Typeface.NORMAL);
+        return new Typeface[]{
+                sans,
+                Typeface.create("sans-serif-medium", Typeface.NORMAL),
+                Typeface.create(sans, Typeface.BOLD),
+        };
+    }
+
+    private static Typeface font(Context context, String name) {
+        try {
+            Resources resources = context.getResources();
+            int id = resources.getIdentifier(name, "font", context.getPackageName());
+            return id == 0 ? null : resources.getFont(id);
+        } catch (Exception e) {
+            Logger.printException(() -> "Instagram's interface font is unavailable: " + name, e);
+            return null;
+        }
     }
 
     /** The scale's weight for a platform text style: medium reads as semibold, as in Instagram. */
@@ -114,16 +129,51 @@ public final class SpookdType {
         return weight >= 650 ? 700 : weight >= 500 ? 600 : 400;
     }
 
-    /** A themed context whose platform dialogs and preference dialogs use the type scale. */
+    /**
+     * A themed context whose platform dialogs and preference dialogs use the type scale and
+     * Instagram's text and accent colors.
+     */
     public static Context dialogContext(Context base, int themeResId) {
-        return new DialogContext(base, themeResId);
+        return new DialogContext(base, themeResId, null);
     }
+
+    /** As {@link #dialogContext(Context, int)}, with the palette given rather than resolved. */
+    static Context dialogContext(Context base, int themeResId, int primary, int secondary, int accent) {
+        return new DialogContext(base, themeResId, new int[]{primary, secondary, accent});
+    }
+
+    /** Styles a text field a preference dialog creates in code, which no inflater sees. */
+    public static void applyDialogInput(TextView view) {
+        apply(view, BODY);
+        Context context = view.getContext();
+        if (context instanceof DialogContext) {
+            view.setTextColor(((DialogContext) context).palette()[PRIMARY_COLOR]);
+        }
+    }
+
+    private static final int PRIMARY_COLOR = 0;
+    private static final int SECONDARY_COLOR = 1;
+    private static final int ACCENT_COLOR = 2;
 
     private static final class DialogContext extends ContextThemeWrapper {
         private LayoutInflater inflater;
+        private int[] palette;
 
-        DialogContext(Context base, int themeResId) {
+        DialogContext(Context base, int themeResId, int[] palette) {
             super(base, themeResId);
+            this.palette = palette;
+        }
+
+        /** Resolved once, when this context's first dialog text is styled. Main thread. */
+        int[] palette() {
+            if (palette == null) {
+                palette = new int[]{
+                        InstagramPreferenceStyle.primaryTextColor(),
+                        InstagramPreferenceStyle.secondaryTextColor(),
+                        InstagramPreferenceStyle.selectionColor(),
+                };
+            }
+            return palette;
         }
 
         @Override
@@ -134,7 +184,7 @@ public final class SpookdType {
             if (inflater == null) {
                 // A clone owned by this context, so setting a factory on it affects nothing else.
                 inflater = (LayoutInflater) super.getSystemService(name);
-                inflater.setFactory2(new DialogTextFactory(inflater));
+                inflater.setFactory2(new DialogTextFactory(inflater, this));
             }
             return inflater;
         }
@@ -148,9 +198,11 @@ public final class SpookdType {
                 Resources.getSystem().getIdentifier("alertTitle", "id", "android");
 
         private final LayoutInflater.Factory original;
+        private final DialogContext owner;
 
-        DialogTextFactory(LayoutInflater inflater) {
+        DialogTextFactory(LayoutInflater inflater, DialogContext owner) {
             this.original = inflater.getFactory();
+            this.owner = owner;
         }
 
         @Override
@@ -175,16 +227,30 @@ public final class SpookdType {
             return onCreateView(null, name, context, attrs);
         }
 
-        private static void style(TextView view) {
+        private void style(TextView view) {
             try {
                 int id = view.getId();
                 if (ALERT_TITLE_ID != 0 && id == ALERT_TITLE_ID) {
                     apply(view, TITLE);
+                    view.setTextColor(owner.palette()[PRIMARY_COLOR]);
                 } else if (id == android.R.id.message) {
                     apply(view, BODY);
+                    view.setTextColor(owner.palette()[SECONDARY_COLOR]);
+                } else if (id == android.R.id.text1) {
+                    // Rows of list, single-choice and multi-choice dialogs.
+                    apply(view, BODY);
+                    view.setTextColor(owner.palette()[PRIMARY_COLOR]);
+                    if (view instanceof CheckedTextView) {
+                        ((CheckedTextView) view).setCheckMarkTintList(
+                                ColorStateList.valueOf(owner.palette()[ACCENT_COLOR]));
+                    }
                 } else if (view instanceof Button && !(view instanceof CompoundButton)) {
                     apply(view, LABEL);
                     view.setAllCaps(false);
+                    int accent = owner.palette()[ACCENT_COLOR];
+                    view.setTextColor(new ColorStateList(
+                            new int[][]{{-android.R.attr.state_enabled}, {}},
+                            new int[]{(accent & 0x00ffffff) | 0x80000000, accent}));
                 } else {
                     Typeface current = view.getTypeface();
                     int weight = current == null ? 400

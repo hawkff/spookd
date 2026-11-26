@@ -224,6 +224,8 @@ public final class SettingsSearchController {
         // A 36dp field, as in Instagram, inside a 48dp touch target.
         int inset = InstagramPreferenceStyle.dp(context, 6);
         bar.setBackground(new InsetDrawable(background, 0, inset, 0, inset));
+        // The inset only draws the field smaller; it must not pad the icon and input.
+        bar.setPadding(0, 0, 0, 0);
         ImageView icon = new ImageView(context);
         icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
         int verticalPadding = InstagramPreferenceStyle.dp(context, 14);
