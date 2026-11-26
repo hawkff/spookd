@@ -13,20 +13,11 @@ final class ReactionViewer {
     }
 
     /**
-     * The viewer id taken when an item is queued: the item's own session, else for REST items the
-     * session that is current then. Null when neither is known, never the stored fallback id.
+     * The viewer id reactions may be compared for, from the item's own session, or null when
+     * ownership can't be established. REST items carry no session of their own.
      */
-    static String atEnqueue(String itemSessionId, String currentSessionId, boolean restPath) {
-        if (!isBlank(itemSessionId)) return itemSessionId;
-        return restPath && !isBlank(currentSessionId) ? currentSessionId : null;
-    }
-
-    /**
-     * The viewer id reactions may be compared for, or null when ownership can't be established.
-     * REST items carry no session of their own, so the current one is no proof of their account.
-     */
-    static String forComparison(boolean restPath, String enqueuedViewerId) {
-        return !restPath && !isBlank(enqueuedViewerId) ? enqueuedViewerId : null;
+    static String forComparison(boolean restPath, String itemSessionViewerId) {
+        return !restPath && !isBlank(itemSessionViewerId) ? itemSessionViewerId : null;
     }
 
     private static boolean isBlank(String value) {

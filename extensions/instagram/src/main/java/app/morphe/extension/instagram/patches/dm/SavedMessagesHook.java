@@ -169,19 +169,17 @@ public class SavedMessagesHook {
         if (item == null || !enabled) return;
         boolean acceptedClass = item.getClass().getName().startsWith("X.");
         if (!acceptedClass) return;
-        // REST items carry no session, so the one current while they are parsed names their account.
-        final UserSession session = userSession != null ? userSession : restPath ? currentSession() : null;
-        String itemSessionId = null;
-        String currentSessionId = null;
+        // Only the item's own session names its account: a REST response may belong to an account
+        // that was switched away from while it loaded, so the current session is never used for it.
+        String sessionUserId = null;
         try {
-            itemSessionId = userSession != null ? userSession.getUserId() : null;
-            currentSessionId = session != null ? session.getUserId() : null;
+            sessionUserId = userSession != null ? userSession.getUserId() : null;
+            if (!isBlank(sessionUserId)) rememberMyUserId(sessionUserId);
         } catch (Exception ignored) {}
-        final String viewerId = ReactionViewer.atEnqueue(itemSessionId, currentSessionId, restPath);
-        if (!isBlank(viewerId)) rememberMyUserId(viewerId);
+        final String viewerId = sessionUserId;
         final boolean restHidden = restPath && restoreRevokedItem(item);
         getWorker().post(() -> processReceivedItem(
-                item, resolveThreadIdHint(delta), viewerId, session, restPath, restHidden));
+                item, resolveThreadIdHint(delta), viewerId, userSession, restPath, restHidden));
     }
 
     /** Runs on the REST parser thread before the item is returned; memory lookups only. */

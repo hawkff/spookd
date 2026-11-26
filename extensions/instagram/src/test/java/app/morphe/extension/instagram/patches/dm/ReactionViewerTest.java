@@ -9,18 +9,16 @@ public final class ReactionViewerTest {
 
     @Test
     public void aResponseForAArrivingAfterTheSwitchToBRecordsNothing() {
-        // A's history request was outstanding when B became current; the REST item has no session.
-        String viewer = ReactionViewer.atEnqueue(null, "B", true);
-        assertNull(ReactionViewer.forComparison(true, viewer));
-        assertNull(ReactionViewer.forComparison(true, ReactionViewer.atEnqueue(null, null, true)));
+        // A's history request was outstanding when B became current; the REST item has no session,
+        // so neither the current session B nor the stored id names its account.
+        assertNull(ReactionViewer.forComparison(true, null));
+        assertNull(ReactionViewer.forComparison(true, "B"));
     }
 
     @Test
     public void realtimeItemsCompareForTheirOwnSessionOnly() {
-        String viewer = ReactionViewer.atEnqueue("A", "B", false);
-        assertEquals("A", viewer);
-        assertEquals("A", ReactionViewer.forComparison(false, viewer));
-        assertNull(ReactionViewer.forComparison(false, ReactionViewer.atEnqueue(null, "B", false)));
+        assertEquals("A", ReactionViewer.forComparison(false, "A"));
+        assertNull(ReactionViewer.forComparison(false, null));
         assertNull(ReactionViewer.forComparison(false, " "));
     }
 }
