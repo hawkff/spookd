@@ -1,8 +1,10 @@
 package app.morphe.extension.instagram.patches.navigation;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.After;
 import org.junit.Test;
 
 public class TabSwipeTest {
@@ -23,5 +25,24 @@ public class TabSwipeTest {
     public void offWinsOverAStoredOptInAndTheNewerHomeLayout() {
         // Both make Instagram answer true whatever its flag says.
         assertFalse(TabSwipe.decide("off", true));
+    }
+
+    @After
+    public void restore() {
+        TabSwipe.frozen = null;
+        TabSwipe.reader = () -> "default";
+    }
+
+    @Test
+    public void aChangeWithoutTheRestartKeepsTheModeTheTabsWereBuiltWith() {
+        TabSwipe.frozen = null;
+        String[] saved = {"off"};
+        TabSwipe.reader = () -> saved[0];
+        assertFalse(TabSwipe.swipeTabs(true));
+        // The user picks On and declines the restart.
+        saved[0] = "on";
+        assertFalse(TabSwipe.swipeTabs(true));
+        assertFalse(TabSwipe.swipeTabs(false));
+        assertEquals("off", TabSwipe.mode());
     }
 }

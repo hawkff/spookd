@@ -6,30 +6,40 @@
 
 package app.morphe.extension.instagram.patches.navigation;
 
-import app.morphe.extension.instagram.settings.Settings;
+import java.util.function.Supplier;
+
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
 
 /** The swipe between tabs setting, applied to Instagram's final decision whether the main tabs swipe. */
 @SuppressWarnings("unused")
 public final class TabSwipe {
+    // Replaced in tests.
+    static Supplier<String> reader = () -> Pref.swipeBetweenTabs();
+    // Read once per process: the tab host is built from the first answer, so a change waits for the restart it asks for.
+    static volatile String frozen;
+
     private TabSwipe() { }
 
-    // Held apart so loading this class for a test does not read settings.
-    private static final class Mode {
-        static final Pref.Cached<String> VALUE = new Pref.Cached<>(Pref::swipeBetweenTabs, Settings.SWIPE_BETWEEN_TABS.key);
-    }
-
-    /**
-     * Called with each result of Instagram's swipeable-tabs check, on whatever thread asks; every reader of the tab host
-     * goes through that check, so the pager and its layout always agree. Default keeps Instagram's answer.
-     */
+    /** Called with each result of Instagram's swipeable-tabs check, on whatever thread asks; Default keeps Instagram's answer. */
     public static boolean swipeTabs(boolean instagram) {
         try {
-            return decide(Mode.VALUE.get(), instagram);
+            return decide(mode(), instagram);
         } catch (Throwable t) {
             Logger.printException(() -> "TabSwipe.swipeTabs failed", t);
             return instagram;
+        }
+    }
+
+    static String mode() {
+        String mode = frozen;
+        if (mode != null) return mode;
+        synchronized (TabSwipe.class) {
+            if (frozen == null) {
+                String read = reader.get();
+                frozen = read == null ? "default" : read;
+            }
+            return frozen;
         }
     }
 
