@@ -88,6 +88,18 @@ public final class StoryViewerSearch {
         }
     }
 
+    /** At the start of the viewer list screen's onDestroyView: closes its search and ends its Load all. */
+    public static void onDashboardViewDestroyed(Object fragment) {
+        try {
+            Search search = open;
+            if (search == null) return;
+            Object screen = search.screen.get();
+            if (screen == null || screen == fragment) search.close();
+        } catch (Throwable t) {
+            Logger.printException(() -> "StoryViewerSearch: could not close the search", t);
+        }
+    }
+
     /** At the start of each rebuild of a story's viewer list, which follows every page Instagram loads. */
     public static void onViewersRebuilt(Object adapter) {
         try {
@@ -120,7 +132,7 @@ public final class StoryViewerSearch {
                 return true;
             }
             UserSession session = adapterSession(adapter);
-            new Search(context, adapter, session == null ? null : session.getUserId()).show();
+            new Search(context, fragment, adapter, session == null ? null : session.getUserId()).show();
             return true;
         } catch (Throwable t) {
             Logger.printException(() -> "StoryViewerSearch: could not open the search", t);
@@ -222,6 +234,7 @@ public final class StoryViewerSearch {
     /** One open search dialog over one story's viewer list. */
     private static final class Search {
         final Context context;
+        final WeakReference<Object> screen;
         final Object adapter;
         final String account;
         // Instagram's viewer entries with what was read from them, so a rebuild reads only new ones.
@@ -243,10 +256,19 @@ public final class StoryViewerSearch {
         long requestedAt;
         long busySince;
 
-        Search(Context context, Object adapter, String account) {
+        Search(Context context, Object fragment, Object adapter, String account) {
             this.context = context;
+            this.screen = new WeakReference<>(fragment);
             this.adapter = adapter;
             this.account = account;
+        }
+
+        /** Drops the static reference first, so every pending paging and refresh callback ends. */
+        void close() {
+            loading = false;
+            awaiting = false;
+            if (open == this) open = null;
+            if (dialog != null && dialog.isShowing()) dialog.dismiss();
         }
 
         void show() {
@@ -332,10 +354,7 @@ public final class StoryViewerSearch {
                 if (loadAllButton != null) loadAllButton.setOnClickListener(v -> loadAll());
                 render();
             });
-            dialog.setOnDismissListener(d -> {
-                loading = false;
-                if (open == this) open = null;
-            });
+            dialog.setOnDismissListener(d -> close());
             open = this;
             dialog.show();
             readFollowData();

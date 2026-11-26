@@ -35,6 +35,13 @@ private object DashboardViewCreatedFingerprint : Fingerprint(
     parameters = listOf("Landroid/view/View;", "Landroid/os/Bundle;"),
 )
 
+private object DashboardViewDestroyedFingerprint : Fingerprint(
+    definingClass = DASHBOARD_FRAGMENT,
+    name = "onDestroyView",
+    returnType = "V",
+    parameters = listOf(),
+)
+
 // The story whose viewer list the screen shows.
 private object DashboardCurrentStoryFingerprint : Fingerprint(
     definingClass = DASHBOARD_FRAGMENT,
@@ -170,6 +177,7 @@ val searchStoryViewersPatch =
 
             val currentStory = DashboardCurrentStoryFingerprint.originalMethod
             val viewCreated = DashboardViewCreatedFingerprint.method
+            val viewDestroyed = DashboardViewDestroyedFingerprint.method
             val rebuildHook = ViewerListRebuildFingerprint.method
 
             fun stub(name: String, body: String) =
@@ -279,6 +287,10 @@ val searchStoryViewersPatch =
             viewCreated.addInstruction(
                 0,
                 "invoke-static/range {p0 .. p1}, $EXTENSION_CLASS->onDashboardViewCreated(Ljava/lang/Object;Landroid/view/View;)V",
+            )
+            viewDestroyed.addInstruction(
+                0,
+                "invoke-static/range {p0 .. p0}, $EXTENSION_CLASS->onDashboardViewDestroyed(Ljava/lang/Object;)V",
             )
 
             enableSettings("searchStoryViewers")
