@@ -1130,7 +1130,8 @@ public final class PrivateGalleryActivity {
                     failed("star", e);
                 }
             });
-            if (favoritesOnly && !favorite) reload(false);
+            // Either way the shown favorites change: a star restored in the viewer brings its item back.
+            if (favoritesOnly) reload(false);
             else updateSelection();
         }
 
@@ -1294,14 +1295,25 @@ public final class PrivateGalleryActivity {
             }
         }
 
+        /** A cached thumbnail and the tile size it was made for. */
+        private static final class Thumb {
+            final Bitmap bitmap;
+            final int size;
+
+            Thumb(Bitmap bitmap, int size) {
+                this.bitmap = bitmap;
+                this.size = size;
+            }
+        }
+
         /** Download thumbnails are cached as JPEG; DM thumbnails stay in memory so no plaintext of them reaches disk. */
         private final class ThumbLoader {
             private final ExecutorService pool = Executors.newFixedThreadPool(3);
-            private final LruCache<String, Bitmap> cache =
-                    new LruCache<String, Bitmap>((int) (Runtime.getRuntime().maxMemory() / 8192)) {
+            private final LruCache<String, Thumb> cache =
+                    new LruCache<String, Thumb>((int) (Runtime.getRuntime().maxMemory() / 8192)) {
                         @Override
-                        protected int sizeOf(String key, Bitmap bitmap) {
-                            return bitmap.getByteCount() / 1024;
+                        protected int sizeOf(String key, Thumb thumb) {
+                            return thumb.bitmap.getByteCount() / 1024;
                         }
                     };
 
@@ -1314,13 +1326,14 @@ public final class PrivateGalleryActivity {
             void load(Item item, ImageView view) {
                 String key = item.key();
                 view.setTag(key);
-                Bitmap hit = cache.get(key);
+                int size = Math.max(1, tileSize);
+                Thumb hit = cache.get(key);
                 if (hit != null) {
-                    view.setImageBitmap(hit);
-                    return;
+                    view.setImageBitmap(hit.bitmap);
+                    // One made for smaller tiles shows until a sharper one replaces it.
+                    if (hit.size >= size) return;
                 }
                 if (pool.isShutdown()) return;
-                int size = Math.max(1, tileSize);
                 pool.execute(() -> {
                     // A tile scrolled away and reused meanwhile no longer wants this one; a stale read only decodes once more.
                     if (!key.equals(view.getTag())) return;
@@ -1334,7 +1347,7 @@ public final class PrivateGalleryActivity {
                         return;
                     }
                     if (bitmap == null) return;
-                    cache.put(key, bitmap);
+                    cache.put(key, new Thumb(bitmap, size));
                     ui.post(() -> {
                         if (!closed && key.equals(view.getTag())) view.setImageBitmap(bitmap);
                     });
@@ -1347,7 +1360,8 @@ public final class PrivateGalleryActivity {
                 File cached = item.vault ? null : GalleryStore.get().thumb(item.file.getName());
                 if (cached != null && cached.isFile()) {
                     Bitmap disk = decodeFile(cached, size);
-                    if (disk != null) return disk;
+                    // A copy made for smaller tiles is made again from the original, then saved over.
+                    if (disk != null && Math.min(disk.getWidth(), disk.getHeight()) >= size) return disk;
                 }
                 ViewerMedia media;
                 if (item.vault) {
