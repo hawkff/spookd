@@ -63,7 +63,7 @@ private class ListRequest(
 val profileAnalyzerPatch =
     patch(
         name = "Profile analyzer",
-        description = "Adds a Profile analyzer row to the Misc settings that scans your own followers and following lists.",
+        description = "Adds a Profile analyzer row to the Misc settings that scans your own followers and following lists and can keep a list of the profiles you open.",
     ) {
         dependsOn(settingsPatch, userDataEntity, friendshipStatusIndicatorPatch)
 

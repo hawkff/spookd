@@ -196,4 +196,5 @@ public class Settings {
     public static final BooleanSetting HIDE_INBOX_INSTANTS = new BooleanSetting("hide_inbox_instants", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_REELS_TAB_HEADER = new BooleanSetting("hide_reels_tab_header", false, REQUIRED);
     public static final BooleanSetting DISABLE_APP_HAPTICS = new BooleanSetting("disable_app_haptics", false, NOT_REQUIRED);
+    public static final BooleanSetting TRACK_VISITED_PROFILES = new BooleanSetting("track_visited_profiles", false, NOT_REQUIRED);
 }

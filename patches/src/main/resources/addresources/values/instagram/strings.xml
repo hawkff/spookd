@@ -194,7 +194,7 @@
     <string name="spookd_profile_analyzer_clear_history_confirm">Clear the change history of this account? Its scans are kept.</string>
     <string name="spookd_profile_analyzer_clear">Clear</string>
     <string name="spookd_profile_analyzer_delete_data">Delete data</string>
-    <string name="spookd_profile_analyzer_delete_data_confirm">Delete all scans and the change history of this account? This can\'t be undone.</string>
+    <string name="spookd_profile_analyzer_delete_data_confirm">Delete all scans, the change history and the visited profiles of this account? This can\'t be undone.</string>
     <string name="spookd_profile_analyzer_not_following_back">Not following back (%1$s)</string>
     <string name="spookd_profile_analyzer_not_following_back_empty">Everyone you follow follows you back.</string>
     <string name="spookd_profile_analyzer_not_followed_back">Followers you don\'t follow back (%1$s)</string>
@@ -203,6 +203,10 @@
     <string name="spookd_profile_analyzer_mutuals_empty">No one you follow follows you back yet.</string>
     <string name="spookd_profile_analyzer_history">History (%1$s)</string>
     <string name="spookd_profile_analyzer_history_empty">No changes yet. Changes show up here after your next scan.</string>
+    <string name="spookd_profile_analyzer_visited">Visited profiles (%1$s)</string>
+    <string name="spookd_profile_analyzer_visited_empty">No visited profiles yet. Profiles you open show up here.</string>
+    <string name="spookd_track_visited_profiles">Track visited profiles</string>
+    <string name="spookd_track_visited_profiles_desc">Keeps a list of the profiles you open on this device, per account, newest 500, in the Profile analyzer.</string>
     <string name="spookd_profile_analyzer_new_follower">Started following you</string>
     <string name="spookd_profile_analyzer_lost_follower">No longer follows you</string>
     <string name="spookd_profile_analyzer_lost_follower_note">This also shows when the account was deactivated, blocked you or was removed by you.</string>

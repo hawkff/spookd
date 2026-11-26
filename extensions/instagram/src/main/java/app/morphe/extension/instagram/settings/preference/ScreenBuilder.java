@@ -971,6 +971,11 @@ public class ScreenBuilder {
         if (SettingsStatus.profileAnalyzer) {
             addPreference(helper.buttonPreference(str("spookd_profile_analyzer"),
                     ProfileAnalyzer.rowSummary(context), "profile_analyzer"));
+            addPreference(helper.switchPreference(
+                    str("spookd_track_visited_profiles"),
+                    str("spookd_track_visited_profiles_desc"),
+                    Settings.TRACK_VISITED_PROFILES
+            ));
         }
         if (SettingsStatus.exactProfileCounts) {
             addPreference(helper.switchPreference(
