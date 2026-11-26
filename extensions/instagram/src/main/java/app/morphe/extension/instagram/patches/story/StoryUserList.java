@@ -42,6 +42,9 @@ public final class StoryUserList {
             "spookd_story_auto_save_users", "spookd_story_auto_save_remove_confirm", "@", "spookd_story_ghost_users_empty", false);
     public static final StoryUserList DM_GHOST = new StoryUserList(Settings.DM_GHOST_CHATS,
             "spookd_dm_ghost_chats", "spookd_dm_ghost_remove_confirm", "", "spookd_dm_ghost_chats_empty", true);
+    // Keyed by "<user id>:<chat id>" of a one-to-one chat, with the chat's title.
+    public static final StoryUserList ACTIVITY_ALERTS = new StoryUserList(Settings.ACTIVITY_ALERT_USERS,
+            "spookd_activity_alert_users", "spookd_activity_alert_remove_confirm", "", "spookd_activity_alert_users_empty", true);
 
     private final StringSetting setting;
     private final String titleKey;
