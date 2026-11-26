@@ -84,7 +84,8 @@ public final class DistractionFreeHides {
     /** Every visibility change of a Reels header passes through here. */
     public static int reelsHeaderVisibility(View header, int visibility) {
         try {
-            return !REELS_TAB_HEADERS.isEmpty() && REELS_TAB_HEADERS.contains(header) ? View.GONE : visibility;
+            if (REELS_TAB_HEADERS.isEmpty() || !Pref.hideReelsTabHeader()) return visibility;
+            return REELS_TAB_HEADERS.contains(header) ? View.GONE : visibility;
         } catch (Throwable t) {
             Logger.printException(() -> "reelsHeaderVisibility failure", t);
             return visibility;

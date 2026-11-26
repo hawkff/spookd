@@ -23,6 +23,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.Instruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 private const val APP_HAPTICS = "$PATCHES_DESCRIPTOR/distractionFree/AppHaptics;"
+private const val VIEW = "Landroid/view/View;"
 
 // View.performHapticFeedback(int) and (int, int), keyed by their parameters.
 private val VIEW_HAPTIC_STAND_INS = mapOf(
@@ -31,7 +32,7 @@ private val VIEW_HAPTIC_STAND_INS = mapOf(
 )
 
 private object HapticFeedbackCallFingerprint : Fingerprint(
-    filters = listOf(methodCall(name = "performHapticFeedback", returnType = "Z")),
+    filters = listOf(methodCall(definingClass = VIEW, name = "performHapticFeedback", returnType = "Z")),
     custom = { _, classDef -> !classDef.type.startsWith("Lapp/morphe/extension/") },
 )
 
@@ -39,7 +40,7 @@ private object HapticFeedbackCallFingerprint : Fingerprint(
 private fun Instruction.hapticStandIn(): String? {
     if (opcode != Opcode.INVOKE_VIRTUAL && opcode != Opcode.INVOKE_VIRTUAL_RANGE) return null
     val reference = getReference<MethodReference>() ?: return null
-    if (reference.name != "performHapticFeedback" || reference.returnType != "Z") return null
+    if (reference.definingClass != VIEW || reference.name != "performHapticFeedback" || reference.returnType != "Z") return null
     return VIEW_HAPTIC_STAND_INS[reference.parameterTypes.map(CharSequence::toString)]
 }
 
