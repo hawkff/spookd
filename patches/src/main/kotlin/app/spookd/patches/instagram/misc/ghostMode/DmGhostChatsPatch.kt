@@ -11,6 +11,7 @@ import app.spookd.patches.instagram.misc.dm.MenuButtonsEnumFingerprint
 import app.spookd.patches.instagram.misc.dm.MenuButtonsLabelsFingerprint
 import app.spookd.patches.instagram.misc.dm.MenuOpenFingerprint
 import app.spookd.patches.instagram.misc.dm.passReturnedValues
+import app.spookd.patches.instagram.misc.settings.accountSettingsPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
 import app.spookd.patches.instagram.utils.Constants.USER_SESSION_CLASS
@@ -33,7 +34,7 @@ val dmGhostChatsPatch =
         description = "Adds an option to the chat menu in the inbox to choose chats, and a setting to view only the chosen chats anonymously, or all chats except them.",
     ) {
         compatibleWith(COMPATIBILITY_INSTAGRAM)
-        dependsOn(viewDmAnonymouslyPatch)
+        dependsOn(viewDmAnonymouslyPatch, accountSettingsPatch)
 
         execute {
             MenuOpenFingerprint.method.apply {
