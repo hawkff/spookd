@@ -20,7 +20,7 @@ import android.preference.Preference;
 import app.morphe.extension.instagram.settings.preference.Helper;
 
 public class ListPref extends ListPreference {
-    private static Helper helper;
+    private final Helper helper;
 
     public ListPref(Context context) {
         super(InstagramPreferenceStyle.dialogContext(context));
