@@ -17,8 +17,10 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -36,6 +38,8 @@ final class AvatarLoader implements AutoCloseable {
     // Main thread: the link each view wants now, and the views waiting for a link in flight.
     private final Map<ImageView, String> wanted = new WeakHashMap<>();
     private final Map<String, List<ImageView>> pending = new HashMap<>();
+    // Links that failed are not fetched again until an explicit refresh clears them.
+    private final Set<String> failed = new HashSet<>();
     private volatile boolean closed;
 
     /** Main thread: shows the picture at url, or clears the view when url is null or the fetch fails. */
@@ -48,6 +52,7 @@ final class AvatarLoader implements AutoCloseable {
             view.setImageBitmap(cached);
             return;
         }
+        if (failed.contains(url)) return;
         List<ImageView> waiting = pending.get(url);
         if (waiting != null) {
             waiting.add(view);
@@ -61,6 +66,7 @@ final class AvatarLoader implements AutoCloseable {
             if (bitmap != null) CACHE.put(url, bitmap);
             Utils.runOnMainThread(() -> {
                 List<ImageView> views = pending.remove(url);
+                if (bitmap == null) failed.add(url);
                 if (closed || bitmap == null || views == null) return;
                 for (ImageView target : views) {
                     if (url.equals(wanted.get(target))) target.setImageBitmap(bitmap);
@@ -103,6 +109,11 @@ final class AvatarLoader implements AutoCloseable {
         } finally {
             if (connection != null) connection.disconnect();
         }
+    }
+
+    /** Main thread: lets the links that failed be fetched again. */
+    void clearFailures() {
+        failed.clear();
     }
 
     /** Main thread, when the screen is destroyed. */

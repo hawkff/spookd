@@ -11,6 +11,7 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Application;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
@@ -30,6 +31,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.widget.AbsListView;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -44,6 +46,7 @@ import androidx.annotation.RequiresApi;
 
 import com.instagram.common.session.UserSession;
 
+import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -55,7 +58,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -81,6 +88,13 @@ public final class DeletedMessagesActivity {
     // Serial, so a delete queued by a screen that was closed runs before a reopened screen loads.
     private static final Executor sDbJobs = Executors.newSingleThreadExecutor();
     private static final long PICTURE_REQUEST_GAP_MS = 1500;
+    private static final long PROFILE_FETCH_TIMEOUT_SECONDS = 20;
+    private static final ExecutorService sPictureRefresh = Executors.newSingleThreadExecutor();
+    // Cached, so a profile request that never returns blocks only its own thread.
+    private static final ExecutorService sProfileFetch = Executors.newCachedThreadPool();
+    private static final int PAGE_SIZE = SpookdMessageDb.DELETED_PAGE_SIZE;
+    // Rows within this distance of the end load the next page.
+    private static final int LOAD_MORE_AHEAD = 20;
 
     private DeletedMessagesActivity() {}
 
@@ -181,7 +195,7 @@ public final class DeletedMessagesActivity {
                 public void onActivityDestroyed(Activity a) {
                     if (a == activity) {
                         VaultViewer.close(a);
-                        controller.avatars.close();
+                        controller.close();
                         a.getApplication().unregisterActivityLifecycleCallbacks(this);
                         synchronized (sControllers) {
                             sControllers.remove(activity);
@@ -204,14 +218,51 @@ public final class DeletedMessagesActivity {
         return false;
     }
 
+    /**
+     * Picture refresh thread: the cached avatar of each user, else one profile request per user,
+     * paced and time-limited. Stops when interrupted. Returns how many pictures were stored.
+     */
+    private static int refreshPictureUrls(Context context, UserSession session, String viewerId,
+                                          Set<String> userIds) {
+        int updated = 0;
+        boolean requested = false;
+        SpookdMessageDb db = SpookdMessageDb.getInstance(context);
+        for (String userId : userIds) {
+            if (Thread.currentThread().isInterrupted()) break;
+            Future<UserData> fetch = null;
+            try {
+                UserData user = SavedMessagesHook.cachedUser(session, userId, viewerId);
+                String url = user == null ? null : user.getAvatarUrl();
+                if (url == null) {
+                    // A pause between requests, so a long list is not fetched in a burst.
+                    if (requested) Thread.sleep(PICTURE_REQUEST_GAP_MS);
+                    if (Thread.currentThread().isInterrupted()) break;
+                    requested = true;
+                    fetch = sProfileFetch.submit(() -> UserData.fetchProfile(session, userId));
+                    user = fetch.get(PROFILE_FETCH_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    url = user == null ? null : user.getAvatarUrl();
+                }
+                if (url != null && db.putPicture(userId, user.getUsername(), url)) updated++;
+            } catch (InterruptedException | TimeoutException e) {
+                if (fetch != null) fetch.cancel(true);
+                break;
+            } catch (Exception e) {
+                Logger.printException(() -> "refreshPictureUrls: ", e);
+            }
+        }
+        return updated;
+    }
+
     private static class Controller {
         private final Activity activity;
         private List<String[]> messages;
         private Map<String, String> storedModes = Collections.emptyMap();
         private Map<String, String> pictures = Collections.emptyMap();
-        final AvatarLoader avatars = new AvatarLoader();
+        private final AvatarLoader avatars = new AvatarLoader();
         private View moreAction;
         private boolean refreshingPictures;
+        private Future<?> refreshJob;
+        private boolean hasMore;
         private ListView messageList;
         private MessageAdapter adapter;
         private SimpleDateFormat timestampFormatter;
@@ -344,6 +395,13 @@ public final class DeletedMessagesActivity {
                             Toast.LENGTH_SHORT).show();
                 }
             });
+            messageList.setOnScrollListener(new AbsListView.OnScrollListener() {
+                @Override public void onScrollStateChanged(AbsListView view, int scrollState) {}
+                @Override
+                public void onScroll(AbsListView view, int first, int visible, int total) {
+                    if (total > 0 && first + visible >= total - LOAD_MORE_AHEAD) loadMore();
+                }
+            });
             messageList.setOnItemLongClickListener((parent, view, position, id) -> {
                 if (!selectionMode) {
                     selectionMode = true;
@@ -431,14 +489,25 @@ public final class DeletedMessagesActivity {
             // One job at a time; parallel jobs could apply an older snapshot last.
             if (loading) return;
             loading = true;
+            // Reloads as many rows as are shown, page by page, so the list keeps its length.
+            int wanted = Math.max(PAGE_SIZE, messages.size());
+            Context app = activity.getApplicationContext();
             sDbJobs.execute(() -> {
                 List<String[]> loaded = null;
                 Map<String, String> stored = Collections.emptyMap();
                 Map<String, String> loadedPictures = Collections.emptyMap();
+                boolean more = false;
                 try {
-                    SpookdMessageDb db = SpookdMessageDb.getInstance(activity);
+                    SpookdMessageDb db = SpookdMessageDb.getInstance(app);
                     if (deleteIds != null) SavedMessagesHook.deleteSavedMessages(deleteIds);
-                    loaded = db.getDeletedMessages();
+                    List<String[]> rows = new ArrayList<>();
+                    List<String[]> page;
+                    do {
+                        page = db.getDeletedMessages(PAGE_SIZE, rows.size());
+                        rows.addAll(page);
+                    } while (page.size() == PAGE_SIZE && rows.size() < wanted);
+                    more = page.size() == PAGE_SIZE;
+                    loaded = rows;
                     loadedPictures = db.getPictureUrls();
                     if (Pref.dmMediaVault()) MediaVault.get().start();
                     stored = MediaVault.get().storedMessages();
@@ -448,6 +517,7 @@ public final class DeletedMessagesActivity {
                 List<String[]> result = loaded;
                 Map<String, String> storedResult = stored;
                 Map<String, String> picturesResult = loadedPictures;
+                boolean moreResult = more;
                 Utils.runOnMainThread(() -> {
                     loading = false;
                     if (activity.isFinishing() || activity.isDestroyed()) return;
@@ -458,9 +528,41 @@ public final class DeletedMessagesActivity {
                     messages = result;
                     storedModes = storedResult;
                     pictures = picturesResult;
+                    hasMore = moreResult;
                     adapter.notifyDataSetChanged();
                     if (empty != null) messageList.setEmptyView(empty);
                     cancelSelection();
+                });
+            });
+        }
+
+        /** Appends the next page off the main thread; nothing while another load runs. */
+        private void loadMore() {
+            if (loading || !hasMore) return;
+            loading = true;
+            int offset = messages.size();
+            Context app = activity.getApplicationContext();
+            sDbJobs.execute(() -> {
+                List<String[]> loaded = null;
+                try {
+                    loaded = SpookdMessageDb.getInstance(app).getDeletedMessages(PAGE_SIZE, offset);
+                } catch (Exception e) {
+                    Logger.printException(() -> "loadMore: ", e);
+                }
+                List<String[]> page = loaded;
+                Utils.runOnMainThread(() -> {
+                    loading = false;
+                    if (activity.isFinishing() || activity.isDestroyed()) return;
+                    if (page == null || messages.size() != offset) {
+                        updateSelectionUi();
+                        return;
+                    }
+                    List<String[]> rows = new ArrayList<>(messages);
+                    rows.addAll(page);
+                    messages = rows;
+                    hasMore = page.size() == PAGE_SIZE;
+                    adapter.notifyDataSetChanged();
+                    updateSelectionUi();
                 });
             });
         }
@@ -596,40 +698,33 @@ public final class DeletedMessagesActivity {
             Toast.makeText(activity, str("spookd_refresh_profile_pictures_started"),
                     Toast.LENGTH_SHORT).show();
             String viewerId = session.getUserId();
-            new Thread(() -> {
-                int updated = 0;
-                boolean requested = false;
-                SpookdMessageDb db = SpookdMessageDb.getInstance(activity);
-                for (String userId : userIds) {
-                    if (activity.isFinishing() || activity.isDestroyed()) break;
-                    try {
-                        UserData user = SavedMessagesHook.cachedUser(session, userId, viewerId);
-                        if (user == null) {
-                            // A pause between requests, so a long list is not fetched in a burst.
-                            if (requested) Thread.sleep(PICTURE_REQUEST_GAP_MS);
-                            requested = true;
-                            user = UserData.fetchProfile(session, userId);
-                        }
-                        String url = user == null ? null : user.getProfilePictureUrl();
-                        if (url != null && url.startsWith("http")
-                                && db.putPicture(userId, user.getUsername(), url)) {
-                            updated++;
-                        }
-                    } catch (InterruptedException e) {
-                        break;
-                    } catch (Exception e) {
-                        Logger.printException(() -> "refreshPictures: ", e);
-                    }
-                }
-                int count = updated;
+            Context app = activity.getApplicationContext();
+            // Weak, so a refresh still running holds neither this screen nor its activity.
+            WeakReference<Controller> owner = new WeakReference<>(this);
+            refreshJob = sPictureRefresh.submit(() -> {
+                int updated = refreshPictureUrls(app, session, viewerId, userIds);
                 Utils.runOnMainThread(() -> {
-                    refreshingPictures = false;
-                    if (activity.isFinishing() || activity.isDestroyed()) return;
-                    Toast.makeText(activity, String.format(Locale.getDefault(),
-                            str("spookd_refresh_profile_pictures_done"), count), Toast.LENGTH_SHORT).show();
-                    loadMessages(null, null);
+                    Controller controller = owner.get();
+                    if (controller != null) controller.onPicturesRefreshed(updated);
                 });
-            }, "spookd-picture-refresh").start();
+            });
+        }
+
+        /** Main thread, once a refresh ended or was cancelled. */
+        private void onPicturesRefreshed(int updated) {
+            refreshingPictures = false;
+            refreshJob = null;
+            if (activity.isFinishing() || activity.isDestroyed()) return;
+            Toast.makeText(activity, String.format(Locale.getDefault(),
+                    str("spookd_refresh_profile_pictures_done"), updated), Toast.LENGTH_SHORT).show();
+            avatars.clearFailures();
+            loadMessages(null, null);
+        }
+
+        /** Main thread, when the screen is destroyed. */
+        void close() {
+            avatars.close();
+            if (refreshJob != null) refreshJob.cancel(true);
         }
 
         private void showMediaOptions(String messageId, String url, String type) {
