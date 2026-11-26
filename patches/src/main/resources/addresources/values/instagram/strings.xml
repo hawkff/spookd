@@ -579,6 +579,22 @@
     <string name="spookd_patch_info_title">Patch information</string>
     <string name="spookd_patch_enabled">Enabled</string>
     <string name="spookd_patch_disabled">Disabled</string>
+    <string name="spookd_storage">Storage</string>
+    <string name="spookd_storage_desc">See how much space spookd data and Instagram\'s cache use, and clear them</string>
+    <string name="spookd_storage_calculating">Calculating…</string>
+    <string name="spookd_storage_item">%1$s: %2$s</string>
+    <string name="spookd_storage_entries">%1$d entries</string>
+    <string name="spookd_storage_gallery">Private gallery</string>
+    <string name="spookd_storage_vault">Saved DM media</string>
+    <string name="spookd_storage_instants">Saved Instants</string>
+    <string name="spookd_storage_history">Download history</string>
+    <string name="spookd_storage_analyzer">Profile analyzer data</string>
+    <string name="spookd_storage_cache">Instagram cache</string>
+    <string name="spookd_storage_clear_confirm">Clear %1$s? This can\'t be undone.</string>
+    <string name="spookd_storage_cleared">%1$s cleared</string>
+    <string name="spookd_storage_clear_failed">Couldn\'t clear %1$s</string>
+    <string name="spookd_auto_clear_cache_mb">Auto clear Instagram cache over (MB)</string>
+    <string name="spookd_auto_clear_cache_mb_desc">Now %1$d. At launch, clears Instagram\'s cache when it is larger than this. Saved data is never cleared. 0 turns this off.</string>
 
     <!-- Export and Import Section -->
     <string name="spookd_export_success">Exported successfully</string>

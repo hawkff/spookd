@@ -33,6 +33,7 @@ import app.morphe.extension.instagram.patches.focusLock.FocusLockTargets;
 import app.morphe.extension.instagram.patches.story.StoryAutoSave;
 import app.morphe.extension.instagram.patches.story.StoryGhostList;
 import app.morphe.extension.instagram.settings.SettingsStatus;
+import app.morphe.extension.instagram.settings.StorageScreen;
 import app.morphe.extension.instagram.settings.BooleanSetting;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.settings.StringSetting;
@@ -1529,6 +1530,21 @@ public class ScreenBuilder {
                         "spookd_reset_pref"
                 )
         );
+
+        Preference storage = helper.buttonPreference(
+                str("spookd_storage"),
+                str("spookd_storage_desc"),
+                "spookd_storage"
+        );
+        storage.setOnPreferenceClickListener(preference -> {
+            StorageScreen.show(preference.getContext());
+            return true;
+        });
+        addPreference(storage);
+
+        addPreference(galleryLimitPreference("spookd_auto_clear_cache_mb", "spookd_auto_clear_cache_mb_desc",
+                Settings.AUTO_CLEAR_CACHE_MB,
+                Pref::autoClearCacheMb));
 
         addPreference(
                 helper.switchPreference(

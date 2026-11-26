@@ -886,6 +886,15 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.INBOX_LOCK_NOTIFICATIONS);
     }
 
+    /** As stored, since the settings screen shows it. */
+    public static long autoClearCacheMb() {
+        try {
+            return Math.max(0, Long.parseLong(SharedPref.getStringPref(Settings.AUTO_CLEAR_CACHE_MB).trim()));
+        } catch (RuntimeException e) {
+            return 0;
+        }
+    }
+
     public static boolean hiddenChats() {
         return SharedPref.getBooleanPref(Settings.HIDDEN_CHATS);
     }
