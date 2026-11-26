@@ -768,8 +768,11 @@ public final class MediaVaultLifecycleTest {
 
     @Test
     public void ordinaryAndMigratedMediaWithoutAModeIsSweptAndEvicted() throws Exception {
-        // A version 5 saved_media table, upgraded to version 6 as an app update does.
+        // A version 5 database, upgraded to the current version as an app update does.
         db.execSQL("DROP TABLE saved_media");
+        db.execSQL("DROP TABLE message_reactions");
+        db.execSQL("DROP TABLE user_directory");
+        db.execSQL("CREATE TABLE user_directory (sender_id TEXT PRIMARY KEY, username TEXT NOT NULL)");
         java.lang.reflect.Method v5 = SpookdMessageDb.class.getDeclaredMethod("savedMediaStatements");
         v5.setAccessible(true);
         for (String statement : (String[]) v5.invoke(null)) db.execSQL(statement);
@@ -781,7 +784,7 @@ public final class MediaVaultLifecycleTest {
         constructor.setAccessible(true);
         messages = constructor.newInstance(RuntimeEnvironment.getApplication());
         db = messages.getWritableDatabase();
-        assertEquals(6, db.getVersion());
+        assertEquals(8, db.getVersion());
         assertNull(column("view_mode", migrated));
         restart();
 
