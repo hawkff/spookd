@@ -27,7 +27,7 @@ public class EditTextPref extends EditTextPreference {
         String sanitized = removeLineBreaks(input.toString());
         return sanitized.contentEquals(input) ? null : sanitized;
     };
-    private static Helper helper;
+    private final Helper helper;
     private boolean numericOnly;
 
     private static String removeLineBreaks(String value) {
