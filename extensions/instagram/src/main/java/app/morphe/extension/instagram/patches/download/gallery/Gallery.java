@@ -11,6 +11,7 @@ import java.util.function.LongConsumer;
 import app.morphe.extension.crimera.legacydownloader.DownloadRequest;
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.settings.AccountSettings;
+import app.morphe.extension.instagram.settings.SafeStartup;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
@@ -81,6 +82,7 @@ public final class Gallery {
     /** Applies the opt-in cleanup settings to downloads only; runs on the caller's background thread, never throws. */
     public static void prune() {
         try {
+            if (SafeStartup.featuresOff()) return;
             GalleryStore.get().prune(Pref.galleryMaxAgeDays(), Pref.galleryMaxBytes(), System.currentTimeMillis());
         } catch (Exception e) {
             Logger.printException(() -> "Gallery cleanup failed", e);

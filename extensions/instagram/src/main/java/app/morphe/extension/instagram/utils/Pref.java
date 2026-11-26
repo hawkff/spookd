@@ -116,7 +116,7 @@ public class Pref {
     }
 
     public static boolean isMoreOptionsOnProfilePatched(){
-        return SettingsStatus.moreOptionsOnProfile;
+        return SettingsStatus.moreOptionsOnProfile && !SafeStartup.featuresOff();
     }
 
     public static boolean viewStoriesAnonymously() {

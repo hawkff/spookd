@@ -17,6 +17,7 @@ import java.util.WeakHashMap;
 
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.settings.Settings;
+import app.morphe.extension.instagram.settings.SafeStartup;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
@@ -36,7 +37,7 @@ public final class StoryPlayback {
 
     /** Whether the story menu lists Speed and seek. */
     public static boolean showMenuItem() {
-        return SettingsStatus.storyPlayback;
+        return SettingsStatus.storyPlayback && !SafeStartup.featuresOff();
     }
 
     /**
