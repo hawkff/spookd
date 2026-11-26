@@ -83,6 +83,15 @@ val searchStoryViewersPatch =
             }
             if (copies.size != 2) throw PatchException("Expected two viewer list copies, found ${copies.size}")
             val viewers = fieldRead(copies[1])!!
+            val facebookViewers = fieldRead(copies[0])!!
+            // The viewers Instagram marks as spam: the story's list is read, then an adapter list is refilled with it.
+            val spamCopy = instructions.indices.singleOrNull { i ->
+                fieldRead(i)?.let { it.definingClass == REEL_ITEM && it.type == LIST } == true &&
+                    fieldRead(i + 1)?.let { it.definingClass == adapter && it.type == LIST } == true &&
+                    call(i + 2)?.toString() == "Ljava/util/List;->clear()V" &&
+                    call(i + 3)?.toString() == "Ljava/util/List;->addAll(Ljava/util/Collection;)Z"
+            } ?: throw PatchException("Could not find the spam viewer list copy")
+            val spamViewers = fieldRead(spamCopy + 1)!!
             // The copy loop leaves out your own entry by comparing each entry's user.
             val userIndex = (copies[1] + 5 until instructions.size).firstOrNull { fieldRead(it)?.type == USER }
                 ?: throw PatchException("Could not find the viewer entry's user")
@@ -157,6 +166,22 @@ val searchStoryViewersPatch =
                 """
                 check-cast p0, $adapter
                 iget-object p0, p0, $viewers
+                return-object p0
+                """,
+            )
+            stub(
+                "facebookViewers",
+                """
+                check-cast p0, $adapter
+                iget-object p0, p0, $facebookViewers
+                return-object p0
+                """,
+            )
+            stub(
+                "spamViewers",
+                """
+                check-cast p0, $adapter
+                iget-object p0, p0, $spamViewers
                 return-object p0
                 """,
             )

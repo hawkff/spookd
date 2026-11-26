@@ -12,10 +12,10 @@ import java.util.List;
 import java.util.Set;
 
 public class ViewerFilterTest {
-    private static final ViewerFilter.Viewer ANNA = new ViewerFilter.Viewer("1", "anna.k", "Anna Kowalska");
-    private static final ViewerFilter.Viewer BEN = new ViewerFilter.Viewer("2", "benny", null);
-    private static final ViewerFilter.Viewer CARLA = new ViewerFilter.Viewer("3", "c_rossi", "Carla Rossi");
-    private static final ViewerFilter.Viewer UNKNOWN = new ViewerFilter.Viewer(null, null, null);
+    private static final ViewerFilter.Viewer ANNA = new ViewerFilter.Viewer("1", "anna.k", "Anna Kowalska", ViewerFilter.INSTAGRAM);
+    private static final ViewerFilter.Viewer BEN = new ViewerFilter.Viewer("2", "benny", null, ViewerFilter.INSTAGRAM);
+    private static final ViewerFilter.Viewer CARLA = new ViewerFilter.Viewer("3", "c_rossi", "Carla Rossi", ViewerFilter.INSTAGRAM);
+    private static final ViewerFilter.Viewer UNKNOWN = new ViewerFilter.Viewer(null, null, null, ViewerFilter.INSTAGRAM);
     private static final List<ViewerFilter.Viewer> VIEWERS = Arrays.asList(ANNA, BEN, CARLA, UNKNOWN);
     private static final Set<String> NONE = Collections.emptySet();
 
@@ -57,6 +57,19 @@ public class ViewerFilterTest {
                 VIEWERS, "", ViewerFilter.STARRED, followers, notBack, starred)));
         assertEquals(Collections.singletonList("1"), ids(ViewerFilter.filter(
                 VIEWERS, "anna", ViewerFilter.FOLLOWERS, followers, notBack, starred)));
+    }
+
+    @Test
+    public void combineKeepsEveryListOncePerPersonWithoutYourself() {
+        ViewerFilter.Viewer facebook = new ViewerFilter.Viewer("9", "fb.person", null, ViewerFilter.FACEBOOK);
+        ViewerFilter.Viewer spamAnna = new ViewerFilter.Viewer("1", "anna.k", null, ViewerFilter.SPAM);
+        ViewerFilter.Viewer spam = new ViewerFilter.Viewer("8", "spammy", null, ViewerFilter.SPAM);
+        ViewerFilter.Viewer me = new ViewerFilter.Viewer("7", "me", null, ViewerFilter.SPAM);
+        List<ViewerFilter.Viewer> all = ViewerFilter.combine("7", VIEWERS, Arrays.asList(facebook),
+                Arrays.asList(spamAnna, spam, me, UNKNOWN));
+        assertEquals(Arrays.asList("1", "2", "3", null, "9", "8", null), ids(all));
+        assertEquals(ViewerFilter.INSTAGRAM, all.get(0).kind);
+        assertEquals(ViewerFilter.SPAM, all.get(5).kind);
     }
 
     @Test

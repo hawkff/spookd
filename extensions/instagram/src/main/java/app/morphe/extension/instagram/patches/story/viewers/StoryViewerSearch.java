@@ -149,6 +149,16 @@ public final class StoryViewerSearch {
         return null;
     }
 
+    /** The viewers of a story shared to Facebook, without yourself. */
+    private static List<?> facebookViewers(Object adapter) {
+        return null;
+    }
+
+    /** The viewers Instagram marks as spam. */
+    private static List<?> spamViewers(Object adapter) {
+        return null;
+    }
+
     private static Object viewerUser(Object viewer) {
         return null;
     }
@@ -336,7 +346,7 @@ public final class StoryViewerSearch {
             render();
             if (!awaiting) return;
             awaiting = false;
-            // A page without new Instagram viewers ends the run; Facebook viewer pages are not searched.
+            // A page without new viewers ends the run.
             if (loaded > loadedAtRequest) {
                 Utils.runOnMainThreadDelayed(this::requestPage, PAGE_GAP_MS);
             } else if (hasMore()) {
@@ -420,13 +430,17 @@ public final class StoryViewerSearch {
         }
 
         private List<ViewerFilter.Viewer> viewers() {
-            List<?> entries;
             try {
-                entries = adapterViewers(adapter);
+                return ViewerFilter.combine(account, read(adapterViewers(adapter), ViewerFilter.INSTAGRAM),
+                        read(facebookViewers(adapter), ViewerFilter.FACEBOOK),
+                        read(spamViewers(adapter), ViewerFilter.SPAM));
             } catch (Throwable t) {
                 Logger.printException(() -> "StoryViewerSearch: viewer list unreadable", t);
                 return Collections.emptyList();
             }
+        }
+
+        private List<ViewerFilter.Viewer> read(List<?> entries, int kind) {
             if (entries == null) return Collections.emptyList();
             List<ViewerFilter.Viewer> out = new ArrayList<>(entries.size());
             for (Object entry : entries) {
@@ -434,7 +448,8 @@ public final class StoryViewerSearch {
                 if (viewer == null) {
                     try {
                         UserData user = new UserData(viewerUser(entry));
-                        viewer = new ViewerFilter.Viewer(user.getUserId(), user.getUsername(), user.getRawFullName());
+                        viewer = new ViewerFilter.Viewer(user.getUserId(), user.getUsername(), user.getRawFullName(),
+                                kind);
                     } catch (Throwable t) {
                         if (!rowFailed) Logger.printException(() -> "StoryViewerSearch: viewer unreadable", t);
                         rowFailed = true;
@@ -475,7 +490,9 @@ public final class StoryViewerSearch {
 
         private static String label(ViewerFilter.Viewer viewer, boolean starred) {
             String name = viewer.fullName == null || viewer.fullName.isEmpty() ? "" : " · " + viewer.fullName;
-            return (starred ? "★ " : "") + "@" + (viewer.username == null ? "" : viewer.username) + name;
+            String source = viewer.kind == ViewerFilter.FACEBOOK ? " · " + str("spookd_viewer_search_facebook")
+                    : viewer.kind == ViewerFilter.SPAM ? " · " + str("spookd_viewer_search_spam") : "";
+            return (starred ? "★ " : "") + "@" + (viewer.username == null ? "" : viewer.username) + name + source;
         }
 
         private static String count(int value) {

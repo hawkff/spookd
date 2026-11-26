@@ -470,6 +470,8 @@
     <string name="spookd_viewer_search_no_scan">No Profile analyzer scan of this account yet, so Followers and Not following you back find nobody. Run a scan in spookd settings under Misc, Profile analyzer</string>
     <string name="spookd_viewer_search_scan">Followers and Not following you back use your Profile analyzer scan of %1$s</string>
     <string name="spookd_viewer_search_scan_old">Followers and Not following you back use your Profile analyzer scan of %1$s, %2$s days ago, so they may be out of date</string>
+    <string name="spookd_viewer_search_facebook">Facebook viewer</string>
+    <string name="spookd_viewer_search_spam">Marked as spam by Instagram</string>
     <string name="spookd_viewer_search_tip">Tap a viewer to open their profile. Hold a viewer to star or unstar them</string>
 
     <!-- Download Media Section -->
