@@ -32,6 +32,11 @@ public final class StoryAdvance {
         if (resumedViewer.get() == viewer) resumedViewer = new WeakReference<>(null);
     }
 
+    /** The resumed story viewer, or null when none is open or the viewer hooks did not apply. */
+    static Object currentViewer() {
+        return resumedViewer.get();
+    }
+
     static void afterMarkSeen() {
         advanceIf(Settings.ADVANCE_STORY_ON_MARK_SEEN);
     }
