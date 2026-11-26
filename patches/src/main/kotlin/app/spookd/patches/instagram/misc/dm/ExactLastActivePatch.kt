@@ -98,13 +98,12 @@ val exactLastActivePatch =
 
             val header = chatHeaderPresenceLabelFingerprint(label.originalMethod)
             header.method.apply {
-                val call = header.instructionMatches[0]
-                val presences = call.instruction.registersUsed[2]
+                // The list is the last argument whether the label method is static or not.
+                val presences = header.instructionMatches[0].instruction.registersUsed.last()
                 val resultIndex = header.instructionMatches[1].index
                 val result = getInstruction<OneRegisterInstruction>(resultIndex).registerA
-                if (presences > 15 || result > 15) {
-                    throw PatchException("Chat header presence label registers out of range")
-                }
+                // The label overwriting the list leaves no list to pass; the switch then stays hidden.
+                if (presences > 15 || result > 15 || presences == result) return@execute
                 addInstructions(
                     resultIndex + 1,
                     """
