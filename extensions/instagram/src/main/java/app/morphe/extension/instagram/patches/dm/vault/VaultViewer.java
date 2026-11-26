@@ -32,6 +32,7 @@ import java.util.WeakHashMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.function.Supplier;
 
 import app.morphe.extension.instagram.patches.dm.InboxLock;
 import app.morphe.extension.instagram.settings.preference.widgets.SpookdType;
@@ -143,6 +144,44 @@ public final class VaultViewer extends Dialog {
             }
         } catch (Exception e) {
             Logger.printException(() -> "VaultViewer.showFor failed", e);
+        }
+    }
+
+    /**
+     * {@link #showFor(Activity, Callable)} with one text button over the media: a tap runs
+     * {@code action}, then the button reads {@code label} again. Main thread; never throws.
+     */
+    public static void showFor(Activity activity, Callable<Opened> source, Supplier<CharSequence> label,
+                               Runnable action) {
+        showFor(activity, source);
+        try {
+            VaultViewer viewer = shown.get(activity);
+            if (viewer == null) return;
+            float density = activity.getResources().getDisplayMetrics().density;
+            int padding = (int) (12 * density);
+            TextView button = new TextView(activity);
+            button.setMinHeight((int) (SpookdType.MIN_TOUCH * density));
+            button.setGravity(Gravity.CENTER_VERTICAL);
+            button.setText(label.get());
+            button.setTextColor(Color.WHITE);
+            SpookdType.apply(button, SpookdType.LABEL);
+            button.setBackgroundColor(0x66000000);
+            button.setPadding(padding, padding, padding, padding);
+            button.setOnClickListener(v -> {
+                try {
+                    action.run();
+                    button.setText(label.get());
+                } catch (Exception e) {
+                    Logger.printException(() -> "VaultViewer action failed", e);
+                }
+            });
+            // Beside the media root, so swapping the media keeps the button.
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
+            params.setMargins(padding, padding, padding, padding);
+            viewer.addContentView(button, params);
+        } catch (Exception e) {
+            Logger.printException(() -> "VaultViewer.showFor action failed", e);
         }
     }
 
