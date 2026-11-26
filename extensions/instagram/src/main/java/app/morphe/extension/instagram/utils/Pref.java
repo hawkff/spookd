@@ -486,6 +486,12 @@ public class Pref {
     public static boolean enableDevOptions() {
         return SharedPref.getBooleanPref(Settings.DEVELOPER_OPTIONS);
     }
+
+    // Only while the gallery's settings row is shown, so the entry never leads to a screen that cannot be reached.
+    public static boolean homeLongPressGallery() {
+        return SettingsStatus.homeLongPressSettings && SettingsStatus.downloadSection()
+                && SharedPref.getBooleanPref(Settings.HOME_LONG_PRESS_GALLERY);
+    }
     public static boolean directlyOpenMetaConfig() {
         return SharedPref.getBooleanPref(Settings.DIRECTLY_OPEN_METACONFIG);
     }
@@ -705,6 +711,10 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR);
     }
 
+    public static String swipeBetweenTabs() {
+        return SettingsStatus.swipeBetweenTabs ? SharedPref.getStringPref(Settings.SWIPE_BETWEEN_TABS) : "default";
+    }
+
     public static boolean floatingTabBarHideOnScroll() {
         return floatingTabBar() && SharedPref.getBooleanPref(Settings.FLOATING_TAB_BAR_HIDE_ON_SCROLL);
     }
@@ -886,8 +896,18 @@ public class Pref {
         return SharedPref.getBooleanPref(Settings.INBOX_LOCK_NOTIFICATIONS);
     }
 
+    private static final Cached<Boolean> PIN_RECIPIENTS =
+            new Cached<>(() -> SharedPref.getBooleanPref(Settings.PIN_RECIPIENTS), Settings.PIN_RECIPIENTS.key);
+
+    public static boolean pinRecipients() {
+        return SettingsStatus.pinRecipients && PIN_RECIPIENTS.get();
+    }
+
+    private static final Cached<Boolean> HIDDEN_CHATS =
+            new Cached<>(() -> SharedPref.getBooleanPref(Settings.HIDDEN_CHATS), Settings.HIDDEN_CHATS.key);
+
     public static boolean hiddenChats() {
-        return SharedPref.getBooleanPref(Settings.HIDDEN_CHATS);
+        return HIDDEN_CHATS.get();
     }
 
     public static boolean hiddenChatsMute() {

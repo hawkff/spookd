@@ -356,6 +356,12 @@
     <string name="spookd_hidden_chats_closed">Back to your inbox</string>
     <string name="spookd_hidden_chats_mute">Mute hidden chats</string>
     <string name="spookd_hidden_chats_mute_desc">Don\'t show notifications for messages from chats you have hidden</string>
+    <string name="spookd_pin_recipients">Pin recipients</string>
+    <string name="spookd_pin_recipients_desc">Adds Pin to the menu you get by holding a chat in your inbox. Pinned chats move to the top of the share sheet before you type, and the people of pinned one-to-one chats to the top of your recent searches, when Instagram lists them. One Instagram listed there stays on top for 30 minutes after it last did, even when Instagram leaves it out, like after clearing recents; a hidden chat is not brought back while your hidden chats are closed. Each account has its own pins.</string>
+    <string name="spookd_pin_recipients_pin">Pin in share sheet and search</string>
+    <string name="spookd_pin_recipients_unpin">Unpin from share sheet and search</string>
+    <string name="spookd_pin_recipients_pinned">Pinned</string>
+    <string name="spookd_pin_recipients_unpinned">Unpinned</string>
     <string name="spookd_hidden_chats_taps">Taps to open hidden chats</string>
     <string name="spookd_hidden_chats_taps_desc">Tap the messages button this many times in a row to switch between your inbox and your hidden chats</string>
 
@@ -487,6 +493,8 @@
     <string name="spookd_download_choose_folder_failed">Could not open folder picker</string>
     <string name="spookd_private_gallery">Private gallery</string>
     <string name="spookd_private_gallery_desc">Your downloads, shown after you confirm your screen lock</string>
+    <string name="spookd_home_long_press_gallery">Open the gallery from Home</string>
+    <string name="spookd_home_long_press_gallery_desc">Adds Private gallery to the menu that opens when you hold the Home tab. Holding the Profile tab still switches accounts.</string>
     <string name="spookd_download_history">Download history</string>
     <string name="spookd_download_history_desc">Downloads made with spookd\'s download buttons and their status. Instagram\'s own Save in chats is not listed. Tap a saved one to open it. A failed download can be retried until Instagram is closed.</string>
     <string name="spookd_download_history_empty">No downloads made with spookd\'s download buttons yet.</string>
@@ -550,6 +558,8 @@
     <string name="spookd_navigation_tabs_summary">Choose visible bottom tabs and drag to reorder them</string>
     <string name="spookd_navigation_startup_tab">App startup tab</string>
     <string name="spookd_navigation_startup_tab_summary">Choose which tab opens when the app starts</string>
+    <string name="spookd_swipe_between_tabs">Swipe between tabs</string>
+    <string name="spookd_swipe_between_tabs_desc">On lets you swipe left and right to move between the main tabs, using Instagram\'s own swipeable tabs. Off turns that swiping off. Default leaves it to Instagram.</string>
     <string name="spookd_floating_tab_bar">Floating tab bar</string>
     <string name="spookd_floating_tab_bar_desc">Shows the tabs in a rounded bar that floats over your feed, with a highlight behind the selected tab. On Android 15 and later, the feed also shows below the bar, down to the bottom of the screen.</string>
     <string name="spookd_floating_tab_bar_hide_on_scroll">Hide tab bar while scrolling</string>

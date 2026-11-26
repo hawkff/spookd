@@ -28,6 +28,7 @@ import java.lang.reflect.Modifier;
 import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -82,9 +83,11 @@ public final class HiddenChats {
     private static final Map<Class<?>, Field[]> declaredFields = new ConcurrentHashMap<>();
     private static int taps;
     private static long lastTapAt;
-    // True while the inbox shows only the hidden chats of modeUser.
-    private static boolean hiddenMode;
-    private static String modeUser;
+    // True while the inbox shows only the hidden chats of modeUser; the rows job reads and closes it on its worker.
+    private static volatile boolean hiddenMode;
+    private static volatile String modeUser;
+    // The account whose hidden chats are open, or null: one value, so readers on other threads never mix two states.
+    private static volatile String openFor;
     private static String lastUser;
 
     /** What an account needs to redraw its inbox and its badge; kept apart so a refresh of one account never touches another. */
@@ -120,7 +123,7 @@ public final class HiddenChats {
                     // A rotation stops and restarts the activity; only really leaving the app closes the hidden chats.
                     startedActivities--;
                     if (startedActivities <= 0 && !activity.isChangingConfigurations() && hiddenMode) {
-                        hiddenMode = false;
+                        closeHiddenMode();
                         refresh(modeUser);
                     }
                 }
@@ -216,7 +219,7 @@ public final class HiddenChats {
 
     private static void toggleHiddenMode(Activity activity) {
         if (hiddenMode) {
-            hiddenMode = false;
+            closeHiddenMode();
             PikoUtils.toast(str("spookd_hidden_chats_closed"));
             refresh(modeUser);
             return;
@@ -225,6 +228,7 @@ public final class HiddenChats {
             if (lastUser == null) return;
             modeUser = lastUser;
             hiddenMode = true;
+            openFor = modeUser;
             PikoUtils.toast(str("spookd_hidden_chats_opened"));
             refresh(modeUser);
         };
@@ -569,7 +573,7 @@ public final class HiddenChats {
             account.rowsJob = new WeakReference<>(task);
             account.listField = listField;
             account.original = list;
-            if (hiddenMode && !userId.equals(modeUser)) hiddenMode = false;
+            if (hiddenMode && !userId.equals(modeUser)) closeHiddenMode();
             boolean onlyHidden = hiddenMode;
 
             Set<String> hidden = HiddenChatsPref.ids(userId);
@@ -609,7 +613,12 @@ public final class HiddenChats {
 
     /** True while the hidden chats of the account are open, so they are shown everywhere like in the inbox. */
     static boolean isOpenFor(String userId) {
-        return hiddenMode && userId.equals(modeUser);
+        return userId.equals(openFor);
+    }
+
+    private static void closeHiddenMode() {
+        openFor = null;
+        hiddenMode = false;
     }
 
     /** The id of a chat, as {@link HiddenChatsPref#idOf} reads it from the saved form of its key. */
@@ -672,7 +681,12 @@ public final class HiddenChats {
         return NO_PATH;
     }
 
+    // Field lists by class, kept for failed searches too, since a miss is searched again on the next call.
+    private static final Map<Class<?>, List<Field>> fieldLists = new ConcurrentHashMap<>();
+
     private static List<Field> fieldsOf(Class<?> type) {
+        List<Field> cached = fieldLists.get(type);
+        if (cached != null) return cached;
         List<Field> fields = new ArrayList<>();
         for (Class<?> c = type; c != null && !isFramework(c); c = c.getSuperclass()) {
             for (Field field : c.getDeclaredFields()) {
@@ -682,6 +696,8 @@ public final class HiddenChats {
                 fields.add(field);
             }
         }
+        fields = Collections.unmodifiableList(fields);
+        fieldLists.put(type, fields);
         return fields;
     }
 

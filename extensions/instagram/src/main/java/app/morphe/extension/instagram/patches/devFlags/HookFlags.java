@@ -239,6 +239,13 @@ public class HookFlags {
         }
     }
 
+    private static void swipeBetweenTabsFlags() {
+        String mode = Pref.swipeBetweenTabs();
+        if ("on".equals(mode) || "off".equals(mode)) {
+            BOOL_FLAGS.put("79665::16", "on".equals(mode)); //ig_navigation_refresh::android_enable_view_pager (swipeable main tabs)
+        }
+    }
+
     private static void addRecommendedFlags(){
         if(SettingsStatus.recommendedFlags) {
             Map<String, Boolean> recFlags = FlagsSharedPref.getAll();

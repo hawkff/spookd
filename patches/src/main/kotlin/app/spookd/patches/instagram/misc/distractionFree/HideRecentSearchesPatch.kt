@@ -20,10 +20,10 @@ import com.android.tools.smali.dexlib2.AccessFlags
 
 internal const val DISTRACTION_FREE_HIDES = "$PATCHES_DESCRIPTOR/distractionFree/DistractionFreeHides;"
 
-private const val RECENT_SEARCH_DATA_SOURCE = "Lcom/instagram/search/typeahead/data/RecentSearchDataSource;"
+internal const val RECENT_SEARCH_DATA_SOURCE = "Lcom/instagram/search/typeahead/data/RecentSearchDataSource;"
 
 // The recent searches the search screen lists, for an empty query or the one being typed.
-private object RecentSearchResultsFingerprint : Fingerprint(
+internal object RecentSearchResultsFingerprint : Fingerprint(
     definingClass = RECENT_SEARCH_DATA_SOURCE,
     accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.STATIC, AccessFlags.FINAL),
     returnType = "Ljava/util/List;",

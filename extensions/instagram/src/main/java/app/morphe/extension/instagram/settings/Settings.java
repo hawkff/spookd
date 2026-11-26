@@ -101,6 +101,7 @@ public class Settings {
     public static final BooleanSetting HIDDEN_CHATS = new BooleanSetting("hidden_chats", false, REQUIRED);
     public static final StringSetting HIDDEN_CHATS_TAPS = new StringSetting("hidden_chats_taps", "3", NOT_REQUIRED);
     public static final BooleanSetting HIDDEN_CHATS_MUTE = new BooleanSetting("hidden_chats_mute", true, NOT_REQUIRED);
+    public static final BooleanSetting PIN_RECIPIENTS = new BooleanSetting("pin_recipients", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_REELS_FOLLOW_BUTTON = new BooleanSetting("hide_reels_follow_button", false, NOT_REQUIRED);
     public static final BooleanSetting IMPROVE_IMAGE_VIEWING = new BooleanSetting("improve_image_viewing", false, REQUIRED);
     public static final BooleanSetting RESUME_REELS_AFTER_SCROLLING = new BooleanSetting("resume_reels_after_scrolling", false, NOT_REQUIRED);
@@ -159,6 +160,7 @@ public class Settings {
     // Opt-in private gallery cleanup; "0" turns each limit off.
     public static final StringSetting GALLERY_MAX_AGE_DAYS = new StringSetting("gallery_max_age_days", "0", NOT_REQUIRED);
     public static final StringSetting GALLERY_MAX_SIZE_GB = new StringSetting("gallery_max_size_gb", "0", NOT_REQUIRED);
+    public static final BooleanSetting HOME_LONG_PRESS_GALLERY = new BooleanSetting("home_long_press_gallery", false, NOT_REQUIRED);
 
     public static final BooleanSetting HIDE_NAVIGATION_FEED = new BooleanSetting("hide_navigation_feed", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_NAVIGATION_REELS = new BooleanSetting("hide_navigation_reels", false, NOT_REQUIRED);
@@ -169,6 +171,8 @@ public class Settings {
     public static final BooleanSetting FLOATING_TAB_BAR = new BooleanSetting("floating_tab_bar", true, REQUIRED);
     public static final BooleanSetting FLOATING_TAB_BAR_HIDE_ON_SCROLL = new BooleanSetting("floating_tab_bar_hide_on_scroll", true, NOT_REQUIRED);
     public static final BooleanSetting FLOATING_TAB_BAR_GLASS = new BooleanSetting("floating_tab_bar_glass", false, NOT_REQUIRED);
+    // "default", "on" or "off"; read once at startup into Instagram's flags.
+    public static final StringSetting SWIPE_BETWEEN_TABS = new StringSetting("swipe_between_tabs", "default", REQUIRED);
     public static final BooleanSetting HIDE_HOME_CREATE_BUTTON = new BooleanSetting("hide_home_create_button", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_HOME_NOTIFICATIONS_BUTTON = new BooleanSetting("hide_home_notifications_button", false, NOT_REQUIRED);
 

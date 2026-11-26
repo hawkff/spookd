@@ -114,7 +114,7 @@ private object RowsJobFingerprint : Fingerprint(
 )
 
 // The buttons of the chat menu are constants of an enum, found by the names of three of them.
-private object MenuButtonsEnumFingerprint : Fingerprint(
+internal object MenuButtonsEnumFingerprint : Fingerprint(
     filters =
         listOf(
             string("MARK_AS_READ"),
@@ -124,7 +124,7 @@ private object MenuButtonsEnumFingerprint : Fingerprint(
 )
 
 // Opens the menu of a chat; the other opener of the labels (bulk actions) lives elsewhere and has no such call.
-private object MenuOpenFingerprint : Fingerprint(
+internal object MenuOpenFingerprint : Fingerprint(
     classFingerprint = MenuButtonsLabelsFingerprint,
     isStatic = true,
     returnType = "V",
@@ -135,13 +135,13 @@ private object MenuOpenFingerprint : Fingerprint(
 )
 
 // Lists the names of the buttons; the class it belongs to also handles their press.
-private object MenuButtonsLabelsFingerprint : Fingerprint(
+internal object MenuButtonsLabelsFingerprint : Fingerprint(
     returnType = "[Ljava/lang/String;",
     filters = listOf(string("[DEBUG] Thread info")),
 )
 
 // Handles the press of a chat menu button.
-private object MenuButtonActionFingerprint : Fingerprint(
+internal object MenuButtonActionFingerprint : Fingerprint(
     classFingerprint = MenuButtonsLabelsFingerprint,
     filters =
         listOf(
