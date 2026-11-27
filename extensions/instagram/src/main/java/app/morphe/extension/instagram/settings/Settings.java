@@ -239,6 +239,7 @@ public class Settings {
     public static final BooleanSetting HIDE_INBOX_INSTANTS = new BooleanSetting("hide_inbox_instants", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_REELS_TAB_HEADER = new BooleanSetting("hide_reels_tab_header", false, REQUIRED);
     public static final BooleanSetting RESTORE_ACCOUNT_SEARCH = new BooleanSetting("restore_account_search", false, REQUIRED);
+    public static final BooleanSetting HIDE_MUSE = new BooleanSetting("hide_muse", false, REQUIRED);
     public static final BooleanSetting DISABLE_APP_HAPTICS = new BooleanSetting("disable_app_haptics", false, NOT_REQUIRED);
     public static final BooleanSetting TRACK_VISITED_PROFILES = new BooleanSetting("track_visited_profiles", false, NOT_REQUIRED);
     // Days between automatic Profile analyzer scans; "0" turns them off.
@@ -275,6 +276,7 @@ public class Settings {
             PROFILE_ANALYZER_AUTO_REFRESH_DAYS.key,
             RESTORE_ACCOUNT_SEARCH.key,
             REELS_HOLD_TO_PAUSE.key,
+            HIDE_MUSE.key,
             "spookd_report_bug",
             "spookd_request_feature"
     )));

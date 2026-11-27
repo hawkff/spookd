@@ -241,6 +241,15 @@ public class HookFlags {
         }
     }
 
+    private static void hideMuseFlags() {
+        if (Pref.hideMuse()) {
+            BOOL_FLAGS.put("140048::8", false); //ig_android_shop_with_muse::enable_send_message_to_muse_in_igd
+            BOOL_FLAGS.put("140048::10", false); //ig_android_shop_with_muse::enable_muse_recipient_grid (Muse in the share sheet)
+            BOOL_FLAGS.put("140048::20", false); //ig_android_shop_with_muse::enable_dynamic_prompts_for_share_sheet
+            BOOL_FLAGS.put("140730::0", false); //ig_android_profile_muse_banner::creation_enabled
+        }
+    }
+
     private static void reelsHoldToPauseFlags() {
         if (Pref.reelsHoldToPause()) {
             BOOL_FLAGS.put("118405::3", false); //ig_android_reels_video_controls::long_press_overflow_enabled (Reels long-press menu)

@@ -996,6 +996,9 @@ public class ScreenBuilder {
         if (SettingsStatus.restoreAccountSearch) {
             addPreference(helper.switchPreference(str("spookd_restore_account_search"), str("spookd_restore_account_search_desc"), Settings.RESTORE_ACCOUNT_SEARCH));
         }
+        if (SettingsStatus.hideMuse) {
+            addPreference(helper.switchPreference(str("spookd_hide_muse"), str("spookd_hide_muse_desc"), Settings.HIDE_MUSE));
+        }
     }
 
     /** Adds a Distraction free switch, shown forced on while Focus Lock holds it. */

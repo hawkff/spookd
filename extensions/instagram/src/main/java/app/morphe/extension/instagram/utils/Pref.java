@@ -312,6 +312,10 @@ public class Pref {
         return on(Settings.RESTORE_ACCOUNT_SEARCH) && SettingsStatus.restoreAccountSearch;
     }
 
+    public static boolean hideMuse() {
+        return on(Settings.HIDE_MUSE) && SettingsStatus.hideMuse;
+    }
+
     public static boolean squareExploreGrid() {
         return on(Settings.SQUARE_EXPLORE_GRID) && SettingsStatus.squareExploreGrid;
     }

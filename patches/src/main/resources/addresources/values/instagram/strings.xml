@@ -199,6 +199,8 @@
     <string name="spookd_hide_recent_searches_desc">Removes your recent searches from the search screen and from the suggestions while you type</string>
     <string name="spookd_restore_account_search">Restore account search</string>
     <string name="spookd_restore_account_search_desc">While you type in search, shows matching accounts above search suggestions and keeps recent accounts as accounts</string>
+    <string name="spookd_hide_muse">Hide Muse</string>
+    <string name="spookd_hide_muse_desc">Removes Muse from the share sheet and the Muse banner from profiles</string>
     <string name="spookd_square_explore_grid">Classic Explore grid</string>
     <string name="spookd_square_explore_grid_desc">Uses Instagram\'s older, mostly square Explore layout instead of the tall 3:4 grid. Some sections can still be tall, tablets keep the tall grid, and the topic pills above it can go away</string>
     <string name="spookd_hide_reels_comment_bar">Hide Reels comment bar</string>
