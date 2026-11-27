@@ -99,6 +99,10 @@ public final class InstantsMenu {
                 }
             });
         }
+        if (SettingsStatus.addByLink) {
+            dialog.setNeutralButton(str("spookd_add_by_link"), (d, which) ->
+                    list.addByLink(context, other::remove, () -> showUserList(context, always)));
+        }
         dialog.show();
     }
 }

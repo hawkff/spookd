@@ -50,6 +50,13 @@
     <string name="spookd_story_ghost_already_added">@%1$s is already on the story ghost list</string>
     <string name="spookd_story_ghost_remove_confirm">Remove %1$s from the story ghost list?</string>
     <string name="spookd_story_ghost_remove">Remove</string>
+    <string name="spookd_add_by_link">Add by link or @username</string>
+    <string name="spookd_add_by_link_hint">Profile link or @username</string>
+    <string name="spookd_add_by_link_add">Add</string>
+    <string name="spookd_add_by_link_invalid">That is not an Instagram profile link or @username</string>
+    <string name="spookd_add_by_link_not_loaded">Open that profile once, then try again</string>
+    <string name="spookd_add_by_link_added">Added @%1$s</string>
+    <string name="spookd_add_by_link_already_added">@%1$s is already on the list</string>
     <string name="spookd_mark_story_seen_on_interaction">Mark seen on like or reply</string>
     <string name="spookd_mark_story_seen_on_interaction_desc">When a story is viewed anonymously, liking it, replying to it or sending a quick reaction marks it as seen</string>
     <string name="spookd_mark_earlier_stories_seen">Mark earlier stories seen too</string>
@@ -354,6 +361,8 @@
     <string name="spookd_reels_auto_scroll_off">Off</string>
     <string name="spookd_pip_for_videos">Picture-in-picture for videos</string>
     <string name="spookd_pip_for_videos_desc">When you leave Instagram, for example with the home gesture, while a Reel or a full-screen feed video plays, it keeps playing in a small window; expand the window to go back. Uses Instagram\'s own picture-in-picture for Reels; it only works if picture-in-picture is allowed for Instagram in Android settings.</string>
+    <string name="spookd_keep_other_audio">Keep other audio playing</string>
+    <string name="spookd_keep_other_audio_desc">Music and other apps keep playing when Instagram opens or plays videos on its own. Instagram takes over the audio only after you turn its sound on, for example with a video\'s sound button.</string>
     <string name="spookd_speed_and_seek">Speed and seek</string>
     <string name="spookd_speed_panel_back">−10 s</string>
     <string name="spookd_speed_panel_forward">+10 s</string>
@@ -713,6 +722,14 @@
     <string name="spookd_disable_all_features_desc">Turns spookd features off on this device without changing your settings, so turning this off brings them all back. Inbox lock, hidden chats, Focus Lock and these settings keep working. Changes made when patching stay.</string>
     <string name="spookd_open_settings_on_launch">Open spookd settings on launch</string>
     <string name="spookd_open_settings_on_launch_desc">Opens spookd settings once each time the app starts</string>
+    <string name="spookd_show_new_labels">Show NEW labels</string>
+    <string name="spookd_show_new_labels_desc">Marks settings added in this version with a NEW label</string>
+    <string name="spookd_new_label">NEW</string>
+    <string name="spookd_report_bug">Report a bug</string>
+    <string name="spookd_report_bug_desc">Opens a new GitHub issue form with your device, Android, Instagram and patch versions filled in. Opening it sends these details to GitHub in the link; no issue is created until you submit it.</string>
+    <string name="spookd_request_feature">Request a feature</string>
+    <string name="spookd_request_feature_desc">Opens a new GitHub feature request form with your device and versions filled in. Opening it sends these details to GitHub in the link; no issue is created until you submit it.</string>
+    <string name="spookd_no_browser">No app can open the link</string>
     <string name="spookd_storage">Storage</string>
     <string name="spookd_storage_desc">See how much space spookd data and Instagram\'s cache use, and clear them</string>
     <string name="spookd_storage_calculating">Calculating…</string>

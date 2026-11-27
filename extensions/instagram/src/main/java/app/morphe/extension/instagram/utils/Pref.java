@@ -227,6 +227,14 @@ public class Pref {
         return SettingsStatus.pipForVideos && on(Settings.PIP_FOR_VIDEOS);
     }
 
+    public static boolean keepOtherAudio() {
+        return SettingsStatus.keepOtherAudio && on(Settings.KEEP_OTHER_AUDIO);
+    }
+
+    public static boolean showNewLabels() {
+        return on(Settings.SHOW_NEW_LABELS);
+    }
+
     public
     static boolean disableStories() {
         return on(Settings.DISABLE_STORIES);
