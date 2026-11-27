@@ -142,12 +142,24 @@ final class VideoTrim {
         return base + extension;
     }
 
-    /** The extension of the audio alone: .m4a for AAC, else the source's own container. */
-    static String audioExtension(String audioMime, String sourceExtension) {
-        return AAC.equals(audioMime) ? ".m4a" : sourceExtension;
+    /** Whether the muxer writes the container that {@code extension} names. */
+    private static boolean writable(String extension) {
+        return Arrays.asList(".mp4", ".m4v", ".webm", ".3gp", ".3gpp").contains(extension);
     }
 
-    /** The muxer format of a file with {@code extension}: WebM and 3GPP by name, else MPEG-4. */
+    /** The extension of a trim: the source's when the muxer writes that container, else .mp4 for MPEG-4. */
+    static String videoExtension(String sourceExtension) {
+        return writable(sourceExtension) ? sourceExtension : ".mp4";
+    }
+
+    /** The extension of the audio alone: .m4a for AAC, else the source's container; null when the muxer cannot write it. */
+    static String audioExtension(String audioMime, String sourceExtension) {
+        if (AAC.equals(audioMime)) return ".m4a";
+        return writable(sourceExtension) && !".mp4".equals(sourceExtension) && !".m4v".equals(sourceExtension)
+                ? sourceExtension : null;
+    }
+
+    /** The muxer format of a file with an extension from {@link #videoExtension} or {@link #audioExtension}. */
     static int muxerFormat(String extension) {
         if (".webm".equals(extension)) return MediaMuxer.OutputFormat.MUXER_OUTPUT_WEBM;
         if (".3gp".equals(extension) || ".3gpp".equals(extension)) return MediaMuxer.OutputFormat.MUXER_OUTPUT_3GPP;

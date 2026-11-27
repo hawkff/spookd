@@ -2,6 +2,7 @@ package app.morphe.extension.instagram.patches.download.gallery.editor;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
@@ -65,11 +66,25 @@ public final class VideoTrimTest {
     @Test
     public void audioIsM4aForAacElseKeepsTheSourceContainer() {
         assertEquals(".m4a", VideoTrim.audioExtension("audio/mp4a-latm", ".mp4"));
+        assertEquals(".m4a", VideoTrim.audioExtension("audio/mp4a-latm", ".mkv"));
         assertEquals(".webm", VideoTrim.audioExtension("audio/opus", ".webm"));
         assertEquals(".3gp", VideoTrim.audioExtension("audio/3gpp", ".3gp"));
+        // Never MPEG-4 bytes under another container's name, nor codecs the MPEG-4 muxer cannot hold.
+        assertNull(VideoTrim.audioExtension("audio/vorbis", ".mkv"));
+        assertNull(VideoTrim.audioExtension("audio/mpeg", ".mp4"));
+        assertNull(VideoTrim.audioExtension("audio/mpeg", ".mov"));
         assertEquals(VideoTrim.muxerFormat(".mp4"), VideoTrim.muxerFormat(".m4a"));
         assertEquals(android.media.MediaMuxer.OutputFormat.MUXER_OUTPUT_WEBM, VideoTrim.muxerFormat(".webm"));
         assertEquals(android.media.MediaMuxer.OutputFormat.MUXER_OUTPUT_3GPP, VideoTrim.muxerFormat(".3gp"));
-        assertEquals(android.media.MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4, VideoTrim.muxerFormat(".mov"));
+        assertEquals(android.media.MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4, VideoTrim.muxerFormat(".mp4"));
+    }
+
+    @Test
+    public void aTrimKeepsAWritableContainerElseIsNamedMp4() {
+        assertEquals(".mp4", VideoTrim.videoExtension(".mp4"));
+        assertEquals(".webm", VideoTrim.videoExtension(".webm"));
+        assertEquals(".3gp", VideoTrim.videoExtension(".3gp"));
+        assertEquals(".mp4", VideoTrim.videoExtension(".mkv"));
+        assertEquals(".mp4", VideoTrim.videoExtension(".mov"));
     }
 }

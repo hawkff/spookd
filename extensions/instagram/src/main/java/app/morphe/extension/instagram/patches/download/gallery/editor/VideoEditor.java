@@ -439,7 +439,7 @@ public final class VideoEditor extends Dialog {
 
     private void saveTrim() {
         if (busy || !hasChanges()) return;
-        String extension = VideoTrim.extension(file.getName(), ".mp4");
+        String extension = VideoTrim.videoExtension(VideoTrim.extension(file.getName(), ".mp4"));
         long from = cutStart();
         long to = end;
         work(() -> publish(GalleryItem.VIDEO, VideoTrim.derivedName(fileName, "_trimmed", extension),
@@ -452,6 +452,10 @@ public final class VideoEditor extends Dialog {
     private void saveAudio() {
         if (busy || audioMime == null) return;
         String extension = VideoTrim.audioExtension(audioMime, VideoTrim.extension(file.getName(), ".mp4"));
+        if (extension == null) {
+            Utils.showToastLong(str("spookd_video_editor_audio_unsupported"));
+            return;
+        }
         long from = cutStart();
         long to = end;
         work(() -> publish(GalleryItem.AUDIO, VideoTrim.derivedName(fileName, "_audio", extension),
