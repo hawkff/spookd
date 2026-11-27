@@ -239,6 +239,8 @@ public class Settings {
     public static final BooleanSetting HIDE_REELS_TAB_HEADER = new BooleanSetting("hide_reels_tab_header", false, REQUIRED);
     public static final BooleanSetting DISABLE_APP_HAPTICS = new BooleanSetting("disable_app_haptics", false, NOT_REQUIRED);
     public static final BooleanSetting TRACK_VISITED_PROFILES = new BooleanSetting("track_visited_profiles", false, NOT_REQUIRED);
+    // Days between automatic Profile analyzer scans; "0" turns them off.
+    public static final StringSetting PROFILE_ANALYZER_AUTO_REFRESH_DAYS = new StringSetting("profile_analyzer_auto_refresh_days", "0", NOT_REQUIRED);
     public static final BooleanSetting EXACT_LAST_ACTIVE = new BooleanSetting("exact_last_active", false, NOT_REQUIRED);
     public static final BooleanSetting ACTIVITY_ALERT_ONLINE = new BooleanSetting("activity_alert_online", false, NOT_REQUIRED);
     public static final BooleanSetting ACTIVITY_ALERT_OFFLINE = new BooleanSetting("activity_alert_offline", false, NOT_REQUIRED);
@@ -268,6 +270,7 @@ public class Settings {
             TAB_SHORTCUT_CREATE.key,
             KEEP_OTHER_AUDIO.key,
             SHOW_NEW_LABELS.key,
+            PROFILE_ANALYZER_AUTO_REFRESH_DAYS.key,
             "spookd_report_bug",
             "spookd_request_feature"
     )));

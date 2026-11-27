@@ -405,7 +405,15 @@ public final class ProfileAnalyzerActivity {
                 try {
                     SpookdFollowDb db = SpookdFollowDb.getInstance(activity);
                     if (job == CLEAR_HISTORY) db.clearHistory(account);
-                    else if (job == DELETE_DATA) db.deleteAccount(account);
+                    else if (job == DELETE_DATA) {
+                        // Held so no scan starts between the check and the delete; its commit would bring the data back.
+                        synchronized (ProfileAnalyzer.class) {
+                            if (!ProfileAnalyzer.isScanning()) {
+                                db.deleteAccount(account);
+                                ProfileAnalyzer.onDataDeleted();
+                            }
+                        }
+                    }
                     SpookdFollowDb.Scan scan = db.latestScan(account);
                     List<SpookdFollowDb.Change> history = db.history(account, HISTORY_LIMIT);
                     List<Object> found = scan == null ? new ArrayList<>() : rows(

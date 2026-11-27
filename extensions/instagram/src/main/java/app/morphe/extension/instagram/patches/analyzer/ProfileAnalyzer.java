@@ -68,6 +68,8 @@ public final class ProfileAnalyzer {
     private static int received;
     private static int expected;
     private static int followersReceived;
+    // Bumped by every analyzer data delete, so an automatic start read before it does not run.
+    private static int dataGeneration;
     // Scan worker.
     private static boolean channelCreated;
 
@@ -82,6 +84,7 @@ public final class ProfileAnalyzer {
     /** App start, from SettingsStatus.load(): removes a progress notification a killed process left. */
     public static void onAppStart() {
         updateNotification(null, 0, 0);
+        AutoRefresh.install(Utils.getContext());
     }
 
     /** Main thread, inside Instagram's profile header bind: records the own account's counts, or the visit. */
@@ -101,6 +104,7 @@ public final class ProfileAnalyzer {
             Integer following = user.getFollowingCount();
             if (followers == null || following == null) return;
             recordCounts(accountId, followers, following);
+            AutoRefresh.onOwnCounts(accountId);
         } catch (Exception e) {
             String error = e.getClass().getSimpleName();
             Logger.printException(() -> "ProfileAnalyzer: profile header failed: " + error);
@@ -166,11 +170,22 @@ public final class ProfileAnalyzer {
             synchronized (ProfileAnalyzer.class) {
                 if (isScanning()) return false;
                 SpookdFollowDb.getInstance(context).deleteEverything();
+                onDataDeleted();
                 return true;
             }
         });
         ProfileVisits.DB_QUEUE.execute(task);
         return task.get();
+    }
+
+    /** Any thread, on the analyzer database queue with ProfileAnalyzer.class held, right after a delete. */
+    static synchronized void onDataDeleted() {
+        dataGeneration++;
+        AutoRefresh.onDataChanged();
+    }
+
+    static synchronized int dataGeneration() {
+        return dataGeneration;
     }
 
     /** Main thread, from the 'Start scan' action of the results screen in a resumed activity. */
@@ -183,18 +198,7 @@ public final class ProfileAnalyzer {
                 return;
             }
             FollowScan engine = scan(activity);
-            FollowScan.Refusal refusal;
-            // Held across the start, so the worker's first report comes after this state.
-            synchronized (ProfileAnalyzer.class) {
-                refusal = engine.start(accountId, counts.followers, counts.following,
-                        ProfileAnalyzer::onProgress);
-                if (refusal == null) {
-                    state = FollowScan.State.RUNNING;
-                    list = SpookdFollowDb.LIST_FOLLOWERS;
-                    received = 0;
-                    expected = counts.followers;
-                }
-            }
+            FollowScan.Refusal refusal = start(engine, accountId, counts);
             if (refusal == FollowScan.Refusal.TOO_MANY_ACCOUNTS) {
                 Utils.showToastLong(str(ROW_TOO_MANY));
             } else if (refusal == FollowScan.Refusal.ALREADY_RUNNING) {
@@ -207,6 +211,48 @@ public final class ProfileAnalyzer {
         } catch (Exception e) {
             String error = e.getClass().getSimpleName();
             Logger.printException(() -> "ProfileAnalyzer: start failed: " + error);
+        }
+    }
+
+    /**
+     * Main thread, from AutoRefresh with a resumed activity: starts a scan of this account without
+     * refusal toasts, unless analyzer data was deleted since generation was read.
+     */
+    static void startAutomaticScan(Activity activity, String accountId, Counts counts, int generation) {
+        try {
+            if (!accountId.equals(currentAccountId())) return;
+            FollowScan engine = scan(activity);
+            FollowScan.Refusal refusal;
+            // Held with the delete jobs' lock, so no delete lands between the check and the start.
+            synchronized (ProfileAnalyzer.class) {
+                if (generation != dataGeneration) return;
+                refusal = start(engine, accountId, counts);
+            }
+            if (refusal == null) {
+                Utils.showToastShort(str("spookd_profile_analyzer_auto_started"));
+                refreshRow();
+            } else {
+                Logger.printInfo(() -> "ProfileAnalyzer: automatic scan refused: " + refusal);
+            }
+        } catch (Exception e) {
+            String error = e.getClass().getSimpleName();
+            Logger.printException(() -> "ProfileAnalyzer: automatic start failed: " + error);
+        }
+    }
+
+    /** Main thread. Starts the scan and its progress state, or returns why it was refused. */
+    private static FollowScan.Refusal start(FollowScan engine, String accountId, Counts counts) {
+        // Held across the start, so the worker's first report comes after this state.
+        synchronized (ProfileAnalyzer.class) {
+            FollowScan.Refusal refusal = engine.start(accountId, counts.followers, counts.following,
+                    ProfileAnalyzer::onProgress);
+            if (refusal == null) {
+                state = FollowScan.State.RUNNING;
+                list = SpookdFollowDb.LIST_FOLLOWERS;
+                received = 0;
+                expected = counts.followers;
+            }
+            return refusal;
         }
     }
 
@@ -303,6 +349,7 @@ public final class ProfileAnalyzer {
         }
         if (state == FollowScan.State.FINISHED) {
             Utils.showToastLong(str("spookd_profile_analyzer_finished", count(followers), count(received)));
+            AutoRefresh.onDataChanged();
         } else if (state == FollowScan.State.FAILED) {
             Utils.showToastLong(str("spookd_profile_analyzer_failed"));
         }
