@@ -68,6 +68,8 @@ public final class ProfileAnalyzer {
     private static int received;
     private static int expected;
     private static int followersReceived;
+    // Bumped by every analyzer data delete, so an automatic start read before it does not run.
+    private static int dataGeneration;
     // Scan worker.
     private static boolean channelCreated;
 
@@ -168,11 +170,21 @@ public final class ProfileAnalyzer {
             synchronized (ProfileAnalyzer.class) {
                 if (isScanning()) return false;
                 SpookdFollowDb.getInstance(context).deleteEverything();
+                onDataDeleted();
                 return true;
             }
         });
         ProfileVisits.DB_QUEUE.execute(task);
         return task.get();
+    }
+
+    /** Any thread, on the analyzer database queue with ProfileAnalyzer.class held, right after a delete. */
+    static synchronized void onDataDeleted() {
+        dataGeneration++;
+    }
+
+    static synchronized int dataGeneration() {
+        return dataGeneration;
     }
 
     /** Main thread, from the 'Start scan' action of the results screen in a resumed activity. */
@@ -201,11 +213,20 @@ public final class ProfileAnalyzer {
         }
     }
 
-    /** Main thread, from AutoRefresh with a resumed activity: starts a scan of this account without refusal toasts. */
-    static void startAutomaticScan(Activity activity, String accountId, Counts counts) {
+    /**
+     * Main thread, from AutoRefresh with a resumed activity: starts a scan of this account without
+     * refusal toasts, unless analyzer data was deleted since generation was read.
+     */
+    static void startAutomaticScan(Activity activity, String accountId, Counts counts, int generation) {
         try {
             if (!accountId.equals(currentAccountId())) return;
-            FollowScan.Refusal refusal = start(scan(activity), accountId, counts);
+            FollowScan engine = scan(activity);
+            FollowScan.Refusal refusal;
+            // Held with the delete jobs' lock, so no delete lands between the check and the start.
+            synchronized (ProfileAnalyzer.class) {
+                if (generation != dataGeneration) return;
+                refusal = start(engine, accountId, counts);
+            }
             if (refusal == null) {
                 Utils.showToastShort(str("spookd_profile_analyzer_auto_started"));
                 refreshRow();

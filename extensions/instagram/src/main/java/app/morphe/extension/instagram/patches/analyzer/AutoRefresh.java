@@ -47,7 +47,6 @@ public final class AutoRefresh {
     static boolean attempted;
     // An account whose due scan waits for the counts of its own profile header.
     private static String waitingAccountId;
-    private static SpookdFollowDb.Scan waitingLast;
     private static WeakReference<Row> row = new WeakReference<>(null);
 
     private AutoRefresh() {
@@ -108,49 +107,53 @@ public final class AutoRefresh {
         if (activity == null) return;
         attempted = true;
         try {
-            int days = Pref.profileAnalyzerAutoRefreshDays();
+            if (Pref.profileAnalyzerAutoRefreshDays() == 0) return;
             String accountId = ProfileAnalyzer.currentAccountId();
-            if (days == 0 || accountId == null) return;
-            Context context = activity.getApplicationContext();
-            ProfileVisits.DB_QUEUE.execute(() -> {
-                try {
-                    SpookdFollowDb.Scan last = SpookdFollowDb.getInstance(context).latestScan(accountId);
-                    if (last == null || !isDue(last.finishedAt, days, System.currentTimeMillis())) return;
-                    Utils.runOnMainThread(() -> startIfStillDue(accountId, last));
-                } catch (Exception e) {
-                    String error = e.getClass().getSimpleName();
-                    Logger.printException(() -> "AutoRefresh: last scan read failed: " + error);
-                }
-            });
+            if (accountId != null) readAndStart(activity.getApplicationContext(), accountId);
         } catch (Exception e) {
             String error = e.getClass().getSimpleName();
             Logger.printException(() -> "AutoRefresh: check failed: " + error);
         }
     }
 
+    /** Any thread: reads the last scan on the analyzer database queue, then starts on the main thread if due. */
+    private static void readAndStart(Context context, String accountId) {
+        ProfileVisits.DB_QUEUE.execute(() -> {
+            try {
+                // Read on the queue that deletes run on, so a later delete changes the generation.
+                int dataGeneration = ProfileAnalyzer.dataGeneration();
+                SpookdFollowDb.Scan last = SpookdFollowDb.getInstance(context).latestScan(accountId);
+                if (last == null) return;
+                Utils.runOnMainThread(() -> startIfStillDue(accountId, last.finishedAt, dataGeneration));
+            } catch (Exception e) {
+                String error = e.getClass().getSimpleName();
+                Logger.printException(() -> "AutoRefresh: last scan read failed: " + error);
+            }
+        });
+    }
+
     /** Main thread: starts the scan unless the app left the screen or the setting changed during the read. */
-    private static void startIfStillDue(String accountId, SpookdFollowDb.Scan last) {
+    private static void startIfStillDue(String accountId, long lastFinishedAt, int dataGeneration) {
         Activity activity = resumedActivity();
-        if (activity == null || !isDue(last.finishedAt, Pref.profileAnalyzerAutoRefreshDays(),
+        if (activity == null || !isDue(lastFinishedAt, Pref.profileAnalyzerAutoRefreshDays(),
                 System.currentTimeMillis())) return;
         ProfileAnalyzer.Counts counts = ProfileAnalyzer.countsFor(accountId);
         if (counts == null) {
             // The scan's account-size limit needs current counts, which only the own profile header gives.
             waitingAccountId = accountId;
-            waitingLast = last;
             return;
         }
-        ProfileAnalyzer.startAutomaticScan(activity, accountId, counts);
+        ProfileAnalyzer.startAutomaticScan(activity, accountId, counts, dataGeneration);
     }
 
     /** Main thread, inside Instagram's own profile header bind, once its counts were recorded. */
     static void onOwnCounts(String accountId) {
         if (!accountId.equals(waitingAccountId)) return;
-        SpookdFollowDb.Scan last = waitingLast;
+        Activity activity = resumedActivity();
+        if (activity == null) return;
         waitingAccountId = null;
-        waitingLast = null;
-        // Posted, so the scan does not start inside Instagram's bind.
-        Utils.runOnMainThread(() -> startIfStillDue(accountId, last));
+        // Read again, since the data may have been deleted or rescanned while waiting.
+        readAndStart(activity.getApplicationContext(), accountId);
     }
 
     /** Scan worker thread, after a scan was stored: the displayed row shows its new next scan. */

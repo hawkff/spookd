@@ -408,7 +408,10 @@ public final class ProfileAnalyzerActivity {
                     else if (job == DELETE_DATA) {
                         // Held so no scan starts between the check and the delete; its commit would bring the data back.
                         synchronized (ProfileAnalyzer.class) {
-                            if (!ProfileAnalyzer.isScanning()) db.deleteAccount(account);
+                            if (!ProfileAnalyzer.isScanning()) {
+                                db.deleteAccount(account);
+                                ProfileAnalyzer.onDataDeleted();
+                            }
                         }
                     }
                     SpookdFollowDb.Scan scan = db.latestScan(account);
