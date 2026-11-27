@@ -169,9 +169,9 @@ public final class GalleryBackup {
     /**
      * Main thread: hands the picked documents to the work thread. Without a notification that can
      * show, a dialog on {@code host} shows the progress instead; closing it leaves the work running.
-     * Returns whether that dialog shows; with {@code finishHost} the host then closes with the dialog.
+     * Returns that dialog, or null; with {@code finishHost} the host then closes with the dialog.
      */
-    private static boolean start(Activity host, int mode, List<Uri> uris, boolean finishHost) {
+    private static AlertDialog start(Activity host, int mode, List<Uri> uris, boolean finishHost) {
         Context app = host.getApplicationContext();
         String title = str(mode == EXPORT ? "spookd_gallery_backup_running" : "spookd_gallery_importing");
         AlertDialog dialog = null;
@@ -204,7 +204,7 @@ public final class GalleryBackup {
                 cancelProgress(app, shown);
             }
         });
-        return shown != null;
+        return shown;
     }
 
     /** Main thread: whether the progress notification can show, its channel included; creates the channel. */
@@ -362,17 +362,26 @@ public final class GalleryBackup {
 
     /** Headless: opens the file picker and hands what was picked to the work thread. */
     public static final class Picker extends Fragment {
+        // Saved, so a host recreated while its progress dialog shows closes instead of picking again.
+        private static final String CONSUMED = "consumed";
+        private boolean consumed;
+        private AlertDialog progressDialog;
+
         @Override
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
-            if (savedInstanceState != null) return;
+            if (savedInstanceState != null) {
+                // The work, if this process still runs it, ends with its own toast.
+                if (savedInstanceState.getBoolean(CONSUMED)) done(null);
+                return;
+            }
             try {
                 startActivityForResult(intent(getArguments().getInt(MODE)), REQUEST);
             } catch (Exception e) {
                 Logger.printException(() -> "Gallery backup: no file picker", e);
                 Utils.showToastShort(str(e instanceof ActivityNotFoundException
                         ? "spookd_file_picker_unavailable" : "spookd_gallery_action_failed"));
-                done(false);
+                done(null);
             }
         }
 
@@ -383,17 +392,41 @@ public final class GalleryBackup {
             List<Uri> picked = resultCode == Activity.RESULT_OK ? uris(data) : Collections.emptyList();
             Activity activity = getActivity();
             boolean finishHost = getArguments().getBoolean(FINISH_HOST);
-            boolean dialogShown = !picked.isEmpty() && activity != null
-                    && start(activity, getArguments().getInt(MODE), picked, finishHost);
-            done(dialogShown);
+            consumed = true;
+            done(picked.isEmpty() || activity == null ? null
+                    : start(activity, getArguments().getInt(MODE), picked, finishHost));
         }
 
-        /** Removes this picker; its own transparent screen closes too, unless it shows the progress dialog. */
-        private void done(boolean dialogShown) {
+        @Override
+        public void onSaveInstanceState(Bundle outState) {
+            super.onSaveInstanceState(outState);
+            outState.putBoolean(CONSUMED, consumed);
+        }
+
+        @Override
+        public void onDestroy() {
+            super.onDestroy();
+            // Without its listener, so a recreation does not finish the new host.
+            if (progressDialog != null && progressDialog.isShowing()) {
+                progressDialog.setOnDismissListener(null);
+                progressDialog.dismiss();
+            }
+        }
+
+        /**
+         * Removes this picker, and closes its own transparent screen; with a progress {@code dialog}
+         * there, it stays attached until the dialog closes the screen.
+         */
+        private void done(AlertDialog dialog) {
             Activity activity = getActivity();
+            boolean finishHost = getArguments().getBoolean(FINISH_HOST);
+            if (dialog != null && finishHost) {
+                progressDialog = dialog;
+                return;
+            }
             FragmentManager fragments = getFragmentManager();
             if (fragments != null) fragments.beginTransaction().remove(this).commitAllowingStateLoss();
-            if (activity != null && !dialogShown && getArguments().getBoolean(FINISH_HOST)) activity.finish();
+            if (activity != null && finishHost) activity.finish();
         }
     }
 }
