@@ -37,6 +37,9 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.settings.ActivityHook;
 import app.morphe.extension.instagram.settings.Settings;
@@ -431,14 +434,28 @@ public final class InstagramPreferenceStyle {
         view.setEnabled(enabled);
     }
 
+    // Stands for the labeled title of a NEW row that was not bound yet.
+    private static final CharSequence NEW_LABEL_PENDING = "";
+    // Labeled titles by key for the NEW rows, empty while the labels are hidden; reloaded when the switch changes.
+    private static final Pref.Cached<Map<String, CharSequence>> NEW_LABEL_TITLES = new Pref.Cached<>(() -> {
+        Map<String, CharSequence> titles = new HashMap<>();
+        if (Pref.showNewLabels()) {
+            for (String key : Settings.NEW_KEYS) titles.put(key, NEW_LABEL_PENDING);
+        }
+        return titles;
+    }, Settings.SHOW_NEW_LABELS.key);
+
     /** Main thread. The title, with a NEW badge on a row added in this release while the labels are shown. */
     private static CharSequence titleWithNewLabel(Preference preference) {
         CharSequence title = preference.getTitle();
-        String key = preference.getKey();
-        if (title == null || key == null || !Settings.NEW_KEYS.contains(key) || !Pref.showNewLabels()) {
-            return title;
+        Map<String, CharSequence> titles = NEW_LABEL_TITLES.get();
+        CharSequence labeled = titles.get(preference.getKey());
+        if (labeled == null || title == null) return title;
+        if (labeled == NEW_LABEL_PENDING) {
+            labeled = withNewLabel(title, IgStr.str("spookd_new_label"));
+            titles.put(preference.getKey(), labeled);
         }
-        return withNewLabel(title, IgStr.str("spookd_new_label"));
+        return labeled;
     }
 
     static CharSequence withNewLabel(CharSequence title, String label) {
