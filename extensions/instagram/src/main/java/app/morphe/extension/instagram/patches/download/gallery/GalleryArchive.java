@@ -138,40 +138,61 @@ final class GalleryArchive {
         }
     }
 
-    /** The manifest of {@code entries}: their stored file, tab and every detail a download keeps. */
-    static String manifest(List<GalleryStore.Entry> entries) throws JSONException {
-        JSONArray items = new JSONArray();
-        for (GalleryStore.Entry entry : entries) {
-            GalleryItem item = entry.item;
-            items.put(new JSONObject()
-                    .put("file", entry.file.getName())
-                    .put("tab", item.tab.name().toLowerCase(Locale.ROOT))
-                    .put("kind", item.kind)
-                    .put("fileName", entry.fileName)
-                    .put("subFolder", entry.subFolder)
-                    .put("owner", item.ownerUsername)
-                    .put("ownerId", item.ownerId)
-                    .put("mediaId", item.mediaId)
-                    .put("link", item.link)
-                    .put("accountId", item.accountId)
-                    .put("savedAt", entry.savedAt)
-                    .put("takenAt", item.takenAt)
-                    .put("favorite", entry.favorite));
+    /** The manifest item of {@code entry}: its stored file, tab and every detail a download keeps. */
+    private static JSONObject manifestItem(GalleryStore.Entry entry) throws JSONException {
+        GalleryItem item = entry.item;
+        return new JSONObject()
+                .put("file", entry.file.getName())
+                .put("tab", item.tab.name().toLowerCase(Locale.ROOT))
+                .put("kind", item.kind)
+                .put("fileName", entry.fileName)
+                .put("subFolder", entry.subFolder)
+                .put("owner", item.ownerUsername)
+                .put("ownerId", item.ownerId)
+                .put("mediaId", item.mediaId)
+                .put("link", item.link)
+                .put("accountId", item.accountId)
+                .put("savedAt", entry.savedAt)
+                .put("takenAt", item.takenAt)
+                .put("favorite", entry.favorite);
+    }
+
+    /** Whether {@link #parse} takes {@code json} back and its file fits {@code maxFileBytes}. */
+    private static boolean restorable(JSONObject json, File file, long maxFileBytes) {
+        try {
+            item(json);
+            return file.length() <= maxFileBytes;
+        } catch (IllegalArgumentException e) {
+            return false;
         }
-        return new JSONObject().put("schema", SCHEMA).put("items", items).toString();
+    }
+
+    static int[] write(GalleryStore store, OutputStream out, BiConsumer<Integer, Integer> progress) throws IOException {
+        return write(store, out, progress, MAX_FILE_BYTES);
     }
 
     /**
-     * Writes every download, oldest first, to {@code out}, which the caller closes, and returns how
-     * many files went in; one deleted meanwhile is left out. {@code progress} gets (done, total).
+     * Writes every download a restore takes back, oldest first, to {@code out}, which the caller
+     * closes, and returns {files written, downloads left out because a restore would refuse them};
+     * one deleted meanwhile is left out silently. {@code progress} gets (done, total).
      */
-    static int write(GalleryStore store, OutputStream out, BiConsumer<Integer, Integer> progress) throws IOException {
-        List<GalleryStore.Entry> entries = store.list(null, null, false, null, GalleryStore.SORT_OLDEST);
-        // An archive the import would refuse is no backup.
-        if (entries.size() > MAX_ITEMS) throw new IOException("Too many items: " + entries.size());
+    static int[] write(GalleryStore store, OutputStream out, BiConsumer<Integer, Integer> progress,
+                       long maxFileBytes) throws IOException {
+        List<GalleryStore.Entry> all = store.list(null, null, false, null, GalleryStore.SORT_OLDEST);
+        List<GalleryStore.Entry> entries = new ArrayList<>();
         byte[] manifest;
         try {
-            manifest = manifest(entries).getBytes(StandardCharsets.UTF_8);
+            JSONArray items = new JSONArray();
+            for (GalleryStore.Entry entry : all) {
+                JSONObject item = manifestItem(entry);
+                if (!restorable(item, entry.file, maxFileBytes)) continue;
+                items.put(item);
+                entries.add(entry);
+            }
+            // An archive the import would refuse is no backup.
+            if (entries.size() > MAX_ITEMS) throw new IOException("Too many items: " + entries.size());
+            manifest = new JSONObject().put("schema", SCHEMA).put("items", items).toString()
+                    .getBytes(StandardCharsets.UTF_8);
         } catch (JSONException e) {
             throw new IOException(e);
         }
@@ -204,7 +225,7 @@ final class GalleryArchive {
         }
         zip.finish();
         zip.flush();
-        return written;
+        return new int[]{written, all.size() - entries.size()};
     }
 
     /**
@@ -314,9 +335,8 @@ final class GalleryArchive {
                 Item item;
                 try {
                     if (object == null) throw new IllegalArgumentException("Not an object");
-                    file = text(object, "file");
-                    if (file == null || !STORED_NAME.matcher(file).matches()) throw new IllegalArgumentException("file");
                     item = item(object);
+                    file = text(object, "file");
                 } catch (IllegalArgumentException e) {
                     manifest.invalid++;
                     continue;
@@ -331,6 +351,8 @@ final class GalleryArchive {
 
     /** Throws {@link IllegalArgumentException} for any field that is missing, of the wrong type or unsafe. */
     private static Item item(JSONObject object) {
+        String file = text(object, "file");
+        if (file == null || !STORED_NAME.matcher(file).matches()) throw new IllegalArgumentException("file");
         String kind = text(object, "kind");
         if (!KINDS.contains(kind)) throw new IllegalArgumentException("kind");
         String tab = text(object, "tab");

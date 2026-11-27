@@ -196,7 +196,7 @@ public final class GalleryBackup {
     /** Work thread. A backup that fails part way is deleted, so no partial file looks like a backup. */
     private static void export(Context app, Uri uri) {
         ContentResolver resolver = app.getContentResolver();
-        int written;
+        int[] written;
         try (OutputStream out = resolver.openOutputStream(uri)) {
             if (out == null) throw new IOException("Cannot write the backup");
             written = GalleryArchive.write(GalleryStore.get(), out, progress(app, str("spookd_gallery_backup_running")));
@@ -209,7 +209,8 @@ public final class GalleryBackup {
             Utils.showToastLong(str("spookd_gallery_backup_failed"));
             return;
         }
-        Utils.showToastLong(str("spookd_gallery_backup_done", written));
+        Utils.showToastLong(written[1] == 0 ? str("spookd_gallery_backup_done", written[0])
+                : str("spookd_gallery_backup_done_left_out", written[0], written[1]));
     }
 
     /** Work thread: merges a backup, skipping what the gallery already has. */

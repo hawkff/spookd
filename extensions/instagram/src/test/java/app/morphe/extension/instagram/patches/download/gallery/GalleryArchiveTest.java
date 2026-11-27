@@ -1,5 +1,6 @@
 package app.morphe.extension.instagram.patches.download.gallery;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -196,6 +197,23 @@ public final class GalleryArchiveTest {
         assertEquals(1, entries.size());
         assertEquals("first", read(entries.get(0).file));
         assertFalse(new File(tmp.getRoot(), "c.jpg").exists());
+    }
+
+    @Test
+    public void aBackupLeavesOutWhatARestoreWouldRefuseAndSaysHowMany() throws Exception {
+        GalleryItem photo = new GalleryItem(GalleryTab.POSTS, GalleryItem.PHOTO, null, null, null, null, null, null);
+        save(photo, null, "kept.jpg", "ok");
+        save(photo, null, "notes.txt", "text");
+        save(photo, null, "big.jpg", "123456");
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        assertArrayEquals(new int[]{1, 2}, GalleryArchive.write(store, out, (done, total) -> { }, 5));
+
+        assertTrue(store.deleteAll());
+        GalleryArchive.Result result = restore(out.toByteArray());
+        assertEquals(1, result.imported);
+        assertEquals(0, result.failed);
+        assertEquals("ok", read(store.list(null, null, false, null, GalleryStore.SORT_OLDEST).get(0).file));
     }
 
     @Test
