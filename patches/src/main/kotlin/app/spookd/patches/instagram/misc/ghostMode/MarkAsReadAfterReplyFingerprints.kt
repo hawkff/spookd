@@ -27,9 +27,12 @@ internal object DmTextSendNameFingerprint : Fingerprint(
     filters = listOf(string("send_text_message")),
 )
 
-internal object ReplyReadThreadIdFingerprint : Fingerprint(
-    definingClass = REPLY_READ_EXTENSION,
-    name = "getThreadId",
+// The typing indicator sender of a chat, static with the sender and the chat id.
+internal object DmTypingStartFingerprint : Fingerprint(
+    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.STATIC, AccessFlags.FINAL),
+    returnType = "V",
+    parameters = listOf("L", "Ljava/lang/String;"),
+    filters = listOf(string("indicate_activity")),
 )
 
 internal object ReplyReadSendReceiptFingerprint : Fingerprint(

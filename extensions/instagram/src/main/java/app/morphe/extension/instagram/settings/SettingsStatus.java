@@ -538,7 +538,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_disable_app_haptics"), SettingsStatus.disableAppHaptics);
 
         FLAGS.put(str("spookd_view_dm_anonymously"),SettingsStatus.viewDmAnonymously);
-        FLAGS.put(str("spookd_mark_as_read_after_reply"), SettingsStatus.markAsReadAfterReply);
+        FLAGS.put(str("spookd_mark_seen_on"), SettingsStatus.markAsReadAfterReply);
         FLAGS.put(str("spookd_dm_ghost_mode"), SettingsStatus.dmGhostChats);
         FLAGS.put(str("spookd_save_deleted_messages"),SettingsStatus.saveDeletedMessages);
         FLAGS.put(str("spookd_dm_media_vault"),SettingsStatus.dmMediaVault);

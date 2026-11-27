@@ -657,13 +657,23 @@ public class ScreenBuilder {
             addPreference(helper.availableWhen(dmGhostChats, dmGhostOn));
         }
         if (SettingsStatus.markAsReadAfterReply) {
+            // Migrates the old switch before the row reads the saved selection.
+            Pref.markSeenOn();
+            MultiSelectListPref markSeenOn = (MultiSelectListPref) helper.multiSelectListPref(
+                    str("spookd_mark_seen_on"),
+                    str("spookd_mark_seen_on_desc"),
+                    Settings.MARK_SEEN_ON
+            );
+            markSeenOn.setEntries(new CharSequence[]{
+                    str("spookd_mark_seen_on_reply"),
+                    str("spookd_mark_seen_on_reaction"),
+                    str("spookd_mark_seen_on_send"),
+                    str("spookd_mark_seen_on_typing")
+            });
+            markSeenOn.setEntryValues(new CharSequence[]{"reply", "reaction", "send", "typing"});
             addPreference(
                     helper.availableWhen(
-                            helper.switchPreference(
-                                    str("spookd_mark_as_read_after_reply"),
-                                    str("spookd_mark_as_read_after_reply_desc"),
-                                    Settings.MARK_AS_READ_AFTER_REPLY
-                            ),
+                            markSeenOn,
                             () -> SharedPref.getBooleanPref(Settings.VIEW_DM_ANONYMOUSLY)
                                     || SharedPref.getBooleanPref(Settings.TURN_ON_ALL_GHOST_MODES)
                     )

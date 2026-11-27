@@ -46,7 +46,9 @@ public class Settings {
     public static final BooleanSetting VIEW_LIVE_ANONYMOUSLY = new BooleanSetting("view_live_anonymously", false, NOT_REQUIRED);
     public static final BooleanSetting DISABLE_SCREENSHOT_DETECTION = new BooleanSetting("disable_screenshot_detection", false, NOT_REQUIRED);
     public static final BooleanSetting VIEW_DM_ANONYMOUSLY = new BooleanSetting("view_dm_anonymously", false, NOT_REQUIRED);
+    // Pre-selection key; migrated once to MARK_SEEN_ON in Pref.
     public static final BooleanSetting MARK_AS_READ_AFTER_REPLY = new BooleanSetting("mark_as_read_after_reply", false, NOT_REQUIRED);
+    public static final StringSetting MARK_SEEN_ON = new StringSetting("dm_mark_seen_on", "", NOT_REQUIRED);
     public static final StringSetting DM_GHOST_MODE = new StringSetting("dm_ghost_mode", "everyone", NOT_REQUIRED);
     public static final StringSetting DM_GHOST_CHATS = new StringSetting("dm_ghost_chats", "{}", NOT_REQUIRED);
     public static final BooleanSetting INSTANTS_DOWNLOAD = new BooleanSetting("instants_download", false, NOT_REQUIRED);

@@ -138,8 +138,29 @@ public class Pref {
         return on(Settings.ENABLE_MARK_CHAT_AS_READ) && SettingsStatus.markChatAsRead;
     }
 
-    public static boolean markAsReadAfterReply() {
-        return on(Settings.MARK_AS_READ_AFTER_REPLY) && SettingsStatus.markAsReadAfterReply;
+    private static final Cached<Set<String>> MARK_SEEN_ON = new Cached<>(
+            Pref::loadMarkSeenOn, Settings.MARK_SEEN_ON.key, Settings.MARK_AS_READ_AFTER_REPLY.key);
+
+    /** The chat actions that send a chat's held read receipt: "reply", "reaction", "send", "typing" (dm_mark_seen_on). */
+    public static Set<String> markSeenOn() {
+        Set<String> actions = MARK_SEEN_ON.get();
+        return SettingsStatus.markAsReadAfterReply && !SafeStartup.featuresOff() ? actions : Collections.emptySet();
+    }
+
+    private static Set<String> loadMarkSeenOn() {
+        Set<String> actions = SharedPref.getSetPref(Settings.MARK_SEEN_ON);
+        Context context = Utils.getContext();
+        var preferences = context == null ? null
+                : context.getSharedPreferences(Constants.SHARED_PREF_NAME, Context.MODE_PRIVATE);
+        if (preferences == null || preferences.contains(Settings.MARK_SEEN_ON.key)) return actions;
+        actions = migratedMarkSeenOn(SharedPref.getBooleanPref(Settings.MARK_AS_READ_AFTER_REPLY));
+        if (!actions.isEmpty()) SharedPref.setSetPref(Settings.MARK_SEEN_ON.key, actions);
+        return actions;
+    }
+
+    /** The old switch fired on every message sent in the chat, so it becomes Reply and Send a message. */
+    static Set<String> migratedMarkSeenOn(boolean markAsReadAfterReply) {
+        return markAsReadAfterReply ? new HashSet<>(Arrays.asList("reply", "send")) : new HashSet<>();
     }
 
     // Return false = call the message seen api.
@@ -148,7 +169,7 @@ public class Pref {
         return shouldBlockDmSeen(
                 on(Settings.VIEW_DM_ANONYMOUSLY),
                 Pref.getTurnOnAllGhostModes(),
-                enableMarkChatAsReadOption() || markAsReadAfterReply()
+                enableMarkChatAsReadOption() || !markSeenOn().isEmpty()
         );
     }
 
