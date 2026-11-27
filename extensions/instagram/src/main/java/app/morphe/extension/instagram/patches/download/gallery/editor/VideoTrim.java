@@ -87,7 +87,8 @@ final class VideoTrim {
     static long[] cutPoints(long[] syncs, int count, long durationUs) {
         long[] sorted = Arrays.copyOf(syncs, count);
         Arrays.sort(sorted);
-        long[] out = new long[count + 1];
+        // Every keyframe, or the fallback 0 when none is kept, plus the duration.
+        long[] out = new long[count + 2];
         int n = 0;
         for (long time : sorted) {
             if (time < 0 || time >= durationUs || (n > 0 && out[n - 1] == time)) continue;
