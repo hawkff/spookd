@@ -2108,7 +2108,7 @@ public class ScreenBuilder {
 
     }
 
-    /** A row that opens the project's new-issue form in the browser; nothing is sent until the user submits it. */
+    /** A row that opens the project's new-issue form in the browser; the link sends the details to GitHub, but no issue is created until the user submits it. */
     private Preference newIssueRow(boolean bug, String key) {
         Preference row = helper.buttonPreference(str(key), str(key + "_desc"), key);
         row.setOnPreferenceClickListener(preference -> {

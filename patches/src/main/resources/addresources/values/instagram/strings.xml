@@ -726,9 +726,9 @@
     <string name="spookd_show_new_labels_desc">Marks settings added in this version with a NEW label</string>
     <string name="spookd_new_label">NEW</string>
     <string name="spookd_report_bug">Report a bug</string>
-    <string name="spookd_report_bug_desc">Opens a new GitHub issue with your device, Android, Instagram and patch versions filled in. Nothing is sent until you submit it.</string>
+    <string name="spookd_report_bug_desc">Opens a new GitHub issue form with your device, Android, Instagram and patch versions filled in. Opening it sends these details to GitHub in the link; no issue is created until you submit it.</string>
     <string name="spookd_request_feature">Request a feature</string>
-    <string name="spookd_request_feature_desc">Opens a new GitHub feature request with your device and versions filled in. Nothing is sent until you submit it.</string>
+    <string name="spookd_request_feature_desc">Opens a new GitHub feature request form with your device and versions filled in. Opening it sends these details to GitHub in the link; no issue is created until you submit it.</string>
     <string name="spookd_no_browser">No app can open the link</string>
     <string name="spookd_storage">Storage</string>
     <string name="spookd_storage_desc">See how much space spookd data and Instagram\'s cache use, and clear them</string>

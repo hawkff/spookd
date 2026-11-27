@@ -21,6 +21,8 @@ public final class KeepOtherAudio {
     private static volatile boolean soundOnSinceForeground;
     // The Reels picture-in-picture screen whose focus request was skipped, asked again once the sound is turned on.
     private static volatile WeakReference<Object> skippedPip;
+    // Turning the sound on and skipping a request take it together, so a skip just before the sound turns on is retried.
+    private static final Object PIP_LOCK = new Object();
 
     private KeepOtherAudio() {
     }
@@ -44,8 +46,11 @@ public final class KeepOtherAudio {
 
     /** Called at the start of Instagram's sound setter, on the thread that mutes or unmutes. */
     public static void onSoundSet(boolean on) {
-        soundOnSinceForeground = on;
-        Object pip = takeSkippedPip(on);
+        Object pip;
+        synchronized (PIP_LOCK) {
+            soundOnSinceForeground = on;
+            pip = takeSkippedPip(on);
+        }
         if (pip != null) Utils.runOnMainThread(() -> retryPipFocus(pip));
     }
 
@@ -63,9 +68,11 @@ public final class KeepOtherAudio {
     }
 
     static boolean pipAllowed(boolean switchOn, Object pip) {
-        if (allows(switchOn)) return true;
-        skippedPip = new WeakReference<>(pip);
-        return false;
+        synchronized (PIP_LOCK) {
+            if (allows(switchOn)) return true;
+            skippedPip = new WeakReference<>(pip);
+            return false;
+        }
     }
 
     /** The skipped picture-in-picture screen to ask again once the sound is on, taken once. */
