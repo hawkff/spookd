@@ -77,10 +77,14 @@ val keepSeenLocallyPatch = patch(
                 filters = listOf(string("queued"), string("executing")),
             ).originalMethod
             val store = lifecycle.parameterTypes[1].toString()
+            // Two receipt listeners call the handler; only one has its own session field, which makes the match unique.
             val storeGetter = Fingerprint(
                 returnType = "V",
                 parameters = listOf("L", "L"),
                 filters = listOf(methodCall(reference = lifecycle)),
+                custom = { _, classDef ->
+                    classDef.fields.any { it.type == USER_SESSION_CLASS && !AccessFlags.STATIC.isSet(it.accessFlags) }
+                },
             ).originalMethod.implementation!!.instructions.firstNotNullOfOrNull { instruction ->
                 if (instruction.opcode != Opcode.INVOKE_STATIC) return@firstNotNullOfOrNull null
                 instruction.getReference<MethodReference>()?.takeIf {
