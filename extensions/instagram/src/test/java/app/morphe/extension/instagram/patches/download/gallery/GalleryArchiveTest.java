@@ -269,6 +269,28 @@ public final class GalleryArchiveTest {
         assertEquals(1, files.length);
     }
 
+    @Test
+    public void aStoppedImportCountsTheItemItWasOnAndTheRestAsNotImported() throws Exception {
+        byte[] archive = zip(entries(
+                GalleryArchive.MANIFEST, manifest(item("a.jpg"), item("b.jpg"), item("c.jpg"), item("d.jpg")),
+                "media/a.jpg", "ok",
+                "media/b.jpg", "12345",
+                "media/c.jpg", "c"));
+
+        GalleryArchive.Result result = new GalleryArchive.Result();
+        try {
+            GalleryArchive.read(store, new ByteArrayInputStream(archive), result, (done, total) -> { }, 4);
+            fail("Read an entry past the file limit");
+        } catch (IOException expected) {
+        }
+
+        assertEquals(1, result.imported);
+        assertEquals(0, result.duplicates);
+        // b.jpg, which stopped it, then c.jpg and d.jpg, which it never reached.
+        assertEquals(3, result.failed);
+        assertEquals(1, store.totals()[0]);
+    }
+
     private void assertStopped(byte[] archive) throws IOException {
         GalleryArchive.Result result = new GalleryArchive.Result();
         try {

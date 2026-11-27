@@ -255,32 +255,42 @@ final class GalleryArchive {
             long epoch = store.clearEpoch();
             int done = 0;
             int entries = 1;
-            for (ZipEntry entry; (entry = zip.getNextEntry()) != null; ) {
-                if (++entries > MAX_ITEMS + 1) throw new IOException("Too many entries");
-                String name = entry.getName();
-                // Entry names only look up manifest items, never paths; a repeated or unknown entry finds none.
-                Item item = entry.isDirectory() || !name.startsWith(MEDIA) ? null
-                        : manifest.items.remove(name.substring(MEDIA.length()));
-                if (item == null) {
-                    result.failed++;
-                    drain(zip, MAX_UNCLAIMED_BYTES);
-                    continue;
+            // The claimed item being read; a stop counts it, and every item never reached, as not imported.
+            Item current = null;
+            try {
+                for (ZipEntry entry; (entry = zip.getNextEntry()) != null; ) {
+                    if (++entries > MAX_ITEMS + 1) throw new IOException("Too many entries");
+                    String name = entry.getName();
+                    // Entry names only look up manifest items, never paths; a repeated or unknown entry finds none.
+                    Item item = entry.isDirectory() || !name.startsWith(MEDIA) ? null
+                            : manifest.items.remove(name.substring(MEDIA.length()));
+                    if (item == null) {
+                        result.failed++;
+                        drain(zip, MAX_UNCLAIMED_BYTES);
+                        continue;
+                    }
+                    current = item;
+                    progress.accept(++done, total);
+                    String mediaId = item.item.mediaId;
+                    if (mediaId != null && !mediaId.isEmpty() && store.hasMedia(mediaId, item.item.kind)) {
+                        drain(zip, maxFileBytes);
+                        current = null;
+                        result.duplicates++;
+                        continue;
+                    }
+                    long id = add(store, duplicates, epoch, zip, item.item, item.subFolder, item.fileName, item.savedAt,
+                            maxFileBytes);
+                    current = null;
+                    if (id == -1) {
+                        result.duplicates++;
+                        continue;
+                    }
+                    result.imported++;
+                    if (item.favorite) store.setFavorite(false, id, true);
                 }
-                progress.accept(++done, total);
-                String mediaId = item.item.mediaId;
-                if (mediaId != null && !mediaId.isEmpty() && store.hasMedia(mediaId, item.item.kind)) {
-                    result.duplicates++;
-                    drain(zip, maxFileBytes);
-                    continue;
-                }
-                long id = add(store, duplicates, epoch, zip, item.item, item.subFolder, item.fileName, item.savedAt,
-                        maxFileBytes);
-                if (id == -1) {
-                    result.duplicates++;
-                    continue;
-                }
-                if (item.favorite) store.setFavorite(false, id, true);
-                result.imported++;
+            } catch (IOException | RuntimeException e) {
+                result.failed += manifest.items.size() + (current != null ? 1 : 0);
+                throw e;
             }
             // Listed, but not in the archive: deleted while the backup was written.
             result.failed += manifest.items.size();
