@@ -60,6 +60,19 @@ public final class InstantsUploadTest {
     }
 
     @Test
+    public void onlyVideosTallEnoughForTheCameraSquareFit() {
+        // A 1080 px preview with 24 px margins and the square 100 px down needs 1132 px of scaled height.
+        assertTrue(InstantsUpload.fitsCameraCrop(1080, 1920, 0, 1080, 24, 100));
+        assertFalse(InstantsUpload.fitsCameraCrop(1920, 1080, 0, 1080, 24, 100));
+        assertFalse(InstantsUpload.fitsCameraCrop(1080, 1080, 0, 1080, 24, 100));
+        assertTrue(InstantsUpload.fitsCameraCrop(1080, 1080, 0, 1080, 24, 0));
+        assertTrue(InstantsUpload.fitsCameraCrop(1920, 1080, 90, 1080, 24, 100));
+        assertFalse(InstantsUpload.fitsCameraCrop(1080, 1920, 270, 1080, 24, 100));
+        assertFalse(InstantsUpload.fitsCameraCrop(-1, -1, -1, 1080, 24, 100));
+        assertFalse(InstantsUpload.fitsCameraCrop(1080, 1920, 0, 0, 0, 0));
+    }
+
+    @Test
     public void exifOrientationBecomesAClockwiseTurn() {
         assertEquals(0, InstantsUpload.exifDegrees(ExifInterface.ORIENTATION_NORMAL));
         assertEquals(90, InstantsUpload.exifDegrees(ExifInterface.ORIENTATION_ROTATE_90));

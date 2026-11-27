@@ -236,7 +236,7 @@ public final class InstantsUpload {
         }
     }
 
-    /** Background thread: copies the video for Instagram's handler, then reads its length from the copy. */
+    /** Background thread: copies the video for Instagram's handler, then reads its length and size from the copy. */
     private static void prepareVideo(Context app, Uri uri, Camera camera) throws IOException {
         File dir = new File(app.getCacheDir(), VIDEO_DIR);
         clearOld(dir, System.currentTimeMillis());
@@ -252,13 +252,14 @@ public final class InstantsUpload {
             video.delete();
             throw e;
         }
-        long durationMs = durationMs(video);
-        Utils.runOnMainThread(() -> sendVideo(video, durationMs, camera));
+        long[] info = videoInfo(video);
+        Utils.runOnMainThread(() -> sendVideo(video, info, camera));
     }
 
     /** Main thread. */
-    private static void sendVideo(File video, long durationMs, Camera camera) {
+    private static void sendVideo(File video, long[] info, Camera camera) {
         try {
+            long durationMs = info[0];
             Object live = camera.live();
             if (live == null) {
                 video.delete();
@@ -273,27 +274,41 @@ public final class InstantsUpload {
                         : str("spookd_instants_upload_too_long", maxMs / 1000));
                 return;
             }
+            View preview = camera.preview.get();
+            // The camera crops a recording to its square at the preview's offset and never fills the square from a short video.
+            if (preview == null || !fitsCameraCrop((int) info[1], (int) info[2], (int) info[3], preview.getWidth(),
+                    horizontalMarginNative(preview), verticalOffsetNative(preview))) {
+                video.delete();
+                Utils.showToastLong(str("spookd_instants_upload_video_shape"));
+                return;
+            }
             captureVideoNative(live, video);
         } catch (Throwable t) {
             failed("send a video", t);
         }
     }
 
-    /** -1 when unknown. */
-    private static long durationMs(File video) {
+    /** {duration ms, width, height, rotation}; -1 for what can't be read. */
+    private static long[] videoInfo(File video) {
+        long[] info = {-1, -1, -1, -1};
         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
         try {
             retriever.setDataSource(video.getPath());
-            String value = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-            return value == null ? -1 : Long.parseLong(value);
+            int[] keys = {MediaMetadataRetriever.METADATA_KEY_DURATION, MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH,
+                    MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT, MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION};
+            for (int i = 0; i < keys.length; i++) {
+                String value = retriever.extractMetadata(keys[i]);
+                if (value != null) info[i] = Long.parseLong(value.trim());
+            }
         } catch (RuntimeException e) {
-            return -1;
+            Logger.printInfo(() -> "InstantsUpload: cannot read " + video, e);
         } finally {
             try {
                 retriever.release();
             } catch (Exception ignored) {
             }
         }
+        return info;
     }
 
     private static void clearOld(File dir, long now) {
@@ -313,6 +328,20 @@ public final class InstantsUpload {
     /** A pick goes out only while its camera's preview is shown, its shutter not released and the switch on. */
     static boolean accepts(boolean previewShown, boolean shutterOpen, boolean enabled) {
         return previewShown && shutterOpen && enabled;
+    }
+
+    /**
+     * Whether the camera's crop of a recording fills its square from this video: scaled to the preview's
+     * width, the upright video must reach from the top to the bottom of the square at its offset.
+     */
+    static boolean fitsCameraCrop(int width, int height, int rotation, float previewWidth, float margin, float offset) {
+        boolean turned = rotation == 90 || rotation == 270;
+        float uprightWidth = turned ? height : width;
+        float uprightHeight = turned ? width : height;
+        float side = previewWidth - 2 * margin;
+        if (uprightWidth <= 0 || uprightHeight <= 0 || side <= 0 || offset < 0) return false;
+        // One pixel of rounding slack.
+        return uprightHeight * previewWidth / uprightWidth + 1 >= offset + side;
     }
 
     /** {x, y, side} of the centered square of a {@code width} by {@code height} image. */
