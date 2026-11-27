@@ -656,6 +656,10 @@ public class Pref {
         return SettingsStatus.profileReelsSort ? value(Settings.PROFILE_REELS_SORT) : "default";
     }
 
+    public static boolean reorderHighlights() {
+        return SettingsStatus.reorderHighlights && on(Settings.REORDER_HIGHLIGHTS);
+    }
+
     public static boolean confirmLike() {
         return on(Settings.CONFIRM_LIKE);
     }

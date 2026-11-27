@@ -25,4 +25,10 @@ public class ProfileExtrasTest {
         // The patch flag is off in tests, so the setting reads as default.
         assertFalse(ProfileExtras.profileReelsMostViewed(false));
     }
+
+    @Test
+    public void highlightReorderFollowsInstagramWhileThePatchFlagIsOff() {
+        assertTrue(ProfileExtras.reorderHighlights(true));
+        assertFalse(ProfileExtras.reorderHighlights(false));
+    }
 }

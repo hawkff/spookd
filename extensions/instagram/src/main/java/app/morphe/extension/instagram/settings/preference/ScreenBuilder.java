@@ -1182,6 +1182,13 @@ public class ScreenBuilder {
             reelsSort.setDefaultValue(Settings.PROFILE_REELS_SORT.defaultValue);
             addPreference(reelsSort);
         }
+        if (SettingsStatus.reorderHighlights) {
+            addPreference(helper.switchPreference(
+                    str("spookd_reorder_highlights"),
+                    str("spookd_reorder_highlights_desc"),
+                    Settings.REORDER_HIGHLIGHTS
+            ));
+        }
         if (SettingsStatus.disableAppHaptics) {
             addPreference(helper.switchPreference(
                     str("spookd_disable_app_haptics"),

@@ -79,6 +79,7 @@ public class Settings {
     public static final BooleanSetting HIDE_PROFILE_GRID_REELS = new BooleanSetting("hide_profile_grid_reels", false, NOT_REQUIRED);
     // "default", "keep" or "remove"; read each time a profile's Reels tab works out its sort menu.
     public static final StringSetting PROFILE_REELS_SORT = new StringSetting("profile_reels_sort", "default", NOT_REQUIRED);
+    public static final BooleanSetting REORDER_HIGHLIGHTS = new BooleanSetting("reorder_highlights", false, NOT_REQUIRED);
     public static final BooleanSetting CONFIRM_LIKE = new BooleanSetting("confirm_like", false, NOT_REQUIRED);
     public static final BooleanSetting CONFIRM_FOLLOW = new BooleanSetting("confirm_follow", false, NOT_REQUIRED);
     public static final BooleanSetting CONFIRM_REPOST = new BooleanSetting("confirm_repost", false, NOT_REQUIRED);

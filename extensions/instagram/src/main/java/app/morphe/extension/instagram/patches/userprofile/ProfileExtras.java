@@ -56,6 +56,16 @@ public final class ProfileExtras {
         }
     }
 
+    /** Takes Instagram's highlight reorder switch, read on a highlight long-press and when Reorder is picked. */
+    public static boolean reorderHighlights(boolean enabled) {
+        try {
+            return enabled || Pref.reorderHighlights();
+        } catch (Throwable t) {
+            Logger.printException(() -> "reorderHighlights failure", t);
+            return enabled;
+        }
+    }
+
     static boolean mostViewedSort(String mode, boolean available) {
         if ("keep".equals(mode)) return true;
         if ("remove".equals(mode)) return false;
