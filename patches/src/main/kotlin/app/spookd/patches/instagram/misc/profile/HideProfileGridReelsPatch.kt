@@ -17,6 +17,7 @@ import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.classDefBy
+import app.morphe.patcher.patch.classDefByOrNull
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.string
 import app.morphe.patcher.util.addInstructionsAtControlFlowLabel
@@ -30,7 +31,9 @@ import app.morphe.util.insertLiteralOverride
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.Reference
 
 internal const val PROFILE_EXTRAS = "$PATCHES_DESCRIPTOR/userprofile/ProfileExtras;"
 
@@ -70,6 +73,7 @@ internal object ProfileGridItemFilterFingerprint : Fingerprint(
 )
 
 private const val PROFILE_MEDIA_TAB = "Lcom/instagram/profile/fragment/ProfileMediaTabFragment;"
+private const val USER_DETAIL = "Lcom/instagram/profile/fragment/UserDetailFragment;"
 
 // Runs after each grid data change. Once the whole main grid loaded, a server switch read here
 // rewrites the profile's post count to the grid size.
@@ -89,7 +93,7 @@ internal object ProfileGridPinSyncFingerprint : Fingerprint(
 
 // Profile grid request succeeded; Instagram cleared its loading state just before.
 internal object ProfileGridRequestFinishedFingerprint : Fingerprint(
-    definingClass = "Lcom/instagram/profile/fragment/UserDetailFragment;",
+    definingClass = USER_DETAIL,
     returnType = "V",
     strings = listOf("FeedRequestCallback.onMediaFeedRequestFinish"),
 )
@@ -163,7 +167,28 @@ val hideProfileGridReelsPatch =
                 ).match().instructionMatches.last().methodReference
                 val loadMore = classDefBy(loader).methods.single { it.returnType == "V" && it.parameterTypes.isEmpty() }
                 val loaderField = classDefBy(PROFILE_MEDIA_TAB).fields.single { it.type == loader }
-                if (hasMore.returnType != "Z" || p0Register < 5 || parameterTypes.map { it.toString() } != listOf(PROFILE_MEDIA_TAB)) {
+
+                // Next-page cursors, read the way Instagram's loader reads its failed state: the profile's
+                // feed source for the tab, through the fragment's holder of the profile screen.
+                val failedCheck = Fingerprint(
+                    name = failed.name,
+                    returnType = "Z",
+                    parameters = listOf(),
+                    custom = { _, classDef -> loader in classDef.interfaces && classDef.fields.any { it.type == USER_DETAIL } },
+                ).match().method.instructions.mapNotNull { it.getReference<Reference>() }
+                val tabField = failedCheck.filterIsInstance<FieldReference>().first { it.definingClass == PROFILE_MEDIA_TAB }
+                val tabKeyField = failedCheck.filterIsInstance<FieldReference>().first { it.definingClass == tabField.type }
+                val feedSource = failedCheck.filterIsInstance<MethodReference>().first { it.definingClass == USER_DETAIL }
+                val cursors = classDefBy(feedSource.returnType).methods.filter {
+                    it.returnType == "Ljava/lang/String;" && it.parameterTypes.map { type -> type.toString() } == listOf(tabKeyField.type)
+                }.map { "${it.definingClass}->${it.name}(${tabKeyField.type})Ljava/lang/String;" }
+                val holderField = classDefBy(PROFILE_MEDIA_TAB).fields.single { field ->
+                    field.type.startsWith("L") && classDefByOrNull(field.type)?.fields?.any { it.type == USER_DETAIL } == true
+                }
+                val userDetailField = classDefBy(holderField.type).fields.single { it.type == USER_DETAIL }
+                if (cursors.size != 3 || hasMore.returnType != "Z" || p0Register < 10 ||
+                    parameterTypes.map { it.toString() } != listOf(PROFILE_MEDIA_TAB)
+                ) {
                     throw PatchException("Unexpected profile grid loader")
                 }
 
@@ -173,14 +198,31 @@ val hideProfileGridReelsPatch =
                     """
                     iget-object v0, p0, $PROFILE_MEDIA_TAB->${loaderField.name}:$loader
                     if-eqz v0, :spookd_grid_changed
+                    iget-object v9, p0, $PROFILE_MEDIA_TAB->${holderField.name}:${holderField.type}
+                    if-eqz v9, :spookd_grid_changed
+                    iget-object v9, v9, ${holderField.type}->${userDetailField.name}:$USER_DETAIL
+                    if-eqz v9, :spookd_grid_changed
+                    invoke-static {v9}, $feedSource
+                    move-result-object v9
+                    if-eqz v9, :spookd_grid_changed
+                    iget-object v8, p0, $tabField
+                    if-eqz v8, :spookd_grid_changed
+                    iget-object v8, v8, $tabKeyField
+                    invoke-interface {v9, v8}, ${cursors[0]}
+                    move-result-object v6
+                    invoke-interface {v9, v8}, ${cursors[1]}
+                    move-result-object v7
+                    invoke-interface {v9, v8}, ${cursors[2]}
+                    move-result-object v8
+                    move-object v1, p0
+                    iget-object v2, p0, $PROFILE_MEDIA_TAB->recyclerView:Landroidx/recyclerview/widget/RecyclerView;
                     invoke-interface {v0}, $isLoading
-                    move-result v1
+                    move-result v3
                     invoke-interface {v0}, $failed
                     move-result v4
                     invoke-interface {v0}, $hasMore
-                    move-result v2
-                    iget-object v3, p0, $PROFILE_MEDIA_TAB->recyclerView:Landroidx/recyclerview/widget/RecyclerView;
-                    invoke-static {p0, v3, v1, v4, v2}, $PROFILE_EXTRAS->profileGridNeedsNextPage(Ljava/lang/Object;Landroid/view/View;ZZZ)Z
+                    move-result v5
+                    invoke-static/range {v1 .. v8}, $PROFILE_EXTRAS->profileGridNeedsNextPage(Ljava/lang/Object;Landroid/view/View;ZZZLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)Z
                     move-result v1
                     if-eqz v1, :spookd_grid_changed
                     invoke-interface {v0}, $loader->${loadMore.name}()V

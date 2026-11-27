@@ -11,6 +11,8 @@ import android.view.View;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 
@@ -23,6 +25,8 @@ import app.morphe.extension.shared.Utils;
 public final class ProfileExtras {
     // Grids that wanted their next page while a request was still loading; checked again once it succeeds.
     private static final Set<Object> WAITING_GRIDS = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
+    // The cursor each grid last asked for on its own: a request that fails after part of its page arrived is not repeated.
+    private static final Map<Object, String> AUTO_REQUESTED = Collections.synchronizedMap(new WeakHashMap<>());
 
     private ProfileExtras() {
     }
@@ -44,12 +48,15 @@ public final class ProfileExtras {
     /**
      * Called on the main thread at the start of each profile grid data change. True asks Instagram's own
      * loader for the next page: hidden reels can leave a page with nothing to show or scroll. Never after a
-     * failed request, so an error is not retried on its own; Instagram's Retry row stays in charge.
+     * failed request, and at most once per cursor, so an error is not retried on its own; Instagram's Retry
+     * row stays in charge. The three strings are the tab's paging cursors.
      */
-    public static boolean profileGridNeedsNextPage(Object grid, View list, boolean loading, boolean failed, boolean hasMore) {
+    public static boolean profileGridNeedsNextPage(Object grid, View list, boolean loading, boolean failed, boolean hasMore,
+                                                   String cursor1, String cursor2, String cursor3) {
         try {
             boolean canScrollDown = list != null && list.canScrollVertically(1);
-            return onGridChanged(grid, Pref.hideProfileGridReels(), loading, failed, hasMore, canScrollDown);
+            String key = cursor1 + "\n" + cursor2 + "\n" + cursor3;
+            return onGridChanged(grid, Pref.hideProfileGridReels(), loading, failed, hasMore, canScrollDown, key);
         } catch (Throwable t) {
             Logger.printException(() -> "profileGridNeedsNextPage failure", t);
             return false;
@@ -70,11 +77,13 @@ public final class ProfileExtras {
     }
 
     static boolean onGridChanged(Object grid, boolean hiding, boolean loading, boolean failed, boolean hasMore,
-                                 boolean canScrollDown) {
-        boolean wanted = hiding && hasMore && !failed && !canScrollDown;
+                                 boolean canScrollDown, String cursor) {
+        boolean wanted = hiding && hasMore && !failed && !canScrollDown && !Objects.equals(AUTO_REQUESTED.get(grid), cursor);
         if (wanted && loading) WAITING_GRIDS.add(grid);
         else WAITING_GRIDS.remove(grid);
-        return wanted && !loading;
+        if (!wanted || loading) return false;
+        AUTO_REQUESTED.put(grid, cursor);
+        return true;
     }
 
     static List<Object> takeWaitingGrids() {
