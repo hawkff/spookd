@@ -272,7 +272,7 @@
     <string name="spookd_profile_analyzer_auto_refresh_weekly">Weekly</string>
     <string name="spookd_profile_analyzer_auto_refresh_2_weeks">Every 2 weeks</string>
     <string name="spookd_profile_analyzer_auto_refresh_first">Starts after your first scan</string>
-    <string name="spookd_profile_analyzer_auto_refresh_due">Next scan: due, starts while Instagram is open</string>
+    <string name="spookd_profile_analyzer_auto_refresh_due">Next scan: due, starts while Instagram is open once your own profile has shown</string>
     <string name="spookd_profile_analyzer_auto_refresh_next">Next scan: %1$s or later, while Instagram is open</string>
     <string name="spookd_profile_analyzer_auto_refresh_warning">Automatic scans send requests to Instagram and can put your account at risk. At most one runs each time Instagram starts.</string>
     <string name="spookd_profile_analyzer_auto_started">Profile analyzer: automatic scan started</string>

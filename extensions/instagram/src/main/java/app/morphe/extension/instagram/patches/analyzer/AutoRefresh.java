@@ -43,6 +43,9 @@ public final class AutoRefresh {
     private static WeakReference<Activity> lastResumed = new WeakReference<>(null);
     private static boolean checkPending;
     private static boolean attempted;
+    // An account whose due scan waits for the counts of its own profile header.
+    private static String waitingAccountId;
+    private static SpookdFollowDb.Scan waitingLast;
 
     private AutoRefresh() {
     }
@@ -118,7 +121,24 @@ public final class AutoRefresh {
         Activity activity = resumedActivity();
         if (activity == null || !isDue(last.finishedAt, Pref.profileAnalyzerAutoRefreshDays(),
                 System.currentTimeMillis())) return;
-        ProfileAnalyzer.startAutomaticScan(activity, accountId, last);
+        ProfileAnalyzer.Counts counts = ProfileAnalyzer.countsFor(accountId);
+        if (counts == null) {
+            // The scan's account-size limit needs current counts, which only the own profile header gives.
+            waitingAccountId = accountId;
+            waitingLast = last;
+            return;
+        }
+        ProfileAnalyzer.startAutomaticScan(activity, accountId, counts);
+    }
+
+    /** Main thread, inside Instagram's own profile header bind, once its counts were recorded. */
+    static void onOwnCounts(String accountId) {
+        if (!accountId.equals(waitingAccountId)) return;
+        SpookdFollowDb.Scan last = waitingLast;
+        waitingAccountId = null;
+        waitingLast = null;
+        // Posted, so the scan does not start inside Instagram's bind.
+        Utils.runOnMainThread(() -> startIfStillDue(accountId, last));
     }
 
     /** Main thread: the settings row; its summary shows the interval, the next scan and the risk. */

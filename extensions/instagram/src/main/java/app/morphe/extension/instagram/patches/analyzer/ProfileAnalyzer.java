@@ -102,6 +102,7 @@ public final class ProfileAnalyzer {
             Integer following = user.getFollowingCount();
             if (followers == null || following == null) return;
             recordCounts(accountId, followers, following);
+            AutoRefresh.onOwnCounts(accountId);
         } catch (Exception e) {
             String error = e.getClass().getSimpleName();
             Logger.printException(() -> "ProfileAnalyzer: profile header failed: " + error);
@@ -200,15 +201,10 @@ public final class ProfileAnalyzer {
         }
     }
 
-    /**
-     * Main thread, from AutoRefresh with a resumed activity: starts a scan of this account without
-     * refusal toasts, with the last scan's counts while its own profile has not shown.
-     */
-    static void startAutomaticScan(Activity activity, String accountId, SpookdFollowDb.Scan last) {
+    /** Main thread, from AutoRefresh with a resumed activity: starts a scan of this account without refusal toasts. */
+    static void startAutomaticScan(Activity activity, String accountId, Counts counts) {
         try {
             if (!accountId.equals(currentAccountId())) return;
-            Counts counts = countsFor(accountId);
-            if (counts == null) counts = new Counts(last.followerCount, last.followingCount);
             FollowScan.Refusal refusal = start(scan(activity), accountId, counts);
             if (refusal == null) {
                 Utils.showToastShort(str("spookd_profile_analyzer_auto_started"));
