@@ -90,6 +90,8 @@ public final class VideoEditor extends Dialog {
     /** The preview's player once prepared, for exact seeks. */
     private MediaPlayer player;
     private boolean busy;
+    /** Set while Save writes the trim, which closes the editor when done. */
+    private boolean savingTrim;
 
     /** Background-thread work that writes a new item into {@code part}. */
     private interface Output {
@@ -419,9 +421,9 @@ public final class VideoEditor extends Dialog {
         timeline.handle(endHandle).announceForAccessibility(handleDescription(endHandle));
     }
 
-    /** Cancel and Back: asks first when there is something to lose. */
+    /** Cancel and Back: asks first when there is something to lose; an audio or frame save keeps the trim unsaved. */
     private void leave() {
-        if (busy || !hasChanges()) {
+        if (savingTrim || !hasChanges()) {
             dismiss();
             return;
         }
@@ -478,6 +480,7 @@ public final class VideoEditor extends Dialog {
         if (busy || points == null) return;
         pause();
         busy = true;
+        savingTrim = close;
         progress.setVisibility(View.VISIBLE);
         updateViews();
         WORKER.execute(() -> {
@@ -485,6 +488,7 @@ public final class VideoEditor extends Dialog {
                 job.run();
                 Utils.runOnMainThread(() -> {
                     busy = false;
+                    savingTrim = false;
                     Utils.showToastLong(done);
                     saved.run();
                     if (close) {
@@ -498,6 +502,7 @@ public final class VideoEditor extends Dialog {
                 Logger.printException(() -> "VideoEditor: cannot save from " + file.getName(), e);
                 Utils.runOnMainThread(() -> {
                     busy = false;
+                    savingTrim = false;
                     progress.setVisibility(View.GONE);
                     updateViews();
                     Utils.showToastShort(str("spookd_gallery_action_failed"));
