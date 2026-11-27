@@ -590,6 +590,9 @@
     <string name="spookd_download_file_name_token_type">Type</string>
     <string name="spookd_download_file_name_token_carousel_index">Carousel</string>
     <string name="spookd_download_file_name_token_variant_suffix">Variant</string>
+    <string name="spookd_download_file_name_token_post_date">Post date</string>
+    <string name="spookd_download_file_name_token_post_time">Post time</string>
+    <string name="spookd_download_file_name_token_download_date">Download date</string>
     <string name="spookd_download_current_media">Download current media</string>
     <string name="spookd_download_as_image">Download as image</string>
     <string name="spookd_video_variants">Video variants</string>
@@ -653,6 +656,7 @@
     <string name="spookd_gallery_export">Export</string>
     <string name="spookd_gallery_share">Share</string>
     <string name="spookd_gallery_open_post">Open post</string>
+    <string name="spookd_gallery_open_audio_page">Open audio page</string>
     <string name="spookd_gallery_open_profile">Open profile</string>
     <string name="spookd_gallery_export_all">Export all</string>
     <string name="spookd_gallery_export_all_confirm">Copy everything shown here to your download folder? Items: %1$d</string>

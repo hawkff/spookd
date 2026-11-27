@@ -1,8 +1,10 @@
 package app.morphe.extension.instagram.patches.download;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import android.view.View;
 import android.widget.LinearLayout;
@@ -71,6 +73,25 @@ public final class AudioPageDownloadTest {
         assertSame(button, AudioPageDownload.reconcile(actionBar, true));
         assertEquals(View.VISIBLE, button.getVisibility());
         assertEquals(1, actionBar.getChildCount());
+    }
+
+    @Test
+    public void savesAsArtistDashTitleWithTheServedAudioExtension() {
+        assertEquals("dj.k - Night Drive.m4a",
+                AudioPageDownload.audioFileName("dj.k", "Night Drive", "https://cdn.example/a/b.mp4?x=1.mp3"));
+        assertEquals("dj.k - AC_DC.mp3", AudioPageDownload.audioFileName("dj.k", "AC/DC", "https://cdn.example/a.MP3?s=1"));
+        assertEquals("dj.k.m4a", AudioPageDownload.audioFileName("dj.k", " ", null));
+        assertEquals("Night Drive.m4a", AudioPageDownload.audioFileName(null, "Night Drive", ""));
+        assertEquals("download.m4a", AudioPageDownload.audioFileName(null, null, null));
+    }
+
+    @Test
+    public void theGalleryKeepsTheAudioPageLink() {
+        String link = AudioPageDownload.audioPageLink("1234567890");
+        assertEquals("https://www.instagram.com/reels/audio/1234567890/", link);
+        assertTrue(AudioPageDownload.isAudioPageLink(link));
+        assertFalse(AudioPageDownload.isAudioPageLink("https://www.instagram.com/p/ABC/"));
+        assertNull(AudioPageDownload.audioPageLink(""));
     }
 
     @Test

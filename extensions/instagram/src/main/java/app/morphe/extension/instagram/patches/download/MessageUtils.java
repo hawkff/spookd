@@ -20,7 +20,6 @@ import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.constants.Constants;
 
 import app.morphe.extension.crimera.ObjectBrowser;
-import app.morphe.extension.crimera.legacydownloader.MediaType;
 
 public class MessageUtils {
     private static boolean DEBUG;
@@ -46,7 +45,7 @@ public class MessageUtils {
             } else if ("voice_media".equals(messageType) && SettingsStatus.downloadVoiceMessage) {
                 MediaData audioData = messageInfo.getAudioMedia();
                 String audioUrl = audioData.getMessageAudioUrl();
-                String fileName = audioData.getDownloadFilename(MediaType.AUDIO);
+                String fileName = audioData.getMediaPkId() + AudioPageDownload.audioExtension(audioUrl);
                 DownloadUtils.downloadMediaUrl(context,audioUrl,Constants.DEFAULT_DM_FOLDER,fileName);
 
                 // We need to return false since we don't need download action to be taken by Instagram.
@@ -58,6 +57,7 @@ public class MessageUtils {
 
         } catch (Exception e) {
             app.morphe.extension.crimera.PikoUtils.logger(e);
+            Utils.showToastShort(str("spookd_download_failed_media"));
         }
         return false;
     }

@@ -9,6 +9,7 @@ package app.morphe.extension.instagram.patches.download;
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.content.Context;
+import android.net.Uri;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -19,8 +20,13 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.Locale;
 import java.util.Set;
 
+import app.morphe.extension.crimera.legacydownloader.MediaDownloader;
+import app.morphe.extension.instagram.patches.download.gallery.Gallery;
+import app.morphe.extension.instagram.patches.download.gallery.GalleryItem;
+import app.morphe.extension.instagram.patches.download.gallery.GalleryTab;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.constants.UI;
@@ -31,13 +37,14 @@ import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
 import app.morphe.extension.shared.ui.Dim;
 
-/** A download button in the action bar of an original audio page, using the 'Download audio' path. */
+/** A download button in the action bar of an original audio page; the gallery keeps the page's link. */
 @SuppressWarnings("unused")
 public final class AudioPageDownload {
 
     static final String BUTTON_TAG = "spookd_audio_page_download";
     private static final String ACTION_BAR_CLASS = "com.instagram.igds.components.actionbar.IgdsActionBar";
     private static final String ORIGINAL_SOUND_CLASS = "com.instagram.api.schemas.OriginalSoundDataIntf";
+    private static final String AUDIO_PAGE_LINK = "https://www.instagram.com/reels/audio/";
     // The page handler reaches the audio through its page model and the model's audio asset.
     static final int MAX_DEPTH = 3;
     private static final int MAX_VISITED = 200;
@@ -119,12 +126,40 @@ public final class AudioPageDownload {
                 Utils.showToastShort(str("spookd_audio_page_download_unavailable"));
                 return;
             }
-            DownloadUtils.downloadMediaUrl(context, url, Constants.DEFAULT_AUDIO_FOLDER,
-                    audio.getDownloadName() + ".mp3", audio.getUserData().getUsername());
+            String artist = audio.getUserData().getUsername();
+            String folder = Constants.DEFAULT_AUDIO_FOLDER;
+            GalleryItem item = new GalleryItem(GalleryTab.of(null, null, folder), GalleryItem.AUDIO, artist,
+                    null, null, audioPageLink(audio.getAudioId()), Gallery.accountId(), null);
+            new MediaDownloader(context).enqueue(DownloadUtils.createDownloadRequest(url, folder,
+                    audioFileName(artist, audio.getAudioName(), url), item));
         } catch (Exception e) {
             Logger.printException(() -> "AudioPageDownload: download failed", e);
             Utils.showToastShort(str("spookd_download_failed_media"));
         }
+    }
+
+    /** "artist - title", or whichever of the two is known, with the extension the audio is served as. */
+    static String audioFileName(String artist, String title, String url) {
+        boolean noArtist = artist == null || artist.trim().isEmpty();
+        boolean noTitle = title == null || title.trim().isEmpty();
+        String name = noArtist ? title : noTitle ? artist : artist + " - " + title;
+        return DownloadFileNameFormatter.fileName(name, audioExtension(url));
+    }
+
+    /** Instagram serves audio as MP4 audio; only a link to an .mp3 file keeps that extension. */
+    static String audioExtension(String url) {
+        String path = url == null ? "" : url.split("[?#]", 2)[0].toLowerCase(Locale.ROOT);
+        return path.endsWith(".mp3") ? ".mp3" : ".m4a";
+    }
+
+    /** The audio page of {@code audioId}, or null without one. */
+    static String audioPageLink(String audioId) {
+        return audioId == null || audioId.isEmpty() ? null : AUDIO_PAGE_LINK + Uri.encode(audioId) + "/";
+    }
+
+    /** Whether a gallery item's link is an audio page this button saved it from. */
+    public static boolean isAudioPageLink(String link) {
+        return link != null && link.startsWith(AUDIO_PAGE_LINK);
     }
 
     /** The nearest object of soundType reachable from root through instance fields, or null; Views and platform types are not entered. */
