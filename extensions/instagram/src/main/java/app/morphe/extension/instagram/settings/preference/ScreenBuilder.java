@@ -29,6 +29,7 @@ import app.morphe.extension.instagram.patches.devFlags.RecommendedFlags;
 import app.morphe.extension.crimera.legacydownloader.StorageUtils;
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.patches.Links;
+import app.morphe.extension.instagram.patches.analyzer.AutoRefresh;
 import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzer;
 import app.morphe.extension.instagram.patches.customise.font.FontStorage;
 import app.morphe.extension.instagram.patches.download.gallery.Gallery;
@@ -1139,6 +1140,7 @@ public class ScreenBuilder {
                     str("spookd_track_visited_profiles_desc"),
                     Settings.TRACK_VISITED_PROFILES
             ));
+            addPreference(AutoRefresh.preference(context));
         }
         if (SettingsStatus.exactProfileCounts) {
             addPreference(helper.switchPreference(

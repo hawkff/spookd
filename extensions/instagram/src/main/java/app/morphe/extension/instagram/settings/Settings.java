@@ -269,6 +269,7 @@ public class Settings {
             TAB_SHORTCUT_CREATE.key,
             KEEP_OTHER_AUDIO.key,
             SHOW_NEW_LABELS.key,
+            PROFILE_ANALYZER_AUTO_REFRESH_DAYS.key,
             "spookd_report_bug",
             "spookd_request_feature"
     )));

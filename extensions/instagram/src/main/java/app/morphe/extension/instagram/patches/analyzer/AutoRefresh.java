@@ -1,12 +1,19 @@
 package app.morphe.extension.instagram.patches.analyzer;
 
+import static app.morphe.extension.instagram.utils.IgStr.str;
+
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.os.Bundle;
+import android.preference.Preference;
+import android.text.format.DateUtils;
+import android.view.View;
 
 import java.lang.ref.WeakReference;
 
+import app.morphe.extension.instagram.settings.Settings;
+import app.morphe.extension.instagram.settings.preference.widgets.ListPref;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
@@ -20,6 +27,16 @@ public final class AutoRefresh {
 
     static final long SETTLE_DELAY_MS = 30_000L;
     static final long DAY_MS = 24 * 60 * 60 * 1000L;
+    private static final String[] DAYS = {"0", "1", "3", "7", "14"};
+    private static final String[] ENTRY_KEYS = {
+            "spookd_profile_analyzer_auto_refresh_off",
+            "spookd_profile_analyzer_auto_refresh_daily",
+            "spookd_profile_analyzer_auto_refresh_3_days",
+            "spookd_profile_analyzer_auto_refresh_weekly",
+            "spookd_profile_analyzer_auto_refresh_2_weeks",
+    };
+    private static final int DATE_FLAGS = DateUtils.FORMAT_SHOW_DATE | DateUtils.FORMAT_SHOW_TIME
+            | DateUtils.FORMAT_ABBREV_MONTH;
 
     // Main thread.
     private static int resumedActivities;
@@ -97,5 +114,72 @@ public final class AutoRefresh {
             String error = e.getClass().getSimpleName();
             Logger.printException(() -> "AutoRefresh: check failed: " + error);
         }
+    }
+
+    /** Main thread: the settings row; its summary shows the interval, the next scan and the risk. */
+    public static Preference preference(Context context) {
+        ListPref preference = new ListPref(context) {
+            // Main thread; -1 until read, 0 when this account has no scan.
+            private long lastFinishedAt = -1;
+            private boolean readStarted;
+
+            @Override
+            protected void onSetInitialValue(boolean restoreValue, Object defaultValue) {
+                super.onSetInitialValue(restoreValue, defaultValue);
+                CharSequence[] entries = new CharSequence[ENTRY_KEYS.length];
+                for (int i = 0; i < entries.length; i++) entries[i] = str(ENTRY_KEYS[i]);
+                setEntries(entries);
+                setEntryValues(DAYS);
+            }
+
+            @Override
+            protected void onBindView(View view) {
+                super.onBindView(view);
+                if (readStarted) return;
+                readStarted = true;
+                String accountId = ProfileAnalyzer.currentAccountId();
+                if (accountId == null) return;
+                Context app = getContext().getApplicationContext();
+                ProfileVisits.DB_QUEUE.execute(() -> {
+                    try {
+                        SpookdFollowDb.Scan last = SpookdFollowDb.getInstance(app).latestScan(accountId);
+                        long finishedAt = last == null ? 0 : last.finishedAt;
+                        Utils.runOnMainThread(() -> {
+                            lastFinishedAt = finishedAt;
+                            notifyChanged();
+                        });
+                    } catch (Exception e) {
+                        String error = e.getClass().getSimpleName();
+                        Logger.printException(() -> "AutoRefresh: row read failed: " + error);
+                    }
+                });
+            }
+
+            @Override
+            public CharSequence getSummary() {
+                return summary(getContext(), getEntry(), Pref.profileAnalyzerAutoRefreshDays(),
+                        lastFinishedAt);
+            }
+        };
+        String title = str("spookd_profile_analyzer_auto_refresh");
+        preference.setTitle(title);
+        preference.setDialogTitle(title);
+        preference.setKey(Settings.PROFILE_ANALYZER_AUTO_REFRESH_DAYS.key);
+        preference.setDefaultValue(Settings.PROFILE_ANALYZER_AUTO_REFRESH_DAYS.defaultValue);
+        return preference;
+    }
+
+    private static String summary(Context context, CharSequence entry, int days, long lastFinishedAt) {
+        StringBuilder out = new StringBuilder();
+        if (entry != null) out.append(entry).append('\n');
+        if (days > 0 && lastFinishedAt == 0) {
+            out.append(str("spookd_profile_analyzer_auto_refresh_first")).append('\n');
+        } else if (days > 0 && lastFinishedAt > 0) {
+            out.append(isDue(lastFinishedAt, days, System.currentTimeMillis())
+                    ? str("spookd_profile_analyzer_auto_refresh_due")
+                    : str("spookd_profile_analyzer_auto_refresh_next", DateUtils.formatDateTime(context,
+                    lastFinishedAt + days * DAY_MS, DATE_FLAGS))).append('\n');
+        }
+        return out.append(str("spookd_profile_analyzer_auto_refresh_warning")).toString();
     }
 }
