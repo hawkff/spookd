@@ -171,9 +171,11 @@ public final class GalleryArchiveTest {
         assertLeftOut(item("a.jpg").put("savedAt", -1));
         assertLeftOut(item("a.jpg").put("owner", 5));
         assertLeftOut(item("a.jpg").put("favorite", "yes"));
-        // A name without a suffix and a nested subfolder are still fine.
-        assertEquals(0, GalleryArchive.parse(manifest(item("a").put("fileName", "plain")
-                .put("subFolder", "alice/stories"))).invalid);
+        assertLeftOut(item("a.jpg").put("fileName", "plain"));
+        assertLeftOut(item("a.jpg").put("fileName", "payload.unknownextension"));
+        // A stored name without a suffix and a nested subfolder are still fine.
+        assertEquals(0, GalleryArchive.parse(manifest(item("a").put("fileName", "plain.MP4")
+                .put("kind", GalleryItem.VIDEO).put("subFolder", "alice/stories"))).invalid);
     }
 
     @Test

@@ -382,11 +382,11 @@ final class GalleryArchive {
         return true;
     }
 
-    /** Whether the name's suffix, when it has one, is a photo, video or audio type. */
+    /** Whether the name ends in a photo, video or audio suffix; a name without one is no known type. */
     static boolean knownType(String fileName) {
         String extension = extension(fileName);
-        return extension == null || PHOTO_TYPES.contains(extension) || VIDEO_TYPES.contains(extension)
-                || AUDIO_TYPES.contains(extension);
+        return extension != null && (PHOTO_TYPES.contains(extension) || VIDEO_TYPES.contains(extension)
+                || AUDIO_TYPES.contains(extension));
     }
 
     /** The name's suffix, lowercase, without the dot; null without one. */
