@@ -20,12 +20,14 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.MediaController;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -153,33 +155,51 @@ public final class VaultViewer extends Dialog {
      */
     public static void showFor(Activity activity, Callable<Opened> source, Supplier<CharSequence> label,
                                Runnable action) {
+        showFor(activity, source, Collections.singletonList(label), Collections.singletonList(action));
+    }
+
+    /**
+     * {@link #showFor(Activity, Callable, Supplier, Runnable)} with a row of buttons, one per label and
+     * action at the same index. Main thread; never throws.
+     */
+    public static void showFor(Activity activity, Callable<Opened> source, List<Supplier<CharSequence>> labels,
+                               List<Runnable> actions) {
         showFor(activity, source);
         try {
             VaultViewer viewer = shown.get(activity);
             if (viewer == null) return;
             float density = activity.getResources().getDisplayMetrics().density;
             int padding = (int) (12 * density);
-            TextView button = new TextView(activity);
-            button.setMinHeight((int) (SpookdType.MIN_TOUCH * density));
-            button.setGravity(Gravity.CENTER_VERTICAL);
-            button.setText(label.get());
-            button.setTextColor(Color.WHITE);
-            SpookdType.apply(button, SpookdType.LABEL);
-            button.setBackgroundColor(0x66000000);
-            button.setPadding(padding, padding, padding, padding);
-            button.setOnClickListener(v -> {
-                try {
-                    action.run();
-                    button.setText(label.get());
-                } catch (Exception e) {
-                    Logger.printException(() -> "VaultViewer action failed", e);
-                }
-            });
-            // Beside the media root, so swapping the media keeps the button.
+            LinearLayout row = new LinearLayout(activity);
+            for (int i = 0; i < labels.size(); i++) {
+                Supplier<CharSequence> label = labels.get(i);
+                Runnable action = actions.get(i);
+                TextView button = new TextView(activity);
+                button.setMinHeight((int) (SpookdType.MIN_TOUCH * density));
+                button.setGravity(Gravity.CENTER_VERTICAL);
+                button.setText(label.get());
+                button.setTextColor(Color.WHITE);
+                SpookdType.apply(button, SpookdType.LABEL);
+                button.setBackgroundColor(0x66000000);
+                button.setPadding(padding, padding, padding, padding);
+                button.setOnClickListener(v -> {
+                    try {
+                        action.run();
+                        button.setText(label.get());
+                    } catch (Exception e) {
+                        Logger.printException(() -> "VaultViewer action failed", e);
+                    }
+                });
+                LinearLayout.LayoutParams spacing = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                if (i > 0) spacing.setMarginStart(padding);
+                row.addView(button, spacing);
+            }
+            // Beside the media root, so swapping the media keeps the buttons.
             FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT,
                     FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
             params.setMargins(padding, padding, padding, padding);
-            viewer.addContentView(button, params);
+            viewer.addContentView(row, params);
         } catch (Exception e) {
             Logger.printException(() -> "VaultViewer.showFor action failed", e);
         }

@@ -64,6 +64,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.IntConsumer;
+import java.util.function.Supplier;
 
 import app.morphe.extension.crimera.legacydownloader.DownloadRequest;
 import app.morphe.extension.crimera.legacydownloader.MediaDownloader;
@@ -171,6 +172,8 @@ public final class PrivateGalleryActivity {
         final String mark;
         /** What the download knows about its media; null for vault items. */
         final GalleryItem details;
+        /** The account that saved it; null when unknown. */
+        final String accountId;
         /** Main thread once shown. */
         boolean favorite;
 
@@ -189,6 +192,7 @@ public final class PrivateGalleryActivity {
             ownerUsername = entry.item.ownerUsername;
             mark = null;
             details = entry.item;
+            accountId = entry.item.accountId;
             favorite = entry.favorite;
         }
 
@@ -207,6 +211,7 @@ public final class PrivateGalleryActivity {
             ownerUsername = stored.senderUsername;
             mark = MediaVault.markResource(stored.viewMode);
             details = null;
+            accountId = stored.accountId;
             this.favorite = favorite;
         }
 
@@ -228,8 +233,9 @@ public final class PrivateGalleryActivity {
         }
 
         /** The filters {@link GalleryStore#list} applies in SQL, for vault items. */
-        boolean matches(String kind, boolean favoritesOnly, String username) {
+        boolean matches(String kind, boolean favoritesOnly, String username, boolean accountOnly, String account) {
             return (kind == null || kind.equals(this.kind)) && (!favoritesOnly || favorite)
+                    && (!accountOnly || (account != null && account.equals(accountId)))
                     && (username.isEmpty() || (!unknownOwner()
                     && ownerUsername.toLowerCase(Locale.ROOT).contains(username)));
         }
@@ -262,12 +268,15 @@ public final class PrivateGalleryActivity {
 
     /**
      * Runs on the jobs thread: applies the cleanup when asked, then lists what the view shows. A null
-     * {@code source} is All; vault items are matched and merged here, downloads in SQL.
+     * {@code source} is All, without the {@code hidden} sources; vault items are matched and merged here,
+     * downloads in SQL.
      */
     private static Loaded load(boolean prune, String source, String kind, boolean favoritesOnly, String username,
-                               String sort) {
+                               String sort, boolean accountOnly, Set<String> hidden) {
         Loaded out = new Loaded();
+        String account = null;
         try {
+            if (accountOnly) account = Gallery.accountId();
             if (prune) Gallery.prune();
             GalleryStore store = GalleryStore.get();
             long[] totals = store.totals();
@@ -276,7 +285,8 @@ public final class PrivateGalleryActivity {
             out.dmDownloads = store.has(DMS);
             out.unknownDownloads = store.has(GalleryStore.SOURCE_UNKNOWN);
             out.importedDownloads = store.has(IMPORTED);
-            for (GalleryStore.Entry entry : store.list(source, kind, favoritesOnly, username, sort)) {
+            for (GalleryStore.Entry entry : store.list(source, kind, favoritesOnly, username, sort, accountOnly,
+                    account, hidden)) {
                 out.items.add(new Item(entry));
             }
         } catch (Exception e) {
@@ -284,7 +294,7 @@ public final class PrivateGalleryActivity {
         }
         if (SettingsStatus.dmMediaVault) {
             try {
-                boolean shown = source == null || DMS.equals(source);
+                boolean shown = DMS.equals(source) || (source == null && !hidden.contains(DMS));
                 Set<Long> favorites = Collections.emptySet();
                 if (shown) {
                     try {
@@ -300,7 +310,7 @@ public final class PrivateGalleryActivity {
                     out.bytes += stored.sizeBytes;
                     if (!shown) continue;
                     Item item = new Item(stored, favorites.contains(stored.id));
-                    if (!item.matches(kind, favoritesOnly, username)) continue;
+                    if (!item.matches(kind, favoritesOnly, username, accountOnly, account)) continue;
                     out.items.add(item);
                     merged = true;
                 }
@@ -328,6 +338,10 @@ public final class PrivateGalleryActivity {
         private String source;
         private String kind;
         private boolean favoritesOnly;
+        /** Only items the current account saved; kept per device. */
+        private boolean accountOnly;
+        /** Sources left out of All; kept per device. Replaced, never changed, so a load can read it. */
+        private Set<String> hidden = Collections.emptySet();
         private String username = "";
         private String sort;
         private int columns;
@@ -382,6 +396,8 @@ public final class PrivateGalleryActivity {
             columns = Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, viewPrefs.getInt("columns", 3)));
             listView = viewPrefs.getBoolean("list", false);
             overlays = viewPrefs.getBoolean("overlays", true);
+            accountOnly = viewPrefs.getBoolean("account_only", false);
+            hidden = new HashSet<>(viewPrefs.getStringSet("hidden_sources", Collections.emptySet()));
             String savedSort = viewPrefs.getString("sort", GalleryStore.SORT_NEWEST);
             sort = Arrays.asList(SORTS).contains(savedSort) ? savedSort : GalleryStore.SORT_NEWEST;
             photoLabel = str("spookd_media_photo");
@@ -413,6 +429,7 @@ public final class PrivateGalleryActivity {
             root.addView(tabsRow);
 
             controls = buildControls();
+            updateFilterLabel();
             root.addView(controls);
             selectionBar = buildSelectionBar();
             selectionBar.setVisibility(View.GONE);
@@ -621,8 +638,10 @@ public final class PrivateGalleryActivity {
             boolean favoritesOnly = this.favoritesOnly;
             String username = this.username;
             String sort = this.sort;
+            boolean accountOnly = this.accountOnly;
+            Set<String> hidden = this.hidden;
             JOBS.execute(() -> {
-                Loaded loaded = load(prune, source, kind, favoritesOnly, username, sort);
+                Loaded loaded = load(prune, source, kind, favoritesOnly, username, sort, accountOnly, hidden);
                 ui.post(() -> {
                     if (!closed && generation == loads) show(loaded);
                 });
@@ -686,7 +705,8 @@ public final class PrivateGalleryActivity {
             adapter = null;
             updateSelection();
             if (list.isEmpty()) {
-                boolean filtered = kind != null || favoritesOnly || !username.isEmpty();
+                boolean filtered = kind != null || favoritesOnly || accountOnly || !username.isEmpty()
+                        || (source == null && !hidden.isEmpty());
                 content.addView(message(str(filtered ? "spookd_gallery_no_matches" : "spookd_gallery_empty")));
                 return;
             }
@@ -795,23 +815,34 @@ public final class PrivateGalleryActivity {
 
         private void chooseFilter() {
             String[] labels = {str("spookd_gallery_all_types"), str("spookd_gallery_photos"),
-                    str("spookd_gallery_videos"), str("spookd_gallery_favorites_only")};
+                    str("spookd_gallery_videos"), str("spookd_gallery_favorites_only"),
+                    str("spookd_gallery_this_account_only")};
             boolean[] checked = {kind == null, GalleryItem.PHOTO.equals(kind), GalleryItem.VIDEO.equals(kind),
-                    favoritesOnly};
+                    favoritesOnly, accountOnly};
             choose(labels, checked, which -> {
-                if (which == 3) favoritesOnly = !favoritesOnly;
-                else kind = which == 1 ? GalleryItem.PHOTO : which == 2 ? GalleryItem.VIDEO : null;
-                int active = (kind == null ? 0 : 1) + (favoritesOnly ? 1 : 0);
-                filterAction.setText(active == 0 ? str("spookd_gallery_filter")
-                        : str("spookd_gallery_filter") + " (" + active + ")");
+                if (which == 3) {
+                    favoritesOnly = !favoritesOnly;
+                } else if (which == 4) {
+                    accountOnly = !accountOnly;
+                    viewPrefs.edit().putBoolean("account_only", accountOnly).apply();
+                } else {
+                    kind = which == 1 ? GalleryItem.PHOTO : which == 2 ? GalleryItem.VIDEO : null;
+                }
+                updateFilterLabel();
                 reload(false);
             });
         }
 
+        private void updateFilterLabel() {
+            int active = (kind == null ? 0 : 1) + (favoritesOnly ? 1 : 0) + (accountOnly ? 1 : 0);
+            filterAction.setText(active == 0 ? str("spookd_gallery_filter")
+                    : str("spookd_gallery_filter") + " (" + active + ")");
+        }
+
         private void chooseView() {
             int choices = MAX_COLUMNS - MIN_COLUMNS + 1;
-            String[] labels = new String[choices + 2];
-            boolean[] checked = new boolean[choices + 2];
+            String[] labels = new String[choices + 3];
+            boolean[] checked = new boolean[choices + 3];
             for (int i = 0; i < choices; i++) {
                 labels[i] = str("spookd_gallery_columns", MIN_COLUMNS + i);
                 checked[i] = !listView && columns == MIN_COLUMNS + i;
@@ -820,7 +851,13 @@ public final class PrivateGalleryActivity {
             checked[choices] = listView;
             labels[choices + 1] = str("spookd_gallery_overlays");
             checked[choices + 1] = overlays;
+            labels[choices + 2] = hidden.isEmpty() ? str("spookd_gallery_hidden_sources")
+                    : str("spookd_gallery_hidden_sources") + " (" + hidden.size() + ")";
             choose(labels, checked, which -> {
+                if (which == choices + 2) {
+                    chooseHidden();
+                    return;
+                }
                 if (which == choices + 1) {
                     overlays = !overlays;
                     viewPrefs.edit().putBoolean("overlays", overlays).apply();
@@ -832,6 +869,28 @@ public final class PrivateGalleryActivity {
                 if (!listView) setColumns(MIN_COLUMNS + which);
                 rebuildContent();
             });
+        }
+
+        /** Main thread: each checked source is left out of All; its own tab still lists it. */
+        private void chooseHidden() {
+            String[] sources = Arrays.copyOfRange(SOURCES, 1, SOURCES.length);
+            String[] labels = Arrays.copyOfRange(tabLabels, 1, tabLabels.length);
+            boolean[] checked = new boolean[sources.length];
+            for (int i = 0; i < sources.length; i++) checked[i] = hidden.contains(sources[i]);
+            new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
+                    .setTitle(str("spookd_gallery_hidden_sources"))
+                    .setMultiChoiceItems(labels, checked, (d, which, on) -> checked[which] = on)
+                    .setPositiveButton(str("spookd_ok"), (d, which) -> {
+                        Set<String> chosen = new HashSet<>();
+                        for (int i = 0; i < sources.length; i++) {
+                            if (checked[i]) chosen.add(sources[i]);
+                        }
+                        hidden = chosen;
+                        viewPrefs.edit().putStringSet("hidden_sources", chosen).apply();
+                        if (source == null) reload(false);
+                    })
+                    .setNegativeButton(str("spookd_cancel"), null)
+                    .show();
         }
 
         private void startSelection(Item item) {
@@ -1143,11 +1202,29 @@ public final class PrivateGalleryActivity {
             };
         }
 
-        /** Main thread. The viewer's button stars or unstars the item. */
+        /** Main thread. The viewer's buttons star or unstar the item and show its media info. */
         private void showViewer(Item item) {
-            VaultViewer.showFor(activity, viewerSource(item),
-                    () -> item.favorite ? "★ " + str("spookd_gallery_unfavorite") : "☆ " + str("spookd_gallery_favorite"),
-                    () -> setFavorite(Collections.singletonList(item), !item.favorite));
+            List<Supplier<CharSequence>> labels = Arrays.asList(
+                    () -> item.favorite ? "★ " + str("spookd_gallery_unfavorite")
+                            : "☆ " + str("spookd_gallery_favorite"),
+                    () -> str("spookd_gallery_media_info"));
+            List<Runnable> actions = Arrays.asList(
+                    () -> setFavorite(Collections.singletonList(item), !item.favorite),
+                    () -> showInfo(item));
+            VaultViewer.showFor(activity, viewerSource(item), labels, actions);
+        }
+
+        /** Main thread; the file is read on the info sheet's own thread. */
+        private void showInfo(Item item) {
+            Callable<ViewerMedia> open = item.vault ? () -> {
+                MediaVault.Stored stored = MediaVault.get().open(item.id);
+                return stored == null ? null : stored.file;
+            } : () -> new PlainMedia(item.file);
+            // Stored DM media keeps only its message's time.
+            Long savedAt = item.vault ? null : item.time;
+            Long postedAt = item.vault ? Long.valueOf(item.time) : item.details.takenAt;
+            MediaInfo.show(activity, open, item.kind, item.fileName, item.size, ownerLabel(item), sourceLabel(item),
+                    item.link, savedAt, postedAt);
         }
 
         /** Main thread; the stars are written on the jobs thread, before any reload that follows. */
@@ -1188,6 +1265,10 @@ public final class PrivateGalleryActivity {
             if (items.size() == 1 && !item.unknownOwner()) {
                 labels.add(str("spookd_gallery_open_profile"));
                 actions.add(() -> view(GalleryActions.profileLink(item.ownerUsername)));
+            }
+            if (items.size() == 1) {
+                labels.add(str("spookd_gallery_media_info"));
+                actions.add(() -> showInfo(item));
             }
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                     .setItems(labels.toArray(new CharSequence[0]), (d, which) -> actions.get(which).run())
@@ -1590,7 +1671,7 @@ public final class PrivateGalleryActivity {
         return (int) Math.min((long) size * Math.max(width, height) / Math.min(width, height), size * 4L);
     }
 
-    private static int dimension(MediaMetadataRetriever retriever, int key) {
+    static int dimension(MediaMetadataRetriever retriever, int key) {
         try {
             return Integer.parseInt(retriever.extractMetadata(key));
         } catch (RuntimeException e) {
@@ -1599,7 +1680,7 @@ public final class PrivateGalleryActivity {
     }
 
     /** Feeds the retriever bytes straight from the media; the caller closes the media. */
-    private static final class Source extends MediaDataSource {
+    static final class Source extends MediaDataSource {
         private final ViewerMedia media;
 
         Source(ViewerMedia media) {
