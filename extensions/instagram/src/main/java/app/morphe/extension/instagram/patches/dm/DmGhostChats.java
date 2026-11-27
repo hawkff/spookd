@@ -52,10 +52,11 @@ public final class DmGhostChats {
     /** Start of Instagram's DM seen request, on its thread: true keeps the receipt back. */
     public static boolean blocksSeen(UserSession session, Object request, String threadId) {
         try {
-            return Pref.viewDmAnonymously(accountOf(session), threadId);
+            boolean blocked = Pref.viewDmAnonymously(accountOf(session), threadId);
+            return KeepSeenLocally.blocksRequest(blocked, blocked && Pref.keepSeenLocally());
         } catch (Throwable t) {
             Logger.printException(() -> "DmGhostChats.blocksSeen failed", t);
-            return Pref.viewDmAnonymously();
+            return KeepSeenLocally.blocksRequest(Pref.viewDmAnonymously(), false);
         }
     }
 
@@ -162,7 +163,7 @@ public final class DmGhostChats {
 
     /** The list screen in the Ghost settings, for the account whose settings are shown: tap a chat to remove it. */
     public static void showList(Context context) {
-        StoryUserList.DM_GHOST.showList(context, SharedPref.getStringPref(AccountSettings.OWNER_KEY, null));
+        StoryUserList.DM_GHOST.showList(context, SharedPref.getStringPref(AccountSettings.OWNER_KEY, ""));
     }
 
     private static String accountOf(Object session) {

@@ -313,7 +313,7 @@ public final class ActivityAlerts {
 
     /** The list screen in the DM settings, for the account whose settings are shown: tap a person to remove them. */
     public static void showList(Context context) {
-        StoryUserList.ACTIVITY_ALERTS.showList(context, SharedPref.getStringPref(AccountSettings.OWNER_KEY, null));
+        StoryUserList.ACTIVITY_ALERTS.showList(context, SharedPref.getStringPref(AccountSettings.OWNER_KEY, ""));
     }
 
     /** Called when Instagram sets its current session, on that thread; removes the other accounts' notifications. */
@@ -354,7 +354,7 @@ public final class ActivityAlerts {
     }
 
     private static String currentAccount() {
-        return nonEmpty(SharedPref.getStringPref(AccountSettings.OWNER_KEY, null));
+        return nonEmpty(SharedPref.getStringPref(AccountSettings.OWNER_KEY, ""));
     }
 
     private static boolean anyAlertOn() {

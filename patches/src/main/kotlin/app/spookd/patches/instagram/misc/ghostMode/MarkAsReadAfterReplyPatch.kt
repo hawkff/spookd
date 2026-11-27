@@ -6,30 +6,28 @@
 
 package app.spookd.patches.instagram.misc.ghostMode
 
-import app.spookd.patches.instagram.entity.directItem.DirectThreadKeyToStringFingerprint
+import app.spookd.patches.instagram.misc.settings.accountSettingsPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.USER_SESSION_CLASS
 import app.spookd.patches.instagram.utils.enableSettings
+import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
-import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.util.getFreeRegisterProvider
-import app.morphe.patcher.util.getReference
-import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 
 @Suppress("unused")
 val markAsReadAfterReplyPatch = patch(
     name = "Mark as read after reply",
-    description = "Adds an option to mark chats as read after replying while viewing DMs anonymously.",
+    description = "Adds an option to mark a chat as read when you reply, react, send a message or start typing in it " +
+        "while viewing DMs anonymously.",
 ) {
     compatibleWith(COMPATIBILITY_INSTAGRAM)
-    dependsOn(viewDmAnonymouslyPatch)
+    // Start typing reads the current account from the owner key that per-account settings keep.
+    dependsOn(viewDmAnonymouslyPatch, accountSettingsPatch)
 
     execute {
         val seen = DMSeenFingerprint.method
@@ -51,53 +49,60 @@ val markAsReadAfterReplyPatch = patch(
             """.trimIndent(),
         )
 
-        val threadId = DirectThreadKeyToStringFingerprint.instructionMatches.first().fieldReference
-        ReplyReadThreadIdFingerprint.method.addInstructions(
-            0,
-            """
-            iget-object p0, p0, $threadId
-            return-object p0
-            """.trimIndent(),
-        )
-
-        val textSendClass = DmTextSendNameFingerprint.originalClassDef
-        val sendClass = classDefBy(textSendClass.superclass
+        // Messages share one send mutation class; every DM mutation, reactions included, extends its superclass.
+        val sendClass = classDefBy(DmTextSendNameFingerprint.originalClassDef.superclass
             ?: throw PatchException("Could not resolve the DM send mutation class"))
-        val threadsGetter = sendClass.methods.singleOrNull { method ->
-            !AccessFlags.STATIC.isSet(method.accessFlags) &&
-                method.parameterTypes.isEmpty() && method.returnType == "Ljava/util/List;" &&
-                method.implementation?.instructions?.toList()?.let { instructions ->
-                    instructions.size == 2 && instructions[0].opcode == Opcode.IGET_OBJECT &&
-                        instructions[0].getReference<FieldReference>()?.type == "Ljava/util/List;" &&
-                        instructions[1].opcode == Opcode.RETURN_OBJECT
-                } == true
-        } ?: throw PatchException("Could not uniquely resolve the DM send thread list getter")
+        val mutationClass = classDefBy(sendClass.superclass
+            ?: throw PatchException("Could not resolve the DM mutation class"))
+        // Null unless the message is sent as a reply to another one.
+        val repliedTo = sendClass.methods.singleOrNull { method ->
+            !AccessFlags.STATIC.isSet(method.accessFlags) && method.parameterTypes.isEmpty() &&
+                method.returnType.startsWith("L") && method.returnType != "Ljava/lang/Object;" &&
+                method.implementation?.instructions?.map { it.opcode } == listOf(Opcode.CONST_4, Opcode.RETURN_OBJECT)
+        } ?: throw PatchException("Could not uniquely resolve the DM send replied-to getter")
+        // The chat key of a message or a reaction.
+        val subject = mutationClass.methods.singleOrNull { method ->
+            !AccessFlags.STATIC.isSet(method.accessFlags) && method.parameterTypes.isEmpty() &&
+                method.returnType == "Ljava/lang/Object;"
+        } ?: throw PatchException("Could not uniquely resolve the DM mutation subject getter")
+        val typeName = mutationClass.methods.singleOrNull { method ->
+            method.name == "getTypeName" && method.parameterTypes.isEmpty() && method.returnType == "Ljava/lang/String;"
+        } ?: throw PatchException("Could not resolve the DM mutation type name")
+
+        fun replaceStub(name: String, body: String) =
+            Fingerprint(definingClass = REPLY_READ_EXTENSION, name = name).method.addInstructions(0, body)
+        replaceStub("isMessage", "instance-of p0, p0, ${sendClass.type}\nreturn p0")
+        replaceStub("repliedTo", "check-cast p0, ${sendClass.type}\ninvoke-virtual {p0}, $repliedTo\nmove-result-object p0\nreturn-object p0")
+        replaceStub("subjectOf", "check-cast p0, ${mutationClass.type}\ninvoke-virtual {p0}, $subject\nmove-result-object p0\nreturn-object p0")
+        replaceStub("typeOf", "check-cast p0, ${mutationClass.type}\ninvoke-virtual {p0}, $typeName\nmove-result-object p0\nreturn-object p0")
 
         DmMutationSuccessFingerprint.let { success ->
+            if (success.method.parameterTypes[1].toString() != mutationClass.type) {
+                throw PatchException("Unexpected DM success mutation parameter")
+            }
             val sessionField = success.originalClassDef.fields.singleOrNull {
                 it.type == USER_SESSION_CLASS && !AccessFlags.STATIC.isSet(it.accessFlags)
             } ?: throw PatchException("Could not uniquely resolve the DM success session field")
             success.method.apply {
                 val registers = getFreeRegisterProvider(index = 0, numberOfFreeRegistersNeeded = 2)
                 val sessionRegister = registers.getFreeRegister()
-                val threadsRegister = registers.getFreeRegister()
-                addInstructionsWithLabels(
+                val mutationRegister = registers.getFreeRegister()
+                addInstructions(
                     0,
                     """
-                    move-object/from16 v$threadsRegister, p2
-                    instance-of v$sessionRegister, v$threadsRegister, ${sendClass.type}
-                    if-eqz v$sessionRegister, :spookd_continue
-                    check-cast v$threadsRegister, ${sendClass.type}
-                    invoke-virtual {v$threadsRegister}, $threadsGetter
-                    move-result-object v$threadsRegister
+                    move-object/from16 v$mutationRegister, p2
                     move-object/from16 v$sessionRegister, p0
                     iget-object v$sessionRegister, v$sessionRegister, $sessionField
-                    invoke-static {v$sessionRegister, v$threadsRegister}, $REPLY_READ_EXTENSION->onReplySent(${USER_SESSION_CLASS}Ljava/util/List;)V
+                    invoke-static {v$sessionRegister, v$mutationRegister}, $REPLY_READ_EXTENSION->onMutationSent(${USER_SESSION_CLASS}Ljava/lang/Object;)V
                     """.trimIndent(),
-                    ExternalLabel("spookd_continue", getInstruction(0)),
                 )
             }
         }
+
+        DmTypingStartFingerprint.method.addInstructions(
+            0,
+            "invoke-static/range {p1 .. p1}, $REPLY_READ_EXTENSION->onTyping(Ljava/lang/String;)V",
+        )
         enableSettings("markAsReadAfterReply")
     }
 }
