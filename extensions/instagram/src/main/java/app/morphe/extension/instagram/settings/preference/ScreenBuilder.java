@@ -993,6 +993,12 @@ public class ScreenBuilder {
         if (SettingsStatus.hideInboxInstants) {
             addPreference(helper.switchPreference(str("spookd_hide_inbox_instants"), str("spookd_hide_inbox_instants_desc"), Settings.HIDE_INBOX_INSTANTS));
         }
+        if (SettingsStatus.restoreAccountSearch) {
+            addPreference(helper.switchPreference(str("spookd_restore_account_search"), str("spookd_restore_account_search_desc"), Settings.RESTORE_ACCOUNT_SEARCH));
+        }
+        if (SettingsStatus.hideMuse) {
+            addPreference(helper.switchPreference(str("spookd_hide_muse"), str("spookd_hide_muse_desc"), Settings.HIDE_MUSE));
+        }
     }
 
     /** Adds a Distraction free switch, shown forced on while Focus Lock holds it. */
@@ -1249,6 +1255,13 @@ public class ScreenBuilder {
                     str("spookd_reels_auto_scroll"),
                     str("spookd_reels_auto_scroll_desc"),
                     Settings.REELS_AUTO_SCROLL
+            ));
+        }
+        if (SettingsStatus.reelsHoldToPause) {
+            addPreference(helper.switchPreference(
+                    str("spookd_reels_hold_to_pause"),
+                    str("spookd_reels_hold_to_pause_desc"),
+                    Settings.REELS_HOLD_TO_PAUSE
             ));
         }
         // Instagram's PiP view needs Android 15; the switch does nothing below it.

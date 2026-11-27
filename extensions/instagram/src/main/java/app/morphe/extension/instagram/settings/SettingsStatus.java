@@ -279,10 +279,15 @@ public class SettingsStatus {
     public static void hideInboxInstants() { hideInboxInstants = true; }
     public static boolean hideReelsTabHeader = false;
     public static void hideReelsTabHeader() { hideReelsTabHeader = true; }
+    public static boolean restoreAccountSearch = false;
+    public static void restoreAccountSearch() { restoreAccountSearch = true; }
+    public static boolean hideMuse = false;
+    public static void hideMuse() { hideMuse = true; }
     public static boolean distractionFreeSection() {
         return (hideReelsFollowButton || disableDoubleTapLike || hideHiddenRequests || hideNotesTray || disableHighlights || disableStories || disableExplore || disableComments || hideStoriesTray || limitFollowingFeed || hideFeedPosts || disableVideoAutoplay || disableDiscoverPeople || hideGroupCreationOnSharesheet || hideReshareButton || hideSaveButtons || hideLikes || hideShareButton || disableReelsScrolling || disableSwipeToCreate || focusLock
                 || hideCommentEmojiBar || hideReelsVisualSearch || hideProfileNotesBubble || hideThreadsButton || hideFriendsMap
-                || hideRecentSearches || squareExploreGrid || hideReelsCommentBar || hideChatBlendButton || hideInboxInstants || hideReelsTabHeader);
+                || hideRecentSearches || squareExploreGrid || hideReelsCommentBar || hideChatBlendButton || hideInboxInstants || hideReelsTabHeader
+                || restoreAccountSearch || hideMuse);
     }
 
     //Misc section.
@@ -353,6 +358,8 @@ public class SettingsStatus {
     public static void reelsPlayerOptions() { reelsPlayerOptions = true; }
     public static boolean reelsAutoScroll = false;
     public static void reelsAutoScroll() { reelsAutoScroll = true; }
+    public static boolean reelsHoldToPause = false;
+    public static void reelsHoldToPause() { reelsHoldToPause = true; }
     public static boolean pipForVideos = false;
     public static void pipForVideos() { pipForVideos = true; }
     public static boolean keepOtherAudio = false;
@@ -377,7 +384,7 @@ public class SettingsStatus {
     public static void moreOptionsOnProfile() { moreOptionsOnProfile = true; }
     public static boolean disableAppHaptics = false;
     public static void disableAppHaptics() { disableAppHaptics = true; }
-    public static boolean miscSection() {return ( disableAppHaptics || moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || defaultPlaybackSpeed || reelsPlayerOptions || reelsAutoScroll || pipForVideos || followBackIndicator || followListNonFollowerBadge || profileAnalyzer || exactProfileCounts || squareProfileGrid || profileSavedTab || hideProfileGridReels || profileReelsSort || reorderHighlights || confirmationsSection() || refreshControls || customFont || keepOtherAudio);}
+    public static boolean miscSection() {return ( disableAppHaptics || moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || defaultPlaybackSpeed || reelsPlayerOptions || reelsAutoScroll || reelsHoldToPause || pipForVideos || followBackIndicator || followListNonFollowerBadge || profileAnalyzer || exactProfileCounts || squareProfileGrid || profileSavedTab || hideProfileGridReels || profileReelsSort || reorderHighlights || confirmationsSection() || refreshControls || customFont || keepOtherAudio);}
 
     //Font section.
     public static boolean customFont = false;
@@ -481,6 +488,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_default_playback_speed"), SettingsStatus.defaultPlaybackSpeed);
         FLAGS.put(str("spookd_reels_player_options"), SettingsStatus.reelsPlayerOptions);
         FLAGS.put(str("spookd_reels_auto_scroll"), SettingsStatus.reelsAutoScroll);
+        FLAGS.put(str("spookd_reels_hold_to_pause"), SettingsStatus.reelsHoldToPause);
         FLAGS.put(str("spookd_pip_for_videos"), SettingsStatus.pipForVideos);
         FLAGS.put(str("spookd_keep_other_audio"), SettingsStatus.keepOtherAudio);
         FLAGS.put(str("spookd_add_by_link"), SettingsStatus.addByLink);
@@ -554,6 +562,8 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_hide_threads_button"), SettingsStatus.hideThreadsButton);
         FLAGS.put(str("spookd_hide_friends_map"), SettingsStatus.hideFriendsMap);
         FLAGS.put(str("spookd_hide_recent_searches"), SettingsStatus.hideRecentSearches);
+        FLAGS.put(str("spookd_restore_account_search"), SettingsStatus.restoreAccountSearch);
+        FLAGS.put(str("spookd_hide_muse"), SettingsStatus.hideMuse);
         FLAGS.put(str("spookd_square_explore_grid"), SettingsStatus.squareExploreGrid);
         FLAGS.put(str("spookd_hide_reels_comment_bar"), SettingsStatus.hideReelsCommentBar);
         FLAGS.put(str("spookd_hide_chat_blend_button"), SettingsStatus.hideChatBlendButton);

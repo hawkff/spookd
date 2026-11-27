@@ -84,8 +84,11 @@ public class HookFlags {
             BOOL_FLAGS.put("103957::6", true); //ig_feed_video_2x_speed::use_static_edge_activation_threshold
             BOOL_FLAGS.put("103957::8", true); //ig_feed_video_2x_speed::android_fix_long_press_overlay
             BOOL_FLAGS.put("109947::0", true); //ig_android_reels_overflow_menu_playback_speed::is_enabled
-            BOOL_FLAGS.put("121815::0", true); //ig_reels_long_press_overflow_menu::is_enabled
-            BOOL_FLAGS.put("121815::12", true); //ig_reels_long_press_overflow_menu::context_playback_menu_enabled
+            // Hold to pause Reels turns the long-press menu off instead.
+            if (!Pref.reelsHoldToPause()) {
+                BOOL_FLAGS.put("121815::0", true); //ig_reels_long_press_overflow_menu::is_enabled
+                BOOL_FLAGS.put("121815::12", true); //ig_reels_long_press_overflow_menu::context_playback_menu_enabled
+            }
         }
     }
 
@@ -230,6 +233,35 @@ public class HookFlags {
     private static void hideChatBlendButtonFlags() {
         if (Pref.hideChatBlendButton()) {
             BOOL_FLAGS.put("76757::0", false); //ig_android_blends_fbid::enable_thread_header_entrypoint (Blend master switch)
+        }
+    }
+
+    private static void restoreAccountSearchFlags() {
+        if (Pref.restoreAccountSearch()) {
+            BOOL_FLAGS.put("111209::0", false); //ig_typeahead_skw_i18n_expansion_h1_2026::android_put_bootstrap_user_below_keywords
+            BOOL_FLAGS.put("128663::0", false); //ig_android_search_typeahead_recents_to_skw::convert_recent_to_skw
+        }
+    }
+
+    private static void keepHomeFeedOnPostLinksFlags() {
+        BOOL_FLAGS.put("106448::28", false); //ig_android_feed_delivery_2026::enable_feed_post_deeplink_feed_refresh
+        BOOL_FLAGS.put("106448::29", false); //ig_android_feed_delivery_2026::enable_reel_post_deeplink_feed_refresh
+    }
+
+    private static void hideMuseFlags() {
+        if (Pref.hideMuse()) {
+            BOOL_FLAGS.put("140048::8", false); //ig_android_shop_with_muse::enable_send_message_to_muse_in_igd
+            BOOL_FLAGS.put("140048::10", false); //ig_android_shop_with_muse::enable_muse_recipient_grid (Muse in the share sheet)
+            BOOL_FLAGS.put("140048::20", false); //ig_android_shop_with_muse::enable_dynamic_prompts_for_share_sheet
+            BOOL_FLAGS.put("140730::0", false); //ig_android_profile_muse_banner::creation_enabled
+        }
+    }
+
+    private static void reelsHoldToPauseFlags() {
+        if (Pref.reelsHoldToPause()) {
+            BOOL_FLAGS.put("118405::3", false); //ig_android_reels_video_controls::long_press_overflow_enabled (Reels long-press menu)
+            BOOL_FLAGS.put("121815::0", false); //ig_reels_long_press_overflow_menu::is_enabled
+            BOOL_FLAGS.put("121815::12", false); //ig_reels_long_press_overflow_menu::context_playback_menu_enabled
         }
     }
 

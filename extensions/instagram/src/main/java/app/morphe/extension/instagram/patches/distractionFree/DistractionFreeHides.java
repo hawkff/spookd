@@ -32,6 +32,21 @@ public final class DistractionFreeHides {
         }
     }
 
+    /** Called when a profile builds its Muse banner; true skips the banner. */
+    public static boolean hideMuseBanner() {
+        try {
+            return Pref.hideMuse();
+        } catch (Throwable t) {
+            Logger.printException(() -> "hideMuseBanner failure", t);
+            return false;
+        }
+    }
+
+    /** Takes whether the share sheet action being built is Muse's; false leaves Muse out. */
+    public static boolean buildMuseShareAction(boolean isMuse) {
+        return isMuse && !hideMuseBanner();
+    }
+
     /** Takes Instagram's own "hide the comment bar" switch for the Reels viewer. */
     public static boolean hideReelsCommentBar(boolean hidden) {
         try {

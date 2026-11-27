@@ -862,7 +862,7 @@ public final class DeletedMessagesActivity {
                                 if (igLink) {
                                     try {
                                         activity.startActivity(new Intent(Intent.ACTION_VIEW, uri)
-                                                .setPackage("com.instagram.android"));
+                                                .setPackage(activity.getPackageName()));
                                         opened = true;
                                     } catch (Exception ignored) {}
                                 }

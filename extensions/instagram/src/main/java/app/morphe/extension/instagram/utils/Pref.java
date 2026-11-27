@@ -202,6 +202,10 @@ public class Pref {
         return on(Settings.RESUME_REELS_AFTER_SCROLLING);
     }
 
+    public static boolean reelsHoldToPause() {
+        return on(Settings.REELS_HOLD_TO_PAUSE) && SettingsStatus.reelsHoldToPause;
+    }
+
     public static boolean playbackSpeedControls() {
         return on(Settings.PLAYBACK_SPEED_CONTROLS);
     }
@@ -302,6 +306,14 @@ public class Pref {
 
     public static boolean hideRecentSearches() {
         return SettingsStatus.hideRecentSearches && HIDE_RECENT_SEARCHES.get();
+    }
+
+    public static boolean restoreAccountSearch() {
+        return on(Settings.RESTORE_ACCOUNT_SEARCH) && SettingsStatus.restoreAccountSearch;
+    }
+
+    public static boolean hideMuse() {
+        return on(Settings.HIDE_MUSE) && SettingsStatus.hideMuse;
     }
 
     public static boolean squareExploreGrid() {

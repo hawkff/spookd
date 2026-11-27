@@ -197,6 +197,10 @@
     <string name="spookd_hide_friends_map_desc">Turns off Instagram\'s Friends Map, including its entry in the inbox notes tray. Stop sharing your location in the map before you turn this on</string>
     <string name="spookd_hide_recent_searches">Hide recent searches</string>
     <string name="spookd_hide_recent_searches_desc">Removes your recent searches from the search screen and from the suggestions while you type</string>
+    <string name="spookd_restore_account_search">Restore account search</string>
+    <string name="spookd_restore_account_search_desc">While you type in search, shows accounts you follow or searched before above search suggestions, and keeps recent accounts as accounts instead of turning them into suggestions</string>
+    <string name="spookd_hide_muse">Hide Muse</string>
+    <string name="spookd_hide_muse_desc">Removes Muse from the share sheet and the Muse banner from profiles</string>
     <string name="spookd_square_explore_grid">Classic Explore grid</string>
     <string name="spookd_square_explore_grid_desc">Uses Instagram\'s older, mostly square Explore layout instead of the tall 3:4 grid. Some sections can still be tall, tablets keep the tall grid, and the topic pills above it can go away</string>
     <string name="spookd_hide_reels_comment_bar">Hide Reels comment bar</string>
@@ -372,6 +376,8 @@
     <string name="spookd_reels_stop_looping_desc">A Reel stops on its last frame instead of starting over. Tap it to watch it again from the start.</string>
     <string name="spookd_reels_tap_to_pause">Tap to pause Reels</string>
     <string name="spookd_reels_tap_to_pause_desc">Tap a Reel to pause or play it instead of turning its sound on or off. Double-tap to like and long-press work as before.</string>
+    <string name="spookd_reels_hold_to_pause">Hold to pause Reels</string>
+    <string name="spookd_reels_hold_to_pause_desc">Holding a Reel pauses it until you let go, instead of opening the long-press menu. The long-press speed menu is off while this is on; speed stays in the Reel\'s ⋯ menu and in the Speed and seek panel if available</string>
     <string name="spookd_expanded_feed_videos_muted">Start expanded feed videos muted</string>
     <string name="spookd_expanded_feed_videos_muted_desc">A video you open full screen from the home feed starts without sound. Instagram shares one sound setting between the feed and Reels, so the feed stays muted afterwards until you turn sound back on.</string>
     <string name="spookd_reels_auto_scroll">Reels auto-scroll</string>
