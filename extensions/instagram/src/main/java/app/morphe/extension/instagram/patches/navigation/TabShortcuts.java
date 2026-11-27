@@ -14,6 +14,7 @@ import android.view.View;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.patches.CopiedLink;
@@ -159,25 +160,42 @@ public final class TabShortcuts {
         return SettingsStatus.homeLongPressSettings && opensSettings(homeChoice());
     }
 
-    /** Called on the main thread at the end of Instagram's tab button builder. */
+    private static StringSetting settingOf(Object tab) {
+        return tab instanceof Enum<?> ? builtTabSetting(((Enum<?>) tab).name()) : null;
+    }
+
+    /** Called on the main thread where Instagram's tab button builder sets a tab's long-press listener. */
+    public static View.OnLongClickListener wrapLongClick(View.OnLongClickListener original, Object tab) {
+        try {
+            StringSetting setting = settingOf(tab);
+            if (setting == null) return original;
+            return held -> onHold(held, original, () -> choice(setting));
+        } catch (Throwable t) {
+            logFailure("Tab shortcut setup failed", t);
+            return original;
+        }
+    }
+
+    /** Called on the main thread at the end of Instagram's tab button builder, for tabs it gave no long-press. */
     public static void onTabCreated(View view, Object tab) {
         try {
-            StringSetting setting = tab instanceof Enum<?> ? builtTabSetting(((Enum<?>) tab).name()) : null;
-            // Instagram's own listener stays for Default; the setting asks for a restart when it changes.
-            if (setting == null || DEFAULT.equals(choice(setting))) return;
-            view.setOnLongClickListener(held -> onHold(held, setting));
+            StringSetting setting = settingOf(tab);
+            if (setting != null && !view.isLongClickable()) {
+                view.setOnLongClickListener(held -> onHold(held, null, () -> choice(setting)));
+            }
         } catch (Throwable t) {
             logFailure("Tab shortcut setup failed", t);
         }
     }
 
-    private static boolean onHold(View view, StringSetting setting) {
+    /** Main thread. The chosen shortcut, else Instagram's own long-press when Default is chosen or opening fails. */
+    static boolean onHold(View view, View.OnLongClickListener original, Supplier<String> choice) {
         try {
-            return open(view, choice(setting), false);
+            if (open(view, choice.get(), false)) return true;
         } catch (Throwable t) {
             logFailure("Tab shortcut failed", t);
-            return false;
         }
+        return original != null && original.onLongClick(view);
     }
 
     /**

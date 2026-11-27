@@ -26,9 +26,11 @@ import app.morphe.patcher.opcode
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.patch
+import app.morphe.patcher.util.addInstructionsAtControlFlowLabel
 import app.morphe.patcher.util.findFreeRegister
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.smali.ExternalLabel
+import app.morphe.util.findInstructionIndicesReversed
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
@@ -36,6 +38,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 
 private const val MAIN_ACTIVITY = "Lcom/instagram/mainactivity/InstagramMainActivity;"
 private const val TAB_SHORTCUTS = "$PATCHES_DESCRIPTOR/navigation/TabShortcuts;"
+private const val LONG_CLICK_LISTENER = "Landroid/view/View\$OnLongClickListener;"
 
 // Instagram's Search tab long-press: select the Search tab, then open the search screen.
 internal object SearchTabLongClickFingerprint : Fingerprint(
@@ -91,6 +94,18 @@ private fun installTabShortcuts(tabButton: Match, profileHold: MutableMethod): B
     // The tab enum, the builder's third parameter, as the tab button keeps it.
     val tabField = classDefBy(tabButtonView.definingClass).fields
         .singleOrNull { it.type == builder.parameterTypes[2].toString() }
+    // Every place the builder sets a tab's long-press listener, last first so earlier indices stay valid.
+    val listenerSetters = builder.findInstructionIndicesReversed(
+        methodCall(
+            definingClass = tabButtonView.definingClass,
+            parameters = listOf(LONG_CLICK_LISTENER),
+            returnType = "V",
+            opcode = Opcode.INVOKE_VIRTUAL,
+        ),
+    ).map { index ->
+        val call = builder.getInstruction<FiveRegisterInstruction>(index)
+        Triple(index, call, builder.findFreeRegister(index, listOf(call.registerC, call.registerD)))
+    }
     val profileTabButtonField = classDefBy(profileHold.definingClass).fields
         .singleOrNull { it.type == tabButtonView.definingClass }
     // The first instruction overwrites its target with an activity read from the gesture listener.
@@ -98,7 +113,9 @@ private fun installTabShortcuts(tabButton: Match, profileHold: MutableMethod): B
     val scratchRegister = activityRead.registerA
     val listenerRegister = activityRead.registerB
     if (tabField == null || profileTabButtonField == null || scratchRegister == listenerRegister ||
-        listOf(tabButtonRegister, viewRegister, tabRegister, scratchRegister, listenerRegister).any { it > 0xf }
+        listenerSetters.isEmpty() || listenerSetters.any { (index, _, _) -> index >= insertIndex } ||
+        listOf(tabButtonRegister, viewRegister, tabRegister, scratchRegister, listenerRegister).any { it > 0xf } ||
+        listenerSetters.any { (_, call, scratch) -> listOf(call.registerC, call.registerD, scratch).any { it > 0xf } }
     ) {
         return false
     }
@@ -110,6 +127,17 @@ private fun installTabShortcuts(tabButton: Match, profileHold: MutableMethod): B
             invoke-static {v$viewRegister, v$tabRegister}, $TAB_SHORTCUTS->onTabCreated(Landroid/view/View;Ljava/lang/Object;)V
         """.trimIndent(),
     )
+    // Wrapped, not replaced, so Default and a failed shortcut still reach Instagram's own long-press.
+    listenerSetters.forEach { (index, call, scratch) ->
+        builder.addInstructionsAtControlFlowLabel(
+            index,
+            """
+                iget-object v$scratch, v${call.registerC}, $tabField
+                invoke-static {v${call.registerD}, v$scratch}, $TAB_SHORTCUTS->wrapLongClick(${LONG_CLICK_LISTENER}Ljava/lang/Object;)$LONG_CLICK_LISTENER
+                move-result-object v${call.registerD}
+            """.trimIndent(),
+        )
+    }
     profileHold.addInstructionsWithLabels(
         0,
         """
