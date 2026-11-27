@@ -349,6 +349,8 @@ public class SettingsStatus {
     public static void pipForVideos() { pipForVideos = true; }
     public static boolean keepOtherAudio = false;
     public static void keepOtherAudio() { keepOtherAudio = true; }
+    public static boolean addByLink = false;
+    public static void addByLink() { addByLink = true; }
     public static boolean improveImageViewing = false;
     public static void improveImageViewing() {
         improveImageViewing = true;
@@ -473,6 +475,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_reels_auto_scroll"), SettingsStatus.reelsAutoScroll);
         FLAGS.put(str("spookd_pip_for_videos"), SettingsStatus.pipForVideos);
         FLAGS.put(str("spookd_keep_other_audio"), SettingsStatus.keepOtherAudio);
+        FLAGS.put(str("spookd_add_by_link"), SettingsStatus.addByLink);
         FLAGS.put(str("spookd_unlimited_replays"),SettingsStatus.unlimitedReplaysOnEphemeralMedia);
         FLAGS.put(str("spookd_disable_disappearing_messages_gesture"), SettingsStatus.disableDisappearingMessagesGesture);
         FLAGS.put(str("spookd_send_keyboard_gifs"), SettingsStatus.sendKeyboardGifs);

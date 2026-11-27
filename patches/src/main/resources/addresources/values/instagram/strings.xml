@@ -50,6 +50,13 @@
     <string name="spookd_story_ghost_already_added">@%1$s is already on the story ghost list</string>
     <string name="spookd_story_ghost_remove_confirm">Remove %1$s from the story ghost list?</string>
     <string name="spookd_story_ghost_remove">Remove</string>
+    <string name="spookd_add_by_link">Add by link or @username</string>
+    <string name="spookd_add_by_link_hint">Profile link or @username</string>
+    <string name="spookd_add_by_link_add">Add</string>
+    <string name="spookd_add_by_link_invalid">That is not an Instagram profile link or @username</string>
+    <string name="spookd_add_by_link_not_loaded">Open that profile once, then try again</string>
+    <string name="spookd_add_by_link_added">Added @%1$s</string>
+    <string name="spookd_add_by_link_already_added">@%1$s is already on the list</string>
     <string name="spookd_mark_story_seen_on_interaction">Mark seen on like or reply</string>
     <string name="spookd_mark_story_seen_on_interaction_desc">When a story is viewed anonymously, liking it, replying to it or sending a quick reaction marks it as seen</string>
     <string name="spookd_mark_earlier_stories_seen">Mark earlier stories seen too</string>
