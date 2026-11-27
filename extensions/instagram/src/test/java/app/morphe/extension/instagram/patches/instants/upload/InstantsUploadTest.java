@@ -61,6 +61,14 @@ public final class InstantsUploadTest {
     }
 
     @Test
+    public void aVideoCopyStopsAt1GibOrWhen200MibWouldNoLongerStayFree() {
+        long free = InstantsUpload.MIN_FREE_BYTES;
+        assertTrue(InstantsUpload.copyFits(InstantsUpload.MAX_VIDEO_BYTES, free));
+        assertFalse(InstantsUpload.copyFits(InstantsUpload.MAX_VIDEO_BYTES + 1, free + (1L << 40)));
+        assertFalse(InstantsUpload.copyFits(1, free - 1));
+    }
+
+    @Test
     public void onlyAKnownDurationWithinAKnownLimitIsAllowed() {
         assertTrue(InstantsUpload.durationAllowed(10_000, 10_000));
         assertTrue(InstantsUpload.durationAllowed(1, 10_000));

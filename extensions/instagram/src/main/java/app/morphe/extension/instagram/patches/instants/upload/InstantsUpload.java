@@ -58,6 +58,10 @@ public final class InstantsUpload {
     private static final String VIDEO_DIR = "spookd_instants_upload";
     // About 32 MB as ARGB, for a photo whose format has no region decoding.
     private static final long MAX_DECODE_PIXELS = 8_000_000L;
+    static final long MAX_VIDEO_BYTES = 1L << 30;
+    static final long MIN_FREE_BYTES = 200L << 20;
+    // Main thread only.
+    private static final Rect visibleRect = new Rect();
     // Instagram uploads a sent video from its file, so copies stay this long.
     private static final long VIDEO_KEEP_MS = 24 * 60 * 60 * 1000L;
     private InstantsUpload() {
@@ -265,33 +269,43 @@ public final class InstantsUpload {
         clearOld(dir, System.currentTimeMillis());
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("No folder " + dir);
         File video = new File(dir, "instant_" + System.currentTimeMillis() + ".mp4");
+        boolean fits = true;
         try (InputStream in = app.getContentResolver().openInputStream(uri);
              OutputStream out = new FileOutputStream(video)) {
             if (in == null) throw new IOException("Cannot read " + uri);
             byte[] buffer = new byte[64 * 1024];
+            long copied = 0;
             int read;
-            while ((read = in.read(buffer)) != -1) out.write(buffer, 0, read);
+            while (fits && (read = in.read(buffer)) != -1) {
+                copied += read;
+                fits = copyFits(copied, dir.getUsableSpace() - read);
+                if (fits) out.write(buffer, 0, read);
+            }
         } catch (IOException e) {
             video.delete();
             throw e;
+        }
+        if (!fits) {
+            video.delete();
+            Utils.showToastLong(str("spookd_instants_upload_too_large"));
+            return;
         }
         long[] info = videoInfo(video);
         Utils.runOnMainThread(() -> sendVideo(video, info, camera));
     }
 
-    /** Main thread. */
+    /** Main thread: the copy is deleted unless Instagram's handler took it. */
     private static void sendVideo(File video, long[] info, Camera camera) {
+        boolean handedOff = false;
         try {
             long durationMs = info[0];
             Object live = camera.live();
             if (live == null) {
-                video.delete();
                 Utils.showToastShort(str("spookd_instants_upload_camera_closed"));
                 return;
             }
             long maxMs = maxVideoMillisNative(live);
             if (!durationAllowed(durationMs, maxMs)) {
-                video.delete();
                 Utils.showToastLong(durationMs <= 0 ? str("spookd_instants_upload_video_unreadable")
                         : maxMs <= 0 ? str("spookd_instants_upload_failed")
                         : str("spookd_instants_upload_too_long", maxMs / 1000));
@@ -301,13 +315,15 @@ public final class InstantsUpload {
             // The camera crops a recording to its square at the preview's offset and never fills the square from a short video.
             if (preview == null || !fitsCameraCrop((int) info[1], (int) info[2], (int) info[3], preview.getWidth(),
                     horizontalMarginNative(preview), verticalOffsetNative(preview))) {
-                video.delete();
                 Utils.showToastLong(str("spookd_instants_upload_video_shape"));
                 return;
             }
             captureVideoNative(live, video);
+            handedOff = true;
         } catch (Throwable t) {
             failed("send a video", t);
+        } finally {
+            if (!handedOff) video.delete();
         }
     }
 
@@ -346,6 +362,11 @@ public final class InstantsUpload {
     private static void failed(String action, Throwable t) {
         Logger.printException(() -> "InstantsUpload: cannot " + action, t);
         Utils.showToastShort(str("spookd_instants_upload_failed"));
+    }
+
+    /** A copy stays within {@link #MAX_VIDEO_BYTES} and leaves at least {@link #MIN_FREE_BYTES} of storage free. */
+    static boolean copyFits(long copiedBytes, long freeBytesAfter) {
+        return copiedBytes <= MAX_VIDEO_BYTES && freeBytesAfter >= MIN_FREE_BYTES;
     }
 
     /** A pick goes out only while its camera's preview is shown, its shutter not released and the switch on. */
@@ -471,7 +492,10 @@ public final class InstantsUpload {
             View view = preview.get();
             Object current = shutter.get();
             boolean open = current != null && !releasedNative(current);
-            return accepts(view != null && view.isAttachedToWindow(), open, Pref.sendMediaAsInstants()) ? current : null;
+            // A camera page swiped out of view stays attached and VISIBLE, so its on-screen area is checked too.
+            boolean shown = view != null && view.isShown() && view.getGlobalVisibleRect(visibleRect)
+                    && !visibleRect.isEmpty();
+            return accepts(shown, open, Pref.sendMediaAsInstants()) ? current : null;
         }
     }
 
