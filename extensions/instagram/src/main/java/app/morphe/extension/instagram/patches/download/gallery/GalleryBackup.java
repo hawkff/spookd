@@ -60,7 +60,6 @@ public final class GalleryBackup {
     private static final String CHANNEL = "spookd_gallery_backup";
     // Serial, so a second backup or import waits for the one running.
     private static final Executor WORK = Executors.newSingleThreadExecutor();
-    private static boolean channelCreated; // work thread only
 
     private GalleryBackup() {
     }
@@ -176,30 +175,63 @@ public final class GalleryBackup {
         return out;
     }
 
-    /** Main thread: hands the picked documents to the work thread. */
-    private static void start(Context app, int mode, List<Uri> uris) {
-        Utils.showToastShort(str(mode == EXPORT ? "spookd_gallery_backup_running" : "spookd_gallery_importing"));
+    /**
+     * Main thread: hands the picked documents to the work thread. Without a notification that can
+     * show, a dialog on {@code host} shows the progress instead; closing it leaves the work running.
+     */
+    private static void start(Activity host, int mode, List<Uri> uris) {
+        Context app = host.getApplicationContext();
+        String title = str(mode == EXPORT ? "spookd_gallery_backup_running" : "spookd_gallery_importing");
+        AlertDialog dialog = null;
+        if (canNotify(app)) {
+            Utils.showToastShort(title);
+        } else {
+            try {
+                dialog = new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(host))
+                        .setTitle(title).setMessage(title).show();
+            } catch (Exception e) {
+                Logger.printInfo(() -> "Gallery backup: no progress dialog", e);
+                Utils.showToastShort(title);
+            }
+        }
+        AlertDialog shown = dialog;
         WORK.execute(() -> {
             try {
-                if (mode == EXPORT) export(app, uris.get(0));
-                else if (mode == IMPORT) importArchive(app, uris.get(0));
-                else if (mode == IMPORT_FILES) importFiles(app, uris);
+                BiConsumer<Integer, Integer> progress = progress(app, title, shown);
+                if (mode == EXPORT) export(app, uris.get(0), progress);
+                else if (mode == IMPORT) importArchive(app, uris.get(0), progress);
+                else if (mode == IMPORT_FILES) importFiles(app, uris, progress);
             } catch (Exception e) {
                 Logger.printException(() -> "Gallery backup failed", e);
                 Utils.showToastLong(str("spookd_gallery_action_failed"));
             } finally {
-                cancelProgress(app);
+                cancelProgress(app, shown);
             }
         });
     }
 
+    /** Main thread: whether the progress notification can show, its channel included; creates the channel. */
+    private static boolean canNotify(Context app) {
+        try {
+            NotificationManager manager = app.getSystemService(NotificationManager.class);
+            if (manager == null || !manager.areNotificationsEnabled()) return false;
+            manager.createNotificationChannel(new NotificationChannel(CHANNEL, str("spookd_private_gallery"),
+                    NotificationManager.IMPORTANCE_LOW));
+            NotificationChannel channel = manager.getNotificationChannel(CHANNEL);
+            return channel != null && channel.getImportance() != NotificationManager.IMPORTANCE_NONE;
+        } catch (Exception e) {
+            Logger.printInfo(() -> "Gallery backup: cannot check notifications", e);
+            return false;
+        }
+    }
+
     /** Work thread. A backup that fails part way is deleted, so no partial file looks like a backup. */
-    private static void export(Context app, Uri uri) {
+    private static void export(Context app, Uri uri, BiConsumer<Integer, Integer> progress) {
         ContentResolver resolver = app.getContentResolver();
         int[] written;
         try (OutputStream out = resolver.openOutputStream(uri)) {
             if (out == null) throw new IOException("Cannot write the backup");
-            written = GalleryArchive.write(GalleryStore.get(), out, progress(app, str("spookd_gallery_backup_running")));
+            written = GalleryArchive.write(GalleryStore.get(), out, progress);
         } catch (Exception e) {
             Logger.printException(() -> "Gallery backup: cannot write", e);
             try {
@@ -214,11 +246,11 @@ public final class GalleryBackup {
     }
 
     /** Work thread: merges a backup, skipping what the gallery already has. */
-    private static void importArchive(Context app, Uri uri) {
+    private static void importArchive(Context app, Uri uri, BiConsumer<Integer, Integer> progress) {
         GalleryArchive.Result result = new GalleryArchive.Result();
         try (InputStream in = app.getContentResolver().openInputStream(uri)) {
             if (in == null) throw new IOException("Cannot read the backup");
-            GalleryArchive.read(GalleryStore.get(), in, result, progress(app, str("spookd_gallery_importing")));
+            GalleryArchive.read(GalleryStore.get(), in, result, progress);
         } catch (GalleryArchive.InvalidBackup e) {
             Logger.printInfo(() -> "Gallery backup: not a backup", e);
             Utils.showToastLong(str("spookd_gallery_import_invalid"));
@@ -232,13 +264,12 @@ public final class GalleryBackup {
     }
 
     /** Work thread: copies picked photos and videos into the Imported source, owner unknown. */
-    private static void importFiles(Context app, List<Uri> uris) {
+    private static void importFiles(Context app, List<Uri> uris, BiConsumer<Integer, Integer> progress) {
         ContentResolver resolver = app.getContentResolver();
         GalleryStore store = GalleryStore.get();
         GalleryArchive.Duplicates duplicates = new GalleryArchive.Duplicates(
                 store.list(null, null, false, null, GalleryStore.SORT_NEWEST));
         long epoch = store.clearEpoch();
-        BiConsumer<Integer, Integer> progress = progress(app, str("spookd_gallery_importing"));
         GalleryArchive.Result result = new GalleryArchive.Result();
         for (int i = 0; i < uris.size(); i++) {
             Uri uri = uris.get(i);
@@ -278,33 +309,34 @@ public final class GalleryBackup {
         return null;
     }
 
-    /** Work thread: shows {@code title} now, then (done, total) at most twice a second. */
-    private static BiConsumer<Integer, Integer> progress(Context app, String title) {
-        showProgress(app, title, 0, 0);
+    /** Work thread: shows {@code title} now, then (done, total) at most twice a second, in {@code dialog} if any. */
+    private static BiConsumer<Integer, Integer> progress(Context app, String title, AlertDialog dialog) {
+        showProgress(app, title, dialog, 0, 0);
         long[] last = {0};
         return (done, total) -> {
             long now = SystemClock.uptimeMillis();
             if (now - last[0] < 500 && done < total) return;
             last[0] = now;
-            showProgress(app, title, done, total);
+            showProgress(app, title, dialog, done, total);
         };
     }
 
-    /** Nothing without the notification permission; the toasts still tell the outcome. */
-    private static void showProgress(Context app, String title, int done, int total) {
+    private static void showProgress(Context app, String title, AlertDialog dialog, int done, int total) {
+        String text = total > 0 ? str("spookd_gallery_backup_progress", done, total) : null;
+        if (dialog != null) {
+            Utils.runOnMainThread(() -> {
+                if (dialog.isShowing()) dialog.setMessage(text == null ? title : title + "\n" + text);
+            });
+            return;
+        }
         try {
             NotificationManager manager = app.getSystemService(NotificationManager.class);
-            if (manager == null || !manager.areNotificationsEnabled()) return;
-            if (!channelCreated) {
-                manager.createNotificationChannel(new NotificationChannel(CHANNEL, str("spookd_private_gallery"),
-                        NotificationManager.IMPORTANCE_LOW));
-                channelCreated = true;
-            }
+            if (manager == null) return;
             int icon = app.getApplicationInfo().icon;
             manager.notify(NOTIFICATION_ID, new Notification.Builder(app, CHANNEL)
                     .setSmallIcon(icon != 0 ? icon : android.R.drawable.stat_sys_download)
                     .setContentTitle(title)
-                    .setContentText(total > 0 ? str("spookd_gallery_backup_progress", done, total) : null)
+                    .setContentText(text)
                     .setProgress(total, done, total <= 0)
                     .setOngoing(true)
                     .setOnlyAlertOnce(true)
@@ -314,7 +346,13 @@ public final class GalleryBackup {
         }
     }
 
-    private static void cancelProgress(Context app) {
+    private static void cancelProgress(Context app, AlertDialog dialog) {
+        if (dialog != null) {
+            Utils.runOnMainThread(() -> {
+                if (dialog.isShowing()) dialog.dismiss();
+            });
+            return;
+        }
         try {
             NotificationManager manager = app.getSystemService(NotificationManager.class);
             if (manager != null) manager.cancel(NOTIFICATION_ID);
@@ -345,7 +383,7 @@ public final class GalleryBackup {
             List<Uri> picked = resultCode == Activity.RESULT_OK ? uris(data) : Collections.emptyList();
             Activity activity = getActivity();
             if (!picked.isEmpty() && activity != null) {
-                start(activity.getApplicationContext(), getArguments().getInt(MODE), picked);
+                start(activity, getArguments().getInt(MODE), picked);
             }
             done();
         }
