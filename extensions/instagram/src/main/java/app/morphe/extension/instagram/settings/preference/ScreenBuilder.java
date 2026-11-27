@@ -306,6 +306,16 @@ public class ScreenBuilder {
             );
         }
 
+        if (SettingsStatus.sendAudioAsVoice) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_send_audio_as_voice"),
+                            str("spookd_send_audio_as_voice_desc"),
+                            Settings.SEND_AUDIO_AS_VOICE
+                    )
+            );
+        }
+
         if (SettingsStatus.unlimitedReplaysOnEphemeralMedia) {
             addPreference(
                     helper.switchPreference(

@@ -111,13 +111,15 @@ public class SettingsStatus {
     public static void pinRecipients() { pinRecipients = true; }
     public static boolean sendKeyboardGifs = false;
     public static void sendKeyboardGifs() { sendKeyboardGifs = true; }
+    public static boolean sendAudioAsVoice = false;
+    public static void sendAudioAsVoice() { sendAudioAsVoice = true; }
     public static boolean stopVisualMessageAutoAdvance = false;
     public static void stopVisualMessageAutoAdvance() { stopVisualMessageAutoAdvance = true; }
     public static boolean exactLastActive = false;
     public static void exactLastActive() { exactLastActive = true; }
     public static boolean activityAlerts = false;
     public static void activityAlerts() { activityAlerts = true; }
-    public static boolean dmSection(){ return markChatAsRead || unlimitedReplaysOnEphemeralMedia || saveDeletedMessages || dmMediaVault || inboxLock || hiddenChats || pinRecipients || disableDisappearingMessagesGesture || sendKeyboardGifs || stopVisualMessageAutoAdvance || exactLastActive || activityAlerts ;}
+    public static boolean dmSection(){ return markChatAsRead || unlimitedReplaysOnEphemeralMedia || saveDeletedMessages || dmMediaVault || inboxLock || hiddenChats || pinRecipients || disableDisappearingMessagesGesture || sendKeyboardGifs || sendAudioAsVoice || stopVisualMessageAutoAdvance || exactLastActive || activityAlerts ;}
 
     //Story section
     public static boolean customiseStoryTimestamp = false;
@@ -495,6 +497,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_unlimited_replays"),SettingsStatus.unlimitedReplaysOnEphemeralMedia);
         FLAGS.put(str("spookd_disable_disappearing_messages_gesture"), SettingsStatus.disableDisappearingMessagesGesture);
         FLAGS.put(str("spookd_send_keyboard_gifs"), SettingsStatus.sendKeyboardGifs);
+        FLAGS.put(str("spookd_send_audio_as_voice"), SettingsStatus.sendAudioAsVoice);
         FLAGS.put(str("spookd_stop_visual_message_auto_advance"), SettingsStatus.stopVisualMessageAutoAdvance);
         FLAGS.put(str("spookd_mark_visual_messages_seen_manually"), SettingsStatus.markVisualMessagesSeen);
         FLAGS.put(str("spookd_exact_last_active"), SettingsStatus.exactLastActive);

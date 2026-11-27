@@ -112,6 +112,7 @@ public class Settings {
     public static final BooleanSetting UNLIMITED_REPLAYS = new BooleanSetting("unlimited_replays", false, REQUIRED);
     public static final BooleanSetting DISABLE_DISAPPEARING_MESSAGES_GESTURE = new BooleanSetting("disable_disappearing_messages_gesture", false, REQUIRED);
     public static final BooleanSetting SEND_KEYBOARD_GIFS = new BooleanSetting("send_keyboard_gifs", true, NOT_REQUIRED);
+    public static final BooleanSetting SEND_AUDIO_AS_VOICE = new BooleanSetting("send_audio_as_voice", false, NOT_REQUIRED);
     public static final BooleanSetting EPHEMERAL_MEDIA_CAPTION = new BooleanSetting("ephemeral_media_caption", false, NOT_REQUIRED);
     public static final BooleanSetting STOP_VISUAL_MESSAGE_AUTO_ADVANCE = new BooleanSetting("stop_visual_message_auto_advance", false, NOT_REQUIRED);
     public static final BooleanSetting MARK_VISUAL_MESSAGES_SEEN_MANUALLY = new BooleanSetting("mark_visual_messages_seen_manually", false, NOT_REQUIRED);
