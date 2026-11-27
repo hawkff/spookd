@@ -14,10 +14,13 @@ import android.content.ClipData;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.provider.DocumentsContract;
+import android.provider.OpenableColumns;
+import android.webkit.MimeTypeMap;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,6 +50,7 @@ public final class GalleryBackup {
     private static final String MODE = "mode";
     private static final int EXPORT = 0;
     private static final int IMPORT = 1;
+    private static final int IMPORT_FILES = 2;
     // Providers label zip files differently.
     private static final String[] ARCHIVE_TYPES = {"application/zip", "application/x-zip-compressed",
             "application/octet-stream"};
@@ -81,7 +85,8 @@ public final class GalleryBackup {
      * opens and {@code onReturned} once it closed; either may be null.
      */
     static void choose(Activity activity, Runnable onPicking, Runnable onReturned) {
-        String[] labels = {str("spookd_gallery_backup_export"), str("spookd_gallery_backup_import")};
+        String[] labels = {str("spookd_gallery_backup_export"), str("spookd_gallery_backup_import"),
+                str("spookd_gallery_import_files")};
         new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                 .setTitle(str("spookd_gallery_backup"))
                 .setItems(labels, (d, which) -> pick(activity, which, onPicking, onReturned))
@@ -112,8 +117,10 @@ public final class GalleryBackup {
             return new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
                     .setType("application/zip").putExtra(Intent.EXTRA_TITLE, "spookd_gallery_" + day + ".zip");
         }
-        return new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
-                .setType("*/*").putExtra(Intent.EXTRA_MIME_TYPES, ARCHIVE_TYPES);
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");
+        if (mode == IMPORT) return intent.putExtra(Intent.EXTRA_MIME_TYPES, ARCHIVE_TYPES);
+        return intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*", "video/*"})
+                .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
     }
 
     private static List<Uri> uris(Intent data) {
@@ -137,7 +144,8 @@ public final class GalleryBackup {
         WORK.execute(() -> {
             try {
                 if (mode == EXPORT) export(app, uris.get(0));
-                else importArchive(app, uris.get(0));
+                else if (mode == IMPORT) importArchive(app, uris.get(0));
+                else importFiles(app, uris);
             } catch (Exception e) {
                 Logger.printException(() -> "Gallery backup failed", e);
                 Utils.showToastLong(str("spookd_gallery_action_failed"));
@@ -182,6 +190,53 @@ public final class GalleryBackup {
             return;
         }
         Utils.showToastLong(str("spookd_gallery_import_done", result.imported, result.duplicates, result.failed));
+    }
+
+    /** Work thread: copies picked photos and videos into the Imported source, owner unknown. */
+    private static void importFiles(Context app, List<Uri> uris) {
+        ContentResolver resolver = app.getContentResolver();
+        GalleryStore store = GalleryStore.get();
+        GalleryArchive.Duplicates duplicates = new GalleryArchive.Duplicates(
+                store.list(null, null, false, null, GalleryStore.SORT_NEWEST));
+        long epoch = store.clearEpoch();
+        BiConsumer<Integer, Integer> progress = progress(app, str("spookd_gallery_importing"));
+        GalleryArchive.Result result = new GalleryArchive.Result();
+        for (int i = 0; i < uris.size(); i++) {
+            Uri uri = uris.get(i);
+            try {
+                String mime = resolver.getType(uri);
+                String kind = mime == null ? null : mime.startsWith("image/") ? GalleryItem.PHOTO
+                        : mime.startsWith("video/") ? GalleryItem.VIDEO : null;
+                String name = kind == null ? null : GalleryArchive.importedName(displayName(resolver, uri),
+                        MimeTypeMap.getSingleton().getExtensionFromMimeType(mime), kind);
+                if (name == null) {
+                    result.failed++;
+                } else {
+                    try (InputStream in = resolver.openInputStream(uri)) {
+                        if (in == null) throw new IOException("Cannot read a picked file");
+                        GalleryItem item = new GalleryItem(GalleryTab.IMPORTED, kind, null, null, null, null, null, null);
+                        long id = GalleryArchive.add(store, duplicates, epoch, in, item,
+                                GalleryArchive.IMPORTED_FOLDER, name, null);
+                        if (id == -1) result.duplicates++;
+                        else result.imported++;
+                    }
+                }
+            } catch (Exception e) {
+                result.failed++;
+                Logger.printException(() -> "Gallery import: cannot copy a picked file", e);
+            }
+            progress.accept(i + 1, uris.size());
+        }
+        Utils.showToastLong(str("spookd_gallery_import_done", result.imported, result.duplicates, result.failed));
+    }
+
+    private static String displayName(ContentResolver resolver, Uri uri) {
+        try (Cursor c = resolver.query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+            if (c != null && c.moveToFirst()) return c.getString(0);
+        } catch (Exception e) {
+            Logger.printInfo(() -> "Gallery import: no file name", e);
+        }
+        return null;
     }
 
     /** Work thread: shows {@code title} now, then (done, total) at most twice a second. */

@@ -43,6 +43,8 @@ final class GalleryArchive {
     static final int SCHEMA = 1;
     static final String MANIFEST = "manifest.json";
     static final String MEDIA = "media/";
+    /** The export subfolder of photos and videos added from Files. */
+    static final String IMPORTED_FOLDER = "Imported";
     static final long MAX_MANIFEST_BYTES = 16L << 20;
     static final int MAX_ITEMS = 50_000;
     static final long MAX_FILE_BYTES = 2L << 30;
@@ -272,6 +274,22 @@ final class GalleryArchive {
         long id = store.publish(part, item, subFolder, fileName, GalleryStore.Conflict.RENAME, epoch, savedAt);
         duplicates.add(size, hash);
         return id;
+    }
+
+    /**
+     * The gallery name of a {@code kind} file picked in Files, keeping its name when its suffix is a
+     * known type of that kind, else adding the suffix of its {@code mimeExtension}; null when neither is.
+     */
+    static String importedName(String displayName, String mimeExtension, String kind) {
+        String name = displayName == null ? "" : displayName.replaceAll("[\\x00-\\x1f/\\\\]", "_");
+        // The end keeps the suffix.
+        if (name.length() > 200) name = name.substring(name.length() - 200);
+        if (name.isEmpty() || name.equals(".") || name.equals("..")) name = "imported";
+        Set<String> types = GalleryItem.PHOTO.equals(kind) ? PHOTO_TYPES : VIDEO_TYPES;
+        String extension = extension(name);
+        if (extension != null && types.contains(extension)) return name;
+        if (mimeExtension == null || !types.contains(mimeExtension.toLowerCase(Locale.ROOT))) return null;
+        return name + "." + mimeExtension.toLowerCase(Locale.ROOT);
     }
 
     /** The manifest's items; throws {@link InvalidBackup} unless it is this schema's JSON within the limits. */

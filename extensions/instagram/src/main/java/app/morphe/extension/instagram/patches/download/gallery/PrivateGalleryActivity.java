@@ -93,10 +93,12 @@ public final class PrivateGalleryActivity {
     // Serial, so a delete runs before the reload that follows it.
     private static final Executor JOBS = Executors.newSingleThreadExecutor();
     private static final String DMS = "dms";
+    private static final String IMPORTED = "imported";
     /** Null is All; the rest are {@link GalleryStore} sources. */
-    private static final String[] SOURCES = {null, "posts", "reels", "stories", DMS, GalleryStore.SOURCE_UNKNOWN};
+    private static final String[] SOURCES = {null, "posts", "reels", "stories", DMS, GalleryStore.SOURCE_UNKNOWN,
+            IMPORTED};
     private static final String[] TAB_TITLES = {"spookd_all", "spookd_gallery_tab_posts", "spookd_gallery_tab_reels",
-            "spookd_gallery_tab_stories", "spookd_gallery_tab_dms", "spookd_unknown"};
+            "spookd_gallery_tab_stories", "spookd_gallery_tab_dms", "spookd_unknown", "spookd_gallery_tab_imported"};
     private static final String[] SORTS = {GalleryStore.SORT_NEWEST, GalleryStore.SORT_OLDEST,
             GalleryStore.SORT_SIZE, GalleryStore.SORT_USERNAME};
     private static final String[] SORT_TITLES = {"spookd_gallery_sort_newest", "spookd_gallery_sort_oldest",
@@ -249,6 +251,7 @@ public final class PrivateGalleryActivity {
         long bytes;
         boolean dmDownloads;
         boolean unknownDownloads;
+        boolean importedDownloads;
     }
 
     /**
@@ -266,6 +269,7 @@ public final class PrivateGalleryActivity {
             out.bytes = totals[1];
             out.dmDownloads = store.has(DMS);
             out.unknownDownloads = store.has(GalleryStore.SOURCE_UNKNOWN);
+            out.importedDownloads = store.has(IMPORTED);
             for (GalleryStore.Entry entry : store.list(source, kind, favoritesOnly, username, sort)) {
                 out.items.add(new Item(entry));
             }
@@ -312,6 +316,7 @@ public final class PrivateGalleryActivity {
         private List<Item> list = Collections.emptyList();
         private boolean dmDownloads;
         private boolean unknownDownloads;
+        private boolean importedDownloads;
         private String summaryText = "";
         /** Null is All. */
         private String source;
@@ -627,6 +632,7 @@ public final class PrivateGalleryActivity {
             list = loaded.items;
             dmDownloads = loaded.dmDownloads;
             unknownDownloads = loaded.unknownDownloads;
+            importedDownloads = loaded.importedDownloads;
             selected.clear();
             selecting = false;
             summaryText = String.format(Locale.getDefault(), str("spookd_gallery_summary"), loaded.count,
@@ -644,6 +650,7 @@ public final class PrivateGalleryActivity {
         // DM downloads exist without the vault patch, so their rows keep the tab.
         private boolean shown(String tab) {
             if (DMS.equals(tab)) return SettingsStatus.dmMediaVault || dmDownloads;
+            if (IMPORTED.equals(tab)) return importedDownloads;
             return !GalleryStore.SOURCE_UNKNOWN.equals(tab) || unknownDownloads;
         }
 

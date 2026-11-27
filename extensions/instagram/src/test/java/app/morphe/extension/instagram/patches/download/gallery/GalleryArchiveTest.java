@@ -196,6 +196,42 @@ public final class GalleryArchiveTest {
         assertFalse(new File(tmp.getRoot(), "c.jpg").exists());
     }
 
+    @Test
+    public void filesFromFilesKeepAKnownNameOrGetTheirTypesSuffix() throws Exception {
+        assertEquals("IMG_1.JPG", GalleryArchive.importedName("IMG_1.JPG", "jpg", GalleryItem.PHOTO));
+        assertEquals("clip.mov", GalleryArchive.importedName("clip.mov", "mp4", GalleryItem.VIDEO));
+        assertEquals("clip.mp4", GalleryArchive.importedName("clip", "mp4", GalleryItem.VIDEO));
+        assertEquals("photo.php.jpg", GalleryArchive.importedName("photo.php", "jpg", GalleryItem.PHOTO));
+        assertEquals("_.._x.png", GalleryArchive.importedName("/../x.png", "png", GalleryItem.PHOTO));
+        assertEquals("imported.webp", GalleryArchive.importedName(null, "webp", GalleryItem.PHOTO));
+        assertNull(GalleryArchive.importedName("notes.txt", "txt", GalleryItem.PHOTO));
+        assertNull(GalleryArchive.importedName("clip.jpg", null, GalleryItem.VIDEO));
+    }
+
+    @Test
+    public void aPickedFileIsAddedToImportedUnlessItsBytesAreSaved() throws Exception {
+        GalleryArchive.Duplicates duplicates = new GalleryArchive.Duplicates(Collections.emptyList());
+        GalleryItem item = new GalleryItem(GalleryTab.IMPORTED, GalleryItem.PHOTO, null, null, null, null, null, null);
+
+        long id = GalleryArchive.add(store, duplicates, store.clearEpoch(), stream("picked"), item,
+                GalleryArchive.IMPORTED_FOLDER, "a.jpg", null);
+        long again = GalleryArchive.add(store, duplicates, store.clearEpoch(), stream("picked"), item,
+                GalleryArchive.IMPORTED_FOLDER, "b.jpg", null);
+
+        assertTrue(id > 0);
+        assertEquals(-1, again);
+        List<GalleryStore.Entry> entries = store.list("imported", null, false, null, GalleryStore.SORT_NEWEST);
+        assertEquals(1, entries.size());
+        assertEquals("imported", entries.get(0).source);
+        assertNull(entries.get(0).item.ownerUsername);
+        assertEquals(NOW, entries.get(0).savedAt);
+        assertEquals("picked", read(entries.get(0).file));
+    }
+
+    private static ByteArrayInputStream stream(String content) {
+        return new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
+    }
+
     private long save(GalleryItem item, String subFolder, String fileName, String content) throws IOException {
         File part = store.partFile();
         Files.write(part.toPath(), content.getBytes(StandardCharsets.UTF_8));

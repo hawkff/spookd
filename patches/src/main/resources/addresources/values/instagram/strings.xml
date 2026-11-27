@@ -690,13 +690,15 @@
     <string name="spookd_gallery_no_matches">Nothing matches these filters.</string>
     <string name="spookd_gallery_delete_selected_confirm">Delete from the private gallery? Items: %1$d</string>
     <string name="spookd_gallery_backup">Back up and import gallery</string>
-    <string name="spookd_gallery_backup_desc">Saves your gallery downloads with their details to one file you choose, or adds a backup back to the gallery, after you confirm your screen lock. Saved DM media is not included: it is encrypted for this device only.</string>
+    <string name="spookd_gallery_backup_desc">Saves your gallery downloads with their details to one file you choose, adds a backup back to the gallery, or adds photos and videos from Files, after you confirm your screen lock. Saved DM media is not included: it is encrypted for this device only.</string>
     <string name="spookd_gallery_backup_export">Back up gallery</string>
     <string name="spookd_gallery_backup_running">Backing up the gallery…</string>
     <string name="spookd_gallery_backup_progress">%1$d of %2$d</string>
     <string name="spookd_gallery_backup_done">Backed up %1$d items. Saved DM media is not included.</string>
     <string name="spookd_gallery_backup_failed">Backup failed. No backup file was kept.</string>
     <string name="spookd_gallery_backup_import">Import a backup</string>
+    <string name="spookd_gallery_import_files">Import photos and videos</string>
+    <string name="spookd_gallery_tab_imported">Imported</string>
     <string name="spookd_gallery_importing">Importing into the gallery…</string>
     <string name="spookd_gallery_import_done">Imported %1$d. Already in the gallery: %2$d. Not imported: %3$d.</string>
     <string name="spookd_gallery_import_stopped">Import stopped. Imported %1$d. Already in the gallery: %2$d. Not imported: %3$d.</string>
