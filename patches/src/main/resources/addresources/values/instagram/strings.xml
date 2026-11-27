@@ -478,6 +478,7 @@
     <string name="spookd_view_story_mentions_count">View story mentions (%1$d)</string>
     <string name="spookd_vsm_title">Story mentions</string>
     <string name="spookd_vsm_no_mentions">No mentions on this story</string>
+    <string name="spookd_username_copied">Copied @%1$s</string>
     <string name="spookd_mark_story_seen">Mark as seen</string>
     <string name="spookd_story_seen_pending">Marking as seen</string>
     <string name="spookd_story_seen_sent">Marked as seen</string>
