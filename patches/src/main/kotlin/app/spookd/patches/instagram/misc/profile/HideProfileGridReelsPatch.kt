@@ -174,8 +174,13 @@ val hideProfileGridReelsPatch =
                     name = failed.name,
                     returnType = "Z",
                     parameters = listOf(),
-                    custom = { _, classDef -> loader in classDef.interfaces && classDef.fields.any { it.type == USER_DETAIL } },
-                ).match().method.instructions.mapNotNull { it.getReference<Reference>() }
+                    // The profile tab's own loader holds both the tab and the profile screen.
+                    custom = { _, classDef ->
+                        loader in classDef.interfaces &&
+                            classDef.fields.any { it.type == USER_DETAIL } &&
+                            classDef.fields.any { it.type == PROFILE_MEDIA_TAB }
+                    },
+                ).matchAll(1..1).single().method.instructions.mapNotNull { it.getReference<Reference>() }
                 val tabField = failedCheck.filterIsInstance<FieldReference>().first { it.definingClass == PROFILE_MEDIA_TAB }
                 val tabKeyField = failedCheck.filterIsInstance<FieldReference>().first { it.definingClass == tabField.type }
                 val feedSource = failedCheck.filterIsInstance<MethodReference>().first { it.definingClass == USER_DETAIL }
