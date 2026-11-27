@@ -6,6 +6,7 @@
 
 package app.spookd.patches.instagram.misc.ghostMode
 
+import app.spookd.patches.instagram.misc.settings.accountSettingsPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.USER_SESSION_CLASS
 import app.spookd.patches.instagram.utils.enableSettings
@@ -25,7 +26,8 @@ val markAsReadAfterReplyPatch = patch(
         "while viewing DMs anonymously.",
 ) {
     compatibleWith(COMPATIBILITY_INSTAGRAM)
-    dependsOn(viewDmAnonymouslyPatch)
+    // Start typing reads the current account from the owner key that per-account settings keep.
+    dependsOn(viewDmAnonymouslyPatch, accountSettingsPatch)
 
     execute {
         val seen = DMSeenFingerprint.method
