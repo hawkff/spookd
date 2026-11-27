@@ -40,7 +40,9 @@ import java.util.Map;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import app.morphe.extension.crimera.constants.ExtensionStrings;
 import app.morphe.extension.crimera.PikoUtils;
@@ -55,10 +57,17 @@ public class MediaDownloader {
     private static final Set<String> ACTIVE_DESTINATIONS = new HashSet<>();
     private final Context context;
     private final NotificationManager notificationManager;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    // One worker per downloader that ends once idle, so a one-off downloader leaves no thread behind.
+    private final ExecutorService executor = idleEndingExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     // The running request's quiet flag; requests on one downloader run one at a time.
     private volatile boolean quiet;
+
+    private static ExecutorService idleEndingExecutor() {
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+        executor.allowCoreThreadTimeOut(true);
+        return executor;
+    }
 
     public MediaDownloader(Context context) {
         Context resolvedContext = context != null ? context : Utils.getContext();
