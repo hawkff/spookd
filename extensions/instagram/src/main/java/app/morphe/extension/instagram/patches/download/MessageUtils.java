@@ -57,6 +57,7 @@ public class MessageUtils {
 
         } catch (Exception e) {
             app.morphe.extension.crimera.PikoUtils.logger(e);
+            Utils.showToastShort(str("spookd_download_failed_media"));
         }
         return false;
     }
