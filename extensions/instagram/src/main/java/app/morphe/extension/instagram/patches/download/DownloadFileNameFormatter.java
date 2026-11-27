@@ -71,6 +71,12 @@ public final class DownloadFileNameFormatter {
         return limitFilenameLength(head, mediaId + normalizeExtension(extension));
     }
 
+    /** {@code name} with characters a file name cannot hold replaced, shortened to fit next to {@code extension}. */
+    public static String fileName(String name, String extension) {
+        String safe = name == null ? "" : sanitize(name);
+        return limitFilenameLength(safe.isEmpty() ? "download" : safe, normalizeExtension(extension));
+    }
+
     public static boolean isValidTemplate(String template) {
         if (template == null
                 || template.trim().isEmpty()

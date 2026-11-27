@@ -656,6 +656,7 @@
     <string name="spookd_gallery_export">Export</string>
     <string name="spookd_gallery_share">Share</string>
     <string name="spookd_gallery_open_post">Open post</string>
+    <string name="spookd_gallery_open_audio_page">Open audio page</string>
     <string name="spookd_gallery_open_profile">Open profile</string>
     <string name="spookd_gallery_export_all">Export all</string>
     <string name="spookd_gallery_export_all_confirm">Copy everything shown here to your download folder? Items: %1$d</string>

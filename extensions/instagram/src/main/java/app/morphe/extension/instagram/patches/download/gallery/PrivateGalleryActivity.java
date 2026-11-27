@@ -73,6 +73,7 @@ import app.morphe.extension.instagram.patches.dm.vault.MediaVault;
 import app.morphe.extension.instagram.patches.dm.vault.PlainMedia;
 import app.morphe.extension.instagram.patches.dm.vault.VaultViewer;
 import app.morphe.extension.instagram.patches.dm.vault.ViewerMedia;
+import app.morphe.extension.instagram.patches.download.AudioPageDownload;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.instagram.patches.download.gallery.picker.GalleryPicker;
 import app.morphe.extension.instagram.settings.SettingsStatus;
@@ -1157,7 +1158,8 @@ public final class PrivateGalleryActivity {
             labels.add(str("spookd_gallery_export"));
             actions.add(() -> export(items));
             if (items.size() == 1 && !TextUtils.isEmpty(item.link)) {
-                labels.add(str("spookd_gallery_open_post"));
+                labels.add(str(AudioPageDownload.isAudioPageLink(item.link)
+                        ? "spookd_gallery_open_audio_page" : "spookd_gallery_open_post"));
                 actions.add(() -> view(item.link));
             }
             if (items.size() == 1 && !item.unknownOwner()) {
