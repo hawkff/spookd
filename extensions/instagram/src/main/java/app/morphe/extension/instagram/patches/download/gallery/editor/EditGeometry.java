@@ -2,6 +2,7 @@ package app.morphe.extension.instagram.patches.download.gallery.editor;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.DoubleFunction;
 import java.util.regex.Pattern;
 
 /**
@@ -76,40 +77,46 @@ final class EditGeometry {
                          double w, double h, double degrees) {
         min = Math.min(min, Math.min(r[2] - r[0], r[3] - r[1]));
         if (handle == MOVE || ratio <= 0) {
-            double[] across = farthest(r, handle & (LEFT | RIGHT), dx, 0, 0, min, w, h, degrees);
-            return farthest(across, handle & (TOP | BOTTOM), 0, dy, 0, min, w, h, degrees);
+            int across = handle & (LEFT | RIGHT);
+            int down = handle & (TOP | BOTTOM);
+            double[] sideways = across == 0 ? r
+                    : farthest(r, t -> moved(r, across, dx * t, 0, 0), min, w, h, degrees);
+            return down == 0 ? sideways
+                    : farthest(sideways, t -> moved(sideways, down, 0, dy * t, 0), min, w, h, degrees);
         }
-        return farthest(r, handle, dx, dy, ratio, min, w, h, degrees);
+        return farthest(r, t -> moved(r, handle, dx * t, dy * t, ratio), min, w, h, degrees);
     }
 
-    /** {@code r} {@code dWidth} wider and {@code dHeight} taller about its middle (negative narrows), clamped like {@link #drag}. */
+    /**
+     * {@code r} {@code dWidth} wider and {@code dHeight} taller about its middle (negative narrows), as far
+     * as both sides can go together, so the middle stays put; a {@code ratio} above 0 sizes the other side.
+     */
     static double[] grown(double[] r, double dWidth, double dHeight, double ratio, double min,
                           double w, double h, double degrees) {
-        double[] out = r;
-        if (dWidth != 0) {
-            out = drag(out, LEFT, -dWidth / 2, 0, ratio, min, w, h, degrees);
-            out = drag(out, RIGHT, dWidth / 2, 0, ratio, min, w, h, degrees);
-        }
-        if (dHeight != 0) {
-            out = drag(out, TOP, 0, -dHeight / 2, ratio, min, w, h, degrees);
-            out = drag(out, BOTTOM, 0, dHeight / 2, ratio, min, w, h, degrees);
-        }
-        return out;
+        double floor = Math.min(min, Math.min(r[2] - r[0], r[3] - r[1]));
+        double cx = (r[0] + r[2]) / 2;
+        double cy = (r[1] + r[3]) / 2;
+        return farthest(r, t -> {
+            double width = r[2] - r[0] + dWidth * t;
+            double height = r[3] - r[1] + dHeight * t;
+            if (ratio > 0 && dWidth != 0) height = width / ratio;
+            else if (ratio > 0) width = height * ratio;
+            return new double[]{cx - width / 2, cy - height / 2, cx + width / 2, cy + height / 2};
+        }, floor, w, h, degrees);
     }
 
-    /** The rect of the largest share of the drag that is still valid; {@code r} itself when none is. */
-    private static double[] farthest(double[] r, int handle, double dx, double dy, double ratio, double min,
+    /** {@code at(1)} when valid, else {@code at} of the largest valid share; {@code start} when none is. */
+    private static double[] farthest(double[] start, DoubleFunction<double[]> at, double min,
                                      double w, double h, double degrees) {
-        if (handle == 0) return r;
-        double[] whole = moved(r, handle, dx, dy, ratio);
+        double[] whole = at.apply(1);
         if (valid(whole, min, w, h, degrees)) return whole;
         double low = 0;
         double high = 1;
-        double[] best = r;
+        double[] best = start;
         // Every handle grows or shrinks the rect monotonically, so validity has one boundary along the drag.
         for (int i = 0; i < 24; i++) {
             double mid = (low + high) / 2;
-            double[] candidate = moved(r, handle, dx * mid, dy * mid, ratio);
+            double[] candidate = at.apply(mid);
             if (valid(candidate, min, w, h, degrees)) {
                 low = mid;
                 best = candidate;
@@ -160,11 +167,33 @@ final class EditGeometry {
      * unstraightened crop never reaches past the image, and is at least one pixel.
      */
     static int[] outputRect(double[] r, double baseWidth, double baseHeight, double scale) {
-        int left = (int) Math.round((r[0] + baseWidth / 2) * scale);
-        int top = (int) Math.round((r[1] + baseHeight / 2) * scale);
-        int width = Math.max(1, (int) Math.floor((r[2] - r[0]) * scale + SLACK));
-        int height = Math.max(1, (int) Math.floor((r[3] - r[1]) * scale + SLACK));
-        return new int[]{left, top, left + width, top + height};
+        int[] x = span((r[0] + baseWidth / 2) * scale, (r[2] + baseWidth / 2) * scale, baseWidth * scale);
+        int[] y = span((r[1] + baseHeight / 2) * scale, (r[3] + baseHeight / 2) * scale, baseHeight * scale);
+        return new int[]{x[0], y[0], x[1], y[1]};
+    }
+
+    /**
+     * Whole pixels for {@code start}..{@code end} on an axis of {@code size}: at least one, shifted back
+     * when rounding pushed them past the image or past a straightened crop's own extent.
+     */
+    private static int[] span(double start, double end, double size) {
+        int length = Math.max(1, (int) Math.floor(end - start + SLACK));
+        int low = (int) Math.min(0, Math.floor(start + SLACK));
+        int high = (int) Math.max(Math.floor(size + SLACK), Math.ceil(end - SLACK));
+        int from = Math.max(low, Math.min((int) Math.round(start), high - length));
+        return new int[]{from, from + length};
+    }
+
+    /**
+     * Which edge a touch at {@code p} grabs on one axis of a crop from {@code low} to {@code high}:
+     * up to {@code slop} outside, and inside at most a third of the crop, so a thin crop keeps its
+     * middle for moving. 0 when neither.
+     */
+    static int edgeAt(float p, float low, float high, float slop, int lowEdge, int highEdge) {
+        float inner = Math.min(slop, (high - low) / 3);
+        if (p >= low - slop && p <= low + inner) return lowEdge;
+        if (p >= high - inner && p <= high + slop) return highEdge;
+        return 0;
     }
 
     /** {@code r} after the frame turns 90 degrees clockwise. */

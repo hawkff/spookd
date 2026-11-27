@@ -130,6 +130,31 @@ public final class EditGeometryTest {
     }
 
     @Test
+    public void resizeStepsKeepTheMiddleEvenWhenOneSideStops() {
+        double[] r = {0, -40, 100, 40};
+        assertArrayEquals(new double[]{-100, -40, 200, 40}, EditGeometry.grown(r, 1000, 0, 0, 30, 400, 300, 0), 0.01);
+        assertArrayEquals(new double[]{35, -40, 65, 40}, EditGeometry.grown(r, -500, 0, 0, 30, 400, 300, 0), 0.01);
+        double[] square = EditGeometry.grown(new double[]{100, -50, 200, 50}, 1000, 0, 1, 30, 400, 300, 0);
+        assertEquals(1, width(square) / height(square), 1e-9);
+        assertEquals(150, (square[0] + square[2]) / 2, 1e-9);
+        assertEquals(100, width(square), 0.01);
+    }
+
+    @Test
+    public void aThinCropKeepsItsMiddleForMovingAndBothEdgesForResizing() {
+        int low = EditGeometry.TOP;
+        int high = EditGeometry.BOTTOM;
+        assertEquals(0, EditGeometry.edgeAt(115, 100, 130, 72, low, high));
+        assertEquals(low, EditGeometry.edgeAt(105, 100, 130, 72, low, high));
+        assertEquals(high, EditGeometry.edgeAt(125, 100, 130, 72, low, high));
+        assertEquals(low, EditGeometry.edgeAt(60, 100, 130, 72, low, high));
+        assertEquals(high, EditGeometry.edgeAt(190, 100, 130, 72, low, high));
+        assertEquals(low, EditGeometry.edgeAt(50, 0, 600, 72, low, high));
+        assertEquals(0, EditGeometry.edgeAt(300, 0, 600, 72, low, high));
+        assertEquals(0, EditGeometry.edgeAt(700, 0, 600, 72, low, high));
+    }
+
+    @Test
     public void movingSlidesAlongTheEdgeItHits() {
         double[] moved = EditGeometry.drag(new double[]{-50, -50, 50, 50}, EditGeometry.MOVE, 1000, 10, 1, 30,
                 400, 300, 0);
@@ -184,6 +209,9 @@ public final class EditGeometryTest {
         assertArrayEquals(new int[]{0, 0, 10000, 500}, EditGeometry.outputRect(turnedFull, 20000, 1001, scale));
         assertArrayEquals(new int[]{10, 20, 133, 30},
                 EditGeometry.outputRect(new double[]{-189.6, -130, -66.1, -120}, 400, 300, 1));
+        // A 1.4 pixel high crop flush with the bottom, saved at quarter size, takes the last row.
+        assertArrayEquals(new int[]{11, 24, 13, 25},
+                EditGeometry.outputRect(new double[]{-5, 48.6, 5, 50}, 100, 100, 0.25));
     }
 
     @Test
