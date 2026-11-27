@@ -1223,6 +1223,13 @@ public class ScreenBuilder {
                     Settings.PIP_FOR_VIDEOS
             ));
         }
+        if (SettingsStatus.keepOtherAudio) {
+            addPreference(helper.switchPreference(
+                    str("spookd_keep_other_audio"),
+                    str("spookd_keep_other_audio_desc"),
+                    Settings.KEEP_OTHER_AUDIO
+            ));
+        }
         if (SettingsStatus.improveImageViewing) {
             addPreference(
                     helper.switchPreference(

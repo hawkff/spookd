@@ -354,6 +354,8 @@
     <string name="spookd_reels_auto_scroll_off">Off</string>
     <string name="spookd_pip_for_videos">Picture-in-picture for videos</string>
     <string name="spookd_pip_for_videos_desc">When you leave Instagram, for example with the home gesture, while a Reel or a full-screen feed video plays, it keeps playing in a small window; expand the window to go back. Uses Instagram\'s own picture-in-picture for Reels; it only works if picture-in-picture is allowed for Instagram in Android settings.</string>
+    <string name="spookd_keep_other_audio">Keep other audio playing</string>
+    <string name="spookd_keep_other_audio_desc">Music and other apps keep playing when Instagram opens or plays videos on its own. Instagram takes over the audio only after you turn its sound on, for example with a video\'s sound button.</string>
     <string name="spookd_speed_and_seek">Speed and seek</string>
     <string name="spookd_speed_panel_back">−10 s</string>
     <string name="spookd_speed_panel_forward">+10 s</string>
