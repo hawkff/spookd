@@ -241,6 +241,12 @@ public class HookFlags {
         }
     }
 
+    private static void reelsHoldToPauseFlags() {
+        if (Pref.reelsHoldToPause()) {
+            BOOL_FLAGS.put("118405::3", false); //ig_android_reels_video_controls::long_press_overflow_enabled (Reels long-press menu)
+        }
+    }
+
     private static void reelsAutoScrollFlags() {
         // Off is applied at Instagram's final availability check instead, which a server text setting can also turn on.
         if ("on".equals(Pref.reelsAutoScroll())) {

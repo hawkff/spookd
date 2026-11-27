@@ -1254,6 +1254,13 @@ public class ScreenBuilder {
                     Settings.REELS_AUTO_SCROLL
             ));
         }
+        if (SettingsStatus.reelsHoldToPause) {
+            addPreference(helper.switchPreference(
+                    str("spookd_reels_hold_to_pause"),
+                    str("spookd_reels_hold_to_pause_desc"),
+                    Settings.REELS_HOLD_TO_PAUSE
+            ));
+        }
         // Instagram's PiP view needs Android 15; the switch does nothing below it.
         if (SettingsStatus.pipForVideos && Build.VERSION.SDK_INT >= 35) {
             addPreference(helper.switchPreference(

@@ -202,6 +202,10 @@ public class Pref {
         return on(Settings.RESUME_REELS_AFTER_SCROLLING);
     }
 
+    public static boolean reelsHoldToPause() {
+        return on(Settings.REELS_HOLD_TO_PAUSE) && SettingsStatus.reelsHoldToPause;
+    }
+
     public static boolean playbackSpeedControls() {
         return on(Settings.PLAYBACK_SPEED_CONTROLS);
     }

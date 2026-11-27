@@ -135,6 +135,7 @@ public class Settings {
     public static final BooleanSetting REELS_START_MUTED = new BooleanSetting("reels_start_muted", false, NOT_REQUIRED);
     public static final BooleanSetting REELS_STOP_LOOPING = new BooleanSetting("reels_stop_looping", false, NOT_REQUIRED);
     public static final BooleanSetting REELS_TAP_TO_PAUSE = new BooleanSetting("reels_tap_to_pause", false, NOT_REQUIRED);
+    public static final BooleanSetting REELS_HOLD_TO_PAUSE = new BooleanSetting("reels_hold_to_pause", false, REQUIRED);
     public static final BooleanSetting EXPANDED_FEED_VIDEOS_MUTED = new BooleanSetting("expanded_feed_videos_muted", false, NOT_REQUIRED);
     // "default", "on" or "off"; read once at startup into Instagram's flags.
     public static final StringSetting REELS_AUTO_SCROLL = new StringSetting("reels_auto_scroll", "default", REQUIRED);
@@ -273,6 +274,7 @@ public class Settings {
             SHOW_NEW_LABELS.key,
             PROFILE_ANALYZER_AUTO_REFRESH_DAYS.key,
             RESTORE_ACCOUNT_SEARCH.key,
+            REELS_HOLD_TO_PAUSE.key,
             "spookd_report_bug",
             "spookd_request_feature"
     )));
