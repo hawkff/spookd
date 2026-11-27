@@ -26,6 +26,7 @@ import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzerActivity;
 import app.morphe.extension.instagram.patches.dm.DeletedMessagesActivity;
 import app.morphe.extension.instagram.patches.dm.InboxLock;
 import app.morphe.extension.instagram.patches.download.gallery.DownloadHistoryActivity;
+import app.morphe.extension.instagram.patches.download.gallery.GalleryBackup;
 import app.morphe.extension.instagram.patches.download.gallery.PrivateGalleryActivity;
 import app.morphe.extension.instagram.patches.instants.InstantsVaultActivity;
 import app.morphe.extension.instagram.settings.preference.fragments.BackupPrefFragment;
@@ -50,6 +51,7 @@ public class ActivityHook {
     static final String LAUNCH_TYPE_PROFILE_ANALYZER = "profile_analyzer";
     static final String LAUNCH_TYPE_PRIVATE_GALLERY = "private_gallery";
     static final String LAUNCH_TYPE_DOWNLOAD_HISTORY = "download_history";
+    static final String LAUNCH_TYPE_GALLERY_PICKER = "gallery_picker";
 
 
     public static void launchActivity(Context context, Class<?> activityClass) {
@@ -192,6 +194,7 @@ public class ActivityHook {
             case LAUNCH_TYPE_BACKUP:
             case LAUNCH_TYPE_RESTORE:
             case LAUNCH_TYPE_FOLDER_PICKER:
+            case LAUNCH_TYPE_GALLERY_PICKER:
                 if (activity.getWindow() != null) {
                     activity.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
                 }
@@ -218,6 +221,9 @@ public class ActivityHook {
                 break;
             case LAUNCH_TYPE_FOLDER_PICKER:
                 fragment = new FolderPickerFragment();
+                break;
+            case LAUNCH_TYPE_GALLERY_PICKER:
+                fragment = new GalleryBackup.Picker();
                 break;
             default:
                 return;
@@ -265,6 +271,17 @@ public class ActivityHook {
     public static boolean startPrivateGalleryActivity(Context context) {
         Intent intent = createProxyIntent(context);
         intent.putExtra(EXTRA_SPOOKD_LAUNCH_TYPE, LAUNCH_TYPE_PRIVATE_GALLERY);
+        return launchActivity(context, intent);
+    }
+
+    /**
+     * Opens a transparent screen that only hosts the gallery's backup file picker, with
+     * {@code arguments} as the picker's; it is no Inbox lock viewer, so it outlives the picker.
+     */
+    public static boolean startGalleryPicker(Context context, Bundle arguments) {
+        Intent intent = createProxyIntent(context, PROXY_TRANSPARENT_ACTIVITY_CLASS);
+        intent.putExtra(EXTRA_SPOOKD_LAUNCH_TYPE, LAUNCH_TYPE_GALLERY_PICKER);
+        intent.putExtras(arguments);
         return launchActivity(context, intent);
     }
 

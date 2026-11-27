@@ -4,7 +4,6 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Application;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.Notification;
@@ -37,6 +36,7 @@ import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 
 import app.morphe.extension.instagram.patches.dm.InboxLock;
+import app.morphe.extension.instagram.settings.ActivityHook;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
@@ -49,6 +49,8 @@ import app.morphe.extension.shared.Utils;
 public final class GalleryBackup {
     private static final String TAG = "spookd_gallery_backup";
     private static final String MODE = "mode";
+    // Set when the picker has a transparent screen of its own, which closes once the picker is done.
+    private static final String FINISH_HOST = "finish_host";
     private static final int EXPORT = 0;
     private static final int IMPORT = 1;
     private static final int IMPORT_FILES = 2;
@@ -91,7 +93,7 @@ public final class GalleryBackup {
                 .setTitle(str("spookd_gallery_backup"))
                 .setItems(labels, (d, which) -> {
                     if (!askLock) {
-                        pickBelow(activity, which);
+                        pickInHost(activity, which);
                         return;
                     }
                     try {
@@ -108,29 +110,18 @@ public final class GalleryBackup {
     }
 
     /**
-     * Closes the gallery and opens the picker from the screen it returns to: the gallery is closed
+     * Opens the picker in its own transparent screen, then closes the gallery: the gallery is closed
      * on any stop, also by Inbox lock, so it cannot wait for the picker's result itself.
      */
-    private static void pickBelow(Activity gallery, int mode) {
-        Application app = gallery.getApplication();
-        // Only the screen shown right after closing; with none, nothing opens later out of the blue.
-        long until = SystemClock.uptimeMillis() + 2000;
-        app.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
-            @Override public void onActivityCreated(Activity a, Bundle b) {}
-            @Override public void onActivityStarted(Activity a) {}
-            @Override public void onActivityPaused(Activity a) {}
-            @Override public void onActivityStopped(Activity a) {}
-            @Override public void onActivitySaveInstanceState(Activity a, Bundle b) {}
-            @Override public void onActivityDestroyed(Activity a) {}
-
-            @Override
-            public void onActivityResumed(Activity a) {
-                if (a == gallery) return;
-                app.unregisterActivityLifecycleCallbacks(this);
-                if (SystemClock.uptimeMillis() <= until) pick(a, mode);
-            }
-        });
-        gallery.finish();
+    private static void pickInHost(Activity gallery, int mode) {
+        Bundle args = new Bundle();
+        args.putInt(MODE, mode);
+        args.putBoolean(FINISH_HOST, true);
+        if (ActivityHook.startGalleryPicker(gallery, args)) {
+            gallery.finish();
+        } else {
+            Utils.showToastShort(str("spookd_gallery_action_failed"));
+        }
     }
 
     private static void pick(Activity activity, int mode) {
@@ -178,8 +169,9 @@ public final class GalleryBackup {
     /**
      * Main thread: hands the picked documents to the work thread. Without a notification that can
      * show, a dialog on {@code host} shows the progress instead; closing it leaves the work running.
+     * Returns whether that dialog shows; with {@code finishHost} the host then closes with the dialog.
      */
-    private static void start(Activity host, int mode, List<Uri> uris) {
+    private static boolean start(Activity host, int mode, List<Uri> uris, boolean finishHost) {
         Context app = host.getApplicationContext();
         String title = str(mode == EXPORT ? "spookd_gallery_backup_running" : "spookd_gallery_importing");
         AlertDialog dialog = null;
@@ -188,7 +180,11 @@ public final class GalleryBackup {
         } else {
             try {
                 dialog = new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(host))
-                        .setTitle(title).setMessage(title).show();
+                        .setTitle(title).setMessage(title)
+                        .setOnDismissListener(d -> {
+                            if (finishHost) host.finish();
+                        })
+                        .show();
             } catch (Exception e) {
                 Logger.printInfo(() -> "Gallery backup: no progress dialog", e);
                 Utils.showToastShort(title);
@@ -208,6 +204,7 @@ public final class GalleryBackup {
                 cancelProgress(app, shown);
             }
         });
+        return shown != null;
     }
 
     /** Main thread: whether the progress notification can show, its channel included; creates the channel. */
@@ -375,7 +372,7 @@ public final class GalleryBackup {
                 Logger.printException(() -> "Gallery backup: no file picker", e);
                 Utils.showToastShort(str(e instanceof ActivityNotFoundException
                         ? "spookd_file_picker_unavailable" : "spookd_gallery_action_failed"));
-                done();
+                done(false);
             }
         }
 
@@ -385,15 +382,18 @@ public final class GalleryBackup {
             if (requestCode != REQUEST) return;
             List<Uri> picked = resultCode == Activity.RESULT_OK ? uris(data) : Collections.emptyList();
             Activity activity = getActivity();
-            if (!picked.isEmpty() && activity != null) {
-                start(activity, getArguments().getInt(MODE), picked);
-            }
-            done();
+            boolean finishHost = getArguments().getBoolean(FINISH_HOST);
+            boolean dialogShown = !picked.isEmpty() && activity != null
+                    && start(activity, getArguments().getInt(MODE), picked, finishHost);
+            done(dialogShown);
         }
 
-        private void done() {
+        /** Removes this picker; its own transparent screen closes too, unless it shows the progress dialog. */
+        private void done(boolean dialogShown) {
+            Activity activity = getActivity();
             FragmentManager fragments = getFragmentManager();
             if (fragments != null) fragments.beginTransaction().remove(this).commitAllowingStateLoss();
+            if (activity != null && !dialogShown && getArguments().getBoolean(FINISH_HOST)) activity.finish();
         }
     }
 }
