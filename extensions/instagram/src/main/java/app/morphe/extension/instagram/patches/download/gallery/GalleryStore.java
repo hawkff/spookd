@@ -11,6 +11,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -271,20 +272,21 @@ public final class GalleryStore {
      */
     public synchronized List<Entry> list(String source, String kind, boolean favoritesOnly, String username,
                                          String sort) {
-        return list(source, kind, favoritesOnly, username, sort, false, null);
+        return list(source, kind, favoritesOnly, username, sort, false, null, Collections.emptySet());
     }
 
     /**
      * {@link #list(String, String, boolean, String, String)} that with {@code accountOnly} keeps only
      * downloads saved by {@code accountId}: none when it is null, and never one without an account.
+     * All, a null {@code source}, leaves out the {@code hidden} sources.
      */
     public synchronized List<Entry> list(String source, String kind, boolean favoritesOnly, String username,
-                                         String sort, boolean accountOnly, String accountId) {
+                                         String sort, boolean accountOnly, String accountId, Set<String> hidden) {
         recover();
         List<String> args = new ArrayList<>();
         List<Entry> out = new ArrayList<>();
         try (Cursor c = db.rawQuery(listQuery(source, kind, favoritesOnly, username, sort, accountOnly, accountId,
-                args), args.toArray(new String[0]))) {
+                hidden, args), args.toArray(new String[0]))) {
             while (c.moveToNext()) out.add(new Entry(c, dir));
         }
         return out;
@@ -292,8 +294,11 @@ public final class GalleryStore {
 
     /** The query of {@link #list}, adding its arguments to {@code args}. */
     static String listQuery(String source, String kind, boolean favoritesOnly, String username, String sort,
-                            boolean accountOnly, String accountId, List<String> args) {
+                            boolean accountOnly, String accountId, Set<String> hidden, List<String> args) {
         StringBuilder where = new StringBuilder(" WHERE 1").append(sourceWhere(source, args));
+        if (source == null) {
+            for (String other : hidden) where.append(" AND NOT (1").append(sourceWhere(other, args)).append(')');
+        }
         if (accountOnly && accountId == null) {
             where.append(" AND 0");
         } else if (accountOnly) {

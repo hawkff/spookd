@@ -28,7 +28,9 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -573,7 +575,7 @@ public final class GalleryStoreTest {
     private String sortIndex(String source) {
         List<String> args = new ArrayList<>();
         String query = GalleryStore.listQuery(source, null, false, null, GalleryStore.SORT_USERNAME, false, null,
-                args);
+                Collections.emptySet(), args);
         StringBuilder plan = new StringBuilder();
         try (Cursor rows = db.rawQuery("EXPLAIN QUERY PLAN " + query, args.toArray(new String[0]))) {
             while (rows.moveToNext()) plan.append(rows.getString(rows.getColumnCount() - 1)).append('\n');
@@ -638,23 +640,56 @@ public final class GalleryStoreTest {
 
     @Test
     public void thisAccountOnlyKeepsTheCurrentAccountsDownloads() throws Exception {
+        Set<String> none = Collections.emptySet();
         long mine = savedBy("33", GalleryTab.POSTS, "1");
         long other = savedBy("44", GalleryTab.POSTS, "2");
         long unknown = savedBy(null, GalleryTab.REELS, "3");
 
         assertEquals(Arrays.asList(unknown, other, mine),
-                ids(store.list(null, null, false, null, GalleryStore.SORT_NEWEST, false, "33")));
+                ids(store.list(null, null, false, null, GalleryStore.SORT_NEWEST, false, "33", none)));
         assertEquals(Collections.singletonList(mine),
-                ids(store.list(null, null, false, null, GalleryStore.SORT_NEWEST, true, "33")));
+                ids(store.list(null, null, false, null, GalleryStore.SORT_NEWEST, true, "33", none)));
         assertEquals(Collections.singletonList(other),
-                ids(store.list("posts", null, false, "ALI", GalleryStore.SORT_USERNAME, true, "44")));
-        assertTrue(store.list("reels", null, false, null, GalleryStore.SORT_NEWEST, true, "33").isEmpty());
+                ids(store.list("posts", null, false, "ALI", GalleryStore.SORT_USERNAME, true, "44", none)));
+        assertTrue(store.list("reels", null, false, null, GalleryStore.SORT_NEWEST, true, "33", none).isEmpty());
         // An unknown current account matches nothing, not every download.
-        assertTrue(store.list(null, null, false, null, GalleryStore.SORT_NEWEST, true, null).isEmpty());
+        assertTrue(store.list(null, null, false, null, GalleryStore.SORT_NEWEST, true, null, none).isEmpty());
 
         List<String> args = new ArrayList<>();
-        GalleryStore.listQuery("posts", GalleryItem.PHOTO, false, "a", GalleryStore.SORT_NEWEST, true, "33", args);
+        GalleryStore.listQuery("posts", GalleryItem.PHOTO, false, "a", GalleryStore.SORT_NEWEST, true, "33", none,
+                args);
         assertEquals(Arrays.asList("posts", "33", GalleryItem.PHOTO, "%a%"), args);
+    }
+
+    @Test
+    public void hiddenSourcesLeaveAllButKeepTheirOwnTabs() throws Exception {
+        long post = savedBy("33", GalleryTab.POSTS, "1");
+        long reel = savedBy("44", GalleryTab.REELS, "2");
+        clock[0] += 60_000;
+        GalleryItem picture = new GalleryItem(GalleryTab.POSTS, GalleryItem.PHOTO, "bob", null, null, null, "33", null);
+        long unknown = store.publish(part("3"), picture, null, "bob.jpg", false);
+        long imported = savedBy(null, GalleryTab.IMPORTED, "4");
+
+        Set<String> postsAndImported = new LinkedHashSet<>(Arrays.asList("posts", "imported"));
+        assertEquals(Arrays.asList(unknown, reel), ids(all(false, postsAndImported)));
+        assertEquals(Arrays.asList(imported, reel, post),
+                ids(all(false, Collections.singleton(GalleryStore.SOURCE_UNKNOWN))));
+        assertEquals(Arrays.asList(unknown, post), ids(all(true, Collections.singleton("reels"))));
+        // A hidden source's own tab still lists it.
+        assertEquals(Collections.singletonList(post), ids(store.list("posts", null, false, null,
+                GalleryStore.SORT_NEWEST, false, null, postsAndImported)));
+        assertEquals(Collections.singletonList(imported), ids(store.list("imported", null, false, null,
+                GalleryStore.SORT_NEWEST, false, null, postsAndImported)));
+
+        List<String> args = new ArrayList<>();
+        GalleryStore.listQuery(null, GalleryItem.VIDEO, false, null, GalleryStore.SORT_NEWEST, true, "33",
+                postsAndImported, args);
+        assertEquals(Arrays.asList("posts", "imported", "33", GalleryItem.VIDEO), args);
+    }
+
+    /** All, newest first, without {@code hidden}; with {@code accountOnly} only what account 33 saved. */
+    private List<GalleryStore.Entry> all(boolean accountOnly, Set<String> hidden) {
+        return store.list(null, null, false, null, GalleryStore.SORT_NEWEST, accountOnly, "33", hidden);
     }
 
     /** A photo of alice with a link, saved by {@code accountId} one minute after the previous download. */

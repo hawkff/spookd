@@ -267,10 +267,11 @@ public final class PrivateGalleryActivity {
 
     /**
      * Runs on the jobs thread: applies the cleanup when asked, then lists what the view shows. A null
-     * {@code source} is All; vault items are matched and merged here, downloads in SQL.
+     * {@code source} is All, without the {@code hidden} sources; vault items are matched and merged here,
+     * downloads in SQL.
      */
     private static Loaded load(boolean prune, String source, String kind, boolean favoritesOnly, String username,
-                               String sort, boolean accountOnly) {
+                               String sort, boolean accountOnly, Set<String> hidden) {
         Loaded out = new Loaded();
         String account = null;
         try {
@@ -284,7 +285,7 @@ public final class PrivateGalleryActivity {
             out.unknownDownloads = store.has(GalleryStore.SOURCE_UNKNOWN);
             out.importedDownloads = store.has(IMPORTED);
             for (GalleryStore.Entry entry : store.list(source, kind, favoritesOnly, username, sort, accountOnly,
-                    account)) {
+                    account, hidden)) {
                 out.items.add(new Item(entry));
             }
         } catch (Exception e) {
@@ -292,7 +293,7 @@ public final class PrivateGalleryActivity {
         }
         if (SettingsStatus.dmMediaVault) {
             try {
-                boolean shown = source == null || DMS.equals(source);
+                boolean shown = DMS.equals(source) || (source == null && !hidden.contains(DMS));
                 Set<Long> favorites = Collections.emptySet();
                 if (shown) {
                     try {
@@ -338,6 +339,8 @@ public final class PrivateGalleryActivity {
         private boolean favoritesOnly;
         /** Only items the current account saved; kept per device. */
         private boolean accountOnly;
+        /** Sources left out of All; kept per device. Replaced, never changed, so a load can read it. */
+        private Set<String> hidden = Collections.emptySet();
         private String username = "";
         private String sort;
         private int columns;
@@ -393,6 +396,7 @@ public final class PrivateGalleryActivity {
             listView = viewPrefs.getBoolean("list", false);
             overlays = viewPrefs.getBoolean("overlays", true);
             accountOnly = viewPrefs.getBoolean("account_only", false);
+            hidden = new HashSet<>(viewPrefs.getStringSet("hidden_sources", Collections.emptySet()));
             String savedSort = viewPrefs.getString("sort", GalleryStore.SORT_NEWEST);
             sort = Arrays.asList(SORTS).contains(savedSort) ? savedSort : GalleryStore.SORT_NEWEST;
             photoLabel = str("spookd_media_photo");
@@ -634,8 +638,9 @@ public final class PrivateGalleryActivity {
             String username = this.username;
             String sort = this.sort;
             boolean accountOnly = this.accountOnly;
+            Set<String> hidden = this.hidden;
             JOBS.execute(() -> {
-                Loaded loaded = load(prune, source, kind, favoritesOnly, username, sort, accountOnly);
+                Loaded loaded = load(prune, source, kind, favoritesOnly, username, sort, accountOnly, hidden);
                 ui.post(() -> {
                     if (!closed && generation == loads) show(loaded);
                 });
@@ -699,7 +704,8 @@ public final class PrivateGalleryActivity {
             adapter = null;
             updateSelection();
             if (list.isEmpty()) {
-                boolean filtered = kind != null || favoritesOnly || accountOnly || !username.isEmpty();
+                boolean filtered = kind != null || favoritesOnly || accountOnly || !username.isEmpty()
+                        || (source == null && !hidden.isEmpty());
                 content.addView(message(str(filtered ? "spookd_gallery_no_matches" : "spookd_gallery_empty")));
                 return;
             }
@@ -834,8 +840,8 @@ public final class PrivateGalleryActivity {
 
         private void chooseView() {
             int choices = MAX_COLUMNS - MIN_COLUMNS + 1;
-            String[] labels = new String[choices + 2];
-            boolean[] checked = new boolean[choices + 2];
+            String[] labels = new String[choices + 3];
+            boolean[] checked = new boolean[choices + 3];
             for (int i = 0; i < choices; i++) {
                 labels[i] = str("spookd_gallery_columns", MIN_COLUMNS + i);
                 checked[i] = !listView && columns == MIN_COLUMNS + i;
@@ -844,7 +850,13 @@ public final class PrivateGalleryActivity {
             checked[choices] = listView;
             labels[choices + 1] = str("spookd_gallery_overlays");
             checked[choices + 1] = overlays;
+            labels[choices + 2] = hidden.isEmpty() ? str("spookd_gallery_hidden_sources")
+                    : str("spookd_gallery_hidden_sources") + " (" + hidden.size() + ")";
             choose(labels, checked, which -> {
+                if (which == choices + 2) {
+                    chooseHidden();
+                    return;
+                }
                 if (which == choices + 1) {
                     overlays = !overlays;
                     viewPrefs.edit().putBoolean("overlays", overlays).apply();
@@ -856,6 +868,28 @@ public final class PrivateGalleryActivity {
                 if (!listView) setColumns(MIN_COLUMNS + which);
                 rebuildContent();
             });
+        }
+
+        /** Main thread: each checked source is left out of All; its own tab still lists it. */
+        private void chooseHidden() {
+            String[] sources = Arrays.copyOfRange(SOURCES, 1, SOURCES.length);
+            String[] labels = Arrays.copyOfRange(tabLabels, 1, tabLabels.length);
+            boolean[] checked = new boolean[sources.length];
+            for (int i = 0; i < sources.length; i++) checked[i] = hidden.contains(sources[i]);
+            new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
+                    .setTitle(str("spookd_gallery_hidden_sources"))
+                    .setMultiChoiceItems(labels, checked, (d, which, on) -> checked[which] = on)
+                    .setPositiveButton(str("spookd_ok"), (d, which) -> {
+                        Set<String> chosen = new HashSet<>();
+                        for (int i = 0; i < sources.length; i++) {
+                            if (checked[i]) chosen.add(sources[i]);
+                        }
+                        hidden = chosen;
+                        viewPrefs.edit().putStringSet("hidden_sources", chosen).apply();
+                        if (source == null) reload(false);
+                    })
+                    .setNegativeButton(str("spookd_cancel"), null)
+                    .show();
         }
 
         private void startSelection(Item item) {
