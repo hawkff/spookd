@@ -37,6 +37,7 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.lang.reflect.Constructor;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -59,6 +60,8 @@ public final class InstagramPreferenceStyle {
     private static final String TAG_TRAILING = "spookd_instagram_pref_trailing";
     private static final String IGDS_SWITCH_CLASS_NAME =
             "com.instagram.igds.components.switchbutton.IgdsSwitch";
+    // Looked up once; the app has a single class loader.
+    private static volatile Constructor<? extends CompoundButton> igdsSwitchConstructor;
 
     public static final int TRAILING_NONE = 0;
     public static final int TRAILING_SWITCH = 1;
@@ -661,12 +664,15 @@ public final class InstagramPreferenceStyle {
 
     private static CompoundButton createNativeSwitch(Context context) {
         try {
-            CompoundButton switchView = Class
-                    .forName(IGDS_SWITCH_CLASS_NAME, true, context.getClassLoader())
-                    .asSubclass(CompoundButton.class)
-                    .getConstructor(Context.class)
-                    .newInstance(context);
-            return switchView;
+            Constructor<? extends CompoundButton> constructor = igdsSwitchConstructor;
+            if (constructor == null) {
+                constructor = Class
+                        .forName(IGDS_SWITCH_CLASS_NAME, true, context.getClassLoader())
+                        .asSubclass(CompoundButton.class)
+                        .getConstructor(Context.class);
+                igdsSwitchConstructor = constructor;
+            }
+            return constructor.newInstance(context);
         } catch (ReflectiveOperationException | ClassCastException exception) {
             throw new IllegalStateException("Unable to create Instagram's IgdsSwitch", exception);
         }
