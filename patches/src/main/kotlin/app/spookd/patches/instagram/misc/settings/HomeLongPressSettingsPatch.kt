@@ -83,17 +83,25 @@ internal object ProfileTabLongPressFingerprint : Fingerprint(
 
 /** Hooks every tab but Home; false, with nothing changed, when either hook point has an unexpected shape. */
 private fun installTabShortcuts(tabButton: Match, profileHold: MutableMethod): Boolean {
+    // Any failed check or lookup skips these optional hooks instead of failing the patch.
+    val install = runCatching { planTabShortcuts(tabButton, profileHold) }.getOrNull() ?: return false
+    install()
+    return true
+}
+
+/** Checks every assumption first; the returned edit changes both methods, null changes nothing. */
+private fun planTabShortcuts(tabButton: Match, profileHold: MutableMethod): (() -> Unit)? {
     val builder = tabButton.method
     val viewCall = tabButton.instructionMatches[0]
     val viewResult = tabButton.instructionMatches[1]
     val tabButtonView = viewCall.methodReference
-    val tabButtonRegister = viewCall.getInstruction<FiveRegisterInstruction>().registerC
-    val viewRegister = viewResult.getInstruction<OneRegisterInstruction>().registerA
+    val tabButtonRegister = (viewCall.instruction as? FiveRegisterInstruction)?.registerC ?: return null
+    val viewRegister = (viewResult.instruction as? OneRegisterInstruction)?.registerA ?: return null
     val insertIndex = viewResult.index + 1
     val tabRegister = builder.findFreeRegister(insertIndex, listOf(viewRegister, tabButtonRegister))
     // The tab enum, the builder's third parameter, as the tab button keeps it.
-    val tabField = classDefBy(tabButtonView.definingClass).fields
-        .singleOrNull { it.type == builder.parameterTypes[2].toString() }
+    val tabType = builder.parameterTypes.getOrNull(2)?.toString() ?: return null
+    val tabField = classDefBy(tabButtonView.definingClass).fields.singleOrNull { it.type == tabType } ?: return null
     // Every place the builder sets a tab's long-press listener, last first so earlier indices stay valid.
     val listenerSetters = builder.findInstructionIndicesReversed(
         methodCall(
@@ -103,55 +111,57 @@ private fun installTabShortcuts(tabButton: Match, profileHold: MutableMethod): B
             opcode = Opcode.INVOKE_VIRTUAL,
         ),
     ).map { index ->
-        val call = builder.getInstruction<FiveRegisterInstruction>(index)
+        val call = builder.getInstruction(index) as? FiveRegisterInstruction ?: return null
         Triple(index, call, builder.findFreeRegister(index, listOf(call.registerC, call.registerD)))
     }
     val profileTabButtonField = classDefBy(profileHold.definingClass).fields
-        .singleOrNull { it.type == tabButtonView.definingClass }
-    // The first instruction overwrites its target with an activity read from the gesture listener.
-    val activityRead = profileHold.getInstruction<TwoRegisterInstruction>(0)
+        .singleOrNull { it.type == tabButtonView.definingClass } ?: return null
+    // The hook needs the activity read first: it overwrites its target, which is free until then.
+    val activityRead = profileHold.getInstruction(0)
+    if (activityRead.opcode != Opcode.IGET_OBJECT || activityRead !is TwoRegisterInstruction) return null
     val scratchRegister = activityRead.registerA
     val listenerRegister = activityRead.registerB
-    if (tabField == null || profileTabButtonField == null || scratchRegister == listenerRegister ||
+    if (scratchRegister == listenerRegister ||
         listenerSetters.isEmpty() || listenerSetters.any { (index, _, _) -> index >= insertIndex } ||
         listOf(tabButtonRegister, viewRegister, tabRegister, scratchRegister, listenerRegister).any { it > 0xf } ||
         listenerSetters.any { (_, call, scratch) -> listOf(call.registerC, call.registerD, scratch).any { it > 0xf } }
     ) {
-        return false
+        return null
     }
 
-    builder.addInstructions(
-        insertIndex,
-        """
-            iget-object v$tabRegister, v$tabButtonRegister, $tabField
-            invoke-static {v$viewRegister, v$tabRegister}, $TAB_SHORTCUTS->onTabCreated(Landroid/view/View;Ljava/lang/Object;)V
-        """.trimIndent(),
-    )
-    // Wrapped, not replaced, so Default and a failed shortcut still reach Instagram's own long-press.
-    listenerSetters.forEach { (index, call, scratch) ->
-        builder.addInstructionsAtControlFlowLabel(
-            index,
+    return {
+        builder.addInstructions(
+            insertIndex,
             """
-                iget-object v$scratch, v${call.registerC}, $tabField
-                invoke-static {v${call.registerD}, v$scratch}, $TAB_SHORTCUTS->wrapLongClick(${LONG_CLICK_LISTENER}Ljava/lang/Object;)$LONG_CLICK_LISTENER
-                move-result-object v${call.registerD}
+                iget-object v$tabRegister, v$tabButtonRegister, $tabField
+                invoke-static {v$viewRegister, v$tabRegister}, $TAB_SHORTCUTS->onTabCreated(Landroid/view/View;Ljava/lang/Object;)V
             """.trimIndent(),
         )
+        // Wrapped, not replaced, so Default and a failed shortcut still reach Instagram's own long-press.
+        listenerSetters.forEach { (index, call, scratch) ->
+            builder.addInstructionsAtControlFlowLabel(
+                index,
+                """
+                    iget-object v$scratch, v${call.registerC}, $tabField
+                    invoke-static {v${call.registerD}, v$scratch}, $TAB_SHORTCUTS->wrapLongClick(${LONG_CLICK_LISTENER}Ljava/lang/Object;)$LONG_CLICK_LISTENER
+                    move-result-object v${call.registerD}
+                """.trimIndent(),
+            )
+        }
+        profileHold.addInstructionsWithLabels(
+            0,
+            """
+                iget-object v$scratchRegister, v$listenerRegister, $profileTabButtonField
+                invoke-virtual {v$scratchRegister}, $tabButtonView
+                move-result-object v$scratchRegister
+                invoke-static {v$scratchRegister}, $TAB_SHORTCUTS->onProfileLongPress(Landroid/view/View;)Z
+                move-result v$scratchRegister
+                if-eqz v$scratchRegister, :original
+                return-void
+            """.trimIndent(),
+            ExternalLabel("original", profileHold.getInstruction(0)),
+        )
     }
-    profileHold.addInstructionsWithLabels(
-        0,
-        """
-            iget-object v$scratchRegister, v$listenerRegister, $profileTabButtonField
-            invoke-virtual {v$scratchRegister}, $tabButtonView
-            move-result-object v$scratchRegister
-            invoke-static {v$scratchRegister}, $TAB_SHORTCUTS->onProfileLongPress(Landroid/view/View;)Z
-            move-result v$scratchRegister
-            if-eqz v$scratchRegister, :original
-            return-void
-        """.trimIndent(),
-        ExternalLabel("original", profileHold.getInstruction(0)),
-    )
-    return true
 }
 
 @Suppress("unused")
