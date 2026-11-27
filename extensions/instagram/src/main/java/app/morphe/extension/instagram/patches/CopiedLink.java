@@ -42,22 +42,40 @@ public final class CopiedLink {
      */
     public static boolean onSearchLongClick(View view) {
         if (SafeStartup.featuresOff()) return false;
+        Context context = view.getContext();
+        String url = copiedUrl(context);
+        return url != null && open(context, url);
+    }
+
+    /** Main thread. The link for the copied Instagram link or @username, or null when nothing usable is copied. */
+    public static String copiedUrl(Context context) {
         try {
-            Context context = view.getContext();
             ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
-            String url = fromClip(clipboard == null ? null : clipboard.getPrimaryClip());
-            if (url == null) return false;
+            return fromClip(clipboard == null ? null : clipboard.getPrimaryClip());
+        } catch (Throwable t) {
+            logFailure("Reading the copied link failed", t);
+            return null;
+        }
+    }
+
+    /** Main thread. Opens {@code url} inside this app; false when it could not be started. */
+    public static boolean open(Context context, String url) {
+        try {
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             intent.setClassName(context.getPackageName(), URL_HANDLER_ACTIVITY);
             context.startActivity(intent);
             return true;
         } catch (Throwable t) {
-            try {
-                Logger.printException(() -> "Search long-press failed", t);
-            } catch (Throwable ignored) {
-                // Logging must never throw into Instagram's long-click handling.
-            }
+            logFailure("Opening the copied link failed", t);
             return false;
+        }
+    }
+
+    private static void logFailure(String message, Throwable t) {
+        try {
+            Logger.printException(() -> message, t);
+        } catch (Throwable ignored) {
+            // Logging must never throw into Instagram's long-click handling.
         }
     }
 

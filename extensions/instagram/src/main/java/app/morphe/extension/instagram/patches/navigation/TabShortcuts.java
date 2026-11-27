@@ -9,6 +9,8 @@ package app.morphe.extension.instagram.patches.navigation;
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
 
@@ -16,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-import app.morphe.extension.crimera.PikoUtils;
 import app.morphe.extension.instagram.patches.CopiedLink;
 import app.morphe.extension.instagram.patches.HomeLongPress;
 import app.morphe.extension.instagram.patches.instants.InstantsMenu;
@@ -218,7 +219,8 @@ public final class TabShortcuts {
     /**
      * Main thread. Opens {@code choice}; {@code home} adds Developer options to the menu.
      *
-     * @return false to leave the hold to Instagram.
+     * @return false to leave the hold to Instagram, also when the shortcut could not be opened.
+     * Throws when a shortcut fails without reporting it; callers fall back to Instagram.
      */
     public static boolean open(View view, String choice, boolean home) {
         Context context = view.getContext();
@@ -227,21 +229,16 @@ public final class TabShortcuts {
                 HomeLongPress.showMenu(view, home);
                 return true;
             case SETTINGS:
-                FragmentHook.startSettings();
-                return true;
+                return FragmentHook.startSettings();
             case GALLERY:
                 // The gallery screen asks for the screen lock itself before showing anything.
-                ActivityHook.startPrivateGalleryActivity(context);
-                return true;
+                return ActivityHook.startPrivateGalleryActivity(context);
             case DELETED_MESSAGES:
-                ActivityHook.startDeletedMessagesActivity(context);
-                return true;
+                return ActivityHook.startDeletedMessagesActivity(context);
             case DOWNLOAD_HISTORY:
-                ActivityHook.startDownloadHistoryActivity(context);
-                return true;
+                return ActivityHook.startDownloadHistoryActivity(context);
             case PROFILE_ANALYZER:
-                ActivityHook.startProfileAnalyzerActivity(context);
-                return true;
+                return ActivityHook.startProfileAnalyzerActivity(context);
             case STORAGE:
                 StorageScreen.show(HomeLongPress.activityOf(context));
                 return true;
@@ -249,10 +246,14 @@ public final class TabShortcuts {
                 InstantsMenu.show(HomeLongPress.activityOf(context));
                 return true;
             case SAVED:
-                PikoUtils.openUrl(SAVED_POSTS_LINK, true);
+                Intent saved = new Intent(Intent.ACTION_VIEW, Uri.parse(SAVED_POSTS_LINK));
+                saved.setPackage(context.getPackageName());
+                context.startActivity(saved);
                 return true;
             case COPIED_LINK:
-                if (!CopiedLink.onSearchLongClick(view)) Utils.showToastShort(str("spookd_tab_shortcut_no_link"));
+                String url = CopiedLink.copiedUrl(context);
+                if (url != null) return CopiedLink.open(context, url);
+                Utils.showToastShort(str("spookd_tab_shortcut_no_link"));
                 return true;
             default:
                 return false;
