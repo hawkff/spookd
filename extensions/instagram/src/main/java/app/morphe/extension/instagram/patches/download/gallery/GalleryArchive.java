@@ -48,6 +48,8 @@ final class GalleryArchive {
     static final long MAX_MANIFEST_BYTES = 16L << 20;
     static final int MAX_ITEMS = 50_000;
     static final long MAX_FILE_BYTES = 2L << 30;
+    // A backup this app wrote has no entries outside the manifest; reading past this means it is not one.
+    static final long MAX_UNCLAIMED_BYTES = 1L << 20;
     // Left free on the device, so an import never fills the storage the app itself needs.
     static final long MIN_FREE_BYTES = 200L << 20;
     private static final int MAX_TEXT = 4096;
@@ -72,10 +74,6 @@ final class GalleryArchive {
         InvalidBackup(String message) {
             super(message);
         }
-    }
-
-    /** One file is larger than {@link #MAX_FILE_BYTES} or than the space left; the import goes on. */
-    static final class TooLarge extends IOException {
     }
 
     /** One manifest item: what its download is restored with. */
@@ -216,6 +214,15 @@ final class GalleryArchive {
      */
     static void read(GalleryStore store, InputStream in, Result result, BiConsumer<Integer, Integer> progress)
             throws IOException {
+        read(store, in, result, progress, MAX_FILE_BYTES);
+    }
+
+    /**
+     * {@link #read} with at most {@code maxFileBytes} per entry. Every entry is read within a limit,
+     * skipped ones too, since the next entry would otherwise drain it unbounded; over it, the import stops.
+     */
+    static void read(GalleryStore store, InputStream in, Result result, BiConsumer<Integer, Integer> progress,
+                     long maxFileBytes) throws IOException {
         ZipInputStream zip = new ZipInputStream(new BufferedInputStream(in, BUFFER));
         ZipEntry first = zip.getNextEntry();
         if (first == null || !MANIFEST.equals(first.getName())) throw new InvalidBackup("No manifest first");
@@ -225,28 +232,27 @@ final class GalleryArchive {
         Duplicates duplicates = new Duplicates(store.list(null, null, false, null, GalleryStore.SORT_NEWEST));
         long epoch = store.clearEpoch();
         int done = 0;
+        int entries = 1;
         for (ZipEntry entry; (entry = zip.getNextEntry()) != null; ) {
+            if (++entries > MAX_ITEMS + 1) throw new IOException("Too many entries");
             String name = entry.getName();
             // Entry names only look up manifest items, never paths; a repeated or unknown entry finds none.
             Item item = entry.isDirectory() || !name.startsWith(MEDIA) ? null
                     : manifest.items.remove(name.substring(MEDIA.length()));
             if (item == null) {
                 result.failed++;
+                drain(zip, MAX_UNCLAIMED_BYTES);
                 continue;
             }
             progress.accept(++done, total);
             String mediaId = item.item.mediaId;
             if (mediaId != null && !mediaId.isEmpty() && store.hasMedia(mediaId)) {
                 result.duplicates++;
+                drain(zip, maxFileBytes);
                 continue;
             }
-            long id;
-            try {
-                id = add(store, duplicates, epoch, zip, item.item, item.subFolder, item.fileName, item.savedAt);
-            } catch (TooLarge e) {
-                result.failed++;
-                continue;
-            }
+            long id = add(store, duplicates, epoch, zip, item.item, item.subFolder, item.fileName, item.savedAt,
+                    maxFileBytes);
             if (id == -1) {
                 result.duplicates++;
                 continue;
@@ -260,12 +266,14 @@ final class GalleryArchive {
 
     /**
      * Copies {@code in} into a new gallery item and returns its id, or -1, keeping nothing, when the
-     * gallery already has these bytes. Throws {@link TooLarge} for a file over the limit.
+     * gallery already has these bytes. Throws, keeping nothing, for a file over {@code maxFileBytes} or
+     * one that would leave less than {@link #MIN_FREE_BYTES} free.
      */
     static long add(GalleryStore store, Duplicates duplicates, long epoch, InputStream in, GalleryItem item,
-                    String subFolder, String fileName, Long savedAt) throws IOException {
+                    String subFolder, String fileName, Long savedAt, long maxFileBytes) throws IOException {
         File part = store.partFile();
-        String hash = copy(in, part, limit(part));
+        File dir = part.getParentFile();
+        String hash = copy(in, part, Math.min(maxFileBytes, dir == null ? 0 : dir.getUsableSpace() - MIN_FREE_BYTES));
         long size = part.length();
         if (duplicates.contains(size, hash)) {
             part.delete();
@@ -397,10 +405,14 @@ final class GalleryArchive {
         return new String(bytes.toByteArray(), StandardCharsets.UTF_8);
     }
 
-    /** At most what the item may take: {@link #MAX_FILE_BYTES}, and never below {@link #MIN_FREE_BYTES} free. */
-    private static long limit(File part) {
-        File dir = part.getParentFile();
-        return Math.min(MAX_FILE_BYTES, dir == null ? 0 : dir.getUsableSpace() - MIN_FREE_BYTES);
+    /** Reads to the end of {@code in}, throwing past {@code limit} bytes. */
+    private static void drain(InputStream in, long limit) throws IOException {
+        byte[] buffer = new byte[BUFFER];
+        long total = 0;
+        for (int n; (n = in.read(buffer)) != -1; ) {
+            total += n;
+            if (total > limit) throw new IOException("Entry too large");
+        }
     }
 
     /** Copies {@code in} to {@code part} and returns the bytes' hash; on throw {@code part} is gone. */
@@ -411,7 +423,7 @@ final class GalleryArchive {
         try (OutputStream out = new FileOutputStream(part)) {
             for (int n; (n = in.read(buffer)) != -1; ) {
                 total += n;
-                if (total > limit) throw new TooLarge();
+                if (total > limit) throw new IOException("Too large");
                 digest.update(buffer, 0, n);
                 out.write(buffer, 0, n);
             }

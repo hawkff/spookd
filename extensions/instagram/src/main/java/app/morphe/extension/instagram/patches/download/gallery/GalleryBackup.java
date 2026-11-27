@@ -254,7 +254,7 @@ public final class GalleryBackup {
                         if (in == null) throw new IOException("Cannot read a picked file");
                         GalleryItem item = new GalleryItem(GalleryTab.IMPORTED, kind, null, null, null, null, null, null);
                         long id = GalleryArchive.add(store, duplicates, epoch, in, item,
-                                GalleryArchive.IMPORTED_FOLDER, name, null);
+                                GalleryArchive.IMPORTED_FOLDER, name, null, GalleryArchive.MAX_FILE_BYTES);
                         if (id == -1) result.duplicates++;
                         else result.imported++;
                     }

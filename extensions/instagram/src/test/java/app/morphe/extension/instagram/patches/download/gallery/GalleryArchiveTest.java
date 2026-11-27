@@ -197,6 +197,49 @@ public final class GalleryArchiveTest {
     }
 
     @Test
+    public void anOversizedUnclaimedEntryStopsTheImport() throws Exception {
+        byte[] archive = zip(entries(
+                GalleryArchive.MANIFEST, manifest(item("a.jpg")),
+                "padding.bin", "x".repeat((int) GalleryArchive.MAX_UNCLAIMED_BYTES + 1),
+                "media/a.jpg", "first"));
+
+        GalleryArchive.Result result = new GalleryArchive.Result();
+        try {
+            GalleryArchive.read(store, new ByteArrayInputStream(archive), result, (done, total) -> { });
+            fail("Drained an unclaimed entry past its limit");
+        } catch (IOException expected) {
+            assertFalse(expected instanceof GalleryArchive.InvalidBackup);
+        }
+        assertEquals(0, result.imported);
+        assertEquals(0, store.totals()[0]);
+    }
+
+    @Test
+    public void entriesOverTheFileLimitStopTheImportWhetherCopiedOrSkipped() throws Exception {
+        save(new GalleryItem(GalleryTab.POSTS, GalleryItem.PHOTO, null, null, "22", null, null, null),
+                null, "saved.jpg", "s");
+        // A duplicate by media id is skipped, but its data is still read only up to the limit.
+        assertStopped(zip(entries(GalleryArchive.MANIFEST, manifest(item("a.jpg").put("mediaId", "22")),
+                "media/a.jpg", "12345")));
+        assertStopped(zip(entries(GalleryArchive.MANIFEST, manifest(item("b.jpg")), "media/b.jpg", "12345")));
+        assertEquals(1, store.totals()[0]);
+        // The part of the refused copy is gone too.
+        File[] files = store.partFile().getParentFile().listFiles();
+        assertEquals(1, files.length);
+    }
+
+    private void assertStopped(byte[] archive) throws IOException {
+        GalleryArchive.Result result = new GalleryArchive.Result();
+        try {
+            GalleryArchive.read(store, new ByteArrayInputStream(archive), result, (done, total) -> { }, 4);
+            fail("Read an entry past the file limit");
+        } catch (IOException expected) {
+            assertFalse(expected instanceof GalleryArchive.InvalidBackup);
+        }
+        assertEquals(0, result.imported);
+    }
+
+    @Test
     public void filesFromFilesKeepAKnownNameOrGetTheirTypesSuffix() throws Exception {
         assertEquals("IMG_1.JPG", GalleryArchive.importedName("IMG_1.JPG", "jpg", GalleryItem.PHOTO));
         assertEquals("clip.mov", GalleryArchive.importedName("clip.mov", "mp4", GalleryItem.VIDEO));
@@ -214,9 +257,9 @@ public final class GalleryArchiveTest {
         GalleryItem item = new GalleryItem(GalleryTab.IMPORTED, GalleryItem.PHOTO, null, null, null, null, null, null);
 
         long id = GalleryArchive.add(store, duplicates, store.clearEpoch(), stream("picked"), item,
-                GalleryArchive.IMPORTED_FOLDER, "a.jpg", null);
+                GalleryArchive.IMPORTED_FOLDER, "a.jpg", null, GalleryArchive.MAX_FILE_BYTES);
         long again = GalleryArchive.add(store, duplicates, store.clearEpoch(), stream("picked"), item,
-                GalleryArchive.IMPORTED_FOLDER, "b.jpg", null);
+                GalleryArchive.IMPORTED_FOLDER, "b.jpg", null, GalleryArchive.MAX_FILE_BYTES);
 
         assertTrue(id > 0);
         assertEquals(-1, again);
