@@ -52,6 +52,15 @@ public final class InstantsUploadTest {
     }
 
     @Test
+    public void boundedSampleSizeKeepsAPanoramaWithinThePixelBudget() {
+        int sample = InstantsUpload.boundedSampleSize(65535, 1080, 1080, 8_000_000L);
+        assertTrue((long) (65535 / sample) * (1080 / sample) <= 8_000_000L);
+        assertEquals(4, sample);
+        assertEquals(2, InstantsUpload.boundedSampleSize(4032, 3024, 1080, 8_000_000L));
+        assertEquals(1, InstantsUpload.boundedSampleSize(1080, 1920, 1080, 8_000_000L));
+    }
+
+    @Test
     public void onlyAKnownDurationWithinAKnownLimitIsAllowed() {
         assertTrue(InstantsUpload.durationAllowed(10_000, 10_000));
         assertTrue(InstantsUpload.durationAllowed(1, 10_000));

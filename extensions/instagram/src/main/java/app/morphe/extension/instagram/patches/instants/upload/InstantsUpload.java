@@ -13,7 +13,9 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.BitmapRegionDecoder;
 import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
 import android.media.ExifInterface;
 import android.media.MediaMetadataRetriever;
@@ -54,6 +56,8 @@ import app.morphe.extension.shared.Utils;
 public final class InstantsUpload {
     private static final String PICKER_TAG = "spookd_instants_upload_picker";
     private static final String VIDEO_DIR = "spookd_instants_upload";
+    // About 32 MB as ARGB, for a photo whose format has no region decoding.
+    private static final long MAX_DECODE_PIXELS = 8_000_000L;
     // Instagram uploads a sent video from its file, so copies stay this long.
     private static final long VIDEO_KEEP_MS = 24 * 60 * 60 * 1000L;
     private InstantsUpload() {
@@ -203,11 +207,30 @@ public final class InstantsUpload {
         }
         DisplayMetrics screen = Resources.getSystem().getDisplayMetrics();
         int target = Math.min(screen.widthPixels, screen.heightPixels);
+        int[] square = centerSquare(bounds.outWidth, bounds.outHeight);
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = sampleSize(Math.min(bounds.outWidth, bounds.outHeight), target);
-        Bitmap decoded;
+        options.inSampleSize = sampleSize(square[2], target);
+        // Only the centered square is decoded, so a panorama costs no more than a square photo.
+        Bitmap decoded = null;
         try (InputStream in = resolver.openInputStream(uri)) {
-            decoded = BitmapFactory.decodeStream(in, null, options);
+            BitmapRegionDecoder region = in == null ? null : BitmapRegionDecoder.newInstance(in, false);
+            if (region != null) {
+                try {
+                    decoded = region.decodeRegion(new Rect(square[0], square[1], square[0] + square[2],
+                            square[1] + square[2]), options);
+                } finally {
+                    region.recycle();
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            Logger.printInfo(() -> "InstantsUpload: no region decode for " + uri, e);
+        }
+        if (decoded == null) {
+            // Formats without region decoding are sampled down until the whole photo fits the pixel budget.
+            options.inSampleSize = boundedSampleSize(bounds.outWidth, bounds.outHeight, target, MAX_DECODE_PIXELS);
+            try (InputStream in = resolver.openInputStream(uri)) {
+                decoded = BitmapFactory.decodeStream(in, null, options);
+            }
         }
         if (decoded == null) throw new IOException("Cannot decode " + uri);
         int[] crop = centerSquare(decoded.getWidth(), decoded.getHeight());
@@ -354,6 +377,13 @@ public final class InstantsUpload {
     static int sampleSize(int shortSide, int target) {
         int sample = 1;
         while (shortSide / (sample * 2) >= target) sample *= 2;
+        return sample;
+    }
+
+    /** {@link #sampleSize}, stepped further until the whole decoded photo has at most {@code maxPixels}. */
+    static int boundedSampleSize(int width, int height, int target, long maxPixels) {
+        int sample = sampleSize(Math.min(width, height), target);
+        while ((long) (width / sample) * (height / sample) > maxPixels) sample *= 2;
         return sample;
     }
 
