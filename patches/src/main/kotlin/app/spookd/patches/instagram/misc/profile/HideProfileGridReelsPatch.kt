@@ -7,21 +7,28 @@ import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
 import app.spookd.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.PatchException
+import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.string
 import app.morphe.patcher.util.addInstructionsAtControlFlowLabel
 import app.morphe.patcher.util.findFreeRegister
+import app.morphe.patcher.util.getReference
 import app.morphe.patcher.util.p0Register
+import app.morphe.patcher.util.smali.ExternalLabel
+import app.morphe.util.indexOfFirstInstructionOrThrow
+import app.morphe.util.indexOfFirstInstructionReversedOrThrow
 import app.morphe.util.insertLiteralOverride
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 internal const val PROFILE_EXTRAS = "$PATCHES_DESCRIPTOR/userprofile/ProfileExtras;"
 
@@ -60,9 +67,12 @@ internal object ProfileGridItemFilterFingerprint : Fingerprint(
     ),
 )
 
-// Once the whole main grid loaded, a server switch read here rewrites the profile's post count to the grid size.
-internal object ProfileGridCountCheckFingerprint : Fingerprint(
-    definingClass = "Lcom/instagram/profile/fragment/ProfileMediaTabFragment;",
+private const val PROFILE_MEDIA_TAB = "Lcom/instagram/profile/fragment/ProfileMediaTabFragment;"
+
+// Runs after each grid data change. Once the whole main grid loaded, a server switch read here
+// rewrites the profile's post count to the grid size.
+internal object ProfileGridChangedFingerprint : Fingerprint(
+    definingClass = PROFILE_MEDIA_TAB,
     returnType = "V",
     filters = listOf(literal(PROFILE_GRID_COUNT_REPAIR_FLAG)),
 )
@@ -113,10 +123,43 @@ val hideProfileGridReelsPatch =
                 "$PROFILE_EXTRAS->offWhileGridReelsHidden(Z)Z",
             )
 
-            ProfileGridCountCheckFingerprint.method.insertLiteralOverride(
-                PROFILE_GRID_COUNT_REPAIR_FLAG,
-                "$PROFILE_EXTRAS->offWhileGridReelsHidden(Z)Z",
-            )
+            ProfileGridChangedFingerprint.method.apply {
+                insertLiteralOverride(PROFILE_GRID_COUNT_REPAIR_FLAG, "$PROFILE_EXTRAS->offWhileGridReelsHidden(Z)Z")
+
+                // Instagram's next-page loader, as this method reads it: has more pages, then is loading.
+                val loadingIndex = indexOfFirstInstructionOrThrow {
+                    opcode == Opcode.INVOKE_INTERFACE && getReference<MethodReference>()?.name == "isLoading"
+                }
+                val isLoading = getInstruction(loadingIndex).getReference<MethodReference>()!!
+                val loader = isLoading.definingClass
+                val hasMore = getInstruction(
+                    indexOfFirstInstructionReversedOrThrow(loadingIndex - 1) {
+                        opcode == Opcode.INVOKE_INTERFACE && getReference<MethodReference>()?.definingClass == loader
+                    },
+                ).getReference<MethodReference>()!!
+                val loadMore = classDefBy(loader).methods.single { it.returnType == "V" && it.parameterTypes.isEmpty() }
+                val loaderField = classDefBy(PROFILE_MEDIA_TAB).fields.single { it.type == loader }
+                if (hasMore.returnType != "Z" || p0Register < 4) throw PatchException("Unexpected profile grid loader")
+
+                // An emptied page leaves nothing to scroll, so Instagram's scroll-driven loader never asks for the next.
+                addInstructionsWithLabels(
+                    0,
+                    """
+                    iget-object v0, p0, $PROFILE_MEDIA_TAB->${loaderField.name}:$loader
+                    if-eqz v0, :spookd_grid_changed
+                    invoke-interface {v0}, $isLoading
+                    move-result v1
+                    invoke-interface {v0}, $hasMore
+                    move-result v2
+                    iget-object v3, p0, $PROFILE_MEDIA_TAB->recyclerView:Landroidx/recyclerview/widget/RecyclerView;
+                    invoke-static {v3, v1, v2}, $PROFILE_EXTRAS->profileGridNeedsNextPage(Landroid/view/View;ZZ)Z
+                    move-result v1
+                    if-eqz v1, :spookd_grid_changed
+                    invoke-interface {v0}, $loader->${loadMore.name}()V
+                    """.trimIndent(),
+                    ExternalLabel("spookd_grid_changed", getInstruction(0)),
+                )
+            }
 
             enableSettings("hideProfileGridReels")
         }

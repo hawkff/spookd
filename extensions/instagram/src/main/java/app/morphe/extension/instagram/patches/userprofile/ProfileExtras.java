@@ -6,6 +6,8 @@
 
 package app.morphe.extension.instagram.patches.userprofile;
 
+import android.view.View;
+
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
@@ -17,7 +19,7 @@ public final class ProfileExtras {
 
     /**
      * Called by Instagram's profile grid filters with their verdict for one post; false drops it
-     * from the grid's list. Paging is untouched, so Instagram keeps fetching pages as you scroll.
+     * from the grid's list. Paging is untouched; {@link #profileGridNeedsNextPage} covers emptied pages.
      */
     public static boolean keepInProfileGrid(boolean keep, Object media) {
         if (!keep || media == null || !Pref.hideProfileGridReels()) return keep;
@@ -27,6 +29,23 @@ public final class ProfileExtras {
             Logger.printException(() -> "keepInProfileGrid failure", t);
             return keep;
         }
+    }
+
+    /**
+     * Called on the main thread at the start of each profile grid data change. True asks Instagram's own
+     * loader for the next page: hidden reels can leave a page with nothing to show or scroll.
+     */
+    public static boolean profileGridNeedsNextPage(View grid, boolean loading, boolean hasMore) {
+        try {
+            return needsNextPage(Pref.hideProfileGridReels(), loading, hasMore, grid != null && grid.canScrollVertically(1));
+        } catch (Throwable t) {
+            Logger.printException(() -> "profileGridNeedsNextPage failure", t);
+            return false;
+        }
+    }
+
+    static boolean needsNextPage(boolean hiding, boolean loading, boolean hasMore, boolean canScrollDown) {
+        return hiding && hasMore && !loading && !canScrollDown;
     }
 
     /**
