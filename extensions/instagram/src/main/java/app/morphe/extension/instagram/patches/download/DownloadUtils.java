@@ -382,7 +382,7 @@ public class DownloadUtils {
         if (mediaType.equals(MediaType.AUDIO)) {
             AudioMediaInterface audioMedia = mediaInfo.getMediaAt(position).getAudioMedia();
             String audioUrl = audioMedia.getAudioUrl();
-            String fileName = audioMedia.getDownloadName() + ".mp3";
+            String fileName = audioMedia.getDownloadName() + AudioPageDownload.audioExtension(audioUrl);
             downloader.enqueue(createDownloadRequest(audioUrl, Constants.DEFAULT_AUDIO_FOLDER, fileName,
                     galleryItem(mediaInfo, mediaInfo.getMediaAt(position), position, hint, GalleryItem.AUDIO)));
 
