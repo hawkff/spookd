@@ -755,6 +755,7 @@
     <string name="spookd_video_editor_save_frame">Save frame</string>
     <string name="spookd_video_editor_save_audio">Save audio</string>
     <string name="spookd_video_editor_note">Cuts snap to keyframes, so the video is copied without re-encoding. Cuts between keyframes and cropping are not available. Save audio keeps the selected part.</string>
+    <string name="spookd_video_editor_trim_unsupported">This video\'s format can\'t be trimmed here. Save frame and Save audio may still work.</string>
     <string name="spookd_video_editor_audio_unsupported">The sound of this video can\'t be saved on its own without converting it.</string>
     <string name="spookd_video_editor_discard_confirm">Discard your changes to this video?</string>
     <string name="spookd_video_editor_saved">Saved %1$s to %2$s as a new video in the private gallery. The original is unchanged.</string>

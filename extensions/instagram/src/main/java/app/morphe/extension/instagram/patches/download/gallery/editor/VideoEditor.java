@@ -84,6 +84,8 @@ public final class VideoEditor extends Dialog {
     /** Sorted keyframe times then the duration; null until read. */
     private long[] points;
     private String audioMime;
+    /** What a trim is written as; null when its tracks cannot be copied into a container as they are. */
+    private String trimExtension;
     private long start;
     private long end;
     private long playhead;
@@ -304,6 +306,9 @@ public final class VideoEditor extends Dialog {
         if (!isShowing()) return;
         points = probe.points;
         audioMime = probe.audioMime;
+        trimExtension = VideoTrim.trimExtension(VideoTrim.extension(file.getName(), ".mp4"), probe.videoMime,
+                audioMime);
+        if (trimExtension == null) Utils.showToastLong(str("spookd_video_editor_trim_unsupported"));
         start = points[0];
         end = last();
         progress.setVisibility(View.GONE);
@@ -331,7 +336,7 @@ public final class VideoEditor extends Dialog {
 
     private void updateViews() {
         boolean ready = points != null && !busy;
-        enable(saveAction, ready && hasChanges());
+        enable(saveAction, ready && hasChanges() && trimExtension != null);
         for (int i = 0; i < steps.length; i++) {
             boolean endHandle = i >= 2;
             enable(steps[i], ready && stepped(endHandle, i % 2 == 0 ? -1 : 1) != (endHandle ? end : start));
@@ -436,7 +441,11 @@ public final class VideoEditor extends Dialog {
 
     private void saveTrim() {
         if (busy || !hasChanges()) return;
-        String extension = VideoTrim.videoExtension(VideoTrim.extension(file.getName(), ".mp4"));
+        String extension = trimExtension;
+        if (extension == null) {
+            Utils.showToastLong(str("spookd_video_editor_trim_unsupported"));
+            return;
+        }
         long from = start;
         long to = end;
         work(() -> publish(GalleryItem.VIDEO, VideoTrim.derivedName(fileName, "_trimmed", extension),

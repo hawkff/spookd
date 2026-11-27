@@ -25,13 +25,15 @@ final class VideoTrim {
     private VideoTrim() {
     }
 
-    /** What the editor needs from a video: its cut points and the type of its first audio track, null without one. */
+    /** What the editor needs from a video: its cut points and the types of its first video and audio tracks, null without audio. */
     static final class Probe {
         final long[] points;
+        final String videoMime;
         final String audioMime;
 
-        Probe(long[] points, String audioMime) {
+        Probe(long[] points, String videoMime, String audioMime) {
             this.points = points;
+            this.videoMime = videoMime;
             this.audioMime = audioMime;
         }
     }
@@ -42,6 +44,7 @@ final class VideoTrim {
         try {
             extractor.setDataSource(path);
             int video = -1;
+            String videoMime = null;
             long duration = 0;
             String audioMime = null;
             for (int i = 0; i < extractor.getTrackCount(); i++) {
@@ -50,6 +53,7 @@ final class VideoTrim {
                 if (mime == null) continue;
                 if (video < 0 && mime.startsWith("video/")) {
                     video = i;
+                    videoMime = mime;
                     if (format.containsKey(MediaFormat.KEY_DURATION)) duration = format.getLong(MediaFormat.KEY_DURATION);
                 } else if (audioMime == null && mime.startsWith("audio/")) {
                     audioMime = mime;
@@ -69,7 +73,7 @@ final class VideoTrim {
             // The end is exclusive, so a duration read from the last sample still keeps that sample.
             long end = duration > 0 ? duration : last + 1;
             if (duration <= 0 && last == 0) throw new IOException("No duration");
-            return new Probe(cutPoints(syncs, count, end), audioMime);
+            return new Probe(cutPoints(syncs, count, end), videoMime, audioMime);
         } finally {
             extractor.release();
         }
@@ -144,24 +148,35 @@ final class VideoTrim {
         return base + extension;
     }
 
-    /** Whether the muxer writes the container that {@code extension} names. */
-    private static boolean writable(String extension) {
-        return Arrays.asList(".mp4", ".m4v", ".webm", ".3gp", ".3gpp").contains(extension);
+    /**
+     * The extension a trim is written as: .webm for VP8 or VP9 with Vorbis, Opus or no audio from a
+     * WebM source, .mp4 for H.264, HEVC or MPEG-4 video with AAC or no audio; null when neither
+     * container holds the tracks without re-encoding.
+     */
+    static String trimExtension(String sourceExtension, String videoMime, String audioMime) {
+        if (".webm".equals(sourceExtension)
+                && Arrays.asList("video/x-vnd.on2.vp8", "video/x-vnd.on2.vp9").contains(videoMime)
+                && (audioMime == null || Arrays.asList("audio/vorbis", "audio/opus").contains(audioMime))) {
+            return ".webm";
+        }
+        boolean mp4Video = Arrays.asList("video/avc", "video/hevc", "video/mp4v-es").contains(videoMime);
+        return mp4Video && (audioMime == null || AAC.equals(audioMime)) ? ".mp4" : null;
     }
 
-    /** The extension of a trim: the source's when the muxer writes that container, else .mp4 for MPEG-4. */
-    static String videoExtension(String sourceExtension) {
-        return writable(sourceExtension) ? sourceExtension : ".mp4";
-    }
-
-    /** The extension of the audio alone: .m4a for AAC, else the source's container; null when the muxer cannot write it. */
+    /**
+     * The extension of the audio alone: .m4a for AAC, a WebM source's for Vorbis or Opus, a 3GPP
+     * source's for AMR; null when the muxer cannot write it in the source's container.
+     */
     static String audioExtension(String audioMime, String sourceExtension) {
         if (AAC.equals(audioMime)) return ".m4a";
-        return writable(sourceExtension) && !".mp4".equals(sourceExtension) && !".m4v".equals(sourceExtension)
-                ? sourceExtension : null;
+        if (".webm".equals(sourceExtension) && Arrays.asList("audio/vorbis", "audio/opus").contains(audioMime)) {
+            return sourceExtension;
+        }
+        boolean threeGpp = ".3gp".equals(sourceExtension) || ".3gpp".equals(sourceExtension);
+        return threeGpp && Arrays.asList("audio/3gpp", "audio/amr-wb").contains(audioMime) ? sourceExtension : null;
     }
 
-    /** The muxer format of a file with an extension from {@link #videoExtension} or {@link #audioExtension}. */
+    /** The muxer format of a file with an extension from {@link #trimExtension} or {@link #audioExtension}. */
     static int muxerFormat(String extension) {
         if (".webm".equals(extension)) return MediaMuxer.OutputFormat.MUXER_OUTPUT_WEBM;
         if (".3gp".equals(extension) || ".3gpp".equals(extension)) return MediaMuxer.OutputFormat.MUXER_OUTPUT_3GPP;

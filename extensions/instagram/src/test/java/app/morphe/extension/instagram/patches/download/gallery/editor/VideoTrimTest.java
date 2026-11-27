@@ -79,6 +79,8 @@ public final class VideoTrimTest {
         assertNull(VideoTrim.audioExtension("audio/vorbis", ".mkv"));
         assertNull(VideoTrim.audioExtension("audio/mpeg", ".mp4"));
         assertNull(VideoTrim.audioExtension("audio/mpeg", ".mov"));
+        assertNull(VideoTrim.audioExtension("audio/mpeg", ".webm"));
+        assertNull(VideoTrim.audioExtension("audio/opus", ".3gp"));
         assertEquals(VideoTrim.muxerFormat(".mp4"), VideoTrim.muxerFormat(".m4a"));
         assertEquals(android.media.MediaMuxer.OutputFormat.MUXER_OUTPUT_WEBM, VideoTrim.muxerFormat(".webm"));
         assertEquals(android.media.MediaMuxer.OutputFormat.MUXER_OUTPUT_3GPP, VideoTrim.muxerFormat(".3gp"));
@@ -86,11 +88,20 @@ public final class VideoTrimTest {
     }
 
     @Test
-    public void aTrimKeepsAWritableContainerElseIsNamedMp4() {
-        assertEquals(".mp4", VideoTrim.videoExtension(".mp4"));
-        assertEquals(".webm", VideoTrim.videoExtension(".webm"));
-        assertEquals(".3gp", VideoTrim.videoExtension(".3gp"));
-        assertEquals(".mp4", VideoTrim.videoExtension(".mkv"));
-        assertEquals(".mp4", VideoTrim.videoExtension(".mov"));
+    public void aTrimIsWrittenOnlyToAContainerThatHoldsBothTracks() {
+        assertEquals(".mp4", VideoTrim.trimExtension(".mp4", "video/avc", "audio/mp4a-latm"));
+        assertEquals(".mp4", VideoTrim.trimExtension(".mov", "video/hevc", "audio/mp4a-latm"));
+        assertEquals(".mp4", VideoTrim.trimExtension(".mkv", "video/avc", null));
+        assertEquals(".mp4", VideoTrim.trimExtension(".3gp", "video/mp4v-es", "audio/mp4a-latm"));
+        assertEquals(".webm", VideoTrim.trimExtension(".webm", "video/x-vnd.on2.vp9", "audio/opus"));
+        assertEquals(".webm", VideoTrim.trimExtension(".webm", "video/x-vnd.on2.vp8", "audio/vorbis"));
+        assertEquals(".webm", VideoTrim.trimExtension(".webm", "video/x-vnd.on2.vp8", null));
+        // WebM output only for a WebM source.
+        assertNull(VideoTrim.trimExtension(".mkv", "video/x-vnd.on2.vp9", "audio/opus"));
+        assertNull(VideoTrim.trimExtension(".mp4", "video/avc", "audio/opus"));
+        assertNull(VideoTrim.trimExtension(".mp4", "video/avc", "audio/mpeg"));
+        assertNull(VideoTrim.trimExtension(".webm", "video/x-vnd.on2.vp9", "audio/mp4a-latm"));
+        assertNull(VideoTrim.trimExtension(".webm", "video/av01", "audio/opus"));
+        assertNull(VideoTrim.trimExtension(".mp4", null, null));
     }
 }
