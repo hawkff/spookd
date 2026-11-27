@@ -262,6 +262,8 @@ public class Settings {
             TAB_SHORTCUT_NOTIFICATIONS.key,
             TAB_SHORTCUT_CREATE.key,
             KEEP_OTHER_AUDIO.key,
-            SHOW_NEW_LABELS.key
+            SHOW_NEW_LABELS.key,
+            "spookd_report_bug",
+            "spookd_request_feature"
     )));
 }
