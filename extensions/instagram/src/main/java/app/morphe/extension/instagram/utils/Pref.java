@@ -376,6 +376,16 @@ public class Pref {
         return SettingsStatus.profileAnalyzer && TRACK_VISITED_PROFILES.get();
     }
 
+    /** Days between automatic Profile analyzer scans, or 0 when they are off. */
+    public static int profileAnalyzerAutoRefreshDays() {
+        if (!SettingsStatus.profileAnalyzer) return 0;
+        try {
+            return Math.max(0, Integer.parseInt(value(Settings.PROFILE_ANALYZER_AUTO_REFRESH_DAYS)));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
     private static final Cached<Boolean> EXACT_LAST_ACTIVE =
             new Cached<>(() -> on(Settings.EXACT_LAST_ACTIVE), Settings.EXACT_LAST_ACTIVE.key);
 
