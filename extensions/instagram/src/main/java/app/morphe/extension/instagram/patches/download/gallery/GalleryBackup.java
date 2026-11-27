@@ -225,7 +225,7 @@ public final class GalleryBackup {
         }
     }
 
-    /** Work thread. A backup that fails part way is deleted, so no partial file looks like a backup. */
+    /** Work thread. A backup that fails part way is deleted, or the user is told to delete it. */
     private static void export(Context app, Uri uri, BiConsumer<Integer, Integer> progress) {
         ContentResolver resolver = app.getContentResolver();
         int[] written;
@@ -234,11 +234,14 @@ public final class GalleryBackup {
             written = GalleryArchive.write(GalleryStore.get(), out, progress);
         } catch (Exception e) {
             Logger.printException(() -> "Gallery backup: cannot write", e);
+            boolean deleted;
             try {
-                DocumentsContract.deleteDocument(resolver, uri);
-            } catch (Exception ignored) {
+                deleted = DocumentsContract.deleteDocument(resolver, uri);
+            } catch (Exception cleanup) {
+                Logger.printInfo(() -> "Gallery backup: cannot delete the partial file", cleanup);
+                deleted = false;
             }
-            Utils.showToastLong(str("spookd_gallery_backup_failed"));
+            Utils.showToastLong(str(deleted ? "spookd_gallery_backup_failed" : "spookd_gallery_backup_failed_kept"));
             return;
         }
         Utils.showToastLong(written[1] == 0 ? str("spookd_gallery_backup_done", written[0])

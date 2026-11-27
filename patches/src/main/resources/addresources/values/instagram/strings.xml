@@ -697,6 +697,7 @@
     <string name="spookd_gallery_backup_done">Backed up %1$d items. Saved DM media is not included.</string>
     <string name="spookd_gallery_backup_done_left_out">Backed up %1$d items. Left out %2$d that a restore could not add back: larger than 2 GB, or not named as a photo, video or audio file. Saved DM media is not included.</string>
     <string name="spookd_gallery_backup_failed">Backup failed. No backup file was kept.</string>
+    <string name="spookd_gallery_backup_failed_kept">Backup failed, and the partial backup file could not be deleted. Delete it yourself: it may contain your private media.</string>
     <string name="spookd_gallery_backup_import">Import a backup</string>
     <string name="spookd_gallery_import_files">Import photos and videos</string>
     <string name="spookd_gallery_tab_imported">Imported</string>
