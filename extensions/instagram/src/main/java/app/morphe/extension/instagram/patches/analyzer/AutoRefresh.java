@@ -101,10 +101,7 @@ public final class AutoRefresh {
                 try {
                     SpookdFollowDb.Scan last = SpookdFollowDb.getInstance(context).latestScan(accountId);
                     if (last == null || !isDue(last.finishedAt, days, System.currentTimeMillis())) return;
-                    Utils.runOnMainThread(() -> {
-                        Activity resumed = resumedActivity();
-                        if (resumed != null) ProfileAnalyzer.startAutomaticScan(resumed, accountId, last);
-                    });
+                    Utils.runOnMainThread(() -> startIfStillDue(accountId, last));
                 } catch (Exception e) {
                     String error = e.getClass().getSimpleName();
                     Logger.printException(() -> "AutoRefresh: last scan read failed: " + error);
@@ -114,6 +111,14 @@ public final class AutoRefresh {
             String error = e.getClass().getSimpleName();
             Logger.printException(() -> "AutoRefresh: check failed: " + error);
         }
+    }
+
+    /** Main thread: starts the scan unless the app left the screen or the setting changed during the read. */
+    private static void startIfStillDue(String accountId, SpookdFollowDb.Scan last) {
+        Activity activity = resumedActivity();
+        if (activity == null || !isDue(last.finishedAt, Pref.profileAnalyzerAutoRefreshDays(),
+                System.currentTimeMillis())) return;
+        ProfileAnalyzer.startAutomaticScan(activity, accountId, last);
     }
 
     /** Main thread: the settings row; its summary shows the interval, the next scan and the risk. */
