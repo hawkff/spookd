@@ -38,7 +38,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -84,6 +86,8 @@ public final class PhotoEditor extends Dialog {
     private static final int ACTION_OUTWARD = ACTION_BASE + 8;
     private static final int ACTION_INWARD = ACTION_BASE + 9;
     private static final int HOST = AccessibilityNodeProvider.HOST_VIEW_ID;
+    /** Unsaved edits of editors the gallery closed, by photo file path, for this process; main thread only. */
+    private static final Map<String, Kept> kept = new HashMap<>();
 
     private final Activity activity;
     private final File file;
@@ -121,6 +125,33 @@ public final class PhotoEditor extends Dialog {
     private double[] userRect;
     private double[] rect;
     private boolean saving;
+    /** Set once Save, Cancel or Reset ends the edit, so closing keeps nothing. */
+    private boolean dropped;
+
+    /** An edit to restore the next time the same photo opens in the editor. */
+    private static final class Kept {
+        final int width;
+        final int height;
+        final int turns;
+        final boolean mirror;
+        final float degrees;
+        final int ratioChoice;
+        final double ratio;
+        final double[] userRect;
+        final double[] rect;
+
+        Kept(PhotoEditor editor) {
+            width = editor.sourceWidth;
+            height = editor.sourceHeight;
+            turns = editor.turns;
+            mirror = editor.mirror;
+            degrees = editor.degrees;
+            ratioChoice = editor.ratioChoice;
+            ratio = editor.ratio;
+            userRect = editor.userRect;
+            rect = editor.rect;
+        }
+    }
 
     /**
      * Main thread: opens the editor on a photo download. After a save {@code saved} runs on the main
@@ -255,14 +286,21 @@ public final class PhotoEditor extends Dialog {
         LinearLayout tools = new LinearLayout(context);
         rotateAction = action(str("spookd_photo_editor_rotate"), v -> rotate());
         flipAction = action(str("spookd_photo_editor_flip"), v -> flip());
-        resetAction = action(str("spookd_reset"), v -> reset());
+        resetAction = action(str("spookd_reset"), v -> {
+            kept.remove(file.getPath());
+            reset();
+        });
         for (TextView tool : new TextView[]{rotateAction, flipAction, resetAction}) {
             tools.addView(tool, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         }
         root.addView(tools);
 
         setContentView(root);
-        setOnDismissListener(d -> preview = null);
+        setOnDismissListener(d -> {
+            // The gallery closes when the app leaves the foreground; the edit waits for the next open.
+            if (!dropped && hasChanges()) kept.put(file.getPath(), new Kept(this));
+            preview = null;
+        });
         updateViews();
     }
 
@@ -344,6 +382,24 @@ public final class PhotoEditor extends Dialog {
         uprightMirror = upright[1] == 1;
         progress.setVisibility(View.GONE);
         reset();
+        Kept edit = kept.get(file.getPath());
+        if (edit == null || edit.width != width || edit.height != height) return;
+        turns = edit.turns;
+        mirror = edit.mirror;
+        degrees = edit.degrees;
+        ratioChoice = edit.ratioChoice;
+        ratio = edit.ratio;
+        userRect = edit.userRect;
+        rect = edit.rect;
+        updateViews();
+        Utils.showToastShort(str("spookd_photo_editor_edits_kept"));
+    }
+
+    /** Ends the edit for good: nothing is kept for the next open. */
+    private void drop() {
+        dropped = true;
+        kept.remove(file.getPath());
+        dismiss();
     }
 
     private double baseWidth() {
@@ -495,13 +551,17 @@ public final class PhotoEditor extends Dialog {
 
     /** Cancel and Back: asks first when there is something to lose. */
     private void leave() {
-        if (saving || !hasChanges()) {
+        if (saving) {
             dismiss();
+            return;
+        }
+        if (!hasChanges()) {
+            drop();
             return;
         }
         new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                 .setMessage(str("spookd_photo_editor_discard_confirm"))
-                .setPositiveButton(str("spookd_photo_editor_discard"), (d, which) -> dismiss())
+                .setPositiveButton(str("spookd_photo_editor_discard"), (d, which) -> drop())
                 .setNegativeButton(str("spookd_photo_editor_keep_editing"), null)
                 .show();
     }
@@ -527,7 +587,7 @@ public final class PhotoEditor extends Dialog {
                     Utils.showToastLong(str(smaller ? "spookd_photo_editor_saved_smaller"
                             : "spookd_photo_editor_saved"));
                     saved.run();
-                    dismiss();
+                    drop();
                 });
             } catch (Exception | OutOfMemoryError e) {
                 Logger.printException(() -> "PhotoEditor: cannot save the edit of " + file.getName(), e);

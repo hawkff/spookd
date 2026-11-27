@@ -718,6 +718,7 @@
     <string name="spookd_photo_editor_discard_confirm">Discard your changes to this photo?</string>
     <string name="spookd_photo_editor_discard">Discard</string>
     <string name="spookd_photo_editor_keep_editing">Keep editing</string>
+    <string name="spookd_photo_editor_edits_kept">Unsaved edits were kept</string>
     <string name="spookd_photo_editor_saved">Saved as a new photo in the private gallery. The original is unchanged.</string>
     <string name="spookd_photo_editor_saved_smaller">Saved as a new photo in the private gallery, at a smaller size so it fits in memory. The original is unchanged.</string>
     <string name="spookd_download_with_external_downloader">Download with external downloader</string>
