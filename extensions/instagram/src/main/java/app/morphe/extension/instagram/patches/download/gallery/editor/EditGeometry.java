@@ -67,9 +67,12 @@ final class EditGeometry {
      * inside the turned image with both sides at least {@code min}. A {@code ratio} above 0 keeps width
      * over height: a corner follows the drag along its diagonal and an edge resizes about the middle of
      * the other axis. Without one, and for {@link #MOVE}, each axis stops at the image on its own.
+     * {@code min} drops to the shorter side of {@code r}, so a crop that straightening fitted below it
+     * stays editable.
      */
     static double[] drag(double[] r, int handle, double dx, double dy, double ratio, double min,
                          double w, double h, double degrees) {
+        min = Math.min(min, Math.min(r[2] - r[0], r[3] - r[1]));
         if (handle == MOVE || ratio <= 0) {
             double[] across = farthest(r, handle & (LEFT | RIGHT), dx, 0, 0, min, w, h, degrees);
             return farthest(across, handle & (TOP | BOTTOM), 0, dy, 0, min, w, h, degrees);

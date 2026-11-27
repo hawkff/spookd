@@ -105,6 +105,17 @@ public final class EditGeometryTest {
     }
 
     @Test
+    public void aPanoramaStraightenedThinStaysEditable() {
+        double[] thin = EditGeometry.fit(new double[]{-5000, -50, 5000, 50}, 10000, 100, 45);
+        assertTrue(height(thin) < 10);
+        double[] narrower = EditGeometry.drag(thin, EditGeometry.LEFT, 60, 0, 0, 10, 10000, 100, 45);
+        assertEquals(width(thin) - 60, width(narrower), 1e-6);
+        double[] taller = EditGeometry.drag(narrower, EditGeometry.BOTTOM, 0, 30, 0, 10, 10000, 100, 45);
+        assertTrue(height(taller) > height(narrower));
+        assertTrue(EditGeometry.inside(taller, 10000, 100, 45));
+    }
+
+    @Test
     public void movingSlidesAlongTheEdgeItHits() {
         double[] moved = EditGeometry.drag(new double[]{-50, -50, 50, 50}, EditGeometry.MOVE, 1000, 10, 1, 30,
                 400, 300, 0);
