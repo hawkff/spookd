@@ -21,6 +21,7 @@ import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewParent;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
@@ -44,6 +45,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import app.morphe.extension.instagram.constants.UI;
+import app.morphe.extension.instagram.patches.download.gallery.Gallery;
 import app.morphe.extension.instagram.patches.download.gallery.GalleryItem;
 import app.morphe.extension.instagram.patches.download.gallery.GalleryStore;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
@@ -495,6 +497,8 @@ public final class PhotoEditor extends Dialog {
             chip.setTextColor(selected ? backgroundColor : primaryColor);
             enable(chip, ready);
         }
+        // A change from another control ends the drag in progress, so it never applies to the old frame.
+        cropView.dragging = 0;
         cropView.invalidate();
         if (rect != null) cropView.setContentDescription(cropSize());
     }
@@ -662,16 +666,20 @@ public final class PhotoEditor extends Dialog {
     private void publish(Bitmap result, boolean png, long epoch) throws IOException {
         GalleryStore store = GalleryStore.get();
         File part = store.partFile();
-        try (OutputStream out = new FileOutputStream(part)) {
-            if (!result.compress(png ? Bitmap.CompressFormat.PNG : Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)) {
-                throw new IOException("Cannot encode the edit");
+        try {
+            try (OutputStream out = new FileOutputStream(part)) {
+                if (!result.compress(png ? Bitmap.CompressFormat.PNG : Bitmap.CompressFormat.JPEG, JPEG_QUALITY,
+                        out)) {
+                    throw new IOException("Cannot encode the edit");
+                }
             }
-        } catch (IOException | RuntimeException e) {
+            store.publish(part, item, subFolder, EditGeometry.editedName(fileName, png),
+                    GalleryStore.Conflict.RENAME, epoch);
+        } finally {
+            // Publishing moved the part to its item name, so this only removes a partial file.
             part.delete();
-            throw e;
         }
-        store.publish(part, item, subFolder, EditGeometry.editedName(fileName, png), GalleryStore.Conflict.RENAME,
-                epoch);
+        Gallery.prune();
     }
 
     /** Sets {@code matrix} to map a {@code width} by {@code height} source onto the straightened frame, in source pixels. */
@@ -694,6 +702,9 @@ public final class PhotoEditor extends Dialog {
         private float downX;
         private float downY;
         private double[] downRect;
+        /** Whether the touch went past the touch slop, so it is a drag rather than a tap. */
+        private boolean moved;
+        private final int touchSlop;
 
         CropView(Context context) {
             super(context);
@@ -706,6 +717,7 @@ public final class PhotoEditor extends Dialog {
             handle.setStrokeWidth(4 * density);
             handle.setStrokeCap(Paint.Cap.SQUARE);
             setContentDescription(str("spookd_photo_editor_crop_frame", 0, 0));
+            touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         }
 
         /** Fits the turned photo's bounds into the view with room for the handles; false before there is one. */
@@ -771,12 +783,8 @@ public final class PhotoEditor extends Dialog {
             float r = x(rect[2]);
             float b = y(rect[3]);
             if (px < l - slop || px > r + slop || py < t - slop || py > b + slop) return 0;
-            int edges = 0;
-            // On a small frame the nearer edge wins, so both stay reachable.
-            if (Math.abs(px - l) <= slop && Math.abs(px - l) <= Math.abs(px - r)) edges |= EditGeometry.LEFT;
-            else if (Math.abs(px - r) <= slop) edges |= EditGeometry.RIGHT;
-            if (Math.abs(py - t) <= slop && Math.abs(py - t) <= Math.abs(py - b)) edges |= EditGeometry.TOP;
-            else if (Math.abs(py - b) <= slop) edges |= EditGeometry.BOTTOM;
+            int edges = EditGeometry.edgeAt(px, l, r, slop, EditGeometry.LEFT, EditGeometry.RIGHT)
+                    | EditGeometry.edgeAt(py, t, b, slop, EditGeometry.TOP, EditGeometry.BOTTOM);
             return edges == 0 ? EditGeometry.MOVE : edges;
         }
 
@@ -790,19 +798,27 @@ public final class PhotoEditor extends Dialog {
                     downX = event.getX();
                     downY = event.getY();
                     downRect = rect;
+                    moved = false;
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     if (dragging == 0) return false;
-                    rect = EditGeometry.drag(downRect, dragging, (event.getX() - downX) / scale,
-                            (event.getY() - downY) / scale, ratio, minSide(), baseWidth(), baseHeight(), degrees);
+                    float dx = event.getX() - downX;
+                    float dy = event.getY() - downY;
+                    if (!moved && Math.hypot(dx, dy) < touchSlop) return true;
+                    moved = true;
+                    rect = EditGeometry.drag(downRect, dragging, dx / scale, dy / scale, ratio, minSide(),
+                            baseWidth(), baseHeight(), degrees);
                     invalidate();
                     return true;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
                     if (dragging == 0) return false;
                     dragging = 0;
-                    userRect = rect;
-                    updateViews();
+                    // A tap keeps the crop as set before straightening.
+                    if (moved) {
+                        userRect = rect;
+                        updateViews();
+                    }
                     return true;
                 default:
                     return dragging != 0;
@@ -857,6 +873,12 @@ public final class PhotoEditor extends Dialog {
         /** The frame with its move and resize actions, and one virtual node per handle for TalkBack. */
         private final class Nodes extends AccessibilityNodeProvider {
             private int focused = HOST;
+
+            @Override
+            public AccessibilityNodeInfo findFocus(int focus) {
+                return focus == AccessibilityNodeInfo.FOCUS_ACCESSIBILITY && focused != HOST
+                        ? createAccessibilityNodeInfo(focused) : null;
+            }
 
             @Override
             public AccessibilityNodeInfo createAccessibilityNodeInfo(int node) {
