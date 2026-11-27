@@ -233,6 +233,14 @@ public class HookFlags {
         }
     }
 
+    private static void restoreAccountSearchFlags() {
+        if (Pref.restoreAccountSearch()) {
+            BOOL_FLAGS.put("111209::0", false); //ig_typeahead_skw_i18n_expansion_h1_2026::android_put_bootstrap_user_below_keywords
+            BOOL_FLAGS.put("128663::0", false); //ig_android_search_typeahead_recents_to_skw::convert_recent_to_skw
+            BOOL_FLAGS.put("50773::3", false); //ig_client_search_popular_keywords::prioritize_server_keywords_in_typeahead_android
+        }
+    }
+
     private static void reelsAutoScrollFlags() {
         // Off is applied at Instagram's final availability check instead, which a server text setting can also turn on.
         if ("on".equals(Pref.reelsAutoScroll())) {

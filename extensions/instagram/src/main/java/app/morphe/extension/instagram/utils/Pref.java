@@ -304,6 +304,10 @@ public class Pref {
         return SettingsStatus.hideRecentSearches && HIDE_RECENT_SEARCHES.get();
     }
 
+    public static boolean restoreAccountSearch() {
+        return on(Settings.RESTORE_ACCOUNT_SEARCH) && SettingsStatus.restoreAccountSearch;
+    }
+
     public static boolean squareExploreGrid() {
         return on(Settings.SQUARE_EXPLORE_GRID) && SettingsStatus.squareExploreGrid;
     }

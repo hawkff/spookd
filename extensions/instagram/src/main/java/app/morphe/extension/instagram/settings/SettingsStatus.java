@@ -279,10 +279,13 @@ public class SettingsStatus {
     public static void hideInboxInstants() { hideInboxInstants = true; }
     public static boolean hideReelsTabHeader = false;
     public static void hideReelsTabHeader() { hideReelsTabHeader = true; }
+    public static boolean restoreAccountSearch = false;
+    public static void restoreAccountSearch() { restoreAccountSearch = true; }
     public static boolean distractionFreeSection() {
         return (hideReelsFollowButton || disableDoubleTapLike || hideHiddenRequests || hideNotesTray || disableHighlights || disableStories || disableExplore || disableComments || hideStoriesTray || limitFollowingFeed || hideFeedPosts || disableVideoAutoplay || disableDiscoverPeople || hideGroupCreationOnSharesheet || hideReshareButton || hideSaveButtons || hideLikes || hideShareButton || disableReelsScrolling || disableSwipeToCreate || focusLock
                 || hideCommentEmojiBar || hideReelsVisualSearch || hideProfileNotesBubble || hideThreadsButton || hideFriendsMap
-                || hideRecentSearches || squareExploreGrid || hideReelsCommentBar || hideChatBlendButton || hideInboxInstants || hideReelsTabHeader);
+                || hideRecentSearches || squareExploreGrid || hideReelsCommentBar || hideChatBlendButton || hideInboxInstants || hideReelsTabHeader
+                || restoreAccountSearch);
     }
 
     //Misc section.
@@ -554,6 +557,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_hide_threads_button"), SettingsStatus.hideThreadsButton);
         FLAGS.put(str("spookd_hide_friends_map"), SettingsStatus.hideFriendsMap);
         FLAGS.put(str("spookd_hide_recent_searches"), SettingsStatus.hideRecentSearches);
+        FLAGS.put(str("spookd_restore_account_search"), SettingsStatus.restoreAccountSearch);
         FLAGS.put(str("spookd_square_explore_grid"), SettingsStatus.squareExploreGrid);
         FLAGS.put(str("spookd_hide_reels_comment_bar"), SettingsStatus.hideReelsCommentBar);
         FLAGS.put(str("spookd_hide_chat_blend_button"), SettingsStatus.hideChatBlendButton);
