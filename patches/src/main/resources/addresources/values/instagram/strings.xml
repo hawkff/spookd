@@ -453,6 +453,7 @@
     <string name="spookd_voice_limits">Only the selected part is sent. A voice message is 0.75 seconds to 5 minutes long.</string>
     <string name="spookd_voice_unreadable">This audio file can\'t be read</string>
     <string name="spookd_voice_too_short">This audio is too short for a voice message</string>
+    <string name="spookd_voice_opening">Opening the audio file…</string>
     <string name="spookd_voice_preparing">Preparing the voice message…</string>
     <string name="spookd_voice_busy">A voice message is still being prepared</string>
     <string name="spookd_voice_failed">The voice message couldn\'t be sent</string>

@@ -25,9 +25,13 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import app.morphe.extension.instagram.patches.confirm.ActionConfirm;
 import app.morphe.extension.instagram.patches.dm.InboxLock;
@@ -49,6 +53,8 @@ public final class VoiceUpload {
     private static final String PICKER_TAG = "spookd_voice_file";
     private static final long STEP_MS = 100;
     private static final long TICK_MS = 50;
+    private static final String COPY_DIR = "spookd_voice";
+    private static final long COPY_KEEP_MS = 24 * 60 * 60_000L;
     // Main thread only: set while a selection is converted, so one Send cannot start a second.
     private static boolean converting;
 
@@ -185,7 +191,7 @@ public final class VoiceUpload {
                     .setTitle(str("spookd_gallery_picker_entry"))
                     .setItems(names, (shown, which) -> {
                         picked[0] = true;
-                        openTrim(activity, Uri.fromFile(audio.get(which).file), destination, session);
+                        openTrim(activity, Uri.fromFile(audio.get(which).file), false, destination, session);
                     })
                     .setNegativeButton(str("spookd_cancel"), null)
                     .create();
@@ -200,63 +206,91 @@ public final class VoiceUpload {
         }
     }
 
-    /** Main thread: prepares a preview player, whose length opens the trim sheet. */
-    private static void openTrim(Activity activity, Uri uri, VoiceDestination destination, Session session) {
-        MediaPlayer player = new MediaPlayer();
-        try {
-            player.setAudioAttributes(new AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .build());
-            player.setDataSource(activity, uri);
-            player.setOnErrorListener((mp, what, extra) -> {
-                mp.release();
-                session.end();
+    /**
+     * Main thread: on a background thread copies a picked document ({@code copy}), which may first have to
+     * download, and prepares a preview player; its length then opens the trim sheet on the main thread.
+     */
+    private static void openTrim(Activity activity, Uri uri, boolean copy, VoiceDestination destination,
+                                 Session session) {
+        if (copy) Utils.showToastShort(str("spookd_voice_opening"));
+        Context app = activity.getApplicationContext();
+        Utils.runOnBackgroundThread(() -> {
+            File temp = null;
+            MediaPlayer player = null;
+            try {
+                if (copy) temp = copyToCache(app, uri);
+                Uri source = temp == null ? uri : Uri.fromFile(temp);
+                player = new MediaPlayer();
+                player.setAudioAttributes(new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build());
+                player.setDataSource(app, source);
+                player.prepare();
+                MediaPlayer prepared = player;
+                File copied = temp;
+                Utils.runOnMainThread(() -> showTrim(activity, source, copied, prepared, destination, session));
+            } catch (Exception e) {
+                if (player != null) player.release();
+                if (temp != null) temp.delete();
+                Logger.printException(() -> "VoiceUpload: cannot read " + uri, e);
                 Utils.showToastShort(str("spookd_voice_unreadable"));
-                return true;
-            });
-            player.setOnPreparedListener(mp -> showTrim(activity, uri, mp, destination, session));
-            player.prepareAsync();
-        } catch (Exception e) {
-            player.release();
-            session.end();
-            Logger.printException(() -> "VoiceUpload: cannot read " + uri, e);
-            Utils.showToastShort(str("spookd_voice_unreadable"));
-        }
+                Utils.runOnMainThread(session::end);
+            }
+        });
     }
 
-    private static void showTrim(Activity activity, Uri uri, MediaPlayer player, VoiceDestination destination,
-                                 Session session) {
+    /** Background thread: a copy of document {@code uri} in the cache, so reading it never waits on its provider. */
+    private static File copyToCache(Context app, Uri uri) throws IOException {
+        File dir = new File(app.getCacheDir(), COPY_DIR);
+        if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cannot create " + dir);
+        // Copies a killed process left behind.
+        File[] old = dir.listFiles();
+        long now = System.currentTimeMillis();
+        if (old != null) for (File file : old) if (now - file.lastModified() > COPY_KEEP_MS) file.delete();
+        File copy = new File(dir, UUID.randomUUID().toString());
+        try (InputStream in = app.getContentResolver().openInputStream(uri);
+             OutputStream out = new FileOutputStream(copy)) {
+            if (in == null) throw new IOException("No stream for " + uri);
+            byte[] buffer = new byte[64 * 1024];
+            for (int read; (read = in.read(buffer)) > 0; ) out.write(buffer, 0, read);
+        } catch (IOException | RuntimeException e) {
+            copy.delete();
+            throw e;
+        }
+        return copy;
+    }
+
+    /** Main thread; {@code temp}, a copy made for this pick or null, goes with the trim sheet. */
+    private static void showTrim(Activity activity, Uri uri, File temp, MediaPlayer player,
+                                 VoiceDestination destination, Session session) {
         try {
             int duration = player.getDuration();
-            if (session.stopped || activity.isFinishing() || activity.isDestroyed()) {
+            if (session.stopped || activity.isFinishing() || activity.isDestroyed() || duration < VoiceAudio.MIN_MS) {
                 player.release();
-                session.end();
-                return;
-            }
-            if (duration < VoiceAudio.MIN_MS) {
-                player.release();
+                if (temp != null) temp.delete();
                 session.end();
                 // An unknown length is -1.
-                Utils.showToastShort(str(duration <= 0 ? "spookd_voice_unreadable" : "spookd_voice_too_short"));
+                if (duration < VoiceAudio.MIN_MS && !session.stopped) {
+                    Utils.showToastShort(str(duration <= 0 ? "spookd_voice_unreadable" : "spookd_voice_too_short"));
+                }
                 return;
             }
-            new Trim(activity, uri, player, duration, destination, session).show();
+            new Trim(activity, uri, temp, player, duration, destination, session).show();
         } catch (Exception e) {
             player.release();
+            if (temp != null) temp.delete();
             session.end();
             fail("show the trim sheet", e);
         }
     }
 
     /** Main thread, once Send was confirmed: converts on a background thread, then sends on the main thread. */
-    private static void convertAndSend(Context app, Uri uri, long startMs, long endMs, VoiceDestination destination) {
-        if (openController(destination) == null) {
-            Utils.showToastShort(str("spookd_voice_chat_changed"));
-            return;
-        }
-        if (converting) {
-            Utils.showToastShort(str("spookd_voice_busy"));
+    private static void convertAndSend(Context app, Uri uri, File temp, long startMs, long endMs,
+                                       VoiceDestination destination) {
+        if (openController(destination) == null || converting) {
+            if (temp != null) temp.delete();
+            Utils.showToastShort(str(converting ? "spookd_voice_busy" : "spookd_voice_chat_changed"));
             return;
         }
         converting = true;
@@ -272,6 +306,7 @@ public final class VoiceUpload {
                 if (path != null) new File(path).delete();
                 Logger.printException(() -> "VoiceUpload: cannot convert " + uri, t);
             }
+            if (temp != null) temp.delete();
             String converted = path;
             VoiceAudio.Result done = result;
             Utils.runOnMainThread(() -> {
@@ -314,6 +349,8 @@ public final class VoiceUpload {
     private static final class Trim implements SeekBar.OnSeekBarChangeListener {
         private final Activity activity;
         private final Uri uri;
+        // A copy made for this pick, deleted with the sheet unless Send takes it.
+        private final File temp;
         private final MediaPlayer player;
         private final long durationMs;
         private final VoiceDestination destination;
@@ -324,14 +361,16 @@ public final class VoiceUpload {
         private long end;
         private boolean playing;
         private boolean released;
+        private boolean handedOff;
         private TextView range;
         private SeekBar startBar;
         private SeekBar endBar;
         private Button play;
 
-        Trim(Activity activity, Uri uri, MediaPlayer player, long durationMs, VoiceDestination destination,
-             Session session) {
+        Trim(Activity activity, Uri uri, File temp, MediaPlayer player, long durationMs,
+             VoiceDestination destination, Session session) {
             this.activity = activity;
+            this.temp = temp;
             this.destination = destination;
             this.session = session;
             this.uri = uri;
@@ -469,6 +508,7 @@ public final class VoiceUpload {
             pause();
             released = true;
             player.release();
+            if (temp != null && !handedOff) temp.delete();
             session.end();
         }
 
@@ -476,9 +516,11 @@ public final class VoiceUpload {
             long from = start;
             long to = end;
             Context app = activity.getApplicationContext();
-            if (!ActionConfirm.askVoiceSend(() -> convertAndSend(app, uri, from, to, destination), null)) {
-                Utils.showToastShort(str("spookd_gallery_action_failed"));
-            }
+            Runnable dropCopy = () -> {
+                if (temp != null) temp.delete();
+            };
+            handedOff = ActionConfirm.askVoiceSend(() -> convertAndSend(app, uri, temp, from, to, destination), dropCopy);
+            if (!handedOff) Utils.showToastShort(str("spookd_gallery_action_failed"));
         }
     }
 
@@ -584,7 +626,7 @@ public final class VoiceUpload {
             Uri uri = resultCode == Activity.RESULT_OK && data != null ? data.getData() : null;
             done();
             if (uri != null && activity != null && !activity.isFinishing()) {
-                openTrim(activity, uri, destination, new Session(activity));
+                openTrim(activity, uri, true, destination, new Session(activity));
             }
         }
 
