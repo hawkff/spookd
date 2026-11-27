@@ -20,6 +20,7 @@ import android.os.SystemClock;
 import android.provider.DocumentsContract;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -45,6 +46,10 @@ public final class GalleryBackup {
     private static final String TAG = "spookd_gallery_backup";
     private static final String MODE = "mode";
     private static final int EXPORT = 0;
+    private static final int IMPORT = 1;
+    // Providers label zip files differently.
+    private static final String[] ARCHIVE_TYPES = {"application/zip", "application/x-zip-compressed",
+            "application/octet-stream"};
     private static final int REQUEST = 0x5bac;
     private static final int NOTIFICATION_ID = 0x5bac;
     private static final String CHANNEL = "spookd_gallery_backup";
@@ -76,7 +81,7 @@ public final class GalleryBackup {
      * opens and {@code onReturned} once it closed; either may be null.
      */
     static void choose(Activity activity, Runnable onPicking, Runnable onReturned) {
-        String[] labels = {str("spookd_gallery_backup_export")};
+        String[] labels = {str("spookd_gallery_backup_export"), str("spookd_gallery_backup_import")};
         new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                 .setTitle(str("spookd_gallery_backup"))
                 .setItems(labels, (d, which) -> pick(activity, which, onPicking, onReturned))
@@ -102,9 +107,13 @@ public final class GalleryBackup {
     }
 
     private static Intent intent(int mode) {
-        String day = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(new Date());
-        return new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
-                .setType("application/zip").putExtra(Intent.EXTRA_TITLE, "spookd_gallery_" + day + ".zip");
+        if (mode == EXPORT) {
+            String day = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(new Date());
+            return new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+                    .setType("application/zip").putExtra(Intent.EXTRA_TITLE, "spookd_gallery_" + day + ".zip");
+        }
+        return new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("*/*").putExtra(Intent.EXTRA_MIME_TYPES, ARCHIVE_TYPES);
     }
 
     private static List<Uri> uris(Intent data) {
@@ -124,10 +133,11 @@ public final class GalleryBackup {
 
     /** Main thread: hands the picked documents to the work thread. */
     private static void start(Context app, int mode, List<Uri> uris) {
-        Utils.showToastShort(str("spookd_gallery_backup_running"));
+        Utils.showToastShort(str(mode == EXPORT ? "spookd_gallery_backup_running" : "spookd_gallery_importing"));
         WORK.execute(() -> {
             try {
-                export(app, uris.get(0));
+                if (mode == EXPORT) export(app, uris.get(0));
+                else importArchive(app, uris.get(0));
             } catch (Exception e) {
                 Logger.printException(() -> "Gallery backup failed", e);
                 Utils.showToastLong(str("spookd_gallery_action_failed"));
@@ -154,6 +164,24 @@ public final class GalleryBackup {
             return;
         }
         Utils.showToastLong(str("spookd_gallery_backup_done", written));
+    }
+
+    /** Work thread: merges a backup, skipping what the gallery already has. */
+    private static void importArchive(Context app, Uri uri) {
+        GalleryArchive.Result result = new GalleryArchive.Result();
+        try (InputStream in = app.getContentResolver().openInputStream(uri)) {
+            if (in == null) throw new IOException("Cannot read the backup");
+            GalleryArchive.read(GalleryStore.get(), in, result, progress(app, str("spookd_gallery_importing")));
+        } catch (GalleryArchive.InvalidBackup e) {
+            Logger.printInfo(() -> "Gallery backup: not a backup", e);
+            Utils.showToastLong(str("spookd_gallery_import_invalid"));
+            return;
+        } catch (Exception e) {
+            Logger.printException(() -> "Gallery backup: import stopped", e);
+            Utils.showToastLong(str("spookd_gallery_import_stopped", result.imported, result.duplicates, result.failed));
+            return;
+        }
+        Utils.showToastLong(str("spookd_gallery_import_done", result.imported, result.duplicates, result.failed));
     }
 
     /** Work thread: shows {@code title} now, then (done, total) at most twice a second. */
