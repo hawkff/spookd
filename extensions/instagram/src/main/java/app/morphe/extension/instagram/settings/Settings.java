@@ -9,6 +9,11 @@ import static app.morphe.extension.instagram.settings.RestartPolicy.REQUIRED;
 import static app.morphe.extension.instagram.settings.RestartPolicy.NOT_REQUIRED;
 import app.morphe.extension.instagram.patches.download.DownloadFileNameFormatter;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 public class Settings {
     // Legacy stored key, kept so existing settings and exports still load.
     public static final BooleanSetting SPOOKD_DEBUG = new BooleanSetting("piko_debug", false, REQUIRED);
@@ -134,6 +139,7 @@ public class Settings {
     public static final StringSetting REELS_AUTO_SCROLL = new StringSetting("reels_auto_scroll", "default", REQUIRED);
     // Each Reels viewer sets up picture-in-picture when it is created; read once per process.
     public static final BooleanSetting PIP_FOR_VIDEOS = new BooleanSetting("pip_for_videos", false, REQUIRED);
+    public static final BooleanSetting KEEP_OTHER_AUDIO = new BooleanSetting("keep_other_audio", true, NOT_REQUIRED);
     public static final BooleanSetting COMMENT_COPY_BUTTON = new BooleanSetting("comment_copy_button", true, NOT_REQUIRED);
     public static final BooleanSetting COMMENT_SAVE_MEDIA_BUTTON = new BooleanSetting("comment_save_media_button", true, NOT_REQUIRED);
     public static final BooleanSetting HIDE_GROUP_CREATION_BUTTON_ON_SHARESHEET = new BooleanSetting("hide_group_creation_button_on_sharesheet", true, NOT_REQUIRED);
@@ -244,4 +250,24 @@ public class Settings {
     public static final BooleanSetting OPEN_SETTINGS_ON_LAUNCH = new BooleanSetting("open_settings_on_launch", false, NOT_REQUIRED);
     // Megabytes; "0" turns it off.
     public static final StringSetting AUTO_CLEAR_CACHE_MB = new StringSetting("auto_clear_cache_mb", "0", NOT_REQUIRED);
+    public static final BooleanSetting SHOW_NEW_LABELS = new BooleanSetting("show_new_labels", true, NOT_REQUIRED);
+
+    // Keys of the rows labeled NEW in settings; reset at each release.
+    public static final Set<String> NEW_KEYS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+            PIP_FOR_VIDEOS.key,
+            GALLERY_PICKER.key,
+            MARK_SEEN_ON.key,
+            KEEP_SEEN_LOCALLY.key,
+            TAB_SHORTCUT_HOME.key,
+            TAB_SHORTCUT_REELS.key,
+            TAB_SHORTCUT_MESSAGES.key,
+            TAB_SHORTCUT_SEARCH.key,
+            TAB_SHORTCUT_PROFILE.key,
+            TAB_SHORTCUT_NOTIFICATIONS.key,
+            TAB_SHORTCUT_CREATE.key,
+            KEEP_OTHER_AUDIO.key,
+            SHOW_NEW_LABELS.key,
+            "spookd_report_bug",
+            "spookd_request_feature"
+    )));
 }

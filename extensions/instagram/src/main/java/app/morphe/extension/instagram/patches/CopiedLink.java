@@ -89,7 +89,7 @@ public final class CopiedLink {
     }
 
     /** The https://www.instagram.com link for copied text, or null when it is not an Instagram link or @username. */
-    static String toUrl(CharSequence text) {
+    public static String toUrl(CharSequence text) {
         if (text == null) return null;
         String value = text.toString().trim();
         Matcher link = LINK.matcher(value);

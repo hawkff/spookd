@@ -15,8 +15,12 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.preference.Preference;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import android.text.TextUtils;
+import android.text.style.ReplacementSpan;
 import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
 import android.view.Gravity;
@@ -33,8 +37,15 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.lang.reflect.Constructor;
+import java.util.HashMap;
+import java.util.Map;
+
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.settings.ActivityHook;
+import app.morphe.extension.instagram.settings.Settings;
+import app.morphe.extension.instagram.utils.IgStr;
+import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.ResourceUtils;
 
 public final class InstagramPreferenceStyle {
@@ -49,6 +60,8 @@ public final class InstagramPreferenceStyle {
     private static final String TAG_TRAILING = "spookd_instagram_pref_trailing";
     private static final String IGDS_SWITCH_CLASS_NAME =
             "com.instagram.igds.components.switchbutton.IgdsSwitch";
+    // Looked up once; the app has a single class loader.
+    private static volatile Constructor<? extends CompoundButton> igdsSwitchConstructor;
 
     public static final int TRAILING_NONE = 0;
     public static final int TRAILING_SWITCH = 1;
@@ -399,7 +412,7 @@ public final class InstagramPreferenceStyle {
                 : row != null ? row.secondaryColor : secondaryTextColor();
 
         if (title != null) {
-            title.setText(preference.getTitle());
+            title.setText(titleWithNewLabel(preference));
             title.setTextColor(titleColor);
             title.setEnabled(enabled);
         }
@@ -422,6 +435,38 @@ public final class InstagramPreferenceStyle {
             view.setAlpha(enabled ? 1.0f : 0.5f);
         }
         view.setEnabled(enabled);
+    }
+
+    // Stands for the labeled title of a NEW row that was not bound yet.
+    private static final CharSequence NEW_LABEL_PENDING = "";
+    // Labeled titles by key for the NEW rows, empty while the labels are hidden; reloaded when the switch changes.
+    private static final Pref.Cached<Map<String, CharSequence>> NEW_LABEL_TITLES = new Pref.Cached<>(() -> {
+        Map<String, CharSequence> titles = new HashMap<>();
+        if (Pref.showNewLabels()) {
+            for (String key : Settings.NEW_KEYS) titles.put(key, NEW_LABEL_PENDING);
+        }
+        return titles;
+    }, Settings.SHOW_NEW_LABELS.key);
+
+    /** Main thread. The title, with a NEW badge on a row added in this release while the labels are shown. */
+    private static CharSequence titleWithNewLabel(Preference preference) {
+        CharSequence title = preference.getTitle();
+        Map<String, CharSequence> titles = NEW_LABEL_TITLES.get();
+        CharSequence labeled = titles.get(preference.getKey());
+        if (labeled == null || title == null) return title;
+        if (labeled == NEW_LABEL_PENDING) {
+            labeled = withNewLabel(title, IgStr.str("spookd_new_label"));
+            titles.put(preference.getKey(), labeled);
+        }
+        return labeled;
+    }
+
+    static CharSequence withNewLabel(CharSequence title, String label) {
+        SpannableStringBuilder text = new SpannableStringBuilder(title).append(' ');
+        int start = text.length();
+        text.append(label);
+        text.setSpan(NewLabelSpan.INSTANCE, start, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return text;
     }
 
     public static void bindSearchResult(
@@ -619,12 +664,15 @@ public final class InstagramPreferenceStyle {
 
     private static CompoundButton createNativeSwitch(Context context) {
         try {
-            CompoundButton switchView = Class
-                    .forName(IGDS_SWITCH_CLASS_NAME, true, context.getClassLoader())
-                    .asSubclass(CompoundButton.class)
-                    .getConstructor(Context.class)
-                    .newInstance(context);
-            return switchView;
+            Constructor<? extends CompoundButton> constructor = igdsSwitchConstructor;
+            if (constructor == null) {
+                constructor = Class
+                        .forName(IGDS_SWITCH_CLASS_NAME, true, context.getClassLoader())
+                        .asSubclass(CompoundButton.class)
+                        .getConstructor(Context.class);
+                igdsSwitchConstructor = constructor;
+            }
+            return constructor.newInstance(context);
         } catch (ReflectiveOperationException | ClassCastException exception) {
             throw new IllegalStateException("Unable to create Instagram's IgdsSwitch", exception);
         }
@@ -881,6 +929,43 @@ public final class InstagramPreferenceStyle {
             }
             this.drawPressedHighlight = drawPressedHighlight;
             invalidate();
+        }
+    }
+
+    /** Draws its text as a small filled pill; shared by all rows, drawn on the main thread only. */
+    static final class NewLabelSpan extends ReplacementSpan {
+        static final NewLabelSpan INSTANCE = new NewLabelSpan();
+        private final Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF bounds = new RectF();
+        private int fillColor;
+
+        private Paint labelPaint(Paint text) {
+            labelPaint.set(text);
+            labelPaint.setTextSize(text.getTextSize() * 0.7f);
+            labelPaint.setFakeBoldText(true);
+            return labelPaint;
+        }
+
+        @Override
+        public int getSize(Paint paint, CharSequence text, int start, int end, Paint.FontMetricsInt fm) {
+            if (fm != null) paint.getFontMetricsInt(fm);
+            Paint label = labelPaint(paint);
+            return Math.round(label.measureText(text, start, end) + label.getTextSize() * 1.2f);
+        }
+
+        @Override
+        public void draw(Canvas canvas, CharSequence text, int start, int end, float x,
+                         int top, int y, int bottom, Paint paint) {
+            float center = y + (paint.ascent() + paint.descent()) / 2f;
+            Paint label = labelPaint(paint);
+            float padding = label.getTextSize() * 0.6f;
+            float half = (label.descent() - label.ascent()) / 2f;
+            bounds.set(x, center - half, x + label.measureText(text, start, end) + 2 * padding, center + half);
+            if (fillColor == 0) fillColor = selectionColor();
+            label.setColor(fillColor);
+            canvas.drawRoundRect(bounds, half, half, label);
+            label.setColor(Color.WHITE);
+            canvas.drawText(text, start, end, x + padding, center - (label.ascent() + label.descent()) / 2f, label);
         }
     }
 

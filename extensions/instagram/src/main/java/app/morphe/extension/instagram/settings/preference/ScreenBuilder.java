@@ -9,7 +9,10 @@ package app.morphe.extension.instagram.settings.preference;
 
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
+import android.content.ActivityNotFoundException;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.preference.PreferenceScreen;
 import android.preference.Preference;
@@ -1254,6 +1257,13 @@ public class ScreenBuilder {
                     Settings.PIP_FOR_VIDEOS
             ));
         }
+        if (SettingsStatus.keepOtherAudio) {
+            addPreference(helper.switchPreference(
+                    str("spookd_keep_other_audio"),
+                    str("spookd_keep_other_audio_desc"),
+                    Settings.KEEP_OTHER_AUDIO
+            ));
+        }
         if (SettingsStatus.improveImageViewing) {
             addPreference(
                     helper.switchPreference(
@@ -1818,6 +1828,14 @@ public class ScreenBuilder {
                 )
         );
 
+        addPreference(
+                helper.switchPreference(
+                        str("spookd_show_new_labels"),
+                        str("spookd_show_new_labels_desc"),
+                        Settings.SHOW_NEW_LABELS
+                )
+        );
+
         Preference storage = helper.buttonPreference(
                 str("spookd_storage"),
                 str("spookd_storage_desc"),
@@ -1860,6 +1878,9 @@ public class ScreenBuilder {
                         Settings.SPOOKD_DEBUG
                 )
         );
+
+        addPreference(newIssueRow(true, "spookd_report_bug"));
+        addPreference(newIssueRow(false, "spookd_request_feature"));
 
         PreferenceCategory category = addCategory(str("spookd_patch_info_title"));
         category.setKey(Constants.SPOOKD_PATCH_INFO_PREFERENCE_CATEGORY);
@@ -2116,6 +2137,41 @@ public class ScreenBuilder {
                 )
         );
 
+    }
+
+    /** A row that opens the project's new-issue form in the browser; the link sends the details to GitHub, but no issue is created until the user submits it. */
+    private Preference newIssueRow(boolean bug, String key) {
+        Preference row = helper.buttonPreference(str(key), str(key + "_desc"), key);
+        row.setOnPreferenceClickListener(preference -> {
+            Uri uri = newIssueUri(bug, Build.MANUFACTURER + " " + Build.MODEL,
+                    Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")",
+                    Utils.getAppVersionName(), Utils.getPatchesReleaseVersion());
+            try {
+                preference.getContext().startActivity(new Intent(Intent.ACTION_VIEW, uri));
+            } catch (ActivityNotFoundException e) {
+                Utils.showToastShort(str("spookd_no_browser"));
+            }
+            return true;
+        });
+        return row;
+    }
+
+    /** The new-issue form of the project's bug or feature template, prefilled with the device and versions. */
+    static Uri newIssueUri(boolean bug, String device, String android, String instagram, String patches) {
+        String about = "Device: " + device + "\nAndroid: " + android
+                + "\nInstagram: " + instagram + "\nPatches: " + patches;
+        Uri.Builder uri = Uri.parse("https://github.com/hawkff/spookd/issues/new").buildUpon();
+        // Blank issues are off in the project, so the text goes into the template's fields by their ids.
+        if (bug) {
+            return uri.appendQueryParameter("template", "bug_instagram.yml")
+                    .appendQueryParameter("problem", "Expected:\nActual:\nSteps:\n\n" + about)
+                    .appendQueryParameter("app-version", instagram)
+                    .appendQueryParameter("patches-version", patches)
+                    .build();
+        }
+        return uri.appendQueryParameter("template", "feature_instagram.yml")
+                .appendQueryParameter("feature", "\n\n" + about)
+                .build();
     }
 
     //end

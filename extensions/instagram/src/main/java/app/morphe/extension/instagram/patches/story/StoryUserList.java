@@ -10,23 +10,33 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.app.AlertDialog;
 import android.content.Context;
+import android.text.InputType;
+import android.widget.EditText;
+import android.widget.FrameLayout;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import app.morphe.extension.crimera.sharedPreference.SharedPref;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.entity.UserData;
+import app.morphe.extension.instagram.patches.CopiedLink;
 import app.morphe.extension.instagram.settings.Settings;
+import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.StringSetting;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
+import app.morphe.extension.shared.Logger;
+import app.morphe.extension.shared.Utils;
 
 import com.instagram.common.session.UserSession;
 
@@ -45,6 +55,9 @@ public final class StoryUserList {
     // Keyed by "<user id>:<chat id>" of a one-to-one chat, with the chat's title.
     public static final StoryUserList ACTIVITY_ALERTS = new StoryUserList(Settings.ACTIVITY_ALERT_USERS,
             "spookd_activity_alert_users", "spookd_activity_alert_remove_confirm", "", "spookd_activity_alert_users_empty", true);
+
+    private static final String PROFILE_LINK_PREFIX = "https://www.instagram.com/";
+    private static volatile WeakReference<UserSession> currentSession = new WeakReference<>(null);
 
     private final StringSetting setting;
     private final String titleKey;
@@ -84,6 +97,11 @@ public final class StoryUserList {
         if (media == null || !(session instanceof UserSession)) return null;
         UserData owner = new MediaData(media, (UserSession) session).getUserData();
         return owner == null ? null : userId(owner.getUserId());
+    }
+
+    /** Called just before Instagram's session manager returns the session it made current. */
+    public static void onCurrentSession(UserSession session) {
+        currentSession = new WeakReference<>(session);
     }
 
     /** {@code id}, or null when it is missing or empty. */
@@ -148,7 +166,85 @@ public final class StoryUserList {
         } else {
             dialog.setItems(names, (d, which) -> confirmRemove(context, account, ids.get(which), names[which]));
         }
+        // Lists shown as @usernames are keyed by user id; the others are keyed by chat.
+        if ("@".equals(namePrefix) && SettingsStatus.addByLink) {
+            dialog.setNeutralButton(str("spookd_add_by_link"), (d, which) ->
+                    addByLink(context, null, () -> showList(context, account)));
+        }
         dialog.show();
+    }
+
+    /**
+     * Main thread. Asks for a profile link or @username and lists that person; {@code onAdded} gets the
+     * user id of a newly listed person. {@code reopen} runs when the dialog closes.
+     */
+    public void addByLink(Context context, Consumer<String> onAdded, Runnable reopen) {
+        Context dialogContext = InstagramPreferenceStyle.dialogContext(context);
+        int padding = InstagramPreferenceStyle.dp(context, 20);
+        FrameLayout form = new FrameLayout(dialogContext);
+        form.setPadding(padding, padding / 2, padding, 0);
+        EditText input = new EditText(dialogContext);
+        input.setSingleLine(true);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        input.setHint(str("spookd_add_by_link_hint"));
+        String copied = CopiedLink.copiedUrl(context);
+        if (profileUsername(copied) != null) input.setText(copied);
+        form.addView(input);
+
+        AlertDialog dialog = new AlertDialog.Builder(dialogContext)
+                .setTitle(str("spookd_add_by_link"))
+                .setView(form)
+                .setNegativeButton(str("spookd_cancel"), null)
+                .setPositiveButton(str("spookd_add_by_link_add"), null)
+                .setOnDismissListener(d -> reopen.run())
+                .create();
+        // Set after show so an entry that cannot be added keeps the dialog open.
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            String username = profileUsername(input.getText());
+            String userId = username == null ? null : cachedUserId(username);
+            if (userId == null) {
+                Utils.showToastShort(str(username == null
+                        ? "spookd_add_by_link_invalid" : "spookd_add_by_link_not_loaded"));
+                return;
+            }
+            boolean added = add(userId, username);
+            if (added && onAdded != null) onAdded.accept(userId);
+            Utils.showToastShort(str(added ? "spookd_add_by_link_added" : "spookd_add_by_link_already_added",
+                    username));
+            dialog.dismiss();
+        }));
+        dialog.show();
+    }
+
+    /** The lowercased username of an Instagram profile link or @username; null for anything else. */
+    static String profileUsername(CharSequence text) {
+        String url = CopiedLink.toUrl(text);
+        if (url == null) return null;
+        String path = url.substring(PROFILE_LINK_PREFIX.length());
+        int query = path.indexOf('?');
+        if (query >= 0) path = path.substring(0, query);
+        if (path.endsWith("/")) path = path.substring(0, path.length() - 1);
+        if (path.isEmpty() || path.indexOf('/') >= 0 || CopiedLink.toUrl("@" + path) == null) return null;
+        return path.toLowerCase(Locale.ROOT);
+    }
+
+    /** Main thread. The user id from Instagram's in-memory user cache; null when it has not loaded that profile. */
+    private static String cachedUserId(String username) {
+        try {
+            UserSession session = currentSession.get();
+            Object user = session == null ? null : cachedUserNamed(session, username);
+            if (user == null) return null;
+            UserData data = new UserData(user);
+            return username.equalsIgnoreCase(data.getUsername()) ? userId(data.getUserId()) : null;
+        } catch (Exception e) {
+            Logger.printException(() -> "Looking up a user by username failed", e);
+            return null;
+        }
+    }
+
+    /** Replaced at patch time with a lookup in the session's user cache by username, without a network request. */
+    private static Object cachedUserNamed(UserSession session, String username) {
+        return null;
     }
 
     private void confirmRemove(Context context, String account, String userId, CharSequence name) {
