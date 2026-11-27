@@ -267,7 +267,7 @@
     <string name="spookd_profile_saved_tab">Saved tab on your profile</string>
     <string name="spookd_profile_saved_tab_desc">Adds a Saved tab after the other tabs on your own profile. Restart the app to apply.</string>
     <string name="spookd_hide_profile_grid_reels">Hide reels in profile grids</string>
-    <string name="spookd_hide_profile_grid_reels_desc">Profile grids show only photo and carousel posts; reels and other videos are left out. Your own posts stay. Applies to profiles you open next.</string>
+    <string name="spookd_hide_profile_grid_reels_desc">Profile grids show only photo and carousel posts; reels and other videos are left out, on your own profile too. While it is on, a post you just pinned moves to the top after a refresh. Applies to profiles you open next.</string>
     <string name="spookd_profile_reels_sort">Reels tab sort</string>
     <string name="spookd_profile_reels_sort_desc">Keep most viewed offers the Most viewed sort on every profile\'s Reels tab, even where Instagram doesn\'t. Remove most viewed takes it out. Default leaves it to Instagram. Applies to profiles you open next.</string>
     <string name="spookd_profile_reels_sort_keep">Keep most viewed</string>

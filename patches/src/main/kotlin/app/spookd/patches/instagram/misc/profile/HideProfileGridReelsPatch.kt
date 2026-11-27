@@ -5,7 +5,6 @@ import app.spookd.patches.instagram.entity.mediadata.mediaDataEntity
 import app.spookd.patches.instagram.misc.settings.settingsPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
-import app.spookd.patches.instagram.utils.Constants.USER_SESSION_CLASS
 import app.spookd.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
@@ -14,7 +13,6 @@ import app.morphe.patcher.fieldAccess
 import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.PatchException
-import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.string
 import app.morphe.patcher.util.addInstructionsAtControlFlowLabel
@@ -29,6 +27,7 @@ internal const val PROFILE_EXTRAS = "$PATCHES_DESCRIPTOR/userprofile/ProfileExtr
 
 private const val MAP_GET = "Ljava/util/Map;->get(Ljava/lang/Object;)Ljava/lang/Object;"
 private const val PROFILE_GRID_COUNT_REPAIR_FLAG = 36327675203179765L
+private const val PROFILE_GRID_PIN_SYNC_FLAG = 2324164360445916084L
 
 // Profile grid filter over posts (older grid store): Instagram's own checks, then public visibility only.
 internal object ProfileGridMediaFilterFingerprint : Fingerprint(
@@ -68,6 +67,14 @@ internal object ProfileGridCountCheckFingerprint : Fingerprint(
     filters = listOf(literal(PROFILE_GRID_COUNT_REPAIR_FLAG)),
 )
 
+// Own grid: moves posts you just pinned to the top, and fails on a pinned post the grid filter left out.
+internal object ProfileGridPinSyncFingerprint : Fingerprint(
+    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.STATIC, AccessFlags.FINAL),
+    returnType = "Z",
+    parameters = listOf("L"),
+    filters = listOf(literal(PROFILE_GRID_PIN_SYNC_FLAG)),
+)
+
 @Suppress("unused")
 val hideProfileGridReelsPatch =
     patch(
@@ -84,12 +91,9 @@ val hideProfileGridReelsPatch =
                 if (returns.size != 1 || method.p0Register < 1) throw PatchException("Unexpected profile grid filter")
                 val returnIndex = returns.single().index
                 val keep = method.getInstruction<OneRegisterInstruction>(returnIndex).registerA
-                val session = classDefBy(filter.originalClassDef.superclass!!).fields.single { it.type == USER_SESSION_CLASS }
-                // p0 and p1 are read by the hook, so they are never scratch.
-                val reserved = listOf(keep, method.p0Register, method.p0Register + 1)
-                val sessionRegister = method.findFreeRegister(returnIndex, reserved)
+                // p1 is read by the hook, so it is never scratch.
                 val media = if (filter == ProfileGridItemFilterFingerprint) {
-                    "v" + method.findFreeRegister(returnIndex, reserved + sessionRegister)
+                    "v" + method.findFreeRegister(returnIndex, listOf(keep, method.p0Register, method.p0Register + 1))
                 } else {
                     "p1"
                 }
@@ -97,17 +101,21 @@ val hideProfileGridReelsPatch =
                 method.addInstructionsAtControlFlowLabel(
                     returnIndex,
                     """
-                    iget-object v$sessionRegister, p0, ${session.definingClass}->${session.name}:${session.type}
                     $readMedia
-                    invoke-static {v$keep, $media, v$sessionRegister}, $PROFILE_EXTRAS->keepInProfileGrid(ZLjava/lang/Object;$USER_SESSION_CLASS)Z
+                    invoke-static {v$keep, $media}, $PROFILE_EXTRAS->keepInProfileGrid(ZLjava/lang/Object;)Z
                     move-result v$keep
                     """.trimIndent(),
                 )
             }
 
+            ProfileGridPinSyncFingerprint.method.insertLiteralOverride(
+                PROFILE_GRID_PIN_SYNC_FLAG,
+                "$PROFILE_EXTRAS->offWhileGridReelsHidden(Z)Z",
+            )
+
             ProfileGridCountCheckFingerprint.method.insertLiteralOverride(
                 PROFILE_GRID_COUNT_REPAIR_FLAG,
-                "$PROFILE_EXTRAS->profileGridCountRepair(Z)Z",
+                "$PROFILE_EXTRAS->offWhileGridReelsHidden(Z)Z",
             )
 
             enableSettings("hideProfileGridReels")

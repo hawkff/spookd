@@ -8,11 +8,11 @@ import org.junit.Test;
 public class ProfileExtrasTest {
     @Test
     public void gridKeepsInstagramVerdictWhileThePatchFlagIsOff() {
-        assertTrue(ProfileExtras.keepInProfileGrid(true, new Object(), null));
-        assertFalse(ProfileExtras.keepInProfileGrid(false, new Object(), null));
-        assertTrue(ProfileExtras.keepInProfileGrid(true, null, null));
-        assertTrue(ProfileExtras.profileGridCountRepair(true));
-        assertFalse(ProfileExtras.profileGridCountRepair(false));
+        assertTrue(ProfileExtras.keepInProfileGrid(true, new Object()));
+        assertFalse(ProfileExtras.keepInProfileGrid(false, new Object()));
+        assertTrue(ProfileExtras.keepInProfileGrid(true, null));
+        assertTrue(ProfileExtras.offWhileGridReelsHidden(true));
+        assertFalse(ProfileExtras.offWhileGridReelsHidden(false));
     }
 
     @Test
