@@ -192,11 +192,11 @@ public final class InstantsUpload {
             BitmapFactory.decodeStream(in, null, bounds);
         }
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw new IOException("Not a photo: " + uri);
-        int degrees = 0;
+        int orientation = ExifInterface.ORIENTATION_NORMAL;
         try (InputStream in = resolver.openInputStream(uri)) {
             if (in != null) {
-                degrees = exifDegrees(new ExifInterface(in).getAttributeInt(
-                        ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL));
+                orientation = new ExifInterface(in).getAttributeInt(
+                        ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
             }
         } catch (IOException | RuntimeException e) {
             Logger.printInfo(() -> "InstantsUpload: no orientation for " + uri, e);
@@ -214,7 +214,7 @@ public final class InstantsUpload {
         Matrix matrix = new Matrix();
         float scale = Math.min(1f, target / (float) crop[2]);
         matrix.setScale(scale, scale);
-        matrix.postRotate(degrees);
+        matrix.postConcat(exifMatrix(orientation));
         Bitmap photo = Bitmap.createBitmap(decoded, crop[0], crop[1], crop[2], crop[2], matrix, true);
         if (photo != decoded) decoded.recycle();
         Utils.runOnMainThread(() -> sendPhoto(photo, camera));
@@ -362,21 +362,38 @@ public final class InstantsUpload {
         return durationMs > 0 && maxMs > 0 && durationMs <= maxMs;
     }
 
-    /** Clockwise turn for an EXIF orientation; mirrored orientations keep their turn only. */
-    static int exifDegrees(int orientation) {
+    /** The turn and mirror that show stored pixels upright for an EXIF orientation. */
+    static Matrix exifMatrix(int orientation) {
+        Matrix matrix = new Matrix();
         switch (orientation) {
-            case ExifInterface.ORIENTATION_ROTATE_90:
-            case ExifInterface.ORIENTATION_TRANSVERSE:
-                return 90;
+            case ExifInterface.ORIENTATION_FLIP_HORIZONTAL:
+                matrix.setScale(-1, 1);
+                break;
             case ExifInterface.ORIENTATION_ROTATE_180:
+                matrix.setRotate(180);
+                break;
             case ExifInterface.ORIENTATION_FLIP_VERTICAL:
-                return 180;
-            case ExifInterface.ORIENTATION_ROTATE_270:
+                matrix.setRotate(180);
+                matrix.postScale(-1, 1);
+                break;
             case ExifInterface.ORIENTATION_TRANSPOSE:
-                return 270;
+                matrix.setRotate(90);
+                matrix.postScale(-1, 1);
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_90:
+                matrix.setRotate(90);
+                break;
+            case ExifInterface.ORIENTATION_TRANSVERSE:
+                matrix.setRotate(-90);
+                matrix.postScale(-1, 1);
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_270:
+                matrix.setRotate(-90);
+                break;
             default:
-                return 0;
+                break;
         }
+        return matrix;
     }
 
     // The patch replaces these bodies with calls into the Instants camera's preview and shutter.

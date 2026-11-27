@@ -7,6 +7,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Intent;
+import android.graphics.Matrix;
+import android.graphics.RectF;
 import android.media.ExifInterface;
 import android.view.View;
 
@@ -73,13 +75,28 @@ public final class InstantsUploadTest {
     }
 
     @Test
-    public void exifOrientationBecomesAClockwiseTurn() {
-        assertEquals(0, InstantsUpload.exifDegrees(ExifInterface.ORIENTATION_NORMAL));
-        assertEquals(90, InstantsUpload.exifDegrees(ExifInterface.ORIENTATION_ROTATE_90));
-        assertEquals(180, InstantsUpload.exifDegrees(ExifInterface.ORIENTATION_ROTATE_180));
-        assertEquals(270, InstantsUpload.exifDegrees(ExifInterface.ORIENTATION_ROTATE_270));
-        assertEquals(90, InstantsUpload.exifDegrees(ExifInterface.ORIENTATION_TRANSVERSE));
-        assertEquals(270, InstantsUpload.exifDegrees(ExifInterface.ORIENTATION_TRANSPOSE));
+    public void exifOrientationMovesTheTopLeftCornerOfA4By2Photo() {
+        assertCorner(ExifInterface.ORIENTATION_NORMAL, 0, 0, 4, 2);
+        assertCorner(ExifInterface.ORIENTATION_FLIP_HORIZONTAL, 4, 0, 4, 2);
+        assertCorner(ExifInterface.ORIENTATION_ROTATE_180, 4, 2, 4, 2);
+        assertCorner(ExifInterface.ORIENTATION_FLIP_VERTICAL, 0, 2, 4, 2);
+        assertCorner(ExifInterface.ORIENTATION_TRANSPOSE, 0, 0, 2, 4);
+        assertCorner(ExifInterface.ORIENTATION_ROTATE_90, 2, 0, 2, 4);
+        assertCorner(ExifInterface.ORIENTATION_TRANSVERSE, 2, 4, 2, 4);
+        assertCorner(ExifInterface.ORIENTATION_ROTATE_270, 0, 4, 2, 4);
+    }
+
+    private static void assertCorner(int orientation, float x, float y, float width, float height) {
+        Matrix matrix = InstantsUpload.exifMatrix(orientation);
+        RectF bounds = new RectF(0, 0, 4, 2);
+        matrix.mapRect(bounds);
+        float[] corner = {0, 0};
+        matrix.mapPoints(corner);
+        String name = "orientation " + orientation;
+        assertEquals(name, width, bounds.width(), 0.01f);
+        assertEquals(name, height, bounds.height(), 0.01f);
+        assertEquals(name, x, corner[0] - bounds.left, 0.01f);
+        assertEquals(name, y, corner[1] - bounds.top, 0.01f);
     }
 
     @Test
