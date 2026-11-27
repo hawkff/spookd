@@ -84,8 +84,11 @@ public class HookFlags {
             BOOL_FLAGS.put("103957::6", true); //ig_feed_video_2x_speed::use_static_edge_activation_threshold
             BOOL_FLAGS.put("103957::8", true); //ig_feed_video_2x_speed::android_fix_long_press_overlay
             BOOL_FLAGS.put("109947::0", true); //ig_android_reels_overflow_menu_playback_speed::is_enabled
-            BOOL_FLAGS.put("121815::0", true); //ig_reels_long_press_overflow_menu::is_enabled
-            BOOL_FLAGS.put("121815::12", true); //ig_reels_long_press_overflow_menu::context_playback_menu_enabled
+            // Hold to pause Reels turns the long-press menu off instead.
+            if (!Pref.reelsHoldToPause()) {
+                BOOL_FLAGS.put("121815::0", true); //ig_reels_long_press_overflow_menu::is_enabled
+                BOOL_FLAGS.put("121815::12", true); //ig_reels_long_press_overflow_menu::context_playback_menu_enabled
+            }
         }
     }
 
@@ -257,6 +260,8 @@ public class HookFlags {
     private static void reelsHoldToPauseFlags() {
         if (Pref.reelsHoldToPause()) {
             BOOL_FLAGS.put("118405::3", false); //ig_android_reels_video_controls::long_press_overflow_enabled (Reels long-press menu)
+            BOOL_FLAGS.put("121815::0", false); //ig_reels_long_press_overflow_menu::is_enabled
+            BOOL_FLAGS.put("121815::12", false); //ig_reels_long_press_overflow_menu::context_playback_menu_enabled
         }
     }
 
