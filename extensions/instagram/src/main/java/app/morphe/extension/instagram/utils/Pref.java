@@ -358,6 +358,10 @@ public class Pref {
         return SettingsStatus.confirmInstantReaction && on(Settings.CONFIRM_INSTANT_REACTION);
     }
 
+    public static boolean sendMediaAsInstants() {
+        return SettingsStatus.instantsUpload && on(Settings.SEND_MEDIA_AS_INSTANTS);
+    }
+
     private static final Cached<Boolean> FAKE_LOCATION =
             new Cached<>(() -> on(Settings.FAKE_LOCATION), Settings.FAKE_LOCATION.key);
 

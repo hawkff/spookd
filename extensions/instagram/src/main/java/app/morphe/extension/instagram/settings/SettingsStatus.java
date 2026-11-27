@@ -427,8 +427,11 @@ public class SettingsStatus {
     public static void confirmInstantVideo() { confirmInstantVideo = true; }
     public static boolean confirmInstantReaction = false;
     public static void confirmInstantReaction() { confirmInstantReaction = true; }
+    public static boolean instantsUpload = false;
+    public static void instantsUpload() { instantsUpload = true; }
     public static boolean instantsSection() {
-        return instantsDownload || instantsSeen || disableInstantsCreation || confirmInstantVideo || confirmInstantReaction;
+        return instantsDownload || instantsSeen || disableInstantsCreation || confirmInstantVideo || confirmInstantReaction
+                || instantsUpload;
     }
 
     //Navigation Section
@@ -587,6 +590,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_disable_instants_creation"), SettingsStatus.disableInstantsCreation);
         FLAGS.put(str("spookd_confirm_instant_video"), SettingsStatus.confirmInstantVideo);
         FLAGS.put(str("spookd_confirm_instant_reaction"), SettingsStatus.confirmInstantReaction);
+        FLAGS.put(str("spookd_send_media_as_instants"), SettingsStatus.instantsUpload);
 
         FLAGS.put(str("spookd_sanitize_share_links"),SettingsStatus.sanitizeShareLinks);
         FLAGS.put(str("spookd_custom_sharing_domain"),SettingsStatus.customSharingDomain);

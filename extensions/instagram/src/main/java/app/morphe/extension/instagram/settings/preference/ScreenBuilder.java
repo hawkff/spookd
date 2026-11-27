@@ -1414,6 +1414,10 @@ public class ScreenBuilder {
             addPreference(helper.switchPreference(
                     str("spookd_confirm_instant_reaction"), str("spookd_confirm_instant_reaction_desc"), Settings.CONFIRM_INSTANT_REACTION));
         }
+        if (SettingsStatus.instantsUpload) {
+            addPreference(helper.switchPreference(
+                    str("spookd_send_media_as_instants"), str("spookd_send_media_as_instants_desc"), Settings.SEND_MEDIA_AS_INSTANTS));
+        }
     }
 
     public void buildDownloadSection() {
