@@ -5,6 +5,7 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Application;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -75,6 +76,7 @@ import app.morphe.extension.instagram.patches.dm.vault.VaultViewer;
 import app.morphe.extension.instagram.patches.dm.vault.ViewerMedia;
 import app.morphe.extension.instagram.patches.download.AudioPageDownload;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
+import app.morphe.extension.instagram.patches.download.gallery.editor.PhotoEditor;
 import app.morphe.extension.instagram.patches.download.gallery.picker.GalleryPicker;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
@@ -165,6 +167,8 @@ public final class PrivateGalleryActivity {
         final String ownerUsername;
         /** String resource of the view-once or view-twice mark; null for none. */
         final String mark;
+        /** What the download knows about its media; null for vault items. */
+        final GalleryItem details;
         /** Main thread once shown. */
         boolean favorite;
 
@@ -182,6 +186,7 @@ public final class PrivateGalleryActivity {
             link = entry.item.link;
             ownerUsername = entry.item.ownerUsername;
             mark = null;
+            details = entry.item;
             favorite = entry.favorite;
         }
 
@@ -199,6 +204,7 @@ public final class PrivateGalleryActivity {
             link = null;
             ownerUsername = stored.senderUsername;
             mark = MediaVault.markResource(stored.viewMode);
+            details = null;
             this.favorite = favorite;
         }
 
@@ -343,6 +349,7 @@ public final class PrivateGalleryActivity {
         private int loads;
         private boolean closed;
         private boolean sharing; // main thread only
+        private Dialog editor;
         private String photoLabel;
         private String videoLabel;
         private String audioLabel;
@@ -590,6 +597,7 @@ public final class PrivateGalleryActivity {
 
         private void close() {
             VaultViewer.close(activity);
+            if (editor != null) editor.dismiss();
             if (closed) return;
             closed = true;
             ui.removeCallbacksAndMessages(null);
@@ -1157,6 +1165,11 @@ public final class PrivateGalleryActivity {
             List<Runnable> actions = new ArrayList<>();
             labels.add(str("spookd_gallery_export"));
             actions.add(() -> export(items));
+            // Downloads only: an edit is saved as a plain download, which would leave stored DM media unencrypted.
+            if (items.size() == 1 && item.photo() && !item.vault) {
+                labels.add(str("spookd_gallery_edit_photo"));
+                actions.add(() -> edit(item));
+            }
             if (items.size() == 1 && !TextUtils.isEmpty(item.link)) {
                 labels.add(str(AudioPageDownload.isAudioPageLink(item.link)
                         ? "spookd_gallery_open_audio_page" : "spookd_gallery_open_post"));
@@ -1169,6 +1182,13 @@ public final class PrivateGalleryActivity {
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                     .setItems(labels.toArray(new CharSequence[0]), (d, which) -> actions.get(which).run())
                     .show();
+        }
+
+        /** Main thread. A saved edit is a new download, so the list reloads to show it. */
+        private void edit(Item item) {
+            editor = PhotoEditor.show(activity, item.file, item.details, item.subFolder, item.fileName, () -> {
+                if (!closed) reload(false);
+            });
         }
 
         /** The download writer copies the item into the download folder, or asks for the folder first. */
