@@ -64,6 +64,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.IntConsumer;
+import java.util.function.Supplier;
 
 import app.morphe.extension.crimera.legacydownloader.DownloadRequest;
 import app.morphe.extension.crimera.legacydownloader.MediaDownloader;
@@ -1201,11 +1202,29 @@ public final class PrivateGalleryActivity {
             };
         }
 
-        /** Main thread. The viewer's button stars or unstars the item. */
+        /** Main thread. The viewer's buttons star or unstar the item and show its media info. */
         private void showViewer(Item item) {
-            VaultViewer.showFor(activity, viewerSource(item),
-                    () -> item.favorite ? "★ " + str("spookd_gallery_unfavorite") : "☆ " + str("spookd_gallery_favorite"),
-                    () -> setFavorite(Collections.singletonList(item), !item.favorite));
+            List<Supplier<CharSequence>> labels = Arrays.asList(
+                    () -> item.favorite ? "★ " + str("spookd_gallery_unfavorite")
+                            : "☆ " + str("spookd_gallery_favorite"),
+                    () -> str("spookd_gallery_media_info"));
+            List<Runnable> actions = Arrays.asList(
+                    () -> setFavorite(Collections.singletonList(item), !item.favorite),
+                    () -> showInfo(item));
+            VaultViewer.showFor(activity, viewerSource(item), labels, actions);
+        }
+
+        /** Main thread; the file is read on the info sheet's own thread. */
+        private void showInfo(Item item) {
+            Callable<ViewerMedia> open = item.vault ? () -> {
+                MediaVault.Stored stored = MediaVault.get().open(item.id);
+                return stored == null ? null : stored.file;
+            } : () -> new PlainMedia(item.file);
+            // Stored DM media keeps only its message's time.
+            Long savedAt = item.vault ? null : item.time;
+            Long postedAt = item.vault ? Long.valueOf(item.time) : item.details.takenAt;
+            MediaInfo.show(activity, open, item.kind, item.fileName, item.size, ownerLabel(item), sourceLabel(item),
+                    item.link, savedAt, postedAt);
         }
 
         /** Main thread; the stars are written on the jobs thread, before any reload that follows. */
@@ -1246,6 +1265,10 @@ public final class PrivateGalleryActivity {
             if (items.size() == 1 && !item.unknownOwner()) {
                 labels.add(str("spookd_gallery_open_profile"));
                 actions.add(() -> view(GalleryActions.profileLink(item.ownerUsername)));
+            }
+            if (items.size() == 1) {
+                labels.add(str("spookd_gallery_media_info"));
+                actions.add(() -> showInfo(item));
             }
             new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                     .setItems(labels.toArray(new CharSequence[0]), (d, which) -> actions.get(which).run())
@@ -1648,7 +1671,7 @@ public final class PrivateGalleryActivity {
         return (int) Math.min((long) size * Math.max(width, height) / Math.min(width, height), size * 4L);
     }
 
-    private static int dimension(MediaMetadataRetriever retriever, int key) {
+    static int dimension(MediaMetadataRetriever retriever, int key) {
         try {
             return Integer.parseInt(retriever.extractMetadata(key));
         } catch (RuntimeException e) {
@@ -1657,7 +1680,7 @@ public final class PrivateGalleryActivity {
     }
 
     /** Feeds the retriever bytes straight from the media; the caller closes the media. */
-    private static final class Source extends MediaDataSource {
+    static final class Source extends MediaDataSource {
         private final ViewerMedia media;
 
         Source(ViewerMedia media) {
