@@ -19,9 +19,11 @@ import app.morphe.patcher.literal
 import app.morphe.patcher.methodCall
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.patch
+import app.morphe.patcher.util.getReference
 import app.morphe.patcher.util.p0Register
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 private const val EXTENSION_CLASS = "$PATCHES_DESCRIPTOR/audio/KeepOtherAudio;"
 private const val FOCUS_LISTENER = "Landroid/media/AudioManager\$OnAudioFocusChangeListener;"
@@ -88,6 +90,24 @@ val keepOtherAudioPatch =
             if (SharedAudioFocusRequestFingerprint.classDef.superclass != helper.type) {
                 throw PatchException("Unexpected shared audio focus helper")
             }
+            // The helper's entry for a player, which goes on to the request.
+            val requestName = AudioFocusRequestFingerprint.originalMethod.name
+            val helperEntry = helper.methods.singleOrNull { method ->
+                method.name != requestName && !AccessFlags.STATIC.isSet(method.accessFlags) &&
+                    method.returnType == "V" && method.parameterTypes.map(CharSequence::toString) == listOf(FOCUS_LISTENER) &&
+                    method.implementation?.instructions?.any { instruction ->
+                        instruction.getReference<MethodReference>()
+                            ?.let { it.definingClass == helper.type && it.name == requestName } == true
+                    } == true
+            } ?: throw PatchException("Could not find the audio focus helper entry")
+            // The router players call: it hands the request to the helper, or to the player's own focus
+            // handling when Instagram's player-managed focus is on.
+            val router = Fingerprint(
+                accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL),
+                returnType = "V",
+                parameters = listOf(FOCUS_LISTENER, "L", "Z"),
+                filters = listOf(methodCall(smali = "${helper.type}->${helperEntry.name}(${FOCUS_LISTENER})V")),
+            ).method
 
             val soundState = SoundOnForOtherMediaFingerprint.classDef
             fun soundStateMethod(parameter: String) = soundState.methods.singleOrNull {
@@ -107,7 +127,7 @@ val keepOtherAudioPatch =
                 """.trimIndent(),
             )
 
-            listOf(AudioFocusRequestFingerprint.method, sharedRequest).forEach { request ->
+            listOf(AudioFocusRequestFingerprint.method, sharedRequest, router).forEach { request ->
                 if (request.p0Register < 1) throw PatchException("Unexpected audio focus request")
                 request.addInstructionsWithLabels(
                     0,
