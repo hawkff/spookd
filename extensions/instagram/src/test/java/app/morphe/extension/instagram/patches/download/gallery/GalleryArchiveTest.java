@@ -121,6 +121,27 @@ public final class GalleryArchiveTest {
     }
 
     @Test
+    public void aVideoItsAudioAndItsCoverWithOneMediaIdAreAllRestored() throws Exception {
+        save(new GalleryItem(GalleryTab.REELS, GalleryItem.VIDEO, "alice", null, "7", null, null, null),
+                null, "clip.mp4", "video");
+        save(new GalleryItem(GalleryTab.REELS, GalleryItem.AUDIO, "alice", null, "7", null, null, null),
+                null, "clip.m4a", "audio");
+        save(new GalleryItem(GalleryTab.REELS, GalleryItem.PHOTO, "alice", null, "7", null, null, null),
+                null, "clip.jpg", "cover");
+        byte[] backup = backup();
+        assertTrue(store.deleteAll());
+
+        GalleryArchive.Result first = restore(backup);
+        GalleryArchive.Result again = restore(backup);
+
+        assertEquals(3, first.imported);
+        assertEquals(0, first.duplicates);
+        assertEquals(0, again.imported);
+        assertEquals(3, again.duplicates);
+        assertEquals(3, store.totals()[0]);
+    }
+
+    @Test
     public void duplicatesCompareBytesOnlyAgainstFilesOfTheSameSize() throws Exception {
         save(new GalleryItem(GalleryTab.POSTS, GalleryItem.PHOTO, null, null, null, null, null, null),
                 null, "a.jpg", "abcd");

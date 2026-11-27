@@ -142,6 +142,16 @@ public final class GalleryStore {
         }
     }
 
+    /** Whether a saved download is of media {@code mediaId} and of {@code kind}: a video's audio and cover share its id. */
+    synchronized boolean hasMedia(String mediaId, String kind) {
+        if (mediaId == null || kind == null) return false;
+        recover();
+        try (Cursor c = db.rawQuery("SELECT 1 FROM gallery_items WHERE media_id = ? AND kind = ? LIMIT 1",
+                new String[]{mediaId, kind})) {
+            return c.moveToFirst();
+        }
+    }
+
     /**
      * Makes a finished part a gallery item and returns its id. With {@code overwrite} the part
      * and its metadata replace the newest item of the same subfolder and name, if any, keeping its

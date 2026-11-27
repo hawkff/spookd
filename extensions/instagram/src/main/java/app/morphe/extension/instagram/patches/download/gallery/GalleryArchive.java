@@ -103,7 +103,7 @@ final class GalleryArchive {
     /** Counts of one import, kept up to date while it runs, so a failure part way can still report them. */
     static final class Result {
         int imported;
-        /** Already in the gallery, by media id or by identical bytes. */
+        /** Already in the gallery, by media id and kind or by identical bytes. */
         int duplicates;
         int failed;
     }
@@ -231,7 +231,7 @@ final class GalleryArchive {
 
     /**
      * Merges the backup in {@code in}, closed when done, into the store, counting into
-     * {@code result}: an item whose media id or bytes are already saved is skipped. Throws
+     * {@code result}: an item whose media id and kind, or whose bytes, are already saved is skipped. Throws
      * {@link InvalidBackup} before importing anything when the manifest is missing or damaged.
      */
     static void read(GalleryStore store, InputStream in, Result result, BiConsumer<Integer, Integer> progress)
@@ -268,7 +268,7 @@ final class GalleryArchive {
                 }
                 progress.accept(++done, total);
                 String mediaId = item.item.mediaId;
-                if (mediaId != null && !mediaId.isEmpty() && store.hasMedia(mediaId)) {
+                if (mediaId != null && !mediaId.isEmpty() && store.hasMedia(mediaId, item.item.kind)) {
                     result.duplicates++;
                     drain(zip, maxFileBytes);
                     continue;
