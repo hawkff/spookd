@@ -1997,6 +1997,15 @@ public class ScreenBuilder {
                     )
             );
         }
+        if (SettingsStatus.copyStoryLink) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_copy_story_link"),
+                            str("spookd_copy_story_link_desc"),
+                            Settings.COPY_STORY_LINK
+                    )
+            );
+        }
     }
 
     public void buildSettingsPage() {

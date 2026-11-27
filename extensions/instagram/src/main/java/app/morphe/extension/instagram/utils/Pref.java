@@ -391,6 +391,11 @@ public class Pref {
         return SettingsStatus.searchStoryViewers && SEARCH_STORY_VIEWERS.get();
     }
 
+    /** Read each time a story menu is built. */
+    public static boolean copyStoryLink() {
+        return SettingsStatus.copyStoryLink && on(Settings.COPY_STORY_LINK);
+    }
+
     /** One kind of activity notification: {@link Settings#ACTIVITY_ALERT_ONLINE} and the like. */
     public static boolean activityAlert(BooleanSetting kind) {
         return SettingsStatus.activityAlerts && on(kind);
