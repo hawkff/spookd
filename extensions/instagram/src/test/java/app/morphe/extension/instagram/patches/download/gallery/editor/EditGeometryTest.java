@@ -5,6 +5,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Map;
+
 import org.junit.Test;
 
 public final class EditGeometryTest {
@@ -182,6 +184,19 @@ public final class EditGeometryTest {
         assertArrayEquals(new int[]{0, 0, 10000, 500}, EditGeometry.outputRect(turnedFull, 20000, 1001, scale));
         assertArrayEquals(new int[]{10, 20, 133, 30},
                 EditGeometry.outputRect(new double[]{-189.6, -130, -66.1, -120}, 400, 300, 1));
+    }
+
+    @Test
+    public void keptEditsStayBoundedAndDropTheLeastRecentlyUsed() {
+        Map<String, Integer> kept = EditGeometry.recent(8);
+        for (int i = 0; i < 20; i++) kept.put("photo" + i, i);
+        assertEquals(8, kept.size());
+        assertFalse(kept.containsKey("photo11"));
+        kept.get("photo12");
+        kept.put("photo20", 20);
+        assertTrue(kept.containsKey("photo12"));
+        assertFalse(kept.containsKey("photo13"));
+        assertEquals(8, kept.size());
     }
 
     @Test

@@ -1,5 +1,7 @@
 package app.morphe.extension.instagram.patches.download.gallery.editor;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -206,6 +208,19 @@ final class EditGeometry {
         int sample = 1;
         while ((long) (width / sample) * (height / sample) > Math.max(1, pixels) && sample < 1 << 10) sample *= 2;
         return sample;
+    }
+
+    /**
+     * A map that keeps the {@code capacity} most recently used entries and drops the oldest beyond that;
+     * deleted or replaced photos never reuse a path, so their entries age out.
+     */
+    static <K, V> Map<K, V> recent(int capacity) {
+        return new LinkedHashMap<K, V>(16, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+                return size() > capacity;
+            }
+        };
     }
 
     /** The edit's name: the original's with {@code _edited} once, and the extension of what is saved. */

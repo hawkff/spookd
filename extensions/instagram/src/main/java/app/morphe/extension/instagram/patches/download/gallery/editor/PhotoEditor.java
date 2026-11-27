@@ -38,7 +38,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -87,7 +86,7 @@ public final class PhotoEditor extends Dialog {
     private static final int ACTION_INWARD = ACTION_BASE + 9;
     private static final int HOST = AccessibilityNodeProvider.HOST_VIEW_ID;
     /** Unsaved edits of editors the gallery closed, by photo file path, for this process; main thread only. */
-    private static final Map<String, Kept> kept = new HashMap<>();
+    private static final Map<String, Kept> kept = EditGeometry.recent(8);
 
     private final Activity activity;
     private final File file;
