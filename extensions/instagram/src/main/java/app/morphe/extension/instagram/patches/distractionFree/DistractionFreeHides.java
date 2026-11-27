@@ -42,6 +42,11 @@ public final class DistractionFreeHides {
         }
     }
 
+    /** Takes whether the share sheet action being built is Muse's; false leaves Muse out. */
+    public static boolean buildMuseShareAction(boolean isMuse) {
+        return isMuse && !hideMuseBanner();
+    }
+
     /** Takes Instagram's own "hide the comment bar" switch for the Reels viewer. */
     public static boolean hideReelsCommentBar(boolean hidden) {
         try {
