@@ -576,7 +576,7 @@
     <string name="spookd_private_gallery">Private gallery</string>
     <string name="spookd_private_gallery_desc">Your downloads, shown after you confirm your screen lock</string>
     <string name="spookd_home_long_press_gallery">Open the gallery from Home</string>
-    <string name="spookd_home_long_press_gallery_desc">Adds Private gallery to the menu that opens when you hold the Home tab. Holding the Profile tab still switches accounts.</string>
+    <string name="spookd_home_long_press_gallery_desc">Adds Private gallery to the spookd menu, which opens when you hold the Home tab or any tab set to it in Navigation bar.</string>
     <string name="spookd_download_history">Download history</string>
     <string name="spookd_download_history_desc">Downloads made with spookd\'s download buttons and their status. Instagram\'s own Save in chats is not listed. Tap a saved one to open it. A failed download can be retried until Instagram is closed.</string>
     <string name="spookd_download_history_empty">No downloads made with spookd\'s download buttons yet.</string>
@@ -675,6 +675,14 @@
     <string name="spookd_navigation_tab_profile">Profile</string>
     <string name="spookd_navigation_tab_notifications">Notifications</string>
     <string name="spookd_navigation_tab_create">Create</string>
+    <string name="spookd_tab_shortcuts">Hold any tab for a shortcut</string>
+    <string name="spookd_tab_shortcut_title">Hold %s</string>
+    <string name="spookd_tab_shortcut_home_summary">%s. While nothing else on screen opens spookd settings, holding Home opens the spookd menu.</string>
+    <string name="spookd_tab_shortcut_default">Default (Instagram\'s own)</string>
+    <string name="spookd_tab_shortcut_menu">spookd menu</string>
+    <string name="spookd_tab_shortcut_saved">Saved posts</string>
+    <string name="spookd_tab_shortcut_copied_link">Open copied link or @username</string>
+    <string name="spookd_tab_shortcut_no_link">Copy an Instagram link or @username first</string>
     <string name="spookd_navigation_settings_lockout_title">No spookd settings button</string>
     <string name="spookd_navigation_settings_lockout_message">This setup removes every spookd settings entry from the visible tabs. You can still open spookd settings by long-pressing the app icon and selecting spookd settings.</string>
 
