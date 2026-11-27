@@ -134,9 +134,10 @@ public final class StorageScreen {
      * thread when it is over the chosen size. Never touches saved data.
      */
     static void autoClearCache(Context context) {
+        Context app = context.getApplicationContext();
+        clearInOrder(() -> GalleryStorage.sweepPicks(app));
         long limitMb = Math.min(Pref.autoClearCacheMb(), 1_000_000L);
         if (limitMb <= 0) return;
-        Context app = context.getApplicationContext();
         clearInOrder(() -> {
             if (cacheBytes(app) > limitMb * BYTES_PER_MB && !clearCache(app)) {
                 Logger.printInfo(() -> "Some cache files could not be deleted");

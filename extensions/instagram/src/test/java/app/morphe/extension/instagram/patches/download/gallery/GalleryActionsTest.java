@@ -1,19 +1,28 @@
 package app.morphe.extension.instagram.patches.download.gallery;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import android.net.Uri;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 29, manifest = Config.NONE)
 public final class GalleryActionsTest {
+    @Rule
+    public final TemporaryFolder temp = new TemporaryFolder();
+
     @Test
     public void dmExportsAreNamedByTheirItemIdOrElseTheirRowId() {
         assertEquals("piko_abc.mp4", GalleryActions.dmFileName("abc", 7, null, "video"));
@@ -42,5 +51,53 @@ public final class GalleryActionsTest {
     @Test
     public void profileLinkOpensTheUsersPage() {
         assertEquals("https://www.instagram.com/alice.b_1/", GalleryActions.profileLink("alice.b_1"));
+    }
+
+    @Test
+    public void clearingSharesKeepsAPickInstagramMayStillImportUntilItIsAnHourOld() throws IOException {
+        File dir = temp.newFolder("piko_share");
+        long now = 10 * GalleryActions.PICK_KEEP_MS;
+        File share = folder(dir, "a1", now);
+        File freshPick = folder(dir, GalleryActions.PICK_PREFIX + "b2", now - GalleryActions.PICK_KEEP_MS + 1000);
+        File oldPick = folder(dir, GalleryActions.PICK_PREFIX + "c3", now - GalleryActions.PICK_KEEP_MS);
+
+        GalleryActions.clearShared(dir, now, false);
+
+        assertFalse(share.exists());
+        assertTrue(new File(freshPick, "x.jpg").isFile());
+        assertFalse(oldPick.exists());
+    }
+
+    @Test
+    public void theStartupSweepDeletesOnlyExpiredPicks() throws IOException {
+        File dir = temp.newFolder("piko_share");
+        long now = 10 * GalleryActions.PICK_KEEP_MS;
+        File share = folder(dir, "a1", now - 2 * GalleryActions.PICK_KEEP_MS);
+        File freshPick = folder(dir, GalleryActions.PICK_PREFIX + "b2", now);
+        File oldPick = folder(dir, GalleryActions.PICK_PREFIX + "c3", now - GalleryActions.PICK_KEEP_MS);
+
+        GalleryActions.clearShared(dir, now, true);
+
+        assertTrue(share.exists());
+        assertTrue(freshPick.exists());
+        assertFalse(oldPick.exists());
+    }
+
+    @Test
+    public void aPickPastTheBudgetIsRefused() {
+        long budget = GalleryActions.PICK_BUDGET_BYTES;
+        assertTrue(GalleryActions.fitsPickBudget(0, budget));
+        assertTrue(GalleryActions.fitsPickBudget(budget - 10, 10));
+        assertFalse(GalleryActions.fitsPickBudget(budget - 10, 11));
+        assertFalse(GalleryActions.fitsPickBudget(0, budget + 1));
+        assertFalse(GalleryActions.fitsPickBudget(0, -1));
+    }
+
+    private static File folder(File dir, String name, long modified) throws IOException {
+        File folder = new File(dir, name);
+        assertTrue(folder.mkdirs());
+        assertTrue(new File(folder, "x.jpg").createNewFile());
+        assertTrue(folder.setLastModified(modified));
+        return folder;
     }
 }

@@ -346,10 +346,6 @@ public class Pref {
         return SettingsStatus.fakeLocation && FAKE_LOCATION.get();
     }
 
-    public static boolean hiddenAccountPrivacyOptions() {
-        return SettingsStatus.hiddenAccountPrivacyOptions && on(Settings.HIDDEN_ACCOUNT_PRIVACY_OPTIONS);
-    }
-
     private static final Cached<Boolean> HIDE_REELS_TAB_HEADER =
             new Cached<>(() -> on(Settings.HIDE_REELS_TAB_HEADER), Settings.HIDE_REELS_TAB_HEADER.key);
 
@@ -612,6 +608,10 @@ public class Pref {
     public static boolean homeLongPressGallery() {
         return SettingsStatus.homeLongPressSettings && SettingsStatus.downloadSection()
                 && on(Settings.HOME_LONG_PRESS_GALLERY);
+    }
+    // Same condition as the Home entry: the gallery's settings row must be shown.
+    public static boolean galleryPicker() {
+        return SettingsStatus.galleryPicker && SettingsStatus.downloadSection() && on(Settings.GALLERY_PICKER);
     }
     public static boolean directlyOpenMetaConfig() {
         return on(Settings.DIRECTLY_OPEN_METACONFIG);

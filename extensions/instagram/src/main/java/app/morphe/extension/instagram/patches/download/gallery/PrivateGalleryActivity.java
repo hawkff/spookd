@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Application;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
@@ -73,6 +74,7 @@ import app.morphe.extension.instagram.patches.dm.vault.PlainMedia;
 import app.morphe.extension.instagram.patches.dm.vault.VaultViewer;
 import app.morphe.extension.instagram.patches.dm.vault.ViewerMedia;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
+import app.morphe.extension.instagram.patches.download.gallery.picker.GalleryPicker;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramSearchStyle;
@@ -301,6 +303,9 @@ public final class PrivateGalleryActivity {
 
     private static final class Controller {
         private final Activity activity;
+        /** Opened by Instagram's media picker: a tap returns that photo or video. */
+        private final boolean picking;
+        private final boolean photosOnly;
         private final Handler ui = new Handler(Looper.getMainLooper());
         private final Runnable searchReload = () -> reload(false);
         private List<Item> list = Collections.emptyList();
@@ -345,6 +350,11 @@ public final class PrivateGalleryActivity {
 
         Controller(Activity activity) {
             this.activity = activity;
+            Intent intent = activity.getIntent();
+            picking = intent != null && intent.getBooleanExtra(GalleryPicker.EXTRA_PICK, false);
+            // Back, a cancelled lock or leaving the app return this until an item is picked.
+            if (picking) activity.setResult(pickResultCode(null), pickResult(null));
+            photosOnly = intent != null && intent.getBooleanExtra(GalleryPicker.EXTRA_PHOTOS_ONLY, false);
             density = activity.getResources().getDisplayMetrics().density;
         }
 
@@ -603,6 +613,7 @@ public final class PrivateGalleryActivity {
         }
 
         private void show(Loaded loaded) {
+            if (picking) loaded.items.removeIf(item -> !pickable(item.kind, photosOnly));
             list = loaded.items;
             dmDownloads = loaded.dmDownloads;
             unknownDownloads = loaded.unknownDownloads;
@@ -672,10 +683,12 @@ public final class PrivateGalleryActivity {
             view.setAdapter(adapter);
             view.setOnItemClickListener((parent, v, position, id) -> {
                 Item item = list.get(position);
-                if (selecting) toggleSelected(item);
+                if (picking) pick(item);
+                else if (selecting) toggleSelected(item);
                 else showViewer(item);
             });
             view.setOnItemLongClickListener((parent, v, position, id) -> {
+                if (picking) return false;
                 startSelection(list.get(position));
                 return true;
             });
@@ -856,7 +869,7 @@ public final class PrivateGalleryActivity {
         private void updateSelection() {
             controls.setVisibility(selecting ? View.GONE : View.VISIBLE);
             selectionBar.setVisibility(selecting ? View.VISIBLE : View.GONE);
-            exportAll.setVisibility(list.isEmpty() ? View.GONE : View.VISIBLE);
+            exportAll.setVisibility(list.isEmpty() || picking ? View.GONE : View.VISIBLE);
             if (selecting) {
                 summary.setText(str("spookd_selected_count", selected.size()));
                 exportAll.setText(str(selected.size() == list.size()
@@ -1227,6 +1240,39 @@ public final class PrivateGalleryActivity {
             });
         }
 
+        /**
+         * Copies the item on the jobs thread into the share folder, then returns its URI to the picker
+         * from the main thread. The copy stays for an hour, so Instagram's later import still finds it.
+         */
+        private void pick(Item item) {
+            if (sharing) return;
+            sharing = true;
+            Context app = activity.getApplicationContext();
+            JOBS.execute(() -> {
+                Uri uri;
+                try {
+                    File dir = new File(app.getCacheDir(), GalleryActions.SHARE_DIR);
+                    GalleryActions.clearShared(dir, System.currentTimeMillis(), true);
+                    if (!GalleryActions.fitsPickBudget(GalleryActions.pickBytes(dir), item.size)) {
+                        ui.post(() -> sharing = false);
+                        Utils.showToastShort(str("spookd_gallery_pick_full"));
+                        return;
+                    }
+                    uri = GalleryActions.pickCopy(app, dir, item.fileName, item.vault, item.id, item.file);
+                } catch (Exception e) {
+                    ui.post(() -> sharing = false);
+                    failed("pick", e);
+                    return;
+                }
+                ui.post(() -> {
+                    sharing = false;
+                    if (closed) return;
+                    activity.setResult(pickResultCode(uri), pickResult(uri));
+                    activity.finish();
+                });
+            });
+        }
+
         private void view(String url) {
             try {
                 GalleryActions.view(activity, url);
@@ -1479,6 +1525,21 @@ public final class PrivateGalleryActivity {
         if (width <= 0 || height <= 0) return Integer.MAX_VALUE;
         int shorter = Math.min(width, height);
         return photo ? shorter / sampleSize(width, height, size) : Math.min(shorter, size);
+    }
+
+    /** RESULT_OK for a picked item's {@code uri}, else RESULT_CANCELED. */
+    static int pickResultCode(Uri uri) {
+        return uri == null ? Activity.RESULT_CANCELED : Activity.RESULT_OK;
+    }
+
+    /** The picked item's {@code uri} with a read grant, as Instagram's picker result carries it; null without one. */
+    static Intent pickResult(Uri uri) {
+        return uri == null ? null : new Intent().setData(uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+    }
+
+    /** Whether pick mode lists an item of {@code kind}: photos, and videos unless the picker takes photos only. */
+    static boolean pickable(String kind, boolean photosOnly) {
+        return GalleryItem.PHOTO.equals(kind) || (!photosOnly && GalleryItem.VIDEO.equals(kind));
     }
 
     /** The largest power-of-two step that keeps both sides at least {@code size}. */
