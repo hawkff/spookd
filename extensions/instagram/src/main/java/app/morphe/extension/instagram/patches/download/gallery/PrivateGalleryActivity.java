@@ -530,7 +530,7 @@ public final class PrivateGalleryActivity {
             row.addView(filterAction);
             row.addView(action(str("spookd_gallery_view"), null, v -> chooseView()));
             if (!picking) {
-                row.addView(action("⋯", str("spookd_gallery_more"), v -> GalleryBackup.choose(activity,
+                row.addView(action("⋯", str("spookd_gallery_more"), v -> GalleryBackup.choose(activity, false,
                         () -> filePicking = true, () -> {
                             close();
                             activity.finish();

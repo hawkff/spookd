@@ -64,33 +64,48 @@ public final class GalleryBackup {
     private GalleryBackup() {
     }
 
-    /** Main thread, from the settings row: the screen lock first, then the choice. */
+    /** Main thread, from the settings row: the choice, then the screen lock for the chosen action. */
     public static void chooseLocked(Activity activity) {
         try {
             if (!Gallery.canOpen(activity)) {
                 Utils.showToastLong(str("spookd_vault_needs_screen_lock"));
                 return;
             }
-            InboxLock.confirm(activity, () -> {
-                if (!activity.isFinishing() && !activity.isDestroyed()) choose(activity, null, null);
-            });
+            choose(activity, true, null, null);
         } catch (Exception e) {
-            Logger.printException(() -> "Gallery backup: cannot ask for the screen lock", e);
+            Logger.printException(() -> "Gallery backup: cannot show the choice", e);
             Utils.showToastShort(str("spookd_gallery_action_failed"));
         }
     }
 
     /**
-     * Main thread, behind the gallery lock. {@code onPicking} runs right before the file picker
-     * opens and {@code onReturned} once it closed; either may be null.
+     * Main thread. With {@code askLock} the screen lock is asked for each chosen action right before
+     * its file picker, so a choice left open never outlasts a relock; otherwise the caller is behind
+     * the gallery lock. {@code onPicking} runs right before the picker opens and {@code onReturned}
+     * once it closed; either may be null.
      */
-    static void choose(Activity activity, Runnable onPicking, Runnable onReturned) {
+    static void choose(Activity activity, boolean askLock, Runnable onPicking, Runnable onReturned) {
         // In the order of the modes, so the tapped row is the mode.
         String[] labels = {str("spookd_gallery_backup_export"), str("spookd_gallery_backup_import"),
                 str("spookd_gallery_import_files")};
         new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                 .setTitle(str("spookd_gallery_backup"))
-                .setItems(labels, (d, which) -> pick(activity, which, onPicking, onReturned))
+                .setItems(labels, (d, which) -> {
+                    if (!askLock) {
+                        pick(activity, which, onPicking, onReturned);
+                        return;
+                    }
+                    try {
+                        InboxLock.confirm(activity, () -> {
+                            if (!activity.isFinishing() && !activity.isDestroyed()) {
+                                pick(activity, which, onPicking, onReturned);
+                            }
+                        });
+                    } catch (Exception e) {
+                        Logger.printException(() -> "Gallery backup: cannot ask for the screen lock", e);
+                        Utils.showToastShort(str("spookd_gallery_action_failed"));
+                    }
+                })
                 .setNegativeButton(str("spookd_cancel"), null)
                 .show();
     }
