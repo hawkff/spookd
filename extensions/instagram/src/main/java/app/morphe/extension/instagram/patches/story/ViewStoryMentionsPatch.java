@@ -19,6 +19,7 @@ import app.morphe.extension.instagram.entity.UserData;
 import app.morphe.extension.instagram.entity.MediaData;
 
 import app.morphe.extension.shared.Logger;
+import app.morphe.extension.shared.Utils;
 import app.morphe.extension.crimera.PikoUtils;
 
 import com.instagram.igds.components.peoplecell.IgdsPeopleCell;
@@ -48,6 +49,13 @@ public class ViewStoryMentionsPatch {
                         setSupportingText(cell, username);
                         setProfileImage(cell, lowResDP, openProfile);
                         cell.setOnClickListener(openProfile);
+                        if (username != null && !username.isEmpty()) {
+                            View.OnLongClickListener copy = v -> copyUsername(username);
+                            cell.setOnLongClickListener(copy);
+                            // The avatar has its own tap listener, so it takes its own touches.
+                            Object avatar = cell.getImageView();
+                            if (avatar instanceof View) ((View) avatar).setOnLongClickListener(copy);
+                        }
 
                         peopleCells.add(cell);
                     } catch (Exception ex){
@@ -62,6 +70,18 @@ public class ViewStoryMentionsPatch {
             Logger.printException(() -> "Failed viewMentions", ex);
             PikoUtils.logger(ex);
             if (onDismiss != null) onDismiss.onDismiss(null);
+        }
+    }
+
+    /** Holding a row of the mentions dialog, on the main thread. */
+    private static boolean copyUsername(String username) {
+        try {
+            Utils.setClipboard("@" + username);
+            Utils.showToastShort(str("spookd_username_copied", username));
+            return true;
+        } catch (Exception ex) {
+            Logger.printException(() -> "Failed to copy a mentioned username", ex);
+            return false;
         }
     }
 
