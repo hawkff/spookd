@@ -7,6 +7,7 @@ import android.media.MediaCodecInfo;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
+import android.media.MediaRecorder;
 import android.net.Uri;
 
 import java.io.IOException;
@@ -20,16 +21,13 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Converts an audio file to what Instagram's voice recorder writes, AAC-LC mono at 44.1 kHz in MPEG-4,
- * and computes the waveform the recorder samples while it records. Every method that reads or writes
- * a file runs on the caller's background thread.
+ * Converts an audio file to what Instagram's MediaRecorder voice recorder writes, mono AAC in MPEG-4 with
+ * the chat recorder's own encoder, bit rate and sample rate, and computes the waveform the recorder
+ * samples while it records. Every method that reads or writes a file runs on the caller's background thread.
  */
 final class VoiceAudio {
-    static final int SAMPLE_RATE = 44100;
-    // shortcut: the recorder's bit rate is a server flag; read that flag if sends of this rate get refused.
-    private static final int BIT_RATE = 64_000;
     /** The recorder adds one waveform level every 100 ms. */
-    static final int WAVEFORM_SAMPLES = SAMPLE_RATE / 10;
+    static final int WAVEFORM_PER_SECOND = 10;
     /** Instagram drops recordings shorter than this, and stops recording at the maximum. */
     static final long MIN_MS = 750;
     static final long MAX_MS = 300_000;
@@ -38,6 +36,44 @@ final class VoiceAudio {
     private static final int MAX_IDLE = 500;
 
     private VoiceAudio() {
+    }
+
+    /** The recorder's output: its sample rate, the AAC profile of its encoder, and its bit rate. */
+    static final class Format {
+        final int sampleRate;
+        final int aacProfile;
+        final int bitRate;
+
+        Format(int sampleRate, int aacProfile, int bitRate) {
+            this.sampleRate = sampleRate;
+            this.aacProfile = aacProfile;
+            this.bitRate = bitRate;
+        }
+
+        /**
+         * The format of a MediaRecorder recorder with {@code settings} {encoder, bit rate, sample rate,
+         * Pixel 4 sample rate}, on a Pixel 4 when {@code pixel4}; null when it is not AAC this can write.
+         */
+        static Format of(int[] settings, boolean pixel4) {
+            if (settings == null || settings.length != 4) return null;
+            int profile = aacProfile(settings[0]);
+            int rate = pixel4 ? settings[3] : settings[2];
+            return profile < 0 || settings[1] <= 0 || rate <= 0 ? null : new Format(rate, profile, settings[1]);
+        }
+    }
+
+    /** The AAC profile a MediaRecorder audio encoder writes, or -1 when it does not write AAC. */
+    static int aacProfile(int audioEncoder) {
+        switch (audioEncoder) {
+            case MediaRecorder.AudioEncoder.AAC:
+                return MediaCodecInfo.CodecProfileLevel.AACObjectLC;
+            case MediaRecorder.AudioEncoder.HE_AAC:
+                return MediaCodecInfo.CodecProfileLevel.AACObjectHE;
+            case MediaRecorder.AudioEncoder.AAC_ELD:
+                return MediaCodecInfo.CodecProfileLevel.AACObjectELD;
+            default:
+                return -1;
+        }
     }
 
     /** A converted file's length and waveform. */
@@ -52,19 +88,21 @@ final class VoiceAudio {
     }
 
     /** Converts {@code startMs}..{@code endMs} of {@code source}'s first audio track into {@code target}. */
-    static Result convert(Context context, Uri source, long startMs, long endMs, String target) throws IOException {
+    static Result convert(Context context, Uri source, long startMs, long endMs, Format format, String target)
+            throws IOException {
         if (startMs < 0 || endMs - startMs < MIN_MS || endMs - startMs > MAX_MS) {
             throw new IOException("Selection " + startMs + ".." + endMs + " ms is out of range");
         }
-        long expected = (endMs - startMs) * SAMPLE_RATE / 1000;
-        Pcm pcm = decode(context, source, startMs * 1000, endMs * 1000, (int) Math.min(Integer.MAX_VALUE - 8, expected + 4096));
-        int durationMs = durationMs(pcm.size);
+        long expected = (endMs - startMs) * format.sampleRate / 1000;
+        Pcm pcm = decode(context, source, startMs * 1000, endMs * 1000, format.sampleRate,
+                (int) Math.min(Integer.MAX_VALUE - 8, expected + 4096));
+        int durationMs = durationMs(pcm.size, format.sampleRate);
         if (durationMs < MIN_MS) throw new IOException("Only " + durationMs + " ms of audio decoded");
-        encode(pcm, target);
-        return new Result(durationMs, waveform(pcm.data, pcm.size));
+        encode(pcm, format, target);
+        return new Result(durationMs, waveform(pcm.data, pcm.size, format.sampleRate));
     }
 
-    /** Mono 16-bit samples at {@link #SAMPLE_RATE}. */
+    /** Mono 16-bit samples. */
     static final class Pcm {
         short[] data;
         int size;
@@ -109,7 +147,8 @@ final class VoiceAudio {
         }
     }
 
-    private static Pcm decode(Context context, Uri source, long startUs, long endUs, int capacity) throws IOException {
+    private static Pcm decode(Context context, Uri source, long startUs, long endUs, int targetRate, int capacity)
+            throws IOException {
         MediaExtractor extractor = new MediaExtractor();
         MediaCodec decoder = null;
         try {
@@ -128,7 +167,7 @@ final class VoiceAudio {
             decoder.configure(format, null, null, 0);
             decoder.start();
             extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
-            int rate = integer(format, MediaFormat.KEY_SAMPLE_RATE, SAMPLE_RATE);
+            int rate = integer(format, MediaFormat.KEY_SAMPLE_RATE, targetRate);
             int channels = integer(format, MediaFormat.KEY_CHANNEL_COUNT, 1);
             boolean floats = false;
             Pcm out = new Pcm(capacity);
@@ -168,7 +207,7 @@ final class VoiceAudio {
                     ByteBuffer buffer = decoder.getOutputBuffer(index);
                     if (buffer != null && info.size > 0 && channels > 0) {
                         if (resampler == null || resamplerRate != rate) {
-                            resampler = new Resampler(rate, SAMPLE_RATE);
+                            resampler = new Resampler(rate, targetRate);
                             resamplerRate = rate;
                         }
                         buffer.position(info.offset);
@@ -230,10 +269,10 @@ final class VoiceAudio {
         return format.containsKey(key) ? format.getInteger(key) : fallback;
     }
 
-    private static void encode(Pcm pcm, String target) throws IOException {
-        MediaFormat format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, SAMPLE_RATE, 1);
-        format.setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC);
-        format.setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE);
+    private static void encode(Pcm pcm, Format output, String target) throws IOException {
+        MediaFormat format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, output.sampleRate, 1);
+        format.setInteger(MediaFormat.KEY_AAC_PROFILE, output.aacProfile);
+        format.setInteger(MediaFormat.KEY_BIT_RATE, output.bitRate);
         MediaCodec encoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC);
         MediaMuxer muxer = null;
         try {
@@ -251,7 +290,7 @@ final class VoiceAudio {
                         idle = 0;
                         ByteBuffer buffer = encoder.getInputBuffer(in);
                         int count = buffer == null ? 0 : Math.min(pcm.size - queued, buffer.remaining() / 2);
-                        long time = queued * 1_000_000L / SAMPLE_RATE;
+                        long time = queued * 1_000_000L / output.sampleRate;
                         if (count <= 0) {
                             encoder.queueInputBuffer(in, 0, 0, time, MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                             inputDone = true;
@@ -305,16 +344,17 @@ final class VoiceAudio {
         }
     }
 
-    static int durationMs(int samples) {
-        return (int) Math.round(samples * 1000.0 / SAMPLE_RATE);
+    static int durationMs(int samples, int sampleRate) {
+        return (int) Math.round(samples * 1000.0 / sampleRate);
     }
 
-    /** One level per {@link #WAVEFORM_SAMPLES} of the first {@code size} samples, from each window's peak. */
-    static List<Float> waveform(short[] samples, int size) {
-        List<Float> out = new ArrayList<>(size / WAVEFORM_SAMPLES + 1);
-        for (int from = 0; from < size; from += WAVEFORM_SAMPLES) {
+    /** One level per 100 ms of the first {@code size} samples at {@code sampleRate}, from each window's peak. */
+    static List<Float> waveform(short[] samples, int size, int sampleRate) {
+        int window = Math.max(1, sampleRate / WAVEFORM_PER_SECOND);
+        List<Float> out = new ArrayList<>(size / window + 1);
+        for (int from = 0; from < size; from += window) {
             int peak = 0;
-            for (int i = from, to = Math.min(size, from + WAVEFORM_SAMPLES); i < to; i++) {
+            for (int i = from, to = Math.min(size, from + window); i < to; i++) {
                 peak = Math.max(peak, Math.abs(samples[i]));
             }
             out.add(level(peak));

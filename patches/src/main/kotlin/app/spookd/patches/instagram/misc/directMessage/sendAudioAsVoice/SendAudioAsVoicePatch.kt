@@ -28,9 +28,16 @@ import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.Instruction
+import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.StringReference
+import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 
@@ -132,6 +139,45 @@ private fun replaceStub(name: String, registers: Int, smali: String) {
     }
 }
 
+private const val MEDIA_RECORDER_CLASS = "Landroid/media/MediaRecorder;"
+
+private fun Instruction.methodRef() = (this as? ReferenceInstruction)?.reference as? MethodReference
+
+private fun Instruction.fieldRef() = (this as? ReferenceInstruction)?.reference as? FieldReference
+
+/**
+ * The MediaRecorder recorder's fields that its start passes to [setter], in code order: the last int
+ * field read into the argument register before each call.
+ */
+private fun recorderSetterFields(code: List<Instruction>, recorder: String, setter: String) =
+    code.withIndex().filter { (_, ins) ->
+        ins.methodRef()?.let { call -> call.definingClass == MEDIA_RECORDER_CLASS && call.name == setter } == true
+    }.map { (index, call) ->
+        val register = (call as FiveRegisterInstruction).registerD
+        val read = code.subList(0, index).lastOrNull {
+            it.opcode == Opcode.IGET && (it as TwoRegisterInstruction).registerA == register
+        }?.fieldRef()
+        if (read == null || read.definingClass != recorder || read.type != "I") {
+            throw PatchException("The recorder's $setter does not take one of its int fields")
+        }
+        index to read
+    }
+
+/** Throws unless the recorder's start passes the constant [value] to [setter] once. */
+private fun requireRecorderConstant(code: List<Instruction>, setter: String, value: Int) {
+    val calls = code.withIndex().filter { (_, ins) ->
+        ins.methodRef()?.let { call -> call.definingClass == MEDIA_RECORDER_CLASS && call.name == setter } == true
+    }
+    val (index, call) = calls.singleOrNull() ?: throw PatchException("Expected one $setter in the recorder's start")
+    val register = (call as FiveRegisterInstruction).registerD
+    val previous = code[index - 1]
+    if (previous !is NarrowLiteralInstruction || previous.narrowLiteral != value ||
+        (previous as OneRegisterInstruction).registerA != register
+    ) {
+        throw PatchException("The recorder's $setter is not $value")
+    }
+}
+
 private fun requirePublic(what: String, accessFlags: Int) {
     if (!AccessFlags.PUBLIC.isSet(accessFlags)) throw PatchException("$what is not public")
 }
@@ -142,6 +188,9 @@ private fun requirePublic(what: String, accessFlags: Int) {
  * Holding the chat composer's mic starts a hold-to-record recording. With the switch on, the long press
  * opens the extension's audio file sheet instead and leaves the mic in a state its release ignores, so
  * no recording starts; a tap still records.
+ *
+ * Only a chat whose recorder is the MediaRecorder one is served: its encoder, bit rate and sample rates
+ * are read from that recorder, and the file is written as it would write it.
  *
  * The chosen selection is converted into a new file in Instagram's voice message folder. A recording
  * object is then built the way the MediaRecorder recorder builds one, given that file, its length and
@@ -185,8 +234,42 @@ val sendAudioAsVoicePatch = patch(
         }
         requirePublic("${recording.type}->${waveformField.name}", waveformField.accessFlags)
 
+        // The MediaRecorder recorder's settings: MPEG-4, mono, and the encoder, bit rate and sample rates it reads.
+        val recorderStart = VoiceRecorderStartFingerprint.originalMethod
+        val mediaRecorder = classDefBy(recorderStart.definingClass)
+        requirePublic(mediaRecorder.type, mediaRecorder.accessFlags)
+        val recorderCode = recorderStart.implementation!!.instructions.toList()
+        requireRecorderConstant(recorderCode, "setOutputFormat", 2)
+        requireRecorderConstant(recorderCode, "setAudioChannels", 1)
+        val encoderField = recorderSetterFields(recorderCode, mediaRecorder.type, "setAudioEncoder").single().second
+        val bitRateField = recorderSetterFields(recorderCode, mediaRecorder.type, "setAudioEncodingBitRate").single().second
+        val rates = recorderSetterFields(recorderCode, mediaRecorder.type, "setAudioSamplingRate")
+        // The first rate is set when the model equals "Pixel 4", right after that test.
+        if (rates.size != 2 || recorderCode[rates[0].first - 1].opcode != Opcode.IF_EQZ ||
+            recorderCode.none { (it as? ReferenceInstruction)?.reference?.let { ref -> ref is StringReference && ref.string == "Pixel 4" } == true }
+        ) {
+            throw PatchException("Unexpected sample rate choice in the recorder's start")
+        }
+        val pixelRateField = rates[0].second
+        val rateField = rates[1].second
+        for (field in listOf(encoderField, bitRateField, rateField, pixelRateField)) {
+            val declared = mediaRecorder.fields.single { it.name == field.name && it.type == "I" }
+            requirePublic("$field", declared.accessFlags)
+        }
+
         val start = VoiceRecordingStartFingerprint.originalMethod
         val controller = start.definingClass
+        // The controller's lazy recorder, read in its start as lazy.getValue() cast to the recorder base class.
+        val startCode = start.implementation!!.instructions.toList()
+        val recorderRead = (0 until startCode.size - 3).firstOrNull { i ->
+            startCode[i].opcode == Opcode.IGET_OBJECT && startCode[i].fieldRef()?.definingClass == controller &&
+                startCode[i + 1].opcode == Opcode.INVOKE_INTERFACE && startCode[i + 1].methodRef()?.name == "getValue" &&
+                startCode[i + 2].opcode == Opcode.MOVE_RESULT_OBJECT &&
+                startCode[i + 3].opcode == Opcode.CHECK_CAST &&
+                ((startCode[i + 3] as ReferenceInstruction).reference as TypeReference).type == mediaRecorder.superclass
+        } ?: throw PatchException("No recorder read in $start")
+        val recorderLazy = startCode[recorderRead].fieldRef()!!
+        val lazyValue = startCode[recorderRead + 1].methodRef()!!
         val send = voiceSendFingerprint(controller, recording.type).originalMethod
         requirePublic(controller, classDefBy(controller).accessFlags)
         requirePublic("$send", send.accessFlags)
@@ -204,6 +287,38 @@ val sendAudioAsVoicePatch = patch(
             }
         } ?: throw PatchException("Expected one thread field in $controller")
         for (field in listOf(screenField, threadField)) requirePublic("$controller->${field.name}", field.accessFlags)
+        requirePublic("$recorderLazy", classDefBy(controller).fields.single { it.name == recorderLazy.name }.accessFlags)
+        replaceStub(
+            "recorderSettings",
+            4,
+            """
+            check-cast p0, $controller
+            iget-object p0, p0, $recorderLazy
+            invoke-interface {p0}, $lazyValue
+            move-result-object p0
+            instance-of v0, p0, ${mediaRecorder.type}
+            if-eqz v0, :spookd_other_recorder
+            check-cast p0, ${mediaRecorder.type}
+            const/4 v0, 0x4
+            new-array v0, v0, [I
+            iget v1, p0, $encoderField
+            const/4 v2, 0x0
+            aput v1, v0, v2
+            iget v1, p0, $bitRateField
+            const/4 v2, 0x1
+            aput v1, v0, v2
+            iget v1, p0, $rateField
+            const/4 v2, 0x2
+            aput v1, v0, v2
+            iget v1, p0, $pixelRateField
+            const/4 v2, 0x3
+            aput v1, v0, v2
+            return-object v0
+            :spookd_other_recorder
+            const/4 v0, 0x0
+            return-object v0
+            """,
+        )
         replaceStub(
             "chatScreenOf",
             1,

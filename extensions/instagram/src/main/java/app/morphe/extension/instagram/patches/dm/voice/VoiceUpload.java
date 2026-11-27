@@ -14,6 +14,7 @@ import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -63,12 +64,27 @@ public final class VoiceUpload {
             // Without its chat screen the send could not be checked to still go to this chat.
             Object screen = chatScreenOf(voiceController);
             if (screen == null) return false;
-            showSources(activity, new VoiceDestination(voiceController, screen, threadOf(voiceController)));
+            // Mirrors the recorder's own sample rate choice.
+            VoiceAudio.Format format = VoiceAudio.Format.of(recorderSettings(voiceController), "Pixel 4".equals(Build.MODEL));
+            if (format == null) {
+                // Holding the mic then records as usual.
+                Utils.showToastShort(str("spookd_voice_format_unsupported"));
+                return false;
+            }
+            showSources(activity, new VoiceDestination(voiceController, screen, threadOf(voiceController), format));
             return true;
         } catch (Throwable t) {
             Logger.printException(() -> "VoiceUpload: cannot open the sheet", t);
             return false;
         }
+    }
+
+    /**
+     * The patch replaces this body with the settings of the chat's recorder, {encoder, bit rate, sample rate,
+     * Pixel 4 sample rate}, or null when the chat records with a recorder other than MediaRecorder.
+     */
+    public static int[] recorderSettings(Object voiceController) {
+        return null;
     }
 
     // The patch replaces this body with a read of the voice controller's chat screen.
@@ -251,7 +267,7 @@ public final class VoiceUpload {
             try {
                 path = voiceFilePath();
                 if (path == null) throw new IOException("No voice message path");
-                result = VoiceAudio.convert(app, uri, startMs, endMs, path);
+                result = VoiceAudio.convert(app, uri, startMs, endMs, destination.format, path);
             } catch (Throwable t) {
                 if (path != null) new File(path).delete();
                 Logger.printException(() -> "VoiceUpload: cannot convert " + uri, t);

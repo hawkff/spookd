@@ -2,6 +2,10 @@ package app.morphe.extension.instagram.patches.dm.voice;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
+import android.media.MediaCodecInfo;
+import android.media.MediaRecorder;
 
 import org.junit.Test;
 
@@ -19,15 +23,17 @@ public final class VoiceAudioTest {
 
     @Test
     public void theWaveformHasOneLevelPerHundredMillisecondsFromEachWindowsPeak() {
-        short[] samples = new short[VoiceAudio.WAVEFORM_SAMPLES * 2 + 1];
+        short[] samples = new short[4410 * 2 + 1];
         samples[5] = 1000;
         samples[6] = -2000;
-        samples[VoiceAudio.WAVEFORM_SAMPLES * 2] = Short.MIN_VALUE;
-        List<Float> waveform = VoiceAudio.waveform(samples, samples.length);
+        samples[4410 * 2] = Short.MIN_VALUE;
+        List<Float> waveform = VoiceAudio.waveform(samples, samples.length, 44100);
         assertEquals(Arrays.asList(VoiceAudio.level(2000), 0f, 1f), waveform);
         // Samples past the size are not part of the audio.
-        assertEquals(1, VoiceAudio.waveform(samples, 10).size());
-        assertEquals(0, VoiceAudio.waveform(samples, 0).size());
+        assertEquals(1, VoiceAudio.waveform(samples, 10, 44100).size());
+        assertEquals(0, VoiceAudio.waveform(samples, 0, 44100).size());
+        // At 48 kHz a window is 4800 samples.
+        assertEquals(2, VoiceAudio.waveform(samples, samples.length, 48000).size());
     }
 
     @Test
@@ -57,8 +63,29 @@ public final class VoiceAudioTest {
 
     @Test
     public void durationIsTheSampleCountAtTheRecordersRate() {
-        assertEquals(1000, VoiceAudio.durationMs(VoiceAudio.SAMPLE_RATE));
-        assertEquals(750, VoiceAudio.durationMs(33_075));
+        assertEquals(1000, VoiceAudio.durationMs(44100, 44100));
+        assertEquals(750, VoiceAudio.durationMs(33_075, 44100));
+        assertEquals(750, VoiceAudio.durationMs(36_000, 48000));
+    }
+
+    @Test
+    public void theFormatIsTheRecordersAacSettingsWithItsPixel4SampleRate() {
+        int[] settings = {MediaRecorder.AudioEncoder.HE_AAC, 32_000, 44100, 48000};
+        VoiceAudio.Format format = VoiceAudio.Format.of(settings, false);
+        assertEquals(44100, format.sampleRate);
+        assertEquals(MediaCodecInfo.CodecProfileLevel.AACObjectHE, format.aacProfile);
+        assertEquals(32_000, format.bitRate);
+        assertEquals(48000, VoiceAudio.Format.of(settings, true).sampleRate);
+        assertEquals(MediaCodecInfo.CodecProfileLevel.AACObjectLC, VoiceAudio.aacProfile(MediaRecorder.AudioEncoder.AAC));
+        assertEquals(MediaCodecInfo.CodecProfileLevel.AACObjectELD, VoiceAudio.aacProfile(MediaRecorder.AudioEncoder.AAC_ELD));
+    }
+
+    @Test
+    public void recordersThatDoNotWriteAacAreRefused() {
+        assertNull(VoiceAudio.Format.of(new int[]{MediaRecorder.AudioEncoder.AMR_NB, 32_000, 44100, 48000}, false));
+        assertNull(VoiceAudio.Format.of(new int[]{MediaRecorder.AudioEncoder.DEFAULT, 32_000, 44100, 48000}, false));
+        assertNull(VoiceAudio.Format.of(new int[]{MediaRecorder.AudioEncoder.AAC, 0, 44100, 48000}, false));
+        assertNull(VoiceAudio.Format.of(null, false));
     }
 
     @Test

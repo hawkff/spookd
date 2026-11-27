@@ -13,12 +13,15 @@ final class VoiceDestination {
     private final WeakReference<Object> controller;
     private final WeakReference<Object> screen;
     final String thread;
+    /** What the chat's recorder writes. */
+    final VoiceAudio.Format format;
 
     /** {@code controller} is the chat's voice controller, {@code screen} the chat screen that owns it. */
-    VoiceDestination(Object controller, Object screen, String thread) {
+    VoiceDestination(Object controller, Object screen, String thread, VoiceAudio.Format format) {
         this.controller = new WeakReference<>(controller);
         this.screen = new WeakReference<>(screen);
         this.thread = thread;
+        this.format = format;
     }
 
     /**

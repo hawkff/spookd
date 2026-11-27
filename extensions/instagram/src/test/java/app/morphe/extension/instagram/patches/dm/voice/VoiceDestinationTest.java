@@ -22,29 +22,29 @@ public final class VoiceDestinationTest {
 
     @Test
     public void aConversionForChatASendsToAWhileAIsOpen() {
-        VoiceDestination a = new VoiceDestination(controllerA, screenA, "a");
+        VoiceDestination a = new VoiceDestination(controllerA, screenA, "a", null);
         // Chat B's mic is held and its sheet cancelled while A's file converts.
-        new VoiceDestination(controllerB, screenB, "b");
+        new VoiceDestination(controllerB, screenB, "b", null);
         assertSame(controllerA, a.openController(screen -> screen == screenA, threads::get));
     }
 
     @Test
     public void aConversionForChatAIsDroppedWhileChatBIsOpen() {
-        VoiceDestination a = new VoiceDestination(controllerA, screenA, "a");
-        new VoiceDestination(controllerB, screenB, "b");
+        VoiceDestination a = new VoiceDestination(controllerA, screenA, "a", null);
+        new VoiceDestination(controllerB, screenB, "b", null);
         assertNull(a.openController(screen -> screen == screenB, threads::get));
     }
 
     @Test
     public void aChatWhoseThreadChangedIsDropped() {
-        VoiceDestination a = new VoiceDestination(controllerA, screenA, "a");
+        VoiceDestination a = new VoiceDestination(controllerA, screenA, "a", null);
         threads.put(controllerA, "c");
         assertNull(a.openController(screen -> true, threads::get));
     }
 
     @Test
     public void aChatWithoutItsScreenIsDropped() {
-        VoiceDestination a = new VoiceDestination(controllerA, null, "a");
+        VoiceDestination a = new VoiceDestination(controllerA, null, "a", null);
         assertNull(a.openController(screen -> true, threads::get));
     }
 }
