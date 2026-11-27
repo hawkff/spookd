@@ -198,7 +198,7 @@
     <string name="spookd_hide_recent_searches">Hide recent searches</string>
     <string name="spookd_hide_recent_searches_desc">Removes your recent searches from the search screen and from the suggestions while you type</string>
     <string name="spookd_restore_account_search">Restore account search</string>
-    <string name="spookd_restore_account_search_desc">While you type in search, shows matching accounts above search suggestions and keeps recent accounts as accounts</string>
+    <string name="spookd_restore_account_search_desc">While you type in search, shows accounts you follow or searched before above search suggestions, and keeps recent accounts as accounts instead of turning them into suggestions</string>
     <string name="spookd_hide_muse">Hide Muse</string>
     <string name="spookd_hide_muse_desc">Removes Muse from the share sheet and the Muse banner from profiles</string>
     <string name="spookd_square_explore_grid">Classic Explore grid</string>
