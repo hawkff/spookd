@@ -34,10 +34,8 @@ public final class MarkAsReadAfterReply {
     public static void onSeenRequest(UserSession session, Object context,
                                      String threadId, String messageId, String senderId) {
         try {
-            if (Pref.markSeenOn().isEmpty()) {
-                PENDING.clear();
-                return;
-            }
+            // Settings are per account, so held receipts of other accounts are left alone.
+            if (Pref.markSeenOn().isEmpty()) return;
             if (session == null || threadId == null || messageId == null || senderId == null
                     || !Pref.viewDmAnonymously(session.getUserId(), threadId)) return;
 
@@ -53,11 +51,7 @@ public final class MarkAsReadAfterReply {
     public static void onMutationSent(UserSession session, Object mutation) {
         try {
             Set<String> actions = Pref.markSeenOn();
-            if (actions.isEmpty()) {
-                PENDING.clear();
-                return;
-            }
-            if (session == null || mutation == null) return;
+            if (actions.isEmpty() || session == null || mutation == null) return;
             boolean message = isMessage(mutation);
             if (!triggers(actions, message, message && repliedTo(mutation) != null, typeOf(mutation))) return;
             Object chat = subjectOf(mutation);
@@ -72,7 +66,7 @@ public final class MarkAsReadAfterReply {
         try {
             if (!Pref.markSeenOn().contains(TYPING)) return;
             // shortcut: the typing account is taken as the one whose settings are live, the foreground one.
-            send(SharedPref.getStringPref(AccountSettings.OWNER_KEY, null), threadId);
+            send(SharedPref.getStringPref(AccountSettings.OWNER_KEY, ""), threadId);
         } catch (Throwable t) {
             Logger.printException(() -> "MarkAsReadAfterReply.onTyping failed", t);
         }

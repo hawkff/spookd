@@ -163,7 +163,7 @@ public final class DmGhostChats {
 
     /** The list screen in the Ghost settings, for the account whose settings are shown: tap a chat to remove it. */
     public static void showList(Context context) {
-        StoryUserList.DM_GHOST.showList(context, SharedPref.getStringPref(AccountSettings.OWNER_KEY, null));
+        StoryUserList.DM_GHOST.showList(context, SharedPref.getStringPref(AccountSettings.OWNER_KEY, ""));
     }
 
     private static String accountOf(Object session) {

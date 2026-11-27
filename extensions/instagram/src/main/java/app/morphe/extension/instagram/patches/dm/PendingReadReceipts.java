@@ -33,8 +33,4 @@ final class PendingReadReceipts {
         String key = HeldReceipts.key(account, threadId);
         return key == null ? null : pending.remove(key);
     }
-
-    synchronized void clear() {
-        pending.clear();
-    }
 }
