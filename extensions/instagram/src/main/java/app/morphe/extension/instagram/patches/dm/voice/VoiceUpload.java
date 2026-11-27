@@ -4,6 +4,8 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Application;
+import android.app.Dialog;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.content.ActivityNotFoundException;
@@ -23,6 +25,7 @@ import android.widget.TextView;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import app.morphe.extension.instagram.patches.confirm.ActionConfirm;
@@ -129,43 +132,60 @@ public final class VoiceUpload {
     /** Asks for the screen lock as the gallery does, then lists its audio on a background thread. */
     private static void pickFromGallery(Activity activity, VoiceDestination destination) {
         try {
-            InboxLock.confirm(activity, () -> Utils.runOnBackgroundThread(() -> {
-                try {
-                    List<GalleryStore.Entry> audio = GalleryStore.get().list(null, GalleryItem.AUDIO, false, null, null);
-                    Utils.runOnMainThread(() -> showGalleryAudio(activity, audio, destination));
-                } catch (Exception e) {
-                    fail("list the gallery's audio", e);
-                }
-            }));
+            InboxLock.confirm(activity, () -> {
+                // Unlocked from here until the screen stops; every later step checks it.
+                Session session = new Session(activity);
+                Utils.runOnBackgroundThread(() -> {
+                    try {
+                        List<GalleryStore.Entry> audio = GalleryStore.get().list(null, GalleryItem.AUDIO, false, null, null);
+                        Utils.runOnMainThread(() -> showGalleryAudio(activity, audio, destination, session));
+                    } catch (Exception e) {
+                        Utils.runOnMainThread(session::end);
+                        fail("list the gallery's audio", e);
+                    }
+                });
+            });
         } catch (Exception e) {
             fail("ask for the screen lock", e);
         }
     }
 
     private static void showGalleryAudio(Activity activity, List<GalleryStore.Entry> audio,
-                                         VoiceDestination destination) {
+                                         VoiceDestination destination, Session session) {
         try {
-            if (activity.isFinishing() || activity.isDestroyed()) return;
+            if (session.stopped || activity.isFinishing() || activity.isDestroyed()) {
+                session.end();
+                return;
+            }
             if (audio.isEmpty()) {
+                session.end();
                 Utils.showToastShort(str("spookd_voice_gallery_empty"));
                 return;
             }
             CharSequence[] names = new CharSequence[audio.size()];
             for (int i = 0; i < names.length; i++) names[i] = String.valueOf(audio.get(i).fileName);
+            boolean[] picked = {false};
             AlertDialog dialog = new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                     .setTitle(str("spookd_gallery_picker_entry"))
-                    .setItems(names, (shown, which) -> openTrim(activity, Uri.fromFile(audio.get(which).file), destination))
+                    .setItems(names, (shown, which) -> {
+                        picked[0] = true;
+                        openTrim(activity, Uri.fromFile(audio.get(which).file), destination, session);
+                    })
                     .setNegativeButton(str("spookd_cancel"), null)
                     .create();
             dialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
-            dialog.show();
+            dialog.setOnDismissListener(shown -> {
+                if (!picked[0]) session.end();
+            });
+            session.show(dialog);
         } catch (Exception e) {
+            session.end();
             fail("show the gallery's audio", e);
         }
     }
 
     /** Main thread: prepares a preview player, whose length opens the trim sheet. */
-    private static void openTrim(Activity activity, Uri uri, VoiceDestination destination) {
+    private static void openTrim(Activity activity, Uri uri, VoiceDestination destination, Session session) {
         MediaPlayer player = new MediaPlayer();
         try {
             player.setAudioAttributes(new AudioAttributes.Builder()
@@ -175,34 +195,40 @@ public final class VoiceUpload {
             player.setDataSource(activity, uri);
             player.setOnErrorListener((mp, what, extra) -> {
                 mp.release();
+                session.end();
                 Utils.showToastShort(str("spookd_voice_unreadable"));
                 return true;
             });
-            player.setOnPreparedListener(mp -> showTrim(activity, uri, mp, destination));
+            player.setOnPreparedListener(mp -> showTrim(activity, uri, mp, destination, session));
             player.prepareAsync();
         } catch (Exception e) {
             player.release();
+            session.end();
             Logger.printException(() -> "VoiceUpload: cannot read " + uri, e);
             Utils.showToastShort(str("spookd_voice_unreadable"));
         }
     }
 
-    private static void showTrim(Activity activity, Uri uri, MediaPlayer player, VoiceDestination destination) {
+    private static void showTrim(Activity activity, Uri uri, MediaPlayer player, VoiceDestination destination,
+                                 Session session) {
         try {
             int duration = player.getDuration();
-            if (activity.isFinishing() || activity.isDestroyed()) {
+            if (session.stopped || activity.isFinishing() || activity.isDestroyed()) {
                 player.release();
+                session.end();
                 return;
             }
             if (duration < VoiceAudio.MIN_MS) {
                 player.release();
+                session.end();
                 // An unknown length is -1.
                 Utils.showToastShort(str(duration <= 0 ? "spookd_voice_unreadable" : "spookd_voice_too_short"));
                 return;
             }
-            new Trim(activity, uri, player, duration, destination).show();
+            new Trim(activity, uri, player, duration, destination, session).show();
         } catch (Exception e) {
             player.release();
+            session.end();
             fail("show the trim sheet", e);
         }
     }
@@ -275,6 +301,7 @@ public final class VoiceUpload {
         private final MediaPlayer player;
         private final long durationMs;
         private final VoiceDestination destination;
+        private final Session session;
         private final Handler ui = new Handler(Looper.getMainLooper());
         private final Runnable tick = this::tick;
         private long start;
@@ -286,9 +313,11 @@ public final class VoiceUpload {
         private SeekBar endBar;
         private Button play;
 
-        Trim(Activity activity, Uri uri, MediaPlayer player, long durationMs, VoiceDestination destination) {
+        Trim(Activity activity, Uri uri, MediaPlayer player, long durationMs, VoiceDestination destination,
+             Session session) {
             this.activity = activity;
             this.destination = destination;
+            this.session = session;
             this.uri = uri;
             this.player = player;
             this.durationMs = durationMs;
@@ -336,7 +365,10 @@ public final class VoiceUpload {
                 }
             });
             player.setOnCompletionListener(mp -> pause());
-            dialog.show();
+            if (!session.show(dialog)) {
+                release();
+                return;
+            }
             play = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
             play.setOnClickListener(v -> toggle());
         }
@@ -417,9 +449,11 @@ public final class VoiceUpload {
         }
 
         private void release() {
+            if (released) return;
             pause();
             released = true;
             player.release();
+            session.end();
         }
 
         private void confirm() {
@@ -429,6 +463,75 @@ public final class VoiceUpload {
             if (!ActionConfirm.askVoiceSend(() -> convertAndSend(app, uri, from, to, destination), null)) {
                 Utils.showToastShort(str("spookd_gallery_action_failed"));
             }
+        }
+    }
+
+    /**
+     * The dialogs of one pick, closed when their screen stops: private items and the preview never stay
+     * open after leaving Instagram, where the lock engages again. Main thread.
+     */
+    private static final class Session implements Application.ActivityLifecycleCallbacks {
+        private final Activity host;
+        private final List<Dialog> dialogs = new ArrayList<>();
+        // Set once the screen stopped; a step that comes back later shows nothing.
+        boolean stopped;
+        private boolean ended;
+
+        Session(Activity host) {
+            this.host = host;
+            host.getApplication().registerActivityLifecycleCallbacks(this);
+        }
+
+        /** Shows {@code dialog}, or nothing and false when the screen stopped meanwhile. */
+        boolean show(Dialog dialog) {
+            if (stopped) return false;
+            dialogs.add(dialog);
+            dialog.show();
+            return true;
+        }
+
+        void end() {
+            if (ended) return;
+            ended = true;
+            host.getApplication().unregisterActivityLifecycleCallbacks(this);
+        }
+
+        private void close(Activity activity) {
+            if (activity != host || stopped) return;
+            stopped = true;
+            end();
+            for (Dialog dialog : new ArrayList<>(dialogs)) dialog.dismiss();
+            dialogs.clear();
+        }
+
+        @Override
+        public void onActivityStopped(Activity activity) {
+            close(activity);
+        }
+
+        @Override
+        public void onActivityDestroyed(Activity activity) {
+            close(activity);
+        }
+
+        @Override
+        public void onActivityCreated(Activity activity, Bundle state) {
+        }
+
+        @Override
+        public void onActivityStarted(Activity activity) {
+        }
+
+        @Override
+        public void onActivityResumed(Activity activity) {
+        }
+
+        @Override
+        public void onActivityPaused(Activity activity) {
+        }
+
+        @Override
+        public void onActivitySaveInstanceState(Activity activity, Bundle state) {
         }
     }
 
@@ -464,7 +567,9 @@ public final class VoiceUpload {
             Activity activity = getActivity();
             Uri uri = resultCode == Activity.RESULT_OK && data != null ? data.getData() : null;
             done();
-            if (uri != null && activity != null && !activity.isFinishing()) openTrim(activity, uri, destination);
+            if (uri != null && activity != null && !activity.isFinishing()) {
+                openTrim(activity, uri, destination, new Session(activity));
+            }
         }
 
         private void done() {
