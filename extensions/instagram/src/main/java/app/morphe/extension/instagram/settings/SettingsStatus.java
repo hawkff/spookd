@@ -77,6 +77,8 @@ public class SettingsStatus {
     }
     public static boolean dmGhostChats = false;
     public static void dmGhostChats() { dmGhostChats = true; }
+    public static boolean keepSeenLocally = false;
+    public static void keepSeenLocally() { keepSeenLocally = true; }
     public static boolean saveDeletedMessages = false;
     public static void saveDeletedMessages() {
         saveDeletedMessages = true;
@@ -91,7 +93,7 @@ public class SettingsStatus {
     public static boolean hiddenAccountPrivacyOptions = false;
     public static void hiddenAccountPrivacyOptions() { hiddenAccountPrivacyOptions = true; }
     public static boolean ghostSection() {
-        return (viewStoriesAnonymously || viewLiveAnonymously || disableScreenshotDetection || disableTypingStatus || viewDmAnonymously || markAsReadAfterReply || fakeLocation || hiddenAccountPrivacyOptions);
+        return (viewStoriesAnonymously || viewLiveAnonymously || disableScreenshotDetection || disableTypingStatus || viewDmAnonymously || markAsReadAfterReply || keepSeenLocally || fakeLocation || hiddenAccountPrivacyOptions);
     }
 
     //DM section
@@ -540,6 +542,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_view_dm_anonymously"),SettingsStatus.viewDmAnonymously);
         FLAGS.put(str("spookd_mark_seen_on"), SettingsStatus.markAsReadAfterReply);
         FLAGS.put(str("spookd_dm_ghost_mode"), SettingsStatus.dmGhostChats);
+        FLAGS.put(str("spookd_keep_seen_locally"), SettingsStatus.keepSeenLocally);
         FLAGS.put(str("spookd_save_deleted_messages"),SettingsStatus.saveDeletedMessages);
         FLAGS.put(str("spookd_dm_media_vault"),SettingsStatus.dmMediaVault);
         FLAGS.put(str("spookd_disable_screenshot_detection"),SettingsStatus.disableScreenshotDetection);

@@ -66,6 +66,8 @@
     <string name="spookd_view_dm_anonymously">View direct messages anonymously</string>
     <string name="spookd_mark_as_read_after_reply">Mark as read after reply</string>
     <string name="spookd_mark_as_read_after_reply_desc">Mark a chat as read after you send a reply, even when viewing direct messages anonymously or using all ghost modes</string>
+    <string name="spookd_keep_seen_locally">Keep seen locally</string>
+    <string name="spookd_keep_seen_locally_desc">While viewing direct messages anonymously, chats you open still show as read on this device, without telling the other person</string>
     <string name="spookd_mark_seen_on">Mark chats seen on</string>
     <string name="spookd_mark_seen_on_desc">While viewing direct messages anonymously, the other person sees that you read the chat once you do one of these in it. Start typing only works while typing status is shown</string>
     <string name="spookd_mark_seen_on_reply">Reply to a message</string>

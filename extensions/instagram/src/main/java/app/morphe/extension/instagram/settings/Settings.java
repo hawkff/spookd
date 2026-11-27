@@ -49,6 +49,7 @@ public class Settings {
     // Pre-selection key; migrated once to MARK_SEEN_ON in Pref.
     public static final BooleanSetting MARK_AS_READ_AFTER_REPLY = new BooleanSetting("mark_as_read_after_reply", false, NOT_REQUIRED);
     public static final StringSetting MARK_SEEN_ON = new StringSetting("dm_mark_seen_on", "", NOT_REQUIRED);
+    public static final BooleanSetting KEEP_SEEN_LOCALLY = new BooleanSetting("dm_keep_seen_locally", false, NOT_REQUIRED);
     public static final StringSetting DM_GHOST_MODE = new StringSetting("dm_ghost_mode", "everyone", NOT_REQUIRED);
     public static final StringSetting DM_GHOST_CHATS = new StringSetting("dm_ghost_chats", "{}", NOT_REQUIRED);
     public static final BooleanSetting INSTANTS_DOWNLOAD = new BooleanSetting("instants_download", false, NOT_REQUIRED);

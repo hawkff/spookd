@@ -163,6 +163,10 @@ public class Pref {
         return markAsReadAfterReply ? new HashSet<>(Arrays.asList("reply", "send")) : new HashSet<>();
     }
 
+    public static boolean keepSeenLocally() {
+        return on(Settings.KEEP_SEEN_LOCALLY) && SettingsStatus.keepSeenLocally;
+    }
+
     // Return false = call the message seen api.
     // Return true = blocks the message seen api.
     public static boolean viewDmAnonymously() {

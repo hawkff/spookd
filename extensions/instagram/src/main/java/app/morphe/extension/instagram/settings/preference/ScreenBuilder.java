@@ -656,6 +656,19 @@ public class ScreenBuilder {
             });
             addPreference(helper.availableWhen(dmGhostChats, dmGhostOn));
         }
+        if (SettingsStatus.keepSeenLocally) {
+            addPreference(
+                    helper.availableWhen(
+                            helper.switchPreference(
+                                    str("spookd_keep_seen_locally"),
+                                    str("spookd_keep_seen_locally_desc"),
+                                    Settings.KEEP_SEEN_LOCALLY
+                            ),
+                            () -> SharedPref.getBooleanPref(Settings.VIEW_DM_ANONYMOUSLY)
+                                    || SharedPref.getBooleanPref(Settings.TURN_ON_ALL_GHOST_MODES)
+                    )
+            );
+        }
         if (SettingsStatus.markAsReadAfterReply) {
             // Migrates the old switch before the row reads the saved selection.
             Pref.markSeenOn();
