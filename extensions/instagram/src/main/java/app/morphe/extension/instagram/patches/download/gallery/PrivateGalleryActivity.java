@@ -77,6 +77,7 @@ import app.morphe.extension.instagram.patches.dm.vault.ViewerMedia;
 import app.morphe.extension.instagram.patches.download.AudioPageDownload;
 import app.morphe.extension.instagram.patches.download.DownloadUtils;
 import app.morphe.extension.instagram.patches.download.gallery.editor.PhotoEditor;
+import app.morphe.extension.instagram.patches.download.gallery.editor.VideoEditor;
 import app.morphe.extension.instagram.patches.download.gallery.picker.GalleryPicker;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
@@ -1176,8 +1177,8 @@ public final class PrivateGalleryActivity {
             labels.add(str("spookd_gallery_export"));
             actions.add(() -> export(items));
             // Downloads only: an edit is saved as a plain download, which would leave stored DM media unencrypted.
-            if (items.size() == 1 && item.photo() && !item.vault) {
-                labels.add(str("spookd_gallery_edit_photo"));
+            if (items.size() == 1 && (item.photo() || item.video()) && !item.vault) {
+                labels.add(str(item.photo() ? "spookd_gallery_edit_photo" : "spookd_gallery_edit_video"));
                 actions.add(() -> edit(item));
             }
             if (items.size() == 1 && !TextUtils.isEmpty(item.link)) {
@@ -1196,9 +1197,12 @@ public final class PrivateGalleryActivity {
 
         /** Main thread. A saved edit is a new download, so the list reloads to show it. */
         private void edit(Item item) {
-            editor = PhotoEditor.show(activity, item.file, item.details, item.subFolder, item.fileName, () -> {
+            Runnable saved = () -> {
                 if (!closed) reload(false);
-            });
+            };
+            editor = item.photo()
+                    ? PhotoEditor.show(activity, item.file, item.details, item.subFolder, item.fileName, saved)
+                    : VideoEditor.show(activity, item.file, item.details, item.subFolder, item.fileName, saved);
         }
 
         /** The download writer copies the item into the download folder, or asks for the folder first. */
