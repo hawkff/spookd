@@ -42,7 +42,9 @@ public final class AutoRefresh {
     private static int resumedActivities;
     private static WeakReference<Activity> lastResumed = new WeakReference<>(null);
     private static boolean checkPending;
-    private static boolean attempted;
+    // Bumped when the app leaves the screen, so an older delayed check does nothing.
+    private static int generation;
+    static boolean attempted;
     // An account whose due scan waits for the counts of its own profile header.
     private static String waitingAccountId;
     private static SpookdFollowDb.Scan waitingLast;
@@ -64,7 +66,7 @@ public final class AutoRefresh {
             if (!(app instanceof Application)) return;
             ((Application) app).registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
                 @Override public void onActivityResumed(Activity activity) { onResumed(activity); }
-                @Override public void onActivityPaused(Activity activity) { if (resumedActivities > 0) resumedActivities--; }
+                @Override public void onActivityPaused(Activity activity) { onPaused(); }
                 @Override public void onActivityCreated(Activity a, Bundle b) { }
                 @Override public void onActivityStarted(Activity a) { }
                 @Override public void onActivityStopped(Activity a) { }
@@ -77,12 +79,20 @@ public final class AutoRefresh {
         }
     }
 
-    private static void onResumed(Activity activity) {
+    static void onResumed(Activity activity) {
         resumedActivities++;
         lastResumed = new WeakReference<>(activity);
         if (attempted || checkPending) return;
         checkPending = true;
-        Utils.runOnMainThreadDelayed(AutoRefresh::check, SETTLE_DELAY_MS);
+        int scheduled = generation;
+        Utils.runOnMainThreadDelayed(() -> check(scheduled), SETTLE_DELAY_MS);
+    }
+
+    static void onPaused() {
+        if (resumedActivities > 0) resumedActivities--;
+        if (resumedActivities > 0) return;
+        generation++;
+        checkPending = false;
     }
 
     /** Main thread. The resumed activity of the app, or null while none is. */
@@ -91,7 +101,8 @@ public final class AutoRefresh {
     }
 
     /** Main thread: this process's one attempt, unless the app left the screen during the delay. */
-    private static void check() {
+    private static void check(int scheduled) {
+        if (scheduled != generation) return;
         checkPending = false;
         Activity activity = resumedActivity();
         if (activity == null) return;
