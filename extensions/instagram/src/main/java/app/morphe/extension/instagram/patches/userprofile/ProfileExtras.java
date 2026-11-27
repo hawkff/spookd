@@ -36,13 +36,17 @@ public final class ProfileExtras {
      * from the grid's list. Paging is untouched; {@link #profileGridNeedsNextPage} covers emptied pages.
      */
     public static boolean keepInProfileGrid(boolean keep, Object media) {
-        if (!keep || media == null || !Pref.hideProfileGridReels()) return keep;
+        if (!keep || media == null) return keep;
         try {
-            return !new MediaData(media).isVideo();
+            return keepsPost(Pref.hideProfileGridReels(), media);
         } catch (Throwable t) {
             Logger.printException(() -> "keepInProfileGrid failure", t);
             return keep;
         }
+    }
+
+    static boolean keepsPost(boolean hiding, Object media) throws Exception {
+        return !hiding || !new MediaData(media).isVideo();
     }
 
     /**
