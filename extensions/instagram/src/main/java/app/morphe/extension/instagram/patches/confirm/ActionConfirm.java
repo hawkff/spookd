@@ -53,6 +53,7 @@ public final class ActionConfirm {
     static final String REFRESH = "refresh";
     static final String DISAPPEARING = "disappearing";
     static final String INSTANT_VIDEO = "instant_video";
+    static final String VOICE = "voice";
 
     // Set only while an approved action runs again: what it was about, and how it looked when asked.
     private static Object pendingToken;
@@ -575,6 +576,19 @@ public final class ActionConfirm {
             return ask(null, emoji == null ? INSTANT_VIDEO : REACTION, title, token, Collections.emptyList(), send, cancel);
         } catch (Throwable t) {
             Logger.printException(() -> "askInstantSend failure", t);
+            return false;
+        }
+    }
+
+    /**
+     * From the audio file sheet's Send, on the main thread: {@code send} runs on approval and {@code cancel},
+     * when set, once the dialog closes without it. False when the dialog cannot be shown.
+     */
+    public static boolean askVoiceSend(Runnable send, Runnable cancel) {
+        try {
+            return ask(null, VOICE, str("spookd_confirm_voice_title"), send, Collections.emptyList(), send, cancel);
+        } catch (Throwable t) {
+            Logger.printException(() -> "askVoiceSend failure", t);
             return false;
         }
     }

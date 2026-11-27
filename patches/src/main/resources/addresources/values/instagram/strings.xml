@@ -444,6 +444,8 @@
     <string name="spookd_send_keyboard_gifs_desc">Sends GIFs picked in the keyboard\'s GIF picker as animated images, instead of showing \"Tap the sticker icon to find and send GIFs\"</string>
     <string name="spookd_send_audio_as_voice">Send audio files as voice messages</string>
     <string name="spookd_send_audio_as_voice_desc">Pick an audio file from Files or the private gallery, trim it and send it. It is converted like a recording, so the recipient sees a normal voice message. Holding the mic opens this sheet instead of recording; tap the mic to record.</string>
+    <string name="spookd_confirm_voice_title">Send this audio as a voice message?</string>
+    <string name="spookd_confirm_voice_action">Send</string>
     <string name="spookd_unlimited_replays">Make ephemeral media permanent</string>
     <string name="spookd_unlimited_replays_desc">Changes unexpired view once, view twice media to permanent view</string>
     <string name="spookd_stop_visual_message_auto_advance">Don\'t auto-advance view-once messages</string>
