@@ -3,6 +3,7 @@ package app.morphe.extension.instagram.patches.dm.voice;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import android.media.MediaCodecInfo;
 import android.media.MediaRecorder;
@@ -50,8 +51,37 @@ public final class VoiceAudioTest {
     @Test
     public void theResamplerInterpolatesAcrossChunks() {
         assertArrayEquals(new short[]{10, 20, 30, 40}, resample(44100, 44100, new short[]{10, 20, 30}, new short[]{40, 50}));
-        assertArrayEquals(new short[]{0, 2, 4, 6}, resample(88200, 44100, new short[]{0, 1, 2, 3, 4, 5}, new short[]{6, 7}));
         assertArrayEquals(new short[]{0, 5, 10, 15}, resample(22050, 44100, new short[]{0, 10}, new short[]{20}));
+    }
+
+    @Test
+    public void downsamplingRemovesWhatTheLowerRateCannotHold() {
+        // 23 kHz is above 44.1 kHz's Nyquist frequency and would fold back to 21.1 kHz.
+        assertTrue(peakAfter(resampleTone(23_000)) < 100);
+        assertTrue(Math.abs(peakAfter(resampleTone(1_000)) - 10_000) < 300);
+    }
+
+    @Test
+    public void theLowPassHasUnitGain() {
+        float sum = 0;
+        for (float tap : VoiceAudio.lowPassTaps(48000, 44100)) sum += tap;
+        assertEquals(1f, sum, 1e-4f);
+    }
+
+    /** A 10000 peak tone at 48 kHz, fed in two chunks, at 44.1 kHz. */
+    private static short[] resampleTone(int frequency) {
+        short[] tone = new short[4800];
+        for (int i = 0; i < tone.length; i++) {
+            tone[i] = (short) Math.round(10_000 * Math.sin(2 * Math.PI * frequency * i / 48000.0));
+        }
+        return resample(48000, 44100, Arrays.copyOfRange(tone, 0, 1000), Arrays.copyOfRange(tone, 1000, tone.length));
+    }
+
+    /** The peak after the filter's start-up. */
+    private static int peakAfter(short[] samples) {
+        int peak = 0;
+        for (int i = 200; i < samples.length; i++) peak = Math.max(peak, Math.abs(samples[i]));
+        return peak;
     }
 
     @Test

@@ -118,33 +118,78 @@ final class VoiceAudio {
     }
 
     /**
-     * Linear interpolation from one sample rate to another, fed one decoded chunk at a time.
-     * shortcut: no low-pass filter before downsampling, which is inaudible for speech; filter it for music.
+     * Linear interpolation from one sample rate to another, fed one decoded chunk at a time. Before a
+     * lower rate a low-pass filter takes out what the lower rate cannot hold, so it does not fold back.
      */
     static final class Resampler {
+        static final int TAPS = 63;
         private final double step;
+        // Null when the rate does not go down.
+        private final float[] taps;
+        // The last TAPS - 1 input samples, which the filter needs at the start of the next chunk.
+        private final short[] history = new short[TAPS - 1];
         // Where the next output sample lies in the next chunk; -1..0 is between the last chunk's end and it.
         private double position;
         private short previous;
 
         Resampler(int fromRate, int toRate) {
             step = fromRate / (double) toRate;
+            taps = fromRate > toRate ? lowPassTaps(fromRate, toRate) : null;
         }
 
         void add(short[] in, int count, Pcm out) {
+            short[] samples = taps == null ? in : lowPass(in, count);
             while (position < count - 1) {
                 int i = (int) Math.floor(position);
                 double fraction = position - i;
-                short a = i < 0 ? previous : in[i];
-                short b = in[i + 1];
+                short a = i < 0 ? previous : samples[i];
+                short b = samples[i + 1];
                 out.add((short) Math.round(a + (b - a) * fraction));
                 position += step;
             }
             if (count > 0) {
-                previous = in[count - 1];
+                previous = samples[count - 1];
                 position -= count;
             }
         }
+
+        private short[] lowPass(short[] in, int count) {
+            short[] filtered = new short[count];
+            for (int i = 0; i < count; i++) {
+                float sum = 0;
+                for (int k = 0; k < TAPS; k++) {
+                    int at = i - k;
+                    sum += taps[k] * (at >= 0 ? in[at] : history[history.length + at]);
+                }
+                filtered[i] = pcm16(sum);
+            }
+            int keep = history.length;
+            if (count >= keep) {
+                System.arraycopy(in, count - keep, history, 0, keep);
+            } else {
+                System.arraycopy(history, count, history, 0, keep - count);
+                System.arraycopy(in, 0, history, keep - count, count);
+            }
+            return filtered;
+        }
+    }
+
+    /** A Hamming-windowed sinc low-pass at 90% of {@code toRate}'s Nyquist frequency, with unit gain. */
+    static float[] lowPassTaps(int fromRate, int toRate) {
+        int taps = Resampler.TAPS;
+        double cutoff = 0.45 * toRate / fromRate;
+        int middle = (taps - 1) / 2;
+        double[] values = new double[taps];
+        double sum = 0;
+        for (int k = 0; k < taps; k++) {
+            int x = k - middle;
+            double sinc = x == 0 ? 2 * cutoff : Math.sin(2 * Math.PI * cutoff * x) / (Math.PI * x);
+            values[k] = sinc * (0.54 - 0.46 * Math.cos(2 * Math.PI * k / (taps - 1)));
+            sum += values[k];
+        }
+        float[] out = new float[taps];
+        for (int k = 0; k < taps; k++) out[k] = (float) (values[k] / sum);
+        return out;
     }
 
     private static Pcm decode(Context context, Uri source, long startUs, long endUs, int targetRate, int capacity)
