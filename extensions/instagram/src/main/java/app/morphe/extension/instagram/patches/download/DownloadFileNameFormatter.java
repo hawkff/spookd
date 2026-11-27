@@ -30,6 +30,8 @@ public final class DownloadFileNameFormatter {
             DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMATTER =
             DateTimeFormatter.ofPattern("HH-mm-ss");
+    private static final DateTimeFormatter POST_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("HH-mm");
     private static final DateTimeFormatter TIMESTAMP_FORMATTER =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmss", Locale.ROOT);
 
@@ -154,7 +156,10 @@ public final class DownloadFileNameFormatter {
         UPLOAD_TIMESTAMP("upload_timestamp"),
         TYPE("type"),
         CAROUSEL_INDEX("carousel_index"),
-        VARIANT_SUFFIX("variant_suffix");
+        VARIANT_SUFFIX("variant_suffix"),
+        POST_DATE("post_date"),
+        POST_TIME("post_time"),
+        DOWNLOAD_DATE("download_date");
 
         private final String key;
 
@@ -196,6 +201,16 @@ public final class DownloadFileNameFormatter {
                     return String.valueOf(values.carouselIndex + 1);
                 case VARIANT_SUFFIX:
                     return values.variantSuffix;
+                case POST_DATE:
+                    return values.uploadTimestampMillis == null ? "" : DATE_FORMATTER.format(
+                            Instant.ofEpochMilli(values.uploadTimestampMillis).atZone(zoneId)
+                    );
+                case POST_TIME:
+                    return values.uploadTimestampMillis == null ? "" : POST_TIME_FORMATTER.format(
+                            Instant.ofEpochMilli(values.uploadTimestampMillis).atZone(zoneId)
+                    );
+                case DOWNLOAD_DATE:
+                    return DATE_FORMATTER.format(Instant.now().atZone(zoneId));
                 default:
                     throw new IllegalStateException("Unsupported filename template token");
             }

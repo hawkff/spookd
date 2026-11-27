@@ -590,6 +590,9 @@
     <string name="spookd_download_file_name_token_type">Type</string>
     <string name="spookd_download_file_name_token_carousel_index">Carousel</string>
     <string name="spookd_download_file_name_token_variant_suffix">Variant</string>
+    <string name="spookd_download_file_name_token_post_date">Post date</string>
+    <string name="spookd_download_file_name_token_post_time">Post time</string>
+    <string name="spookd_download_file_name_token_download_date">Download date</string>
     <string name="spookd_download_current_media">Download current media</string>
     <string name="spookd_download_as_image">Download as image</string>
     <string name="spookd_video_variants">Video variants</string>
