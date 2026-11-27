@@ -8,14 +8,19 @@ package app.morphe.extension.instagram.patches.audio;
 
 import android.media.AudioManager;
 
+import java.lang.ref.WeakReference;
+
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
+import app.morphe.extension.shared.Utils;
 
 /** Leaves other apps' audio playing until the user turns Instagram's sound on. */
 @SuppressWarnings("unused")
 public final class KeepOtherAudio {
     // Set by turning the sound on since Instagram last came to the foreground; a sound state left on from before does not count.
     private static volatile boolean soundOnSinceForeground;
+    // The Reels picture-in-picture screen whose focus request was skipped, asked again once the sound is turned on.
+    private static volatile WeakReference<Object> skippedPip;
 
     private KeepOtherAudio() {
     }
@@ -40,6 +45,43 @@ public final class KeepOtherAudio {
     /** Called at the start of Instagram's sound setter, on the thread that mutes or unmutes. */
     public static void onSoundSet(boolean on) {
         soundOnSinceForeground = on;
+        Object pip = takeSkippedPip(on);
+        if (pip != null) Utils.runOnMainThread(() -> retryPipFocus(pip));
+    }
+
+    /**
+     * Called on the main thread by Reels picture-in-picture right before it records and asks for
+     * audio focus, both for its own request and for the player-managed one. False skips that request.
+     */
+    public static boolean allowPipFocusRequest(Object pip) {
+        try {
+            return pipAllowed(Pref.keepOtherAudio(), pip);
+        } catch (Throwable t) {
+            Logger.printException(() -> "KeepOtherAudio: reading the switch failed", t);
+            return true;
+        }
+    }
+
+    static boolean pipAllowed(boolean switchOn, Object pip) {
+        if (allows(switchOn)) return true;
+        skippedPip = new WeakReference<>(pip);
+        return false;
+    }
+
+    /** The skipped picture-in-picture screen to ask again once the sound is on, taken once. */
+    static Object takeSkippedPip(boolean soundOn) {
+        WeakReference<Object> skipped = skippedPip;
+        if (!soundOn || skipped == null) return null;
+        skippedPip = null;
+        return skipped.get();
+    }
+
+    private static void retryPipFocus(Object pip) {
+        try {
+            requestPipFocus(pip, null, null, null);
+        } catch (Throwable t) {
+            Logger.printException(() -> "KeepOtherAudio: asking for picture-in-picture focus failed", t);
+        }
     }
 
     /** Called at the start of Instagram's timed automatic sound on; true skips it. */
@@ -72,6 +114,13 @@ public final class KeepOtherAudio {
 
     static boolean allows(boolean switchOn) {
         return !switchOn || soundOnSinceForeground;
+    }
+
+    /**
+     * Runs Reels picture-in-picture's own focus request again, through the player when it manages focus;
+     * replaced at patch time. The unused parameters are registers for the replacement.
+     */
+    private static void requestPipFocus(Object pip, Object spare1, Object spare2, Object spare3) {
     }
 
     /** Instagram's sound setter for the account; replaced at patch time. */
