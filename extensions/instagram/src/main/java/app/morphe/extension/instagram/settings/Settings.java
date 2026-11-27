@@ -191,6 +191,14 @@ public class Settings {
     public static final BooleanSetting FLOATING_TAB_BAR_GLASS = new BooleanSetting("floating_tab_bar_glass", false, NOT_REQUIRED);
     // "default", "on" or "off"; read once at startup into Instagram's flags.
     public static final StringSetting SWIPE_BETWEEN_TABS = new StringSetting("swipe_between_tabs", "default", REQUIRED);
+    // What holding each tab opens (TabShortcuts values), read on every hold.
+    public static final StringSetting TAB_SHORTCUT_HOME = new StringSetting("tab_shortcut_home", "menu", NOT_REQUIRED);
+    public static final StringSetting TAB_SHORTCUT_REELS = new StringSetting("tab_shortcut_reels", "default", NOT_REQUIRED);
+    public static final StringSetting TAB_SHORTCUT_MESSAGES = new StringSetting("tab_shortcut_messages", "default", NOT_REQUIRED);
+    public static final StringSetting TAB_SHORTCUT_SEARCH = new StringSetting("tab_shortcut_search", "default", NOT_REQUIRED);
+    public static final StringSetting TAB_SHORTCUT_PROFILE = new StringSetting("tab_shortcut_profile", "default", NOT_REQUIRED);
+    public static final StringSetting TAB_SHORTCUT_NOTIFICATIONS = new StringSetting("tab_shortcut_notifications", "default", NOT_REQUIRED);
+    public static final StringSetting TAB_SHORTCUT_CREATE = new StringSetting("tab_shortcut_create", "default", NOT_REQUIRED);
     public static final BooleanSetting HIDE_HOME_CREATE_BUTTON = new BooleanSetting("hide_home_create_button", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_HOME_NOTIFICATIONS_BUTTON = new BooleanSetting("hide_home_notifications_button", false, NOT_REQUIRED);
 

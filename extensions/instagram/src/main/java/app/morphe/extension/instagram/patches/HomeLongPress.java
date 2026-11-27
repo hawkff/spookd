@@ -19,6 +19,7 @@ import java.util.List;
 
 import app.morphe.extension.instagram.entity.InstagramDialogBox;
 import app.morphe.extension.instagram.patches.instants.InstantsMenu;
+import app.morphe.extension.instagram.patches.navigation.TabShortcuts;
 import app.morphe.extension.instagram.settings.ActivityHook;
 import app.morphe.extension.instagram.settings.preference.fragments.FragmentHook;
 import app.morphe.extension.instagram.utils.Pref;
@@ -40,18 +41,23 @@ public class HomeLongPress {
             return false;
         }
         try {
-            boolean devOptions = Pref.enableDevOptions();
-            boolean gallery = Pref.homeLongPressGallery();
-            boolean instants = InstantsMenu.available();
-            if (devOptions || gallery || instants) {
-                showChoiceDialog(view, devOptions, gallery, instants);
-            } else {
-                FragmentHook.startSettings();
-            }
-            return true;
+            return TabShortcuts.open(view, TabShortcuts.homeChoice(), true);
         } catch (Throwable t) {
             logFailure("Home long-press failed", t);
             return false;
+        }
+    }
+
+    /** Main thread. The spookd menu, or settings directly when the menu would only hold Settings. */
+    public static void showMenu(View view, boolean home) {
+        // Only Home's own listener knows Developer options, so only Home can replay into it.
+        boolean devOptions = home && Pref.enableDevOptions();
+        boolean gallery = Pref.homeLongPressGallery();
+        boolean instants = InstantsMenu.available();
+        if (devOptions || gallery || instants) {
+            showChoiceDialog(view, devOptions, gallery, instants);
+        } else {
+            FragmentHook.startSettings();
         }
     }
 
@@ -103,7 +109,7 @@ public class HomeLongPress {
         }
     }
 
-    private static Activity activityOf(Context context) {
+    public static Activity activityOf(Context context) {
         while (context instanceof ContextWrapper) {
             if (context instanceof Activity) return (Activity) context;
             Context base = ((ContextWrapper) context).getBaseContext();

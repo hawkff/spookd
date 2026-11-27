@@ -59,16 +59,16 @@ public class ListPref extends ListPreference {
         CharSequence[] entriesValues = new CharSequence[]{};
         // Flag codes doesnt have _ in them
         if(key.contains("_")){
-            if (key == Settings.CUSTOMISE_STORY_TIMESTAMP.key) {
+            if (Settings.CUSTOMISE_STORY_TIMESTAMP.key.equals(key)) {
                 entries = ResourceUtils.getStringArray("spookd_array_customise_story_timestamp");
                 entriesValues = ResourceUtils.getStringArray("spookd_array_customise_story_timestamp_val");
-            } else if (key == Settings.HIDDEN_CHATS_TAPS.key) {
+            } else if (Settings.HIDDEN_CHATS_TAPS.key.equals(key)) {
                 entries = ResourceUtils.getStringArray("spookd_array_hidden_chats_taps");
                 entriesValues = entries;
             } else if (Settings.DOWNLOAD_CONFLICT_POLICY.key.equals(key)) {
                 entries = ResourceUtils.getStringArray("spookd_array_download_conflict_policy");
                 entriesValues = ResourceUtils.getStringArray("spookd_array_download_conflict_policy_val");
-            } else if (key == Settings.CHANGE_LIKE_ANIMATION.key) {
+            } else if (Settings.CHANGE_LIKE_ANIMATION.key.equals(key)) {
                 entries = ResourceUtils.getStringArray("spookd_array_change_like_animation");
                 entriesValues = ResourceUtils.getStringArray("spookd_array_change_like_animation_val");
             } else if (Settings.DEFAULT_PLAYBACK_SPEED.key.equals(key)) {

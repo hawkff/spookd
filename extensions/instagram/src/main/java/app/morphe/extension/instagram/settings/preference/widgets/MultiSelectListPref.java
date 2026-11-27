@@ -106,34 +106,34 @@ public class MultiSelectListPref extends MultiSelectListPreference {
         CharSequence[] entries = new CharSequence[]{};
         CharSequence[] entriesValues = new CharSequence[]{};
         // Migrate legacy action visibility before the preference reads its saved selection.
-        if (key == Settings.ACTION_BAR_MAIN_FEED.key) {
+        if (Settings.ACTION_BAR_MAIN_FEED.key.equals(key)) {
             Pref.mainFeedActionBarButtons();
             entries = ResourceUtils.getStringArray("spookd_array_action_bar_main_feed");
             entriesValues = ResourceUtils.getStringArray("spookd_array_action_bar_main_feed_val");
         }
-        else if (key == Settings.ACTION_BAR_USER_PROFILE.key) {
+        else if (Settings.ACTION_BAR_USER_PROFILE.key.equals(key)) {
             Pref.userProfileActionBarButtons();
             entries = ResourceUtils.getStringArray("spookd_array_action_bar_user_profile");
             entriesValues = ResourceUtils.getStringArray("spookd_array_action_bar_user_profile_val");
         }
-        else if (key == Settings.ACTION_BAR_CHAT.key) {
+        else if (Settings.ACTION_BAR_CHAT.key.equals(key)) {
             Pref.chatActionsWithCallDefaults();
             entries = ResourceUtils.getStringArray("spookd_array_action_bar_chat");
             entriesValues = ResourceUtils.getStringArray("spookd_array_action_bar_chat_val");
         }
-        else if (key == Settings.ACTION_BAR_INBOX.key) {
+        else if (Settings.ACTION_BAR_INBOX.key.equals(key)) {
             entries = ResourceUtils.getStringArray("spookd_array_action_bar_inbox");
             entriesValues = ResourceUtils.getStringArray("spookd_array_action_bar_inbox_val");
         }
-        else if (key == Settings.FILTER_STORY_BY_TYPE.key) {
+        else if (Settings.FILTER_STORY_BY_TYPE.key.equals(key)) {
             entries = ResourceUtils.getStringArray("spookd_array_reel_type");
             entriesValues = ResourceUtils.getStringArray("spookd_array_reel_type_val");
         }
-        else if (key == Settings.FILTER_STORY_BY_USER_TYPE.key) {
+        else if (Settings.FILTER_STORY_BY_USER_TYPE.key.equals(key)) {
             entries = ResourceUtils.getStringArray("spookd_array_user_type");
             entriesValues = ResourceUtils.getStringArray("spookd_array_user_type_val");
         }
-        else if (key == Settings.HIDE_SAVE_BUTTON_SURFACES.key) {
+        else if (Settings.HIDE_SAVE_BUTTON_SURFACES.key.equals(key)) {
             // Migrate the pre-per-surface switch before the preference reads its saved selection.
             Pref.hideSaveButtonSurfaces();
             entries = ResourceUtils.getStringArray("spookd_array_hide_save_button_surfaces");

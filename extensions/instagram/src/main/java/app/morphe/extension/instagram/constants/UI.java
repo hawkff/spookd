@@ -238,7 +238,7 @@ public class UI {
     }
 
     public static void welcomeDialogBox(Context context) {
-        boolean homeLongPress = app.morphe.extension.instagram.settings.SettingsStatus.homeLongPressSettings;
+        boolean homeLongPress = app.morphe.extension.instagram.patches.navigation.TabShortcuts.homeOpensSettings();
         InstagramDialogBox dialog = new InstagramDialogBox(context);
 
         ArrayList<String> options = new ArrayList<>();

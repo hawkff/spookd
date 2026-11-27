@@ -419,6 +419,8 @@ public class SettingsStatus {
     public static void floatingTabBar() { floatingTabBar = true; }
     public static boolean swipeBetweenTabs = false;
     public static void swipeBetweenTabs() { swipeBetweenTabs = true; }
+    public static boolean tabShortcuts = false;
+    public static void tabShortcuts() { tabShortcuts = true; }
 
     // Developer section.
     public static boolean enableDeveloperOptions = false;
@@ -445,6 +447,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_category_hide_navigation_buttons"),SettingsStatus.hideNavigationButtons);
         FLAGS.put(str("spookd_floating_tab_bar"), SettingsStatus.floatingTabBar);
         FLAGS.put(str("spookd_swipe_between_tabs"), SettingsStatus.swipeBetweenTabs);
+        FLAGS.put(str("spookd_tab_shortcuts"), SettingsStatus.tabShortcuts);
 
         FLAGS.put(str("spookd_category_downloads"),SettingsStatus.downloadMedia);
         FLAGS.put(str("spookd_download_voice_media"),SettingsStatus.downloadVoiceMessage);

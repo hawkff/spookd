@@ -7,6 +7,7 @@
 package app.morphe.extension.instagram.settings.preference.widgets;
 
 import app.morphe.extension.instagram.constants.Constants;
+import app.morphe.extension.instagram.patches.navigation.NavigationBarPatch;
 import app.morphe.extension.instagram.patches.navigation.NavigationBarPatch.Tab;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.utils.Pref;
@@ -15,7 +16,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
 
-final class NavigationSettingsAccessPolicy {
+public final class NavigationSettingsAccessPolicy {
     enum ActionBar {
         MAIN_FEED,
         PROFILE,
@@ -54,6 +55,22 @@ final class NavigationSettingsAccessPolicy {
                 || (visible.contains(Tab.MESSAGES)
                 && (actionBarsWithSettings.contains(ActionBar.INBOX)
                 || actionBarsWithSettings.contains(ActionBar.CHAT)));
+    }
+
+    /**
+     * Main thread. Whether settings stay reachable while holding Home opens something else; holding
+     * Home falls back to the menu otherwise, so Home always counts in {@link #hasDirectAccess(Set)}.
+     */
+    public static boolean reachableWithoutHomeLongPress() {
+        try {
+            Set<Tab> visible = SettingsStatus.hideNavigationButtons
+                    ? NavigationBarPatch.loadConfig().visible()
+                    : NavigationBarPatch.defaultConfig().visible();
+            return hasDirectAccess(visible, actionBarsWithSettings(), false);
+        } catch (Throwable ignored) {
+            // Unreadable layout: Home keeps opening settings.
+            return false;
+        }
     }
 
     static boolean hasDirectAccessAfterActionBarChange(

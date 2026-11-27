@@ -17,6 +17,7 @@ import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.patches.navigation.NavigationBarPatch;
+import app.morphe.extension.instagram.patches.navigation.TabShortcuts;
 import app.morphe.extension.instagram.patches.userprofile.ProfileMoreOption;
 
 public class UserProfileButton {
@@ -59,7 +60,7 @@ public class UserProfileButton {
             Boolean isSelfProfile = profileInfo.isSelfProfile();
 
             boolean showSettings = !isSettingsInActionBar && isSelfProfile
-                    && !(SettingsStatus.homeLongPressSettings && isHomeTabVisible());
+                    && !(TabShortcuts.homeOpensSettings() && isHomeTabVisible());
             boolean showProfileOptions = !userProfileABPref.contains(Constants.AB_PROFILE_INFO_ICON)
                     && Pref.isMoreOptionsOnProfilePatched();
 

@@ -69,22 +69,25 @@ public class ActivityHook {
         launchActivity(context, intent);
     }
 
-    private static void launchActivity(Context context, Intent intent) {
+    /** @return false when the activity could not be started; the failure is logged. */
+    private static boolean launchActivity(Context context, Intent intent) {
         try {
             Activity currentActivity = app.morphe.extension.shared.Utils.getActivity();
             if (currentActivity != null && !currentActivity.isFinishing() && !currentActivity.isDestroyed()) {
                 currentActivity.startActivity(intent);
-                return;
+                return true;
             }
             if (context instanceof Activity && !((Activity) context).isFinishing() && !((Activity) context).isDestroyed()) {
                 ((Activity) context).startActivity(intent);
-                return;
+                return true;
             }
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent);
+            return true;
         } catch (Exception e) {
             Logger.printException(() -> "launchActivity failure", e);
             PikoUtils.logger(e);
+            return false;
         }
     }
 
@@ -227,11 +230,11 @@ public class ActivityHook {
                 .commitAllowingStateLoss();
     }
 
-    public static void startSpookdActivity(String fragment_name, String title) {
-        startSpookdActivity(fragment_name, title, null);
+    public static boolean startSpookdActivity(String fragment_name, String title) {
+        return startSpookdActivity(fragment_name, title, null);
     }
 
-    public static void startSpookdActivity(String fragment_name, String title, String targetPreferenceKey) {
+    public static boolean startSpookdActivity(String fragment_name, String title, String targetPreferenceKey) {
         Context context = PikoUtils.getContext();
         Intent intent = createProxyIntent(context);
         intent.putExtra(EXTRA_SPOOKD_LAUNCH_TYPE, LAUNCH_TYPE_SETTINGS);
@@ -240,7 +243,7 @@ public class ActivityHook {
         if (targetPreferenceKey != null && !targetPreferenceKey.isEmpty()) {
             intent.putExtra(Constants.SPOOKD_SEARCH_TARGET_PREFERENCE_KEY, targetPreferenceKey);
         }
-        launchActivity(context, intent);
+        return launchActivity(context, intent);
     }
 
     public static Intent createDeletedMessagesIntent(Context context) {
@@ -249,26 +252,26 @@ public class ActivityHook {
         return intent;
     }
 
-    public static void startDeletedMessagesActivity(Context context) {
-        launchActivity(context, createDeletedMessagesIntent(context));
+    public static boolean startDeletedMessagesActivity(Context context) {
+        return launchActivity(context, createDeletedMessagesIntent(context));
     }
 
-    public static void startProfileAnalyzerActivity(Context context) {
+    public static boolean startProfileAnalyzerActivity(Context context) {
         Intent intent = createProxyIntent(context);
         intent.putExtra(EXTRA_SPOOKD_LAUNCH_TYPE, LAUNCH_TYPE_PROFILE_ANALYZER);
-        launchActivity(context, intent);
+        return launchActivity(context, intent);
     }
 
-    public static void startPrivateGalleryActivity(Context context) {
+    public static boolean startPrivateGalleryActivity(Context context) {
         Intent intent = createProxyIntent(context);
         intent.putExtra(EXTRA_SPOOKD_LAUNCH_TYPE, LAUNCH_TYPE_PRIVATE_GALLERY);
-        launchActivity(context, intent);
+        return launchActivity(context, intent);
     }
 
-    public static void startDownloadHistoryActivity(Context context) {
+    public static boolean startDownloadHistoryActivity(Context context) {
         Intent intent = createProxyIntent(context);
         intent.putExtra(EXTRA_SPOOKD_LAUNCH_TYPE, LAUNCH_TYPE_DOWNLOAD_HISTORY);
-        launchActivity(context, intent);
+        return launchActivity(context, intent);
     }
 
     public static void startInstantsVaultActivity(Context context) {

@@ -61,8 +61,8 @@ public class FragmentHook {
         }
     }
 
-    public static void startSettings(){
-        ActivityHook.startSpookdActivity(Constants.SPOOKD_FRAGMENT_SETTINGS,"spookd_title_settings");
+    public static boolean startSettings(){
+        return ActivityHook.startSpookdActivity(Constants.SPOOKD_FRAGMENT_SETTINGS,"spookd_title_settings");
     }
 
 }

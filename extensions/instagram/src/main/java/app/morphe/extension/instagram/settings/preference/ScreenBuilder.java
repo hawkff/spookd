@@ -38,6 +38,8 @@ import app.morphe.extension.instagram.patches.dm.presence.ActivityAlerts;
 import app.morphe.extension.instagram.patches.instants.InstantsMenu;
 import app.morphe.extension.instagram.patches.location.FakeLocationScreen;
 import app.morphe.extension.instagram.patches.location.FakePlaces;
+import app.morphe.extension.instagram.patches.navigation.NavigationBarPatch;
+import app.morphe.extension.instagram.patches.navigation.TabShortcuts;
 import app.morphe.extension.instagram.settings.SettingsStatus;
 import app.morphe.extension.instagram.settings.RestartPolicy;
 import app.morphe.extension.instagram.settings.SafeStartup;
@@ -1672,6 +1674,26 @@ public class ScreenBuilder {
                     )
             );
         }
+        for (NavigationBarPatch.Tab tab : NavigationBarPatch.Tab.values()) {
+            boolean home = tab == NavigationBarPatch.Tab.HOME;
+            if (!(home ? SettingsStatus.homeLongPressSettings : SettingsStatus.tabShortcuts)) continue;
+            StringSetting setting = TabShortcuts.setting(tab);
+            ListPref shortcut = new ListPref(context) {
+                @Override
+                protected void onSetInitialValue(boolean restoreValue, Object defaultValue) {
+                    super.onSetInitialValue(restoreValue, defaultValue);
+                    setEntries(TabShortcuts.choices(true));
+                    setEntryValues(TabShortcuts.choices(false));
+                }
+            };
+            String title = str("spookd_tab_shortcut_title", str(tab.labelName()));
+            shortcut.setTitle(title);
+            shortcut.setDialogTitle(title);
+            shortcut.setSummary(home ? str("spookd_tab_shortcut_home_summary") : "%s");
+            shortcut.setKey(setting.key);
+            shortcut.setDefaultValue(setting.defaultValue);
+            addPreference(shortcut);
+        }
         if (!(SettingsStatus.hideNavigationButtons)) return;
 
         addPreference(
@@ -2034,7 +2056,8 @@ public class ScreenBuilder {
                 )
         );
 
-        if (SettingsStatus.hideNavigationButtons || SettingsStatus.floatingTabBar || SettingsStatus.swipeBetweenTabs){
+        if (SettingsStatus.hideNavigationButtons || SettingsStatus.floatingTabBar || SettingsStatus.swipeBetweenTabs
+                || SettingsStatus.homeLongPressSettings){
             addPreference(
                     helper.categoryPreference(
                             str("spookd_category_navigation_tabs"),
