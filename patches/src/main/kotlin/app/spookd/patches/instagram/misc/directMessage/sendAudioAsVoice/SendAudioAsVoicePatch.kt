@@ -28,6 +28,7 @@ import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
@@ -36,6 +37,7 @@ import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 private const val EXTENSION_CLASS = "$PATCHES_DESCRIPTOR/dm/voice/VoiceUpload;"
 private const val STRING_CLASS = "Ljava/lang/String;"
 private const val INTEGER_CLASS = "Ljava/lang/Integer;"
+private const val FRAGMENT_CLASS = "Landroidx/fragment/app/Fragment;"
 
 /** The MPEG-4 voice message path of Instagram's voice file paths: a new file name in its audio folder. */
 private object VoiceFilePathFingerprint : Fingerprint(
@@ -188,6 +190,38 @@ val sendAudioAsVoicePatch = patch(
         val send = voiceSendFingerprint(controller, recording.type).originalMethod
         requirePublic(controller, classDefBy(controller).accessFlags)
         requirePublic("$send", send.accessFlags)
+
+        // The send is bound to the chat screen that owns the controller, and to the controller's thread.
+        val controllerFields = classDefBy(controller).instanceFields.toList()
+        val screenField = controllerFields.singleOrNull { it.type == FRAGMENT_CLASS }
+            ?: throw PatchException("Expected one chat screen field in $controller")
+        val sendCalls = send.implementation!!.instructions.filter { it.opcode == Opcode.INVOKE_STATIC }
+            .map { (it as ReferenceInstruction).reference as MethodReference }
+        // The send reads the thread's id from the controller's thread field.
+        val threadField = controllerFields.singleOrNull { field ->
+            !field.type.startsWith("Ljava/") && sendCalls.any { call ->
+                call.returnType == STRING_CLASS && call.parameterTypes.map { it.toString() } == listOf(field.type)
+            }
+        } ?: throw PatchException("Expected one thread field in $controller")
+        for (field in listOf(screenField, threadField)) requirePublic("$controller->${field.name}", field.accessFlags)
+        replaceStub(
+            "chatScreenOf",
+            1,
+            """
+            check-cast p0, $controller
+            iget-object p0, p0, $controller->${screenField.name}:${screenField.type}
+            return-object p0
+            """,
+        )
+        replaceStub(
+            "chatThreadOf",
+            1,
+            """
+            check-cast p0, $controller
+            iget-object p0, p0, $controller->${threadField.name}:${threadField.type}
+            return-object p0
+            """,
+        )
 
         replaceStub(
             "voiceFilePath",

@@ -23,7 +23,6 @@ import android.widget.TextView;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.util.List;
 
 import app.morphe.extension.instagram.patches.confirm.ActionConfirm;
@@ -46,8 +45,6 @@ public final class VoiceUpload {
     private static final String PICKER_TAG = "spookd_voice_file";
     private static final long STEP_MS = 100;
     private static final long TICK_MS = 50;
-    // The voice controller of the chat whose mic was held.
-    private static WeakReference<Object> chat = new WeakReference<>(null);
     // Main thread only: set while a selection is converted, so one Send cannot start a second.
     private static boolean converting;
 
@@ -60,13 +57,37 @@ public final class VoiceUpload {
             if (voiceController == null || !Pref.sendAudioAsVoice()) return false;
             Activity activity = Utils.getActivity();
             if (activity == null || activity.isFinishing()) return false;
-            showSources(activity);
-            chat = new WeakReference<>(voiceController);
+            // Without its chat screen the send could not be checked to still go to this chat.
+            Object screen = chatScreenOf(voiceController);
+            if (screen == null) return false;
+            showSources(activity, new VoiceDestination(voiceController, screen, threadOf(voiceController)));
             return true;
         } catch (Throwable t) {
             Logger.printException(() -> "VoiceUpload: cannot open the sheet", t);
             return false;
         }
+    }
+
+    // The patch replaces this body with a read of the voice controller's chat screen.
+    public static Object chatScreenOf(Object voiceController) {
+        return null;
+    }
+
+    // The patch replaces this body with a read of the voice controller's thread.
+    public static Object chatThreadOf(Object voiceController) {
+        return null;
+    }
+
+    private static String threadOf(Object voiceController) {
+        return String.valueOf(chatThreadOf(voiceController));
+    }
+
+    /** Main thread: whether {@code screen}, a chat screen, is the one open now. */
+    private static boolean isOpen(Object screen) {
+        if (!(screen instanceof androidx.fragment.app.Fragment)) return false;
+        androidx.fragment.app.Fragment chat = (androidx.fragment.app.Fragment) screen;
+        Activity current = Utils.getActivity();
+        return current != null && chat.getActivity() == current && chat.isResumed() && !chat.isRemoving();
     }
 
     // The patch replaces this body with a new file path in Instagram's voice message folder.
@@ -79,37 +100,39 @@ public final class VoiceUpload {
         throw new IllegalStateException("Not patched");
     }
 
-    private static void showSources(Activity activity) {
+    private static void showSources(Activity activity, VoiceDestination destination) {
         CharSequence[] sources = Gallery.canOpen(activity)
                 ? new CharSequence[]{str("spookd_voice_from_files"), str("spookd_gallery_picker_entry")}
                 : new CharSequence[]{str("spookd_voice_from_files")};
         new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                 .setTitle(str("spookd_voice_sheet_title"))
                 .setItems(sources, (shown, which) -> {
-                    if (which == 0) pickFile(activity);
-                    else pickFromGallery(activity);
+                    if (which == 0) pickFile(activity, destination);
+                    else pickFromGallery(activity, destination);
                 })
                 .setNegativeButton(str("spookd_cancel"), null)
                 .show();
     }
 
-    private static void pickFile(Activity activity) {
+    private static void pickFile(Activity activity, VoiceDestination destination) {
         try {
             FragmentManager fragments = activity.getFragmentManager();
             if (activity.isFinishing() || fragments.findFragmentByTag(PICKER_TAG) != null) return;
-            fragments.beginTransaction().add(new FilePicker(), PICKER_TAG).commitAllowingStateLoss();
+            FilePicker picker = new FilePicker();
+            picker.destination = destination;
+            fragments.beginTransaction().add(picker, PICKER_TAG).commitAllowingStateLoss();
         } catch (Exception e) {
             fail("open the file picker", e);
         }
     }
 
     /** Asks for the screen lock as the gallery does, then lists its audio on a background thread. */
-    private static void pickFromGallery(Activity activity) {
+    private static void pickFromGallery(Activity activity, VoiceDestination destination) {
         try {
             InboxLock.confirm(activity, () -> Utils.runOnBackgroundThread(() -> {
                 try {
                     List<GalleryStore.Entry> audio = GalleryStore.get().list(null, GalleryItem.AUDIO, false, null, null);
-                    Utils.runOnMainThread(() -> showGalleryAudio(activity, audio));
+                    Utils.runOnMainThread(() -> showGalleryAudio(activity, audio, destination));
                 } catch (Exception e) {
                     fail("list the gallery's audio", e);
                 }
@@ -119,7 +142,8 @@ public final class VoiceUpload {
         }
     }
 
-    private static void showGalleryAudio(Activity activity, List<GalleryStore.Entry> audio) {
+    private static void showGalleryAudio(Activity activity, List<GalleryStore.Entry> audio,
+                                         VoiceDestination destination) {
         try {
             if (activity.isFinishing() || activity.isDestroyed()) return;
             if (audio.isEmpty()) {
@@ -130,7 +154,7 @@ public final class VoiceUpload {
             for (int i = 0; i < names.length; i++) names[i] = String.valueOf(audio.get(i).fileName);
             AlertDialog dialog = new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
                     .setTitle(str("spookd_gallery_picker_entry"))
-                    .setItems(names, (shown, which) -> openTrim(activity, Uri.fromFile(audio.get(which).file)))
+                    .setItems(names, (shown, which) -> openTrim(activity, Uri.fromFile(audio.get(which).file), destination))
                     .setNegativeButton(str("spookd_cancel"), null)
                     .create();
             dialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
@@ -141,7 +165,7 @@ public final class VoiceUpload {
     }
 
     /** Main thread: prepares a preview player, whose length opens the trim sheet. */
-    private static void openTrim(Activity activity, Uri uri) {
+    private static void openTrim(Activity activity, Uri uri, VoiceDestination destination) {
         MediaPlayer player = new MediaPlayer();
         try {
             player.setAudioAttributes(new AudioAttributes.Builder()
@@ -154,7 +178,7 @@ public final class VoiceUpload {
                 Utils.showToastShort(str("spookd_voice_unreadable"));
                 return true;
             });
-            player.setOnPreparedListener(mp -> showTrim(activity, uri, mp));
+            player.setOnPreparedListener(mp -> showTrim(activity, uri, mp, destination));
             player.prepareAsync();
         } catch (Exception e) {
             player.release();
@@ -163,7 +187,7 @@ public final class VoiceUpload {
         }
     }
 
-    private static void showTrim(Activity activity, Uri uri, MediaPlayer player) {
+    private static void showTrim(Activity activity, Uri uri, MediaPlayer player, VoiceDestination destination) {
         try {
             int duration = player.getDuration();
             if (activity.isFinishing() || activity.isDestroyed()) {
@@ -176,7 +200,7 @@ public final class VoiceUpload {
                 Utils.showToastShort(str(duration <= 0 ? "spookd_voice_unreadable" : "spookd_voice_too_short"));
                 return;
             }
-            new Trim(activity, uri, player, duration).show();
+            new Trim(activity, uri, player, duration, destination).show();
         } catch (Exception e) {
             player.release();
             fail("show the trim sheet", e);
@@ -184,7 +208,11 @@ public final class VoiceUpload {
     }
 
     /** Main thread, once Send was confirmed: converts on a background thread, then sends on the main thread. */
-    private static void convertAndSend(Context app, Uri uri, long startMs, long endMs) {
+    private static void convertAndSend(Context app, Uri uri, long startMs, long endMs, VoiceDestination destination) {
+        if (openController(destination) == null) {
+            Utils.showToastShort(str("spookd_voice_chat_changed"));
+            return;
+        }
         if (converting) {
             Utils.showToastShort(str("spookd_voice_busy"));
             return;
@@ -207,16 +235,26 @@ public final class VoiceUpload {
             Utils.runOnMainThread(() -> {
                 converting = false;
                 if (done == null) Utils.showToastShort(str("spookd_voice_failed"));
-                else send(converted, done);
+                else send(converted, done, destination);
             });
         });
     }
 
-    /** Main thread. */
-    private static void send(String path, VoiceAudio.Result result) {
+    /** Main thread: the bound chat's controller while that chat is the open one, else null. */
+    private static Object openController(VoiceDestination destination) {
+        return destination.openController(VoiceUpload::isOpen, VoiceUpload::threadOf);
+    }
+
+    /** Main thread: sends only to the chat the file was picked for, and only while it is open. */
+    private static void send(String path, VoiceAudio.Result result, VoiceDestination destination) {
         try {
-            Object voiceController = chat.get();
-            if (voiceController == null) throw new IllegalStateException("The chat was closed");
+            Object voiceController = openController(destination);
+            if (voiceController == null) {
+                new File(path).delete();
+                Logger.printInfo(() -> "VoiceUpload: chat " + destination.thread + " is not open, dropped " + path);
+                Utils.showToastShort(str("spookd_voice_chat_changed"));
+                return;
+            }
             sendRecording(voiceController, path, result.durationMs, result.waveform);
         } catch (Throwable t) {
             new File(path).delete();
@@ -236,6 +274,7 @@ public final class VoiceUpload {
         private final Uri uri;
         private final MediaPlayer player;
         private final long durationMs;
+        private final VoiceDestination destination;
         private final Handler ui = new Handler(Looper.getMainLooper());
         private final Runnable tick = this::tick;
         private long start;
@@ -247,8 +286,9 @@ public final class VoiceUpload {
         private SeekBar endBar;
         private Button play;
 
-        Trim(Activity activity, Uri uri, MediaPlayer player, long durationMs) {
+        Trim(Activity activity, Uri uri, MediaPlayer player, long durationMs, VoiceDestination destination) {
             this.activity = activity;
+            this.destination = destination;
             this.uri = uri;
             this.player = player;
             this.durationMs = durationMs;
@@ -386,7 +426,7 @@ public final class VoiceUpload {
             long from = start;
             long to = end;
             Context app = activity.getApplicationContext();
-            if (!ActionConfirm.askVoiceSend(() -> convertAndSend(app, uri, from, to), null)) {
+            if (!ActionConfirm.askVoiceSend(() -> convertAndSend(app, uri, from, to, destination), null)) {
                 Utils.showToastShort(str("spookd_gallery_action_failed"));
             }
         }
@@ -395,12 +435,13 @@ public final class VoiceUpload {
     /** Headless: opens the system file picker for one audio file and opens the trim sheet with it. */
     public static final class FilePicker extends Fragment {
         private static final int REQUEST = 0x5ad0;
+        VoiceDestination destination;
 
         @Override
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
-            // A recreated picker has lost its chat with the old screen.
-            if (savedInstanceState != null) {
+            // A recreated picker has lost the chat it picks for.
+            if (savedInstanceState != null || destination == null) {
                 done();
                 return;
             }
@@ -423,7 +464,7 @@ public final class VoiceUpload {
             Activity activity = getActivity();
             Uri uri = resultCode == Activity.RESULT_OK && data != null ? data.getData() : null;
             done();
-            if (uri != null && activity != null && !activity.isFinishing()) openTrim(activity, uri);
+            if (uri != null && activity != null && !activity.isFinishing()) openTrim(activity, uri, destination);
         }
 
         private void done() {

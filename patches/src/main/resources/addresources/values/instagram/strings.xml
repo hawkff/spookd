@@ -456,6 +456,7 @@
     <string name="spookd_voice_preparing">Preparing the voice message…</string>
     <string name="spookd_voice_busy">A voice message is still being prepared</string>
     <string name="spookd_voice_failed">The voice message couldn\'t be sent</string>
+    <string name="spookd_voice_chat_changed">The chat it was for is no longer open, so the voice message was not sent</string>
     <string name="spookd_unlimited_replays">Make ephemeral media permanent</string>
     <string name="spookd_unlimited_replays_desc">Changes unexpired view once, view twice media to permanent view</string>
     <string name="spookd_stop_visual_message_auto_advance">Don\'t auto-advance view-once messages</string>
