@@ -152,6 +152,16 @@ public final class EditGeometryTest {
     }
 
     @Test
+    public void aSampledSaveStaysInsideTheDecodedPhotoOnBothAxes() {
+        // 1001 by 20000 decoded at half size is 501 by 10000, so the two sides scale differently.
+        double scale = Math.min(501 / 1001.0, 10000 / 20000.0);
+        double[] turnedFull = EditGeometry.turned(new double[]{-500.5, -10000, 500.5, 10000});
+        assertArrayEquals(new int[]{0, 0, 10000, 500}, EditGeometry.outputRect(turnedFull, 20000, 1001, scale));
+        assertArrayEquals(new int[]{10, 20, 133, 30},
+                EditGeometry.outputRect(new double[]{-189.6, -130, -66.1, -120}, 400, 300, 1));
+    }
+
+    @Test
     public void anEditIsNamedAfterItsOriginalOnce() {
         assertEquals("post_edited.jpg", EditGeometry.editedName("post.webp", false));
         assertEquals("post_edited.png", EditGeometry.editedName("post_edited.png", true));

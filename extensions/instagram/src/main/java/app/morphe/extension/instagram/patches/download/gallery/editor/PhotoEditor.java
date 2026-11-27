@@ -480,7 +480,7 @@ public final class PhotoEditor extends Dialog {
         for (int attempt = 0; ; attempt++) {
             Bitmap result;
             try {
-                result = render(width, turns, mirror, degrees, crop, sample);
+                result = render(width, height, turns, mirror, degrees, crop, sample);
             } catch (OutOfMemoryError e) {
                 if (attempt == 2) throw e;
                 sample *= 2;
@@ -495,8 +495,8 @@ public final class PhotoEditor extends Dialog {
         }
     }
 
-    private Bitmap render(int width, int turns, boolean mirror, float degrees, double[] crop, int sample)
-            throws IOException {
+    private Bitmap render(int width, int height, int turns, boolean mirror, float degrees, double[] crop,
+                          int sample) throws IOException {
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inSampleSize = sample;
         Bitmap source = BitmapFactory.decodeFile(file.getPath(), options);
@@ -504,19 +504,18 @@ public final class PhotoEditor extends Dialog {
         try {
             int decodedWidth = source.getWidth();
             int decodedHeight = source.getHeight();
-            double scale = decodedWidth / (double) width;
-            int baseWidth = turns % 2 == 0 ? decodedWidth : decodedHeight;
-            int baseHeight = turns % 2 == 0 ? decodedHeight : decodedWidth;
-            // Whole pixels, so a crop that is not straightened copies pixels as they are.
-            int left = (int) Math.round(crop[0] * scale + baseWidth / 2.0);
-            int top = (int) Math.round(crop[1] * scale + baseHeight / 2.0);
-            int right = (int) Math.round(crop[2] * scale + baseWidth / 2.0);
-            int bottom = (int) Math.round(crop[3] * scale + baseHeight / 2.0);
-            Bitmap result = Bitmap.createBitmap(Math.max(1, right - left), Math.max(1, bottom - top),
-                    Bitmap.Config.ARGB_8888);
+            // Each side is sampled on its own, so the decode is mapped back to source pixels per axis.
+            double scale = Math.min(decodedWidth / (double) width, decodedHeight / (double) height);
+            double baseWidth = turns % 2 == 0 ? width : height;
+            double baseHeight = turns % 2 == 0 ? height : width;
+            int[] out = EditGeometry.outputRect(crop, baseWidth, baseHeight, scale);
+            Bitmap result = Bitmap.createBitmap(out[2] - out[0], out[3] - out[1], Bitmap.Config.ARGB_8888);
             Matrix matrix = new Matrix();
-            frame(matrix, decodedWidth, decodedHeight, turns, mirror, degrees);
-            matrix.postTranslate(baseWidth / 2f - left, baseHeight / 2f - top);
+            frame(matrix, width, height, turns, mirror, degrees);
+            matrix.preScale(width / (float) decodedWidth, height / (float) decodedHeight);
+            matrix.postTranslate((float) (baseWidth / 2), (float) (baseHeight / 2));
+            matrix.postScale((float) scale, (float) scale);
+            matrix.postTranslate(-out[0], -out[1]);
             new Canvas(result).drawBitmap(source, matrix, new Paint(Paint.FILTER_BITMAP_FLAG));
             return result;
         } finally {
@@ -540,7 +539,7 @@ public final class PhotoEditor extends Dialog {
                 epoch);
     }
 
-    /** Sets {@code matrix} to map a {@code width} by {@code height} bitmap onto the straightened frame, in its pixels. */
+    /** Sets {@code matrix} to map a {@code width} by {@code height} source onto the straightened frame, in source pixels. */
     private static void frame(Matrix matrix, int width, int height, int turns, boolean mirror, float degrees) {
         matrix.setTranslate(-width / 2f, -height / 2f);
         matrix.postRotate(90 * turns);
@@ -598,9 +597,9 @@ public final class PhotoEditor extends Dialog {
         @Override
         protected void onDraw(Canvas canvas) {
             if (!fitFrame()) return;
-            frame(matrix, preview.getWidth(), preview.getHeight(), turns, mirror, degrees);
-            float toView = scale * sourceWidth / preview.getWidth();
-            matrix.postScale(toView, toView);
+            frame(matrix, sourceWidth, sourceHeight, turns, mirror, degrees);
+            matrix.preScale(sourceWidth / (float) preview.getWidth(), sourceHeight / (float) preview.getHeight());
+            matrix.postScale(scale, scale);
             matrix.postTranslate(getWidth() / 2f, getHeight() / 2f);
             canvas.drawBitmap(preview, matrix, image);
             float l = x(rect[0]);

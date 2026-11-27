@@ -134,6 +134,19 @@ final class EditGeometry {
         return new double[]{left, top, left + newWidth, top + newHeight};
     }
 
+    /**
+     * {left, top, right, bottom} in whole output pixels of crop {@code r} drawn at {@code scale} output
+     * pixels per source pixel, counted from the turned image's top left; the size is rounded down, so an
+     * unstraightened crop never reaches past the image, and is at least one pixel.
+     */
+    static int[] outputRect(double[] r, double baseWidth, double baseHeight, double scale) {
+        int left = (int) Math.round((r[0] + baseWidth / 2) * scale);
+        int top = (int) Math.round((r[1] + baseHeight / 2) * scale);
+        int width = Math.max(1, (int) Math.floor((r[2] - r[0]) * scale + SLACK));
+        int height = Math.max(1, (int) Math.floor((r[3] - r[1]) * scale + SLACK));
+        return new int[]{left, top, left + width, top + height};
+    }
+
     /** {@code r} after the frame turns 90 degrees clockwise. */
     static double[] turned(double[] r) {
         return new double[]{-r[3], r[0], -r[1], r[2]};
