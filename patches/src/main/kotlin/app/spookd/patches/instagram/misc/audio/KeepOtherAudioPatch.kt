@@ -320,42 +320,53 @@ val keepOtherAudioPatch =
             ).method.gatePipPlayerFocus(handler, playerRequest)
 
             // The same choice as the later check, without its music check, for a request the switch skipped.
-            RequestPipFocusExtensionFingerprint.method.addInstructions(
-                0,
-                """
-                check-cast p0, $pipType
-                invoke-virtual {p0}, Landroidx/fragment/app/Fragment;->isAdded()Z
-                move-result p1
-                if-eqz p1, :done
-                iget-boolean p1, p0, $playerFocusHeld
-                if-nez p1, :done
-                invoke-static {p0}, $playerManaged
-                move-result p1
-                if-eqz p1, :direct
-                iget-boolean p1, p0, $focusRequested
-                if-nez p1, :done
-                iget-object p1, p0, $handler
-                iget-object p2, p0, $playerItem
-                const/16 p3, $callbackId
-                invoke-static {p0, p3}, $callbackFactory
-                move-result-object p3
-                invoke-virtual {p1, p0, p2, p3}, $playerRequest
-                return-void
-                :direct
-                iget-boolean p1, p0, $focusHeld
-                if-nez p1, :done
-                const/4 p1, 0x1
-                iput-boolean p1, p0, $focusRequested
-                iput-boolean p1, p0, $focusHeld
-                iget-object p1, p0, $focusRequest
-                if-eqz p1, :done
-                iget-object p2, p0, $audioManager
-                if-eqz p2, :done
-                invoke-virtual {p2, p1}, $AUDIO_MANAGER->requestAudioFocus($AUDIO_FOCUS_REQUEST)I
-                :done
-                return-void
-                """.trimIndent(),
-            )
+            RequestPipFocusExtensionFingerprint.method.apply {
+                val stubReturn = getInstruction(0)
+                if (stubReturn.opcode != Opcode.RETURN_VOID) throw PatchException("Unexpected picture-in-picture retry stub")
+                // The direct request, reached from the block below once the fragment was cast.
+                addInstructionsWithLabels(
+                    0,
+                    """
+                    iget-boolean p1, p0, $focusHeld
+                    if-nez p1, :spookd_pip_retry_done
+                    const/4 p1, 0x1
+                    iput-boolean p1, p0, $focusRequested
+                    iput-boolean p1, p0, $focusHeld
+                    iget-object p1, p0, $focusRequest
+                    if-eqz p1, :spookd_pip_retry_done
+                    iget-object p2, p0, $audioManager
+                    if-eqz p2, :spookd_pip_retry_done
+                    invoke-virtual {p2, p1}, $AUDIO_MANAGER->requestAudioFocus($AUDIO_FOCUS_REQUEST)I
+                    """.trimIndent(),
+                    ExternalLabel("spookd_pip_retry_done", stubReturn),
+                )
+                val direct = getInstruction(0)
+                addInstructionsWithLabels(
+                    0,
+                    """
+                    check-cast p0, $pipType
+                    invoke-virtual {p0}, Landroidx/fragment/app/Fragment;->isAdded()Z
+                    move-result p1
+                    if-eqz p1, :spookd_pip_retry_done
+                    iget-boolean p1, p0, $playerFocusHeld
+                    if-nez p1, :spookd_pip_retry_done
+                    invoke-static {p0}, $playerManaged
+                    move-result p1
+                    if-eqz p1, :spookd_pip_retry_direct
+                    iget-boolean p1, p0, $focusRequested
+                    if-nez p1, :spookd_pip_retry_done
+                    iget-object p1, p0, $handler
+                    iget-object p2, p0, $playerItem
+                    const/16 p3, $callbackId
+                    invoke-static {p0, p3}, $callbackFactory
+                    move-result-object p3
+                    invoke-virtual {p1, p0, p2, p3}, $playerRequest
+                    return-void
+                    """.trimIndent(),
+                    ExternalLabel("spookd_pip_retry_done", stubReturn),
+                    ExternalLabel("spookd_pip_retry_direct", direct),
+                )
+            }
 
             enableSettings("keepOtherAudio")
         }
