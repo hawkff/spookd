@@ -50,11 +50,13 @@ public final class InstantsUploadTest {
     }
 
     @Test
-    public void onlyAKnownDurationOverASetLimitIsTooLong() {
-        assertTrue(InstantsUpload.tooLong(10_001, 10_000));
-        assertFalse(InstantsUpload.tooLong(10_000, 10_000));
-        assertFalse(InstantsUpload.tooLong(-1, 10_000));
-        assertFalse(InstantsUpload.tooLong(60_000, 0));
+    public void onlyAKnownDurationWithinAKnownLimitIsAllowed() {
+        assertTrue(InstantsUpload.durationAllowed(10_000, 10_000));
+        assertTrue(InstantsUpload.durationAllowed(1, 10_000));
+        assertFalse(InstantsUpload.durationAllowed(10_001, 10_000));
+        assertFalse(InstantsUpload.durationAllowed(-1, 10_000));
+        assertFalse(InstantsUpload.durationAllowed(0, 10_000));
+        assertFalse(InstantsUpload.durationAllowed(5_000, 0));
     }
 
     @Test

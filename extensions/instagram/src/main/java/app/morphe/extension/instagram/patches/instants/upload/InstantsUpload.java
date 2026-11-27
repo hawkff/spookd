@@ -236,18 +236,8 @@ public final class InstantsUpload {
         }
     }
 
-    /** Background thread: refuses a video longer than the camera records, else copies it for Instagram's handler. */
+    /** Background thread: copies the video for Instagram's handler, then reads its length from the copy. */
     private static void prepareVideo(Context app, Uri uri, Camera camera) throws IOException {
-        Object live = camera.shutter.get();
-        if (live == null) {
-            Utils.showToastShort(str("spookd_instants_upload_camera_closed"));
-            return;
-        }
-        long maxMs = maxVideoMillisNative(live);
-        if (tooLong(durationMs(app, uri), maxMs)) {
-            Utils.showToastLong(str("spookd_instants_upload_too_long", maxMs / 1000));
-            return;
-        }
         File dir = new File(app.getCacheDir(), VIDEO_DIR);
         clearOld(dir, System.currentTimeMillis());
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("No folder " + dir);
@@ -262,16 +252,25 @@ public final class InstantsUpload {
             video.delete();
             throw e;
         }
-        Utils.runOnMainThread(() -> sendVideo(video, camera));
+        long durationMs = durationMs(video);
+        Utils.runOnMainThread(() -> sendVideo(video, durationMs, camera));
     }
 
     /** Main thread. */
-    private static void sendVideo(File video, Camera camera) {
+    private static void sendVideo(File video, long durationMs, Camera camera) {
         try {
             Object live = camera.live();
             if (live == null) {
                 video.delete();
                 Utils.showToastShort(str("spookd_instants_upload_camera_closed"));
+                return;
+            }
+            long maxMs = maxVideoMillisNative(live);
+            if (!durationAllowed(durationMs, maxMs)) {
+                video.delete();
+                Utils.showToastLong(durationMs <= 0 ? str("spookd_instants_upload_video_unreadable")
+                        : maxMs <= 0 ? str("spookd_instants_upload_failed")
+                        : str("spookd_instants_upload_too_long", maxMs / 1000));
                 return;
             }
             captureVideoNative(live, video);
@@ -281,10 +280,10 @@ public final class InstantsUpload {
     }
 
     /** -1 when unknown. */
-    private static long durationMs(Context app, Uri uri) {
+    private static long durationMs(File video) {
         MediaMetadataRetriever retriever = new MediaMetadataRetriever();
         try {
-            retriever.setDataSource(app, uri);
+            retriever.setDataSource(video.getPath());
             String value = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
             return value == null ? -1 : Long.parseLong(value);
         } catch (RuntimeException e) {
@@ -329,9 +328,9 @@ public final class InstantsUpload {
         return sample;
     }
 
-    /** A known duration over the camera's limit; no limit when Instagram sets none. */
-    static boolean tooLong(long durationMs, long maxMs) {
-        return maxMs > 0 && durationMs > maxMs;
+    /** A known length within the camera's known recording limit; Instagram's send path does not check it again. */
+    static boolean durationAllowed(long durationMs, long maxMs) {
+        return durationMs > 0 && maxMs > 0 && durationMs <= maxMs;
     }
 
     /** Clockwise turn for an EXIF orientation; mirrored orientations keep their turn only. */

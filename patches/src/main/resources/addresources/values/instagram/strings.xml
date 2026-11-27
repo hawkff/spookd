@@ -1084,6 +1084,7 @@
     <string name="spookd_instants_upload_button">Send a photo or video as an Instant</string>
     <string name="spookd_instants_upload_from_phone">From phone</string>
     <string name="spookd_instants_upload_too_long">This video is longer than %d seconds, the longest Instant the camera records</string>
+    <string name="spookd_instants_upload_video_unreadable">Couldn\'t read this video\'s length, so it was not sent</string>
     <string name="spookd_instants_upload_camera_closed">The Instants camera was closed, so this was not sent</string>
     <string name="spookd_instants_upload_failed">Couldn\'t send this as an Instant</string>
 
