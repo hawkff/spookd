@@ -446,6 +446,16 @@
     <string name="spookd_send_audio_as_voice_desc">Pick an audio file from Files or the private gallery, trim it and send it. It is converted like a recording, so the recipient sees a normal voice message. Holding the mic opens this sheet instead of recording; tap the mic to record.</string>
     <string name="spookd_confirm_voice_title">Send this audio as a voice message?</string>
     <string name="spookd_confirm_voice_action">Send</string>
+    <string name="spookd_voice_sheet_title">Send an audio file</string>
+    <string name="spookd_voice_from_files">From Files</string>
+    <string name="spookd_voice_gallery_empty">No audio in the private gallery</string>
+    <string name="spookd_voice_trim_title">Trim the voice message</string>
+    <string name="spookd_voice_limits">Only the selected part is sent. A voice message is 0.75 seconds to 5 minutes long.</string>
+    <string name="spookd_voice_unreadable">This audio file can\'t be read</string>
+    <string name="spookd_voice_too_short">This audio is too short for a voice message</string>
+    <string name="spookd_voice_preparing">Preparing the voice message…</string>
+    <string name="spookd_voice_busy">A voice message is still being prepared</string>
+    <string name="spookd_voice_failed">The voice message couldn\'t be sent</string>
     <string name="spookd_unlimited_replays">Make ephemeral media permanent</string>
     <string name="spookd_unlimited_replays_desc">Changes unexpired view once, view twice media to permanent view</string>
     <string name="spookd_stop_visual_message_auto_advance">Don\'t auto-advance view-once messages</string>
