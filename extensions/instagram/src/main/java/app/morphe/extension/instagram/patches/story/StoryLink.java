@@ -10,6 +10,8 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.content.DialogInterface;
 
+import java.util.ArrayList;
+
 import app.morphe.extension.instagram.constants.Constants;
 import app.morphe.extension.instagram.entity.MediaData;
 import app.morphe.extension.instagram.patches.Links;
@@ -49,10 +51,48 @@ public final class StoryLink {
             }
         } catch (Exception e) {
             Logger.printException(() -> "Failed to copy the story link", e);
-            Utils.showToastShort(str("spookd_story_link_unavailable"));
-        } finally {
-            if (onDismiss != null) onDismiss.onDismiss(null);
+            try {
+                Utils.showToastShort(str("spookd_story_link_unavailable"));
+            } catch (Exception ignored) {
+            }
         }
+        try {
+            if (onDismiss != null) onDismiss.onDismiss(null);
+        } catch (Exception e) {
+            Logger.printException(() -> "Failed to resume the story after copying its link", e);
+        }
+    }
+
+    /** End of the entry lists of your own highlight's menu, on the main thread. */
+    public static void addOwnerHighlightMenuItem(ArrayList<CharSequence> items) {
+        try {
+            if (showMenuItem()) items.add(str("spookd_copy_story_link"));
+        } catch (Exception e) {
+            Logger.printException(() -> "Failed to add Copy story link to the highlight menu", e);
+        }
+    }
+
+    /** Start of your own highlight's menu click handler, on the main thread; true when the entry was ours. */
+    public static boolean onOwnerHighlightMenuClick(CharSequence text, Object menu,
+                                                    DialogInterface.OnDismissListener onDismiss) {
+        try {
+            if (text == null || !text.toString().equals(str("spookd_copy_story_link"))) return false;
+        } catch (Exception e) {
+            Logger.printException(() -> "Failed to read the highlight menu entry", e);
+            return false;
+        }
+        UserSession session = null;
+        Object media = null;
+        Object reel = null;
+        try {
+            session = (UserSession) menuSessionNative(menu);
+            reel = menuReelNative(menu);
+            media = menuMediaNative(menu);
+        } catch (Exception e) {
+            Logger.printException(() -> "Failed to read the highlight menu's story", e);
+        }
+        copy(session, media, reel, onDismiss);
+        return true;
     }
 
     private static boolean isHighlight(String reelId) {
@@ -76,6 +116,19 @@ public final class StoryLink {
 
     // The patch replaces this body with a read of the reel's id; null leaves highlights on the item link.
     public static String reelIdNative(Object reel) {
+        return null;
+    }
+
+    // The patch replaces these bodies with reads from the story menu.
+    public static Object menuSessionNative(Object menu) {
+        return null;
+    }
+
+    public static Object menuReelNative(Object menu) {
+        return null;
+    }
+
+    public static Object menuMediaNative(Object menu) {
         return null;
     }
 }
