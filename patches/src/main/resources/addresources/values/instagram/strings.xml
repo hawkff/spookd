@@ -266,6 +266,8 @@
     <string name="spookd_disable_app_haptics_desc">Stops the vibrations Instagram plays on taps, long presses and swipes. Your phone\'s settings are not changed</string>
     <string name="spookd_profile_saved_tab">Saved tab on your profile</string>
     <string name="spookd_profile_saved_tab_desc">Adds a Saved tab after the other tabs on your own profile. Restart the app to apply.</string>
+    <string name="spookd_hide_profile_grid_reels">Hide reels in profile grids</string>
+    <string name="spookd_hide_profile_grid_reels_desc">Profile grids show only photo and carousel posts; reels and other videos are left out. Your own posts stay. Applies to profiles you open next.</string>
     <string name="spookd_category_confirmations">Confirmations</string>
     <string name="spookd_confirm_like">Confirm likes</string>
     <string name="spookd_confirm_like_desc">Asks before you like a post or Reel with the heart button. Unliking is not asked.</string>

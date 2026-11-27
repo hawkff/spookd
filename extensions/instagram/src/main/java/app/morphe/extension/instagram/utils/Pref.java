@@ -643,6 +643,14 @@ public class Pref {
         return on(Settings.PROFILE_SAVED_TAB) && SettingsStatus.profileSavedTab;
     }
 
+    private static final Cached<Boolean> HIDE_PROFILE_GRID_REELS =
+            new Cached<>(() -> on(Settings.HIDE_PROFILE_GRID_REELS), Settings.HIDE_PROFILE_GRID_REELS.key);
+
+    /** Read for every post each time Instagram filters a profile grid. */
+    public static boolean hideProfileGridReels() {
+        return SettingsStatus.hideProfileGridReels && HIDE_PROFILE_GRID_REELS.get();
+    }
+
     public static boolean confirmLike() {
         return on(Settings.CONFIRM_LIKE);
     }

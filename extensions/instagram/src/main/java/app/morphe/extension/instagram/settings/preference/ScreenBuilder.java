@@ -1158,6 +1158,13 @@ public class ScreenBuilder {
                     Settings.PROFILE_SAVED_TAB
             ));
         }
+        if (SettingsStatus.hideProfileGridReels) {
+            addPreference(helper.switchPreference(
+                    str("spookd_hide_profile_grid_reels"),
+                    str("spookd_hide_profile_grid_reels_desc"),
+                    Settings.HIDE_PROFILE_GRID_REELS
+            ));
+        }
         if (SettingsStatus.disableAppHaptics) {
             addPreference(helper.switchPreference(
                     str("spookd_disable_app_haptics"),
