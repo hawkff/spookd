@@ -43,7 +43,7 @@ import app.morphe.extension.shared.Utils;
 
 /**
  * Backup and import of the private gallery through the system file picker. Dialogs and the picker
- * run on the main thread; the copying runs on one background thread behind a progress notification.
+ * run on the main thread; the copying runs on one background thread, shown in a progress dialog and notification.
  */
 @SuppressWarnings("deprecation")
 public final class GalleryBackup {
@@ -167,33 +167,31 @@ public final class GalleryBackup {
     }
 
     /**
-     * Main thread: hands the picked documents to the work thread. Without a notification that can
-     * show, a dialog on {@code host} shows the progress instead; closing it leaves the work running.
+     * Main thread: hands the picked documents to the work thread. A dialog on {@code host} shows the
+     * progress for the whole transfer and asks to keep the app open, since no foreground service keeps
+     * the process alive; the notification shows it too. Closing the dialog leaves the work running.
      * Returns that dialog, or null; with {@code finishHost} the host then closes with the dialog.
      */
     private static AlertDialog start(Activity host, int mode, List<Uri> uris, boolean finishHost) {
         Context app = host.getApplicationContext();
         String title = str(mode == EXPORT ? "spookd_gallery_backup_running" : "spookd_gallery_importing");
+        boolean notify = canNotify(app);
         AlertDialog dialog = null;
-        if (canNotify(app)) {
+        try {
+            dialog = new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(host))
+                    .setTitle(title).setMessage(str("spookd_gallery_keep_open"))
+                    .setOnDismissListener(d -> {
+                        if (finishHost) host.finish();
+                    })
+                    .show();
+        } catch (Exception e) {
+            Logger.printInfo(() -> "Gallery backup: no progress dialog", e);
             Utils.showToastShort(title);
-        } else {
-            try {
-                dialog = new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(host))
-                        .setTitle(title).setMessage(title)
-                        .setOnDismissListener(d -> {
-                            if (finishHost) host.finish();
-                        })
-                        .show();
-            } catch (Exception e) {
-                Logger.printInfo(() -> "Gallery backup: no progress dialog", e);
-                Utils.showToastShort(title);
-            }
         }
         AlertDialog shown = dialog;
         WORK.execute(() -> {
             try {
-                BiConsumer<Integer, Integer> progress = progress(app, title, shown);
+                BiConsumer<Integer, Integer> progress = progress(app, title, shown, notify);
                 if (mode == EXPORT) export(app, uris.get(0), progress);
                 else if (mode == IMPORT) importArchive(app, uris.get(0), progress);
                 else if (mode == IMPORT_FILES) importFiles(app, uris, progress);
@@ -309,26 +307,32 @@ public final class GalleryBackup {
         return null;
     }
 
-    /** Work thread: shows {@code title} now, then (done, total) at most twice a second, in {@code dialog} if any. */
-    private static BiConsumer<Integer, Integer> progress(Context app, String title, AlertDialog dialog) {
-        showProgress(app, title, dialog, 0, 0);
+    /**
+     * Work thread: shows {@code title} now, then (done, total) at most twice a second, in {@code dialog}
+     * if any and with {@code notify} in the notification.
+     */
+    private static BiConsumer<Integer, Integer> progress(Context app, String title, AlertDialog dialog,
+                                                         boolean notify) {
+        showProgress(app, title, dialog, notify, 0, 0);
         long[] last = {0};
         return (done, total) -> {
             long now = SystemClock.uptimeMillis();
             if (now - last[0] < 500 && done < total) return;
             last[0] = now;
-            showProgress(app, title, dialog, done, total);
+            showProgress(app, title, dialog, notify, done, total);
         };
     }
 
-    private static void showProgress(Context app, String title, AlertDialog dialog, int done, int total) {
+    private static void showProgress(Context app, String title, AlertDialog dialog, boolean notify,
+                                     int done, int total) {
         String text = total > 0 ? str("spookd_gallery_backup_progress", done, total) : null;
         if (dialog != null) {
+            String keepOpen = str("spookd_gallery_keep_open");
             Utils.runOnMainThread(() -> {
-                if (dialog.isShowing()) dialog.setMessage(text == null ? title : title + "\n" + text);
+                if (dialog.isShowing()) dialog.setMessage(text == null ? keepOpen : text + "\n" + keepOpen);
             });
-            return;
         }
+        if (!notify) return;
         try {
             NotificationManager manager = app.getSystemService(NotificationManager.class);
             if (manager == null) return;
@@ -351,7 +355,6 @@ public final class GalleryBackup {
             Utils.runOnMainThread(() -> {
                 if (dialog.isShowing()) dialog.dismiss();
             });
-            return;
         }
         try {
             NotificationManager manager = app.getSystemService(NotificationManager.class);
