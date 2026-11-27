@@ -437,15 +437,11 @@ public final class VideoEditor extends Dialog {
         return start == points[0] ? 0 : start;
     }
 
-    private long cutEnd() {
-        return end == last() ? Long.MAX_VALUE : end;
-    }
-
     private void saveTrim() {
         if (busy || !hasChanges()) return;
         String extension = VideoTrim.extension(file.getName(), ".mp4");
         long from = cutStart();
-        long to = cutEnd();
+        long to = end;
         work(() -> publish(GalleryItem.VIDEO, VideoTrim.derivedName(fileName, "_trimmed", extension),
                         part -> VideoTrim.remux(file.getPath(), part.getPath(), VideoTrim.muxerFormat(extension),
                                 true, from, to)),
@@ -457,7 +453,7 @@ public final class VideoEditor extends Dialog {
         if (busy || audioMime == null) return;
         String extension = VideoTrim.audioExtension(audioMime, VideoTrim.extension(file.getName(), ".mp4"));
         long from = cutStart();
-        long to = cutEnd();
+        long to = end;
         work(() -> publish(GalleryItem.AUDIO, VideoTrim.derivedName(fileName, "_audio", extension),
                         part -> VideoTrim.remux(file.getPath(), part.getPath(), VideoTrim.muxerFormat(extension),
                                 false, from, to)),

@@ -66,8 +66,9 @@ final class VideoTrim {
                 if (count == syncs.length) syncs = Arrays.copyOf(syncs, count * 2);
                 syncs[count++] = time;
             }
-            long end = duration > 0 ? duration : last;
-            if (end <= 0) throw new IOException("No duration");
+            // The end is exclusive, so a duration read from the last sample still keeps that sample.
+            long end = duration > 0 ? duration : last + 1;
+            if (duration <= 0 && last == 0) throw new IOException("No duration");
             return new Probe(cutPoints(syncs, count, end), audioMime);
         } finally {
             extractor.release();
