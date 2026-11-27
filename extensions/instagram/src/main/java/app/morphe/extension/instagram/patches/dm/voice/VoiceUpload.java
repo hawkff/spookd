@@ -194,6 +194,12 @@ public final class VoiceUpload {
                 session.end();
                 return;
             }
+            // The chat may have closed or been covered while the list loaded.
+            if (openController(destination) == null) {
+                session.end();
+                Utils.showToastShort(str("spookd_voice_chat_changed"));
+                return;
+            }
             if (audio.isEmpty()) {
                 session.end();
                 Utils.showToastShort(str("spookd_voice_gallery_empty"));
@@ -281,12 +287,17 @@ public final class VoiceUpload {
                                  VoiceDestination destination, Session session) {
         try {
             int duration = player.getDuration();
-            if (session.stopped || activity.isFinishing() || activity.isDestroyed() || duration < VoiceAudio.MIN_MS) {
+            // The chat may have closed or been covered while the file opened.
+            boolean chatGone = openController(destination) == null;
+            if (session.stopped || activity.isFinishing() || activity.isDestroyed() || chatGone
+                    || duration < VoiceAudio.MIN_MS) {
                 player.release();
                 if (temp != null) temp.delete();
                 session.end();
+                if (session.stopped) return;
                 // An unknown length is -1.
-                if (duration < VoiceAudio.MIN_MS && !session.stopped) {
+                if (chatGone) Utils.showToastShort(str("spookd_voice_chat_changed"));
+                else if (duration < VoiceAudio.MIN_MS) {
                     Utils.showToastShort(str(duration <= 0 ? "spookd_voice_unreadable" : "spookd_voice_too_short"));
                 }
                 return;
