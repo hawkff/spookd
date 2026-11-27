@@ -50,7 +50,11 @@ public class ViewStoryMentionsPatch {
                         setProfileImage(cell, lowResDP, openProfile);
                         cell.setOnClickListener(openProfile);
                         if (username != null && !username.isEmpty()) {
-                            cell.setOnLongClickListener(v -> copyUsername(username));
+                            View.OnLongClickListener copy = v -> copyUsername(username);
+                            cell.setOnLongClickListener(copy);
+                            // The avatar has its own tap listener, so it takes its own touches.
+                            Object avatar = cell.getImageView();
+                            if (avatar instanceof View) ((View) avatar).setOnLongClickListener(copy);
                         }
 
                         peopleCells.add(cell);
