@@ -46,6 +46,7 @@ public final class AutoRefresh {
     // An account whose due scan waits for the counts of its own profile header.
     private static String waitingAccountId;
     private static SpookdFollowDb.Scan waitingLast;
+    private static WeakReference<Row> row = new WeakReference<>(null);
 
     private AutoRefresh() {
     }
@@ -141,57 +142,74 @@ public final class AutoRefresh {
         Utils.runOnMainThread(() -> startIfStillDue(accountId, last));
     }
 
+    /** Scan worker thread, after a scan was stored: the displayed row shows its new next scan. */
+    static void onScanFinished() {
+        Utils.runOnMainThread(() -> {
+            Row current = row.get();
+            if (current != null) current.readLastScan();
+        });
+    }
+
     /** Main thread: the settings row; its summary shows the interval, the next scan and the risk. */
     public static Preference preference(Context context) {
-        ListPref preference = new ListPref(context) {
-            // Main thread; -1 until read, 0 when this account has no scan.
-            private long lastFinishedAt = -1;
-            private boolean readStarted;
-
-            @Override
-            protected void onSetInitialValue(boolean restoreValue, Object defaultValue) {
-                super.onSetInitialValue(restoreValue, defaultValue);
-                CharSequence[] entries = new CharSequence[ENTRY_KEYS.length];
-                for (int i = 0; i < entries.length; i++) entries[i] = str(ENTRY_KEYS[i]);
-                setEntries(entries);
-                setEntryValues(DAYS);
-            }
-
-            @Override
-            protected void onBindView(View view) {
-                super.onBindView(view);
-                if (readStarted) return;
-                readStarted = true;
-                String accountId = ProfileAnalyzer.currentAccountId();
-                if (accountId == null) return;
-                Context app = getContext().getApplicationContext();
-                ProfileVisits.DB_QUEUE.execute(() -> {
-                    try {
-                        SpookdFollowDb.Scan last = SpookdFollowDb.getInstance(app).latestScan(accountId);
-                        long finishedAt = last == null ? 0 : last.finishedAt;
-                        Utils.runOnMainThread(() -> {
-                            lastFinishedAt = finishedAt;
-                            notifyChanged();
-                        });
-                    } catch (Exception e) {
-                        String error = e.getClass().getSimpleName();
-                        Logger.printException(() -> "AutoRefresh: row read failed: " + error);
-                    }
-                });
-            }
-
-            @Override
-            public CharSequence getSummary() {
-                return summary(getContext(), getEntry(), Pref.profileAnalyzerAutoRefreshDays(),
-                        lastFinishedAt);
-            }
-        };
+        Row preference = new Row(context);
         String title = str("spookd_profile_analyzer_auto_refresh");
         preference.setTitle(title);
         preference.setDialogTitle(title);
         preference.setKey(Settings.PROFILE_ANALYZER_AUTO_REFRESH_DAYS.key);
         preference.setDefaultValue(Settings.PROFILE_ANALYZER_AUTO_REFRESH_DAYS.defaultValue);
         return preference;
+    }
+
+    private static final class Row extends ListPref {
+        // Main thread; -1 until read, 0 when this account has no scan.
+        private long lastFinishedAt = -1;
+
+        Row(Context context) {
+            super(context);
+        }
+
+        @Override
+        protected void onSetInitialValue(boolean restoreValue, Object defaultValue) {
+            super.onSetInitialValue(restoreValue, defaultValue);
+            CharSequence[] entries = new CharSequence[ENTRY_KEYS.length];
+            for (int i = 0; i < entries.length; i++) entries[i] = str(ENTRY_KEYS[i]);
+            setEntries(entries);
+            setEntryValues(DAYS);
+        }
+
+        @Override
+        protected void onBindView(View view) {
+            super.onBindView(view);
+            if (row.get() == this) return;
+            row = new WeakReference<>(this);
+            readLastScan();
+        }
+
+        /** Main thread: reads the last scan of the current account off the main thread, then rebinds. */
+        void readLastScan() {
+            String accountId = ProfileAnalyzer.currentAccountId();
+            if (accountId == null) return;
+            Context app = getContext().getApplicationContext();
+            ProfileVisits.DB_QUEUE.execute(() -> {
+                try {
+                    SpookdFollowDb.Scan last = SpookdFollowDb.getInstance(app).latestScan(accountId);
+                    long finishedAt = last == null ? 0 : last.finishedAt;
+                    Utils.runOnMainThread(() -> {
+                        lastFinishedAt = finishedAt;
+                        notifyChanged();
+                    });
+                } catch (Exception e) {
+                    String error = e.getClass().getSimpleName();
+                    Logger.printException(() -> "AutoRefresh: row read failed: " + error);
+                }
+            });
+        }
+
+        @Override
+        public CharSequence getSummary() {
+            return summary(getContext(), getEntry(), Pref.profileAnalyzerAutoRefreshDays(), lastFinishedAt);
+        }
     }
 
     private static String summary(Context context, CharSequence entry, int days, long lastFinishedAt) {

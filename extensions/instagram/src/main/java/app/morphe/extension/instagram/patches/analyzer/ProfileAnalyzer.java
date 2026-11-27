@@ -327,6 +327,7 @@ public final class ProfileAnalyzer {
         }
         if (state == FollowScan.State.FINISHED) {
             Utils.showToastLong(str("spookd_profile_analyzer_finished", count(followers), count(received)));
+            AutoRefresh.onScanFinished();
         } else if (state == FollowScan.State.FAILED) {
             Utils.showToastLong(str("spookd_profile_analyzer_failed"));
         }
