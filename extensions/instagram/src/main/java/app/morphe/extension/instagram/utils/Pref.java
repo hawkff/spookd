@@ -651,6 +651,23 @@ public class Pref {
         return on(Settings.PROFILE_SAVED_TAB) && SettingsStatus.profileSavedTab;
     }
 
+    private static final Cached<Boolean> HIDE_PROFILE_GRID_REELS =
+            new Cached<>(() -> on(Settings.HIDE_PROFILE_GRID_REELS), Settings.HIDE_PROFILE_GRID_REELS.key);
+
+    /** Read for every post each time Instagram filters a profile grid. */
+    public static boolean hideProfileGridReels() {
+        return SettingsStatus.hideProfileGridReels && HIDE_PROFILE_GRID_REELS.get();
+    }
+
+    /** "default", "keep" or "remove". */
+    public static String profileReelsSort() {
+        return SettingsStatus.profileReelsSort ? value(Settings.PROFILE_REELS_SORT) : "default";
+    }
+
+    public static boolean reorderHighlights() {
+        return SettingsStatus.reorderHighlights && on(Settings.REORDER_HIGHLIGHTS);
+    }
+
     public static boolean confirmLike() {
         return on(Settings.CONFIRM_LIKE);
     }

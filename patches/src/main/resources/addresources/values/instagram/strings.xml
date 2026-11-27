@@ -273,6 +273,14 @@
     <string name="spookd_disable_app_haptics_desc">Stops the vibrations Instagram plays on taps, long presses and swipes. Your phone\'s settings are not changed</string>
     <string name="spookd_profile_saved_tab">Saved tab on your profile</string>
     <string name="spookd_profile_saved_tab_desc">Adds a Saved tab after the other tabs on your own profile. Restart the app to apply.</string>
+    <string name="spookd_hide_profile_grid_reels">Hide reels in profile grids</string>
+    <string name="spookd_hide_profile_grid_reels_desc">Profile grids show only photo and carousel posts; reels and other videos are left out, on your own profile too. While it is on, a post you just pinned moves to the top after a refresh. Applies to profiles you open next.</string>
+    <string name="spookd_profile_reels_sort">Reels tab sort</string>
+    <string name="spookd_profile_reels_sort_desc">Keep most viewed offers the Most viewed sort on every profile\'s Reels tab, even where Instagram doesn\'t. Remove most viewed takes it out. Default leaves it to Instagram. Applies to profiles you open next.</string>
+    <string name="spookd_profile_reels_sort_keep">Keep most viewed</string>
+    <string name="spookd_profile_reels_sort_remove">Remove most viewed</string>
+    <string name="spookd_reorder_highlights">Reorder highlights</string>
+    <string name="spookd_reorder_highlights_desc">Adds Instagram\'s own Reorder entry when you hold one of your highlights on your profile. Pick it, then drag highlights in the tray; each move is saved by Instagram.</string>
     <string name="spookd_category_confirmations">Confirmations</string>
     <string name="spookd_confirm_like">Confirm likes</string>
     <string name="spookd_confirm_like_desc">Asks before you like a post or Reel with the heart button. Unliking is not asked.</string>
