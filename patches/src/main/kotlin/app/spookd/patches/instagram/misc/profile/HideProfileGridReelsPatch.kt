@@ -151,9 +151,19 @@ val hideProfileGridReelsPatch =
                         opcode == Opcode.INVOKE_INTERFACE && getReference<MethodReference>()?.definingClass == loader
                     },
                 ).getReference<MethodReference>()!!
+                // Failed: what Instagram's load-more row checks right after loading, to show Retry.
+                val failed = Fingerprint(
+                    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.STATIC, AccessFlags.FINAL),
+                    returnType = "Ljava/lang/Integer;",
+                    parameters = listOf(loader),
+                    filters = listOf(
+                        methodCall(smali = isLoading.toString()),
+                        methodCall(definingClass = loader, returnType = "Z"),
+                    ),
+                ).match().instructionMatches.last().methodReference
                 val loadMore = classDefBy(loader).methods.single { it.returnType == "V" && it.parameterTypes.isEmpty() }
                 val loaderField = classDefBy(PROFILE_MEDIA_TAB).fields.single { it.type == loader }
-                if (hasMore.returnType != "Z" || p0Register < 4 || parameterTypes.map { it.toString() } != listOf(PROFILE_MEDIA_TAB)) {
+                if (hasMore.returnType != "Z" || p0Register < 5 || parameterTypes.map { it.toString() } != listOf(PROFILE_MEDIA_TAB)) {
                     throw PatchException("Unexpected profile grid loader")
                 }
 
@@ -165,10 +175,12 @@ val hideProfileGridReelsPatch =
                     if-eqz v0, :spookd_grid_changed
                     invoke-interface {v0}, $isLoading
                     move-result v1
+                    invoke-interface {v0}, $failed
+                    move-result v4
                     invoke-interface {v0}, $hasMore
                     move-result v2
                     iget-object v3, p0, $PROFILE_MEDIA_TAB->recyclerView:Landroidx/recyclerview/widget/RecyclerView;
-                    invoke-static {p0, v3, v1, v2}, $PROFILE_EXTRAS->profileGridNeedsNextPage(Ljava/lang/Object;Landroid/view/View;ZZ)Z
+                    invoke-static {p0, v3, v1, v4, v2}, $PROFILE_EXTRAS->profileGridNeedsNextPage(Ljava/lang/Object;Landroid/view/View;ZZZ)Z
                     move-result v1
                     if-eqz v1, :spookd_grid_changed
                     invoke-interface {v0}, $loader->${loadMore.name}()V

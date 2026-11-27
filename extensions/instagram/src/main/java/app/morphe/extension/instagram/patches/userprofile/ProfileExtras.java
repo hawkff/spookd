@@ -43,11 +43,13 @@ public final class ProfileExtras {
 
     /**
      * Called on the main thread at the start of each profile grid data change. True asks Instagram's own
-     * loader for the next page: hidden reels can leave a page with nothing to show or scroll.
+     * loader for the next page: hidden reels can leave a page with nothing to show or scroll. Never after a
+     * failed request, so an error is not retried on its own; Instagram's Retry row stays in charge.
      */
-    public static boolean profileGridNeedsNextPage(Object grid, View list, boolean loading, boolean hasMore) {
+    public static boolean profileGridNeedsNextPage(Object grid, View list, boolean loading, boolean failed, boolean hasMore) {
         try {
-            return onGridChanged(grid, Pref.hideProfileGridReels(), loading, hasMore, list != null && list.canScrollVertically(1));
+            boolean canScrollDown = list != null && list.canScrollVertically(1);
+            return onGridChanged(grid, Pref.hideProfileGridReels(), loading, failed, hasMore, canScrollDown);
         } catch (Throwable t) {
             Logger.printException(() -> "profileGridNeedsNextPage failure", t);
             return false;
@@ -67,8 +69,9 @@ public final class ProfileExtras {
     public static void rerunProfileGridChange(Object grid) {
     }
 
-    static boolean onGridChanged(Object grid, boolean hiding, boolean loading, boolean hasMore, boolean canScrollDown) {
-        boolean wanted = hiding && hasMore && !canScrollDown;
+    static boolean onGridChanged(Object grid, boolean hiding, boolean loading, boolean failed, boolean hasMore,
+                                 boolean canScrollDown) {
+        boolean wanted = hiding && hasMore && !failed && !canScrollDown;
         if (wanted && loading) WAITING_GRIDS.add(grid);
         else WAITING_GRIDS.remove(grid);
         return wanted && !loading;

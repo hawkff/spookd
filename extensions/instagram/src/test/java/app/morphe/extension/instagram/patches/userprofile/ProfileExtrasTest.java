@@ -47,12 +47,12 @@ public class ProfileExtrasTest {
         ProfileExtras.takeWaitingGrids();
 
         // The page lands while its request still counts as loading.
-        assertFalse(ProfileExtras.onGridChanged(grid, true, true, true, false));
+        assertFalse(ProfileExtras.onGridChanged(grid, true, true, false, true, false));
         assertEquals(1, ProfileExtras.takeWaitingGrids().size());
         // The recheck after success sees loading cleared and asks once.
-        assertTrue(ProfileExtras.onGridChanged(grid, true, false, true, false));
+        assertTrue(ProfileExtras.onGridChanged(grid, true, false, false, true, false));
         // That request brings a photo that fills the grid: nothing else is asked or waits.
-        assertFalse(ProfileExtras.onGridChanged(grid, true, true, true, true));
+        assertFalse(ProfileExtras.onGridChanged(grid, true, true, false, true, true));
         assertTrue(ProfileExtras.takeWaitingGrids().isEmpty());
         // A finish with nothing waiting checks nothing.
         assertTrue(ProfileExtras.takeWaitingGrids().isEmpty());
@@ -61,9 +61,23 @@ public class ProfileExtrasTest {
     @Test
     public void nextPageIsOnlyAskedForWhenHidingAndIdleWithMorePages() {
         Object grid = new Object();
-        assertFalse(ProfileExtras.onGridChanged(grid, false, false, true, false));
-        assertFalse(ProfileExtras.onGridChanged(grid, true, false, false, false));
-        assertFalse(ProfileExtras.onGridChanged(grid, true, false, true, true));
+        assertFalse(ProfileExtras.onGridChanged(grid, false, false, false, true, false));
+        assertFalse(ProfileExtras.onGridChanged(grid, true, false, false, false, false));
+        assertFalse(ProfileExtras.onGridChanged(grid, true, false, false, true, true));
+        assertTrue(ProfileExtras.takeWaitingGrids().isEmpty());
+    }
+
+    @Test
+    public void aFailedPageWithMorePagesIsNotRetriedOnItsOwn() {
+        Object grid = new Object();
+        ProfileExtras.takeWaitingGrids();
+
+        // The failure refreshes the grid with the cursor kept: no request and nothing waits.
+        assertFalse(ProfileExtras.onGridChanged(grid, true, false, true, true, false));
+        assertTrue(ProfileExtras.takeWaitingGrids().isEmpty());
+        // A grid that waited is dropped when its request fails instead.
+        assertFalse(ProfileExtras.onGridChanged(grid, true, true, false, true, false));
+        assertFalse(ProfileExtras.onGridChanged(grid, true, false, true, true, false));
         assertTrue(ProfileExtras.takeWaitingGrids().isEmpty());
     }
 
@@ -71,7 +85,7 @@ public class ProfileExtrasTest {
         Object grid = new Object();
         int loaded = 1;
         int shown = photosPerPage[0];
-        while (ProfileExtras.onGridChanged(grid, true, false, loaded < photosPerPage.length, shown > 0)) {
+        while (ProfileExtras.onGridChanged(grid, true, false, false, loaded < photosPerPage.length, shown > 0)) {
             shown += photosPerPage[loaded++];
         }
         return loaded;
