@@ -1794,6 +1794,14 @@ public class ScreenBuilder {
                 )
         );
 
+        addPreference(
+                helper.switchPreference(
+                        str("spookd_show_new_labels"),
+                        str("spookd_show_new_labels_desc"),
+                        Settings.SHOW_NEW_LABELS
+                )
+        );
+
         Preference storage = helper.buttonPreference(
                 str("spookd_storage"),
                 str("spookd_storage_desc"),

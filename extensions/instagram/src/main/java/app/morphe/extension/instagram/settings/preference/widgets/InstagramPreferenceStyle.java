@@ -15,8 +15,12 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.preference.Preference;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import android.text.TextUtils;
+import android.text.style.ReplacementSpan;
 import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
 import android.view.Gravity;
@@ -35,6 +39,9 @@ import android.widget.TextView;
 
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.settings.ActivityHook;
+import app.morphe.extension.instagram.settings.Settings;
+import app.morphe.extension.instagram.utils.IgStr;
+import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.ResourceUtils;
 
 public final class InstagramPreferenceStyle {
@@ -399,7 +406,7 @@ public final class InstagramPreferenceStyle {
                 : row != null ? row.secondaryColor : secondaryTextColor();
 
         if (title != null) {
-            title.setText(preference.getTitle());
+            title.setText(titleWithNewLabel(preference));
             title.setTextColor(titleColor);
             title.setEnabled(enabled);
         }
@@ -422,6 +429,24 @@ public final class InstagramPreferenceStyle {
             view.setAlpha(enabled ? 1.0f : 0.5f);
         }
         view.setEnabled(enabled);
+    }
+
+    /** Main thread. The title, with a NEW badge on a row added in this release while the labels are shown. */
+    private static CharSequence titleWithNewLabel(Preference preference) {
+        CharSequence title = preference.getTitle();
+        String key = preference.getKey();
+        if (title == null || key == null || !Settings.NEW_KEYS.contains(key) || !Pref.showNewLabels()) {
+            return title;
+        }
+        return withNewLabel(title, IgStr.str("spookd_new_label"));
+    }
+
+    static CharSequence withNewLabel(CharSequence title, String label) {
+        SpannableStringBuilder text = new SpannableStringBuilder(title).append(' ');
+        int start = text.length();
+        text.append(label);
+        text.setSpan(NewLabelSpan.INSTANCE, start, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return text;
     }
 
     public static void bindSearchResult(
@@ -881,6 +906,43 @@ public final class InstagramPreferenceStyle {
             }
             this.drawPressedHighlight = drawPressedHighlight;
             invalidate();
+        }
+    }
+
+    /** Draws its text as a small filled pill; shared by all rows, drawn on the main thread only. */
+    static final class NewLabelSpan extends ReplacementSpan {
+        static final NewLabelSpan INSTANCE = new NewLabelSpan();
+        private final Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF bounds = new RectF();
+        private int fillColor;
+
+        private Paint labelPaint(Paint text) {
+            labelPaint.set(text);
+            labelPaint.setTextSize(text.getTextSize() * 0.7f);
+            labelPaint.setFakeBoldText(true);
+            return labelPaint;
+        }
+
+        @Override
+        public int getSize(Paint paint, CharSequence text, int start, int end, Paint.FontMetricsInt fm) {
+            if (fm != null) paint.getFontMetricsInt(fm);
+            Paint label = labelPaint(paint);
+            return Math.round(label.measureText(text, start, end) + label.getTextSize() * 1.2f);
+        }
+
+        @Override
+        public void draw(Canvas canvas, CharSequence text, int start, int end, float x,
+                         int top, int y, int bottom, Paint paint) {
+            float center = y + (paint.ascent() + paint.descent()) / 2f;
+            Paint label = labelPaint(paint);
+            float padding = label.getTextSize() * 0.6f;
+            float half = (label.descent() - label.ascent()) / 2f;
+            bounds.set(x, center - half, x + label.measureText(text, start, end) + 2 * padding, center + half);
+            if (fillColor == 0) fillColor = selectionColor();
+            label.setColor(fillColor);
+            canvas.drawRoundRect(bounds, half, half, label);
+            label.setColor(Color.WHITE);
+            canvas.drawText(text, start, end, x + padding, center - (label.ascent() + label.descent()) / 2f, label);
         }
     }
 
