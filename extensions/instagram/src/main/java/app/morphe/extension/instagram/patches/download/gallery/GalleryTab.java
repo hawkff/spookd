@@ -5,7 +5,9 @@ import app.morphe.extension.instagram.constants.PostType;
 
 /** The private gallery tab a download lands in. */
 public enum GalleryTab {
-    POSTS, REELS, STORIES, DMS;
+    POSTS, REELS, STORIES, DMS,
+    /** Photos and videos added from Files; never the tab of a download. */
+    IMPORTED;
 
     /**
      * {@code type} is the root media's post type, null when the caller has no media (profile
