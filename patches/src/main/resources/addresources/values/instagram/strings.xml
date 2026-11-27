@@ -689,6 +689,13 @@
     <string name="spookd_gallery_more">More</string>
     <string name="spookd_gallery_no_matches">Nothing matches these filters.</string>
     <string name="spookd_gallery_delete_selected_confirm">Delete from the private gallery? Items: %1$d</string>
+    <string name="spookd_gallery_backup">Back up and import gallery</string>
+    <string name="spookd_gallery_backup_desc">Saves your gallery downloads with their details to one file you choose, after you confirm your screen lock. Saved DM media is not included: it is encrypted for this device only.</string>
+    <string name="spookd_gallery_backup_export">Back up gallery</string>
+    <string name="spookd_gallery_backup_running">Backing up the gallery…</string>
+    <string name="spookd_gallery_backup_progress">%1$d of %2$d</string>
+    <string name="spookd_gallery_backup_done">Backed up %1$d items. Saved DM media is not included.</string>
+    <string name="spookd_gallery_backup_failed">Backup failed. No backup file was kept.</string>
     <string name="spookd_download_with_external_downloader">Download with external downloader</string>
     <string name="spookd_external_downloader_package_name">External downloader package name</string>
     <string name="spookd_external_downloader_package_name_not_found">External downloader package name not found</string>

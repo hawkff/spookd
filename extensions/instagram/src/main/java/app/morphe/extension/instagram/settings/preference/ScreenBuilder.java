@@ -9,6 +9,7 @@ package app.morphe.extension.instagram.settings.preference;
 
 import static app.morphe.extension.instagram.utils.IgStr.str;
 
+import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
@@ -33,6 +34,7 @@ import app.morphe.extension.instagram.patches.analyzer.AutoRefresh;
 import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzer;
 import app.morphe.extension.instagram.patches.customise.font.FontStorage;
 import app.morphe.extension.instagram.patches.download.gallery.Gallery;
+import app.morphe.extension.instagram.patches.download.gallery.GalleryBackup;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
 import app.morphe.extension.instagram.patches.focusLock.FocusLockTargets;
 import app.morphe.extension.instagram.patches.story.StoryAutoSave;
@@ -1524,6 +1526,19 @@ public class ScreenBuilder {
                         "spookd_private_gallery"
                 )
         );
+
+        Preference galleryBackup = helper.buttonPreference(
+                str("spookd_gallery_backup"),
+                str("spookd_gallery_backup_desc"),
+                "spookd_gallery_backup"
+        );
+        galleryBackup.setOnPreferenceClickListener(preference -> {
+            if (preference.getContext() instanceof Activity) {
+                GalleryBackup.chooseLocked((Activity) preference.getContext());
+            }
+            return true;
+        });
+        addPreference(galleryBackup);
 
         if (SettingsStatus.homeLongPressSettings) {
             addPreference(

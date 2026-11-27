@@ -166,6 +166,12 @@ public final class GalleryStore {
     /** {@link #publish}, also deleting the part and failing when the gallery was cleared after {@code startedEpoch}. */
     public long publish(File part, GalleryItem item, String subFolder, String fileName,
                         Conflict conflict, Long startedEpoch) throws IOException {
+        return publish(part, item, subFolder, fileName, conflict, startedEpoch, null);
+    }
+
+    /** {@link #publish} that keeps an imported item's {@code savedAt}; null saves it as now. */
+    long publish(File part, GalleryItem item, String subFolder, String fileName,
+                 Conflict conflict, Long startedEpoch, Long savedAt) throws IOException {
         try {
             if (!part.isFile()) throw new IOException("Missing " + part);
             Long durationMs = GalleryItem.PHOTO.equals(item.kind) ? null : durationMs(part);
@@ -188,7 +194,7 @@ public final class GalleryStore {
                 values.put("media_id", item.mediaId);
                 values.put("link", item.link);
                 values.put("account_id", item.accountId);
-                values.put("saved_at", clock.getAsLong());
+                values.put("saved_at", savedAt != null ? savedAt : clock.getAsLong());
                 values.put("taken_at", item.takenAt);
                 values.put("size_bytes", size);
                 values.put("duration_ms", durationMs);

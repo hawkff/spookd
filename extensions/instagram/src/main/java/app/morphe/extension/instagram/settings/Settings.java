@@ -278,6 +278,7 @@ public class Settings {
             REELS_HOLD_TO_PAUSE.key,
             HIDE_MUSE.key,
             "spookd_report_bug",
-            "spookd_request_feature"
+            "spookd_request_feature",
+            "spookd_gallery_backup"
     )));
 }
