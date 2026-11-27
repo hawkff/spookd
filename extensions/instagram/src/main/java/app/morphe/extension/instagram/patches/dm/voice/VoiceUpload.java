@@ -77,7 +77,8 @@ public final class VoiceUpload {
                 Utils.showToastShort(str("spookd_voice_format_unsupported"));
                 return false;
             }
-            showSources(activity, new VoiceDestination(voiceController, screen, threadOf(voiceController), format));
+            showSources(activity, new VoiceDestination(voiceController, screen, threadOf(voiceController), format),
+                    () -> restoreMicOf(voiceController));
             return true;
         } catch (Throwable t) {
             Logger.printException(() -> "VoiceUpload: cannot open the sheet", t);
@@ -91,6 +92,18 @@ public final class VoiceUpload {
      */
     public static int[] recorderSettings(Object voiceController) {
         return null;
+    }
+
+    // The patch replaces this body: the mic leaves the state the long press set, unless it is still held.
+    public static void restoreMic(Object voiceController) {
+    }
+
+    private static void restoreMicOf(Object voiceController) {
+        try {
+            restoreMic(voiceController);
+        } catch (Throwable t) {
+            Logger.printException(() -> "VoiceUpload: cannot restore the mic", t);
+        }
     }
 
     // The patch replaces this body with a read of the voice controller's chat screen.
@@ -125,7 +138,8 @@ public final class VoiceUpload {
         throw new IllegalStateException("Not patched");
     }
 
-    private static void showSources(Activity activity, VoiceDestination destination) {
+    /** Main thread; {@code onClose} runs once the sheet closes, whatever was chosen. */
+    private static void showSources(Activity activity, VoiceDestination destination, Runnable onClose) {
         CharSequence[] sources = Gallery.canOpen(activity)
                 ? new CharSequence[]{str("spookd_voice_from_files"), str("spookd_gallery_picker_entry")}
                 : new CharSequence[]{str("spookd_voice_from_files")};
@@ -136,6 +150,7 @@ public final class VoiceUpload {
                     else pickFromGallery(activity, destination);
                 })
                 .setNegativeButton(str("spookd_cancel"), null)
+                .setOnDismissListener(shown -> onClose.run())
                 .show();
     }
 

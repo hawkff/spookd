@@ -88,13 +88,25 @@ private object VoiceRecordingStartFingerprint : Fingerprint(
     strings = listOf("VoiceMessagingController"),
 )
 
-/** Static initializer of the mic's state enum; the second filter writes RECOVERING_FROM_FAILURE. */
-private object VoiceRecordingStateFingerprint : Fingerprint(
+/** Static initializer of the mic's state enum; the second filter writes the state [name]. */
+private fun voiceRecordingStateFingerprint(name: String) = Fingerprint(
     name = "<clinit>",
     strings = listOf("LONG_PRESS_STARTED_WAITING_FOR_RECORDER", "RECORDING_LOCKED"),
     filters = listOf(
-        string("RECOVERING_FROM_FAILURE"),
+        string(name),
         opcode(Opcode.SPUT_OBJECT),
+    ),
+)
+
+/** The mic listener's binding of the mic view, which it stores in the composer views and listens to. */
+private fun micViewBindFingerprint(listener: String) = Fingerprint(
+    definingClass = listener,
+    returnType = "V",
+    parameters = listOf("Landroid/view/View;"),
+    filters = listOf(
+        fieldAccess(opcode = Opcode.IGET_OBJECT),
+        fieldAccess(opcode = Opcode.IPUT_OBJECT, type = "Landroid/view/View;", location = MatchAfterImmediately()),
+        methodCall(definingClass = "Landroid/view/View;", name = "setOnTouchListener"),
     ),
 )
 
@@ -187,7 +199,8 @@ private fun requirePublic(what: String, accessFlags: Int) {
  *
  * Holding the chat composer's mic starts a hold-to-record recording. With the switch on, the long press
  * opens the extension's audio file sheet instead and leaves the mic in a state its release ignores, so
- * no recording starts; a tap still records.
+ * no recording starts; a tap still records. Once the sheet closes the mic goes back to idle, so the
+ * keyboard can start a recording again.
  *
  * Only a chat whose recorder is the MediaRecorder one is served: its encoder, bit rate and sample rates
  * are read from that recorder, and the file is written as it would write it.
@@ -379,16 +392,50 @@ val sendAudioAsVoicePatch = patch(
             val stateField = it.instructionMatches[1].instruction.getReference<FieldReference>()!!
             val relayField = it.instructionMatches[2].instruction.getReference<FieldReference>()!!
             val controllerField = it.instructionMatches[3].instruction.getReference<FieldReference>()!!
-            val ignoredState = VoiceRecordingStateFingerprint.instructionMatches[1]
+            val ignoredState = voiceRecordingStateFingerprint("RECOVERING_FROM_FAILURE").instructionMatches[1]
+                .instruction.getReference<FieldReference>()!!
+            val idleState = voiceRecordingStateFingerprint("IDLE").instructionMatches[1]
                 .instruction.getReference<FieldReference>()!!
             if (stateField.definingClass != method.definingClass || relayField.definingClass != method.definingClass ||
                 controllerField.definingClass != relayField.type || controllerField.type != controller
             ) {
                 throw PatchException("Unexpected fields in the mic's long press: $stateField, $relayField, $controllerField")
             }
-            if (ignoredState.type != stateField.type) {
-                throw PatchException("$ignoredState is not a state of $stateField")
+            if (ignoredState.type != stateField.type || idleState.type != stateField.type) {
+                throw PatchException("$ignoredState or $idleState is not a state of $stateField")
             }
+
+            // Once the sheet closes, the mic leaves the ignored state unless it is still held down.
+            val listenerField = classDefBy(controller).instanceFields.singleOrNull { field -> field.type == method.definingClass }
+                ?: throw PatchException("Expected one mic listener field in $controller")
+            val micView = micViewBindFingerprint(method.definingClass).instructionMatches
+            val viewsField = micView[0].instruction.getReference<FieldReference>()!!
+            val viewField = micView[1].instruction.getReference<FieldReference>()!!
+            if (viewsField.definingClass != method.definingClass || viewField.definingClass != viewsField.type) {
+                throw PatchException("Unexpected mic view fields: $viewsField, $viewField")
+            }
+            replaceStub(
+                "restoreMic",
+                3,
+                """
+                check-cast p0, $controller
+                iget-object p0, p0, $controller->${listenerField.name}:${listenerField.type}
+                iget-object v0, p0, $stateField
+                sget-object v1, $ignoredState
+                if-ne v0, v1, :spookd_mic_done
+                iget-object v0, p0, $viewsField
+                iget-object v0, v0, $viewField
+                if-eqz v0, :spookd_mic_idle
+                invoke-virtual {v0}, Landroid/view/View;->isPressed()Z
+                move-result v0
+                if-nez v0, :spookd_mic_done
+                :spookd_mic_idle
+                sget-object v1, $idleState
+                iput-object v1, p0, $stateField
+                :spookd_mic_done
+                return-void
+                """,
+            )
             // p0 and the event take two registers; the hook needs one more.
             if (method.implementation!!.registerCount < 3) throw PatchException("No free register in $method")
 
