@@ -37,6 +37,11 @@ final class MediaInfo {
         int height;
         Long durationMs;
         String codec;
+
+        /** Nothing could be read: not opened, or no size, length or track found. */
+        boolean unreadable() {
+            return width <= 0 && durationMs == null && codec == null;
+        }
     }
 
     /**
@@ -46,14 +51,7 @@ final class MediaInfo {
     static void show(Activity activity, Callable<ViewerMedia> open, String kind, String fileName, long size,
                      String owner, String source, String link, Long savedAt, Long postedAt) {
         PROBE.execute(() -> {
-            Probe probe = new Probe();
-            try (ViewerMedia media = open.call()) {
-                if (media != null) probe = probe(media, kind);
-            } catch (Exception e) {
-                Logger.printInfo(() -> "Private gallery: cannot read media info", e);
-            } catch (OutOfMemoryError ignored) {
-            }
-            Probe read = probe;
+            Probe read = read(open, kind);
             activity.runOnUiThread(() -> {
                 try {
                     if (!activity.isFinishing() && !activity.isDestroyed()) {
@@ -66,11 +64,24 @@ final class MediaInfo {
         });
     }
 
+    /** Probe thread: opens, reads and always closes the media; an unreadable probe when it cannot. */
+    static Probe read(Callable<ViewerMedia> open, String kind) {
+        Probe probe = new Probe();
+        try (ViewerMedia media = open.call()) {
+            if (media != null) probe = probe(media, kind);
+        } catch (Exception e) {
+            Logger.printInfo(() -> "Private gallery: cannot read media info", e);
+        } catch (OutOfMemoryError ignored) {
+        }
+        return probe;
+    }
+
     private static void showSheet(Activity activity, Probe probe, String fileName, long size, String owner,
                                   String source, String link, Long savedAt, Long postedAt) {
         List<String> rows = new ArrayList<>();
         row(rows, "spookd_gallery_info_file_name", fileName);
         row(rows, "spookd_gallery_info_size", Formatter.formatFileSize(activity, size));
+        if (probe.unreadable()) rows.add(str("spookd_media_unreadable"));
         row(rows, "spookd_gallery_info_resolution",
                 probe.width > 0 && probe.height > 0 ? probe.width + " × " + probe.height : null);
         row(rows, "spookd_gallery_info_duration",
@@ -125,9 +136,9 @@ final class MediaInfo {
                     MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT);
             int rotation = PrivateGalleryActivity.dimension(retriever,
                     MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION);
-            boolean sideways = rotation == 90 || rotation == 270;
-            out.width = sideways ? height : width;
-            out.height = sideways ? width : height;
+            int[] upright = upright(width, height, rotation);
+            out.width = upright[0];
+            out.height = upright[1];
             String duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
             out.durationMs = duration == null ? null : Long.parseLong(duration);
         } catch (RuntimeException ignored) {
@@ -143,14 +154,28 @@ final class MediaInfo {
             List<String> codecs = new ArrayList<>();
             for (int i = 0; i < extractor.getTrackCount(); i++) {
                 MediaFormat format = extractor.getTrackFormat(i);
-                String mime = format.getString(MediaFormat.KEY_MIME);
-                if (mime != null) codecs.add(mime);
+                codecs.add(format.getString(MediaFormat.KEY_MIME));
             }
-            out.codec = TextUtils.join(", ", codecs);
+            out.codec = trackTypes(codecs);
         } catch (Exception ignored) {
         } finally {
             extractor.release();
         }
         return out;
+    }
+
+    /** {width, height} as shown: a video turned a quarter either way has its sides swapped. */
+    static int[] upright(int width, int height, int rotation) {
+        int turn = ((rotation % 360) + 360) % 360;
+        return turn == 90 || turn == 270 ? new int[]{height, width} : new int[]{width, height};
+    }
+
+    /** The tracks' MIME types in track order, such as "video/avc, audio/mp4a-latm"; null for none. */
+    static String trackTypes(List<String> mimes) {
+        List<String> known = new ArrayList<>();
+        for (String mime : mimes) {
+            if (mime != null && !mime.isEmpty()) known.add(mime);
+        }
+        return known.isEmpty() ? null : String.join(", ", known);
     }
 }
