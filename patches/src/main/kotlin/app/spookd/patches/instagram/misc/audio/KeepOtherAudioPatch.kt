@@ -9,9 +9,9 @@ package app.spookd.patches.instagram.misc.audio
 import app.spookd.patches.instagram.misc.settings.settingsPatch
 import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
-import app.spookd.patches.instagram.utils.Constants.USER_SESSION_CLASS
 import app.spookd.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
@@ -22,7 +22,6 @@ import app.morphe.patcher.patch.patch
 import app.morphe.patcher.util.p0Register
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
-import com.android.tools.smali.dexlib2.iface.Method
 
 private const val EXTENSION_CLASS = "$PATCHES_DESCRIPTOR/audio/KeepOtherAudio;"
 private const val FOCUS_LISTENER = "Landroid/media/AudioManager\$OnAudioFocusChangeListener;"
@@ -66,11 +65,11 @@ private object SoundOnForOtherMediaFingerprint : Fingerprint(
     ),
 )
 
-private object SoundTurnedOnExtensionFingerprint : Fingerprint(
+private object SetSoundExtensionFingerprint : Fingerprint(
     definingClass = EXTENSION_CLASS,
-    name = "soundTurnedOn",
-    returnType = "Z",
-    parameters = listOf(USER_SESSION_CLASS),
+    name = "setSound",
+    returnType = "V",
+    parameters = listOf("Ljava/lang/Object;", "Z"),
 )
 
 @Suppress("unused")
@@ -85,34 +84,26 @@ val keepOtherAudioPatch =
 
         execute {
             val helper = AudioFocusRequestFingerprint.classDef
-            val helperSession = helper.fields.singleOrNull {
-                it.type == USER_SESSION_CLASS && !AccessFlags.STATIC.isSet(it.accessFlags)
-            } ?: throw PatchException("Expected one session field in the audio focus helper")
             val sharedRequest = SharedAudioFocusRequestFingerprint.method
             if (SharedAudioFocusRequestFingerprint.classDef.superclass != helper.type) {
                 throw PatchException("Unexpected shared audio focus helper")
             }
 
             val soundState = SoundOnForOtherMediaFingerprint.classDef
-            fun soundStateMethod(predicate: (Method) -> Boolean) = soundState.methods.singleOrNull(predicate)
-                ?: throw PatchException("Unexpected sound state class")
-            val soundStateForSession = soundStateMethod {
-                AccessFlags.STATIC.isSet(it.accessFlags) && it.returnType == soundState.type &&
-                    it.parameterTypes.map(CharSequence::toString) == listOf(USER_SESSION_CLASS)
-            }
-            // True only once the sound was set on; unset means Instagram's per-screen default.
-            val soundSetOn = soundStateMethod {
-                !AccessFlags.STATIC.isSet(it.accessFlags) && it.returnType == "Z" && it.parameterTypes.isEmpty()
-            }
+            fun soundStateMethod(parameter: String) = soundState.methods.singleOrNull {
+                !AccessFlags.STATIC.isSet(it.accessFlags) && it.returnType == "V" &&
+                    it.parameterTypes.map(CharSequence::toString) == listOf(parameter)
+            } ?: throw PatchException("Unexpected sound state class")
+            // The setter every mute and unmute goes through, and the timed automatic sound on.
+            val soundSetter = soundStateMethod("Z")
+            val timedSoundOn = soundStateMethod("J")
 
-            SoundTurnedOnExtensionFingerprint.method.addInstructions(
+            SetSoundExtensionFingerprint.method.addInstructions(
                 0,
                 """
-                invoke-static {p0}, $soundStateForSession
-                move-result-object p0
-                invoke-virtual {p0}, $soundSetOn
-                move-result p0
-                return p0
+                check-cast p0, ${soundState.type}
+                invoke-virtual {p0, p1}, $soundSetter
+                return-void
                 """.trimIndent(),
             )
 
@@ -121,8 +112,7 @@ val keepOtherAudioPatch =
                 request.addInstructionsWithLabels(
                     0,
                     """
-                    iget-object v0, p0, $helperSession
-                    invoke-static {v0}, $EXTENSION_CLASS->allowFocusRequest($USER_SESSION_CLASS)Z
+                    invoke-static {}, $EXTENSION_CLASS->allowFocusRequest()Z
                     move-result v0
                     if-nez v0, :spookd_audio_focus_original
                     return-void
@@ -136,7 +126,7 @@ val keepOtherAudioPatch =
                 addInstructionsWithLabels(
                     0,
                     """
-                    invoke-static {}, $EXTENSION_CLASS->skipSoundOnForOtherAudio()Z
+                    invoke-static {p0, p1}, $EXTENSION_CLASS->onForeground(Ljava/lang/Object;Landroid/media/AudioManager;)Z
                     move-result v0
                     if-eqz v0, :spookd_sound_on_original
                     return-void
@@ -144,6 +134,22 @@ val keepOtherAudioPatch =
                     ExternalLabel("spookd_sound_on_original", getInstruction(0)),
                 )
             }
+
+            timedSoundOn.apply {
+                if (p0Register < 1) throw PatchException("Unexpected timed sound on")
+                addInstructionsWithLabels(
+                    0,
+                    """
+                    invoke-static {}, $EXTENSION_CLASS->skipTimedSoundOn()Z
+                    move-result v0
+                    if-eqz v0, :spookd_timed_sound_on_original
+                    return-void
+                    """.trimIndent(),
+                    ExternalLabel("spookd_timed_sound_on_original", getInstruction(0)),
+                )
+            }
+
+            soundSetter.addInstruction(0, "invoke-static {p1}, $EXTENSION_CLASS->onSoundSet(Z)V")
 
             enableSettings("keepOtherAudio")
         }
