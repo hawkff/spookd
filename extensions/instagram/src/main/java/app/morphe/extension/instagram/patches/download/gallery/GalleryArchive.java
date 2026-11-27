@@ -172,8 +172,8 @@ final class GalleryArchive {
     }
 
     /**
-     * Writes every download a restore takes back, oldest first, to {@code out}, which the caller
-     * closes, and returns {files written, downloads left out because a restore would refuse them};
+     * Writes every download a restore takes back, oldest first, to {@code out}, closed when
+     * done, and returns {files written, downloads left out because a restore would refuse them};
      * one deleted meanwhile is left out silently. {@code progress} gets (done, total).
      */
     static int[] write(GalleryStore store, OutputStream out, BiConsumer<Integer, Integer> progress,
@@ -197,39 +197,40 @@ final class GalleryArchive {
             throw new IOException(e);
         }
         if (manifest.length > MAX_MANIFEST_BYTES) throw new IOException("Manifest too large");
-        ZipOutputStream zip = new ZipOutputStream(new BufferedOutputStream(out, BUFFER));
-        // Photos and videos are compressed already.
-        zip.setLevel(Deflater.NO_COMPRESSION);
-        zip.putNextEntry(new ZipEntry(MANIFEST));
-        zip.write(manifest);
-        zip.closeEntry();
-        byte[] buffer = new byte[BUFFER];
         int written = 0;
-        for (int i = 0; i < entries.size(); i++) {
-            GalleryStore.Entry entry = entries.get(i);
-            InputStream in;
-            try {
-                in = new FileInputStream(entry.file);
-            } catch (FileNotFoundException e) {
-                continue;
+        // Closing the wrapper, also on failure, frees its deflater and closes out; a second close by the caller is harmless.
+        try (ZipOutputStream zip = new ZipOutputStream(new BufferedOutputStream(out, BUFFER))) {
+            // Photos and videos are compressed already.
+            zip.setLevel(Deflater.NO_COMPRESSION);
+            zip.putNextEntry(new ZipEntry(MANIFEST));
+            zip.write(manifest);
+            zip.closeEntry();
+            byte[] buffer = new byte[BUFFER];
+            for (int i = 0; i < entries.size(); i++) {
+                GalleryStore.Entry entry = entries.get(i);
+                InputStream in;
+                try {
+                    in = new FileInputStream(entry.file);
+                } catch (FileNotFoundException e) {
+                    continue;
+                }
+                try (InputStream source = in) {
+                    ZipEntry zipEntry = new ZipEntry(MEDIA + entry.file.getName());
+                    zipEntry.setTime(entry.savedAt);
+                    zip.putNextEntry(zipEntry);
+                    for (int n; (n = source.read(buffer)) != -1; ) zip.write(buffer, 0, n);
+                    zip.closeEntry();
+                }
+                written++;
+                progress.accept(i + 1, entries.size());
             }
-            try (InputStream source = in) {
-                ZipEntry zipEntry = new ZipEntry(MEDIA + entry.file.getName());
-                zipEntry.setTime(entry.savedAt);
-                zip.putNextEntry(zipEntry);
-                for (int n; (n = source.read(buffer)) != -1; ) zip.write(buffer, 0, n);
-                zip.closeEntry();
-            }
-            written++;
-            progress.accept(i + 1, entries.size());
+            zip.finish();
         }
-        zip.finish();
-        zip.flush();
         return new int[]{written, all.size() - entries.size()};
     }
 
     /**
-     * Merges the backup in {@code in}, which the caller closes, into the store, counting into
+     * Merges the backup in {@code in}, closed when done, into the store, counting into
      * {@code result}: an item whose media id or bytes are already saved is skipped. Throws
      * {@link InvalidBackup} before importing anything when the manifest is missing or damaged.
      */
@@ -244,45 +245,46 @@ final class GalleryArchive {
      */
     static void read(GalleryStore store, InputStream in, Result result, BiConsumer<Integer, Integer> progress,
                      long maxFileBytes) throws IOException {
-        ZipInputStream zip = new ZipInputStream(new BufferedInputStream(in, BUFFER));
-        ZipEntry first = zip.getNextEntry();
-        if (first == null || !MANIFEST.equals(first.getName())) throw new InvalidBackup("No manifest first");
-        Manifest manifest = parse(readManifest(zip));
-        result.failed += manifest.invalid;
-        int total = manifest.items.size();
-        Duplicates duplicates = new Duplicates(store.list(null, null, false, null, GalleryStore.SORT_NEWEST));
-        long epoch = store.clearEpoch();
-        int done = 0;
-        int entries = 1;
-        for (ZipEntry entry; (entry = zip.getNextEntry()) != null; ) {
-            if (++entries > MAX_ITEMS + 1) throw new IOException("Too many entries");
-            String name = entry.getName();
-            // Entry names only look up manifest items, never paths; a repeated or unknown entry finds none.
-            Item item = entry.isDirectory() || !name.startsWith(MEDIA) ? null
-                    : manifest.items.remove(name.substring(MEDIA.length()));
-            if (item == null) {
-                result.failed++;
-                drain(zip, MAX_UNCLAIMED_BYTES);
-                continue;
+        try (ZipInputStream zip = new ZipInputStream(new BufferedInputStream(in, BUFFER))) {
+            ZipEntry first = zip.getNextEntry();
+            if (first == null || !MANIFEST.equals(first.getName())) throw new InvalidBackup("No manifest first");
+            Manifest manifest = parse(readManifest(zip));
+            result.failed += manifest.invalid;
+            int total = manifest.items.size();
+            Duplicates duplicates = new Duplicates(store.list(null, null, false, null, GalleryStore.SORT_NEWEST));
+            long epoch = store.clearEpoch();
+            int done = 0;
+            int entries = 1;
+            for (ZipEntry entry; (entry = zip.getNextEntry()) != null; ) {
+                if (++entries > MAX_ITEMS + 1) throw new IOException("Too many entries");
+                String name = entry.getName();
+                // Entry names only look up manifest items, never paths; a repeated or unknown entry finds none.
+                Item item = entry.isDirectory() || !name.startsWith(MEDIA) ? null
+                        : manifest.items.remove(name.substring(MEDIA.length()));
+                if (item == null) {
+                    result.failed++;
+                    drain(zip, MAX_UNCLAIMED_BYTES);
+                    continue;
+                }
+                progress.accept(++done, total);
+                String mediaId = item.item.mediaId;
+                if (mediaId != null && !mediaId.isEmpty() && store.hasMedia(mediaId)) {
+                    result.duplicates++;
+                    drain(zip, maxFileBytes);
+                    continue;
+                }
+                long id = add(store, duplicates, epoch, zip, item.item, item.subFolder, item.fileName, item.savedAt,
+                        maxFileBytes);
+                if (id == -1) {
+                    result.duplicates++;
+                    continue;
+                }
+                if (item.favorite) store.setFavorite(false, id, true);
+                result.imported++;
             }
-            progress.accept(++done, total);
-            String mediaId = item.item.mediaId;
-            if (mediaId != null && !mediaId.isEmpty() && store.hasMedia(mediaId)) {
-                result.duplicates++;
-                drain(zip, maxFileBytes);
-                continue;
-            }
-            long id = add(store, duplicates, epoch, zip, item.item, item.subFolder, item.fileName, item.savedAt,
-                    maxFileBytes);
-            if (id == -1) {
-                result.duplicates++;
-                continue;
-            }
-            if (item.favorite) store.setFavorite(false, id, true);
-            result.imported++;
+            // Listed, but not in the archive: deleted while the backup was written.
+            result.failed += manifest.items.size();
         }
-        // Listed, but not in the archive: deleted while the backup was written.
-        result.failed += manifest.items.size();
     }
 
     /**
