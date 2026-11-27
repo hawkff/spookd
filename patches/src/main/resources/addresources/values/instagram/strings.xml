@@ -94,8 +94,6 @@
     <string name="spookd_fake_location_label_hint">Name (optional)</string>
     <string name="spookd_fake_location_save">Save</string>
     <string name="spookd_fake_location_invalid">No coordinates found. Latitude goes from -90 to 90 and longitude from -180 to 180. Short maps links can\'t be read, so open the link and copy the full one</string>
-    <string name="spookd_hidden_account_privacy_options">Hidden account privacy options</string>
-    <string name="spookd_hidden_account_privacy_options_desc">Shows Instagram\'s own options to hide your followers and following lists and to hide you from other people\'s lists in Settings, Account privacy. Instagram offers them only to some teen accounts in the UK, and the server decides whether a change is kept. Using options the server did not offer your account can put it at risk</string>
     <string name="spookd_turn_on_all_ghost_modes">Turn on all ghost modes</string>
     <string name="spookd_turn_on_all_ghost_modes_desc">Turns on the ghost modes available in this build</string>
     <string name="spookd_ghost_modes_on">Ghost mode: ON</string>
@@ -577,6 +575,10 @@
     <string name="spookd_private_gallery_desc">Your downloads, shown after you confirm your screen lock</string>
     <string name="spookd_home_long_press_gallery">Open the gallery from Home</string>
     <string name="spookd_home_long_press_gallery_desc">Adds Private gallery to the spookd menu, which opens when you hold the Home tab or any tab set to it in Navigation bar.</string>
+    <string name="spookd_gallery_picker">Use private gallery in pickers</string>
+    <string name="spookd_gallery_picker_desc">Adds From private gallery to the photo and video picker in chats and to the comment photo button. The gallery asks for your screen lock first. The photo or video you tap is handed to Instagram as if you had picked it there.</string>
+    <string name="spookd_gallery_picker_entry">From private gallery</string>
+    <string name="spookd_gallery_pick_full">Recent picks still take up 1 GB. Try again in an hour.</string>
     <string name="spookd_download_history">Download history</string>
     <string name="spookd_download_history_desc">Downloads made with spookd\'s download buttons and their status. Instagram\'s own Save in chats is not listed. Tap a saved one to open it. A failed download can be retried until Instagram is closed.</string>
     <string name="spookd_download_history_empty">No downloads made with spookd\'s download buttons yet.</string>

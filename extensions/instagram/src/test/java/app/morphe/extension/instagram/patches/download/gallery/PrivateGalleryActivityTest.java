@@ -1,6 +1,13 @@
 package app.morphe.extension.instagram.patches.download.gallery;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -33,5 +40,32 @@ public final class PrivateGalleryActivityTest {
         assertEquals(533, PrivateGalleryActivity.frameBox(1080, 1920, 300));
         assertEquals(1200, PrivateGalleryActivity.frameBox(10000, 100, 300));
         assertEquals(0, PrivateGalleryActivity.frameBox(0, 1080, 300));
+    }
+
+    @Test
+    public void pickModeListsPhotosAndOnlyOffersVideosWhenThePickerTakesThem() {
+        assertTrue(PrivateGalleryActivity.pickable(GalleryItem.PHOTO, true));
+        assertTrue(PrivateGalleryActivity.pickable(GalleryItem.PHOTO, false));
+        assertTrue(PrivateGalleryActivity.pickable(GalleryItem.VIDEO, false));
+        assertFalse(PrivateGalleryActivity.pickable(GalleryItem.VIDEO, true));
+        assertFalse(PrivateGalleryActivity.pickable(GalleryItem.AUDIO, false));
+        assertFalse(PrivateGalleryActivity.pickable("voice", false));
+    }
+
+    @Test
+    public void aPickedItemReturnsItsUriWithAReadGrant() {
+        Uri uri = Uri.parse("content://com.example.fileprovider/cache/piko_share/pick-1/a.jpg");
+
+        Intent result = PrivateGalleryActivity.pickResult(uri);
+
+        assertEquals(Activity.RESULT_OK, PrivateGalleryActivity.pickResultCode(uri));
+        assertEquals(uri, result.getData());
+        assertTrue((result.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0);
+    }
+
+    @Test
+    public void cancellingReturnsNoData() {
+        assertEquals(Activity.RESULT_CANCELED, PrivateGalleryActivity.pickResultCode(null));
+        assertNull(PrivateGalleryActivity.pickResult(null));
     }
 }

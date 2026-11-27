@@ -35,6 +35,12 @@ import app.morphe.extension.shared.Utils;
 /** Export, share and open actions of the private gallery. */
 final class GalleryActions {
     static final String SHARE_DIR = "piko_share";
+    // Folders of items returned to Instagram's picker, which imports them later on its own thread.
+    static final String PICK_PREFIX = "pick-";
+    // shortcut: a fixed hour instead of knowing when Instagram's import ended; long enough for any video copy.
+    static final long PICK_KEEP_MS = 60 * 60_000L;
+    // Picks waiting for that hour may not take more than this; a pick past it is refused, nothing is evicted.
+    static final long PICK_BUDGET_BYTES = 1_000_000_000L;
     // The manifest keeps this class name even when the code is minified; clones rename only the authority.
     private static final String FILE_PROVIDER = "androidx.core.content.FileProvider";
 
@@ -88,18 +94,32 @@ final class GalleryActions {
         }.enqueueBatch(requests);
     }
 
-    /** Deletes earlier share copies and returns their directory. Runs on the caller's background thread. */
+    /**
+     * Deletes earlier share copies, except picks younger than {@link #PICK_KEEP_MS}, and returns their
+     * directory. Runs on the caller's background thread.
+     */
     static File clearShared(Context context) {
         File dir = new File(context.getCacheDir(), SHARE_DIR);
+        clearShared(dir, System.currentTimeMillis(), false);
+        return dir;
+    }
+
+    /** Deletes picks older than {@link #PICK_KEEP_MS} only; runs on the caller's background thread. */
+    static void sweepPicks(Context context) {
+        clearShared(new File(context.getCacheDir(), SHARE_DIR), System.currentTimeMillis(), true);
+    }
+
+    static void clearShared(File dir, long now, boolean expiredPicksOnly) {
         File[] entries = dir.listFiles();
         if (entries != null) {
             for (File entry : entries) {
+                boolean pick = entry.getName().startsWith(PICK_PREFIX);
+                if (pick ? now - entry.lastModified() < PICK_KEEP_MS : expiredPicksOnly) continue;
                 File[] inner = entry.listFiles();
                 if (inner != null) for (File file : inner) file.delete();
                 entry.delete();
             }
         }
-        return dir;
     }
 
     /**
@@ -107,9 +127,36 @@ final class GalleryActions {
      * URI through the app's own file provider. Runs on the caller's background thread.
      */
     static Uri shareCopy(Context context, File dir, String name, boolean vault, long id, File file) throws Exception {
+        return copy(context, dir, "", name, vault, id, file);
+    }
+
+    /** Bytes the picks in {@code dir} still hold; runs on the caller's background thread. */
+    static long pickBytes(File dir) {
+        long total = 0;
+        File[] entries = dir.listFiles();
+        if (entries == null) return 0;
+        for (File entry : entries) {
+            File[] inner = entry.getName().startsWith(PICK_PREFIX) ? entry.listFiles() : null;
+            if (inner != null) for (File file : inner) total += file.length();
+        }
+        return total;
+    }
+
+    /** Whether a pick of {@code size} bytes fits next to {@code used} bytes of waiting picks. */
+    static boolean fitsPickBudget(long used, long size) {
+        return size >= 0 && used + size <= PICK_BUDGET_BYTES;
+    }
+
+    /** {@link #shareCopy} for Instagram's picker: the copy outlives the next clear for {@link #PICK_KEEP_MS}. */
+    static Uri pickCopy(Context context, File dir, String name, boolean vault, long id, File file) throws Exception {
+        return copy(context, dir, PICK_PREFIX, name, vault, id, file);
+    }
+
+    private static Uri copy(Context context, File dir, String prefix, String name, boolean vault, long id, File file)
+            throws Exception {
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("Cannot create " + dir);
         // A fresh random folder per share: a URI granted earlier never points at a later item.
-        File folder = new File(dir, UUID.randomUUID().toString());
+        File folder = new File(dir, prefix + UUID.randomUUID());
         if (!folder.mkdirs()) throw new IOException("Cannot create " + folder);
         File copy = new File(folder, name.replace('/', '_'));
         try (InputStream in = open(vault, id, file); OutputStream out = new FileOutputStream(copy)) {

@@ -692,15 +692,6 @@ public class ScreenBuilder {
             addPreference(places);
             FakePlaces.whenLoaded(() -> places.setSummary(FakeLocationScreen.summary()));
         }
-        if (SettingsStatus.hiddenAccountPrivacyOptions) {
-            addPreference(
-                    helper.switchPreference(
-                            str("spookd_hidden_account_privacy_options"),
-                            str("spookd_hidden_account_privacy_options_desc"),
-                            Settings.HIDDEN_ACCOUNT_PRIVACY_OPTIONS
-                    )
-            );
-        }
 
     }
 
@@ -1461,6 +1452,16 @@ public class ScreenBuilder {
                             str("spookd_home_long_press_gallery"),
                             str("spookd_home_long_press_gallery_desc"),
                             Settings.HOME_LONG_PRESS_GALLERY
+                    )
+            );
+        }
+
+        if (SettingsStatus.galleryPicker) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_gallery_picker"),
+                            str("spookd_gallery_picker_desc"),
+                            Settings.GALLERY_PICKER
                     )
             );
         }
