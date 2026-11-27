@@ -434,15 +434,10 @@ public final class VideoEditor extends Dialog {
                 .show();
     }
 
-    /** The selection's start for a cut: the first keyframe keeps everything before it. */
-    private long cutStart() {
-        return start == points[0] ? 0 : start;
-    }
-
     private void saveTrim() {
         if (busy || !hasChanges()) return;
         String extension = VideoTrim.videoExtension(VideoTrim.extension(file.getName(), ".mp4"));
-        long from = cutStart();
+        long from = start;
         long to = end;
         work(() -> publish(GalleryItem.VIDEO, VideoTrim.derivedName(fileName, "_trimmed", extension),
                         part -> VideoTrim.remux(file.getPath(), part.getPath(), VideoTrim.muxerFormat(extension),
@@ -458,7 +453,7 @@ public final class VideoEditor extends Dialog {
             Utils.showToastLong(str("spookd_video_editor_audio_unsupported"));
             return;
         }
-        long from = cutStart();
+        long from = start;
         long to = end;
         work(() -> publish(GalleryItem.AUDIO, VideoTrim.derivedName(fileName, "_audio", extension),
                         part -> VideoTrim.remux(file.getPath(), part.getPath(), VideoTrim.muxerFormat(extension),

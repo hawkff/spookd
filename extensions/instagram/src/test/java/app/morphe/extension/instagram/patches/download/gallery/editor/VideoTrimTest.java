@@ -19,6 +19,12 @@ public final class VideoTrimTest {
     }
 
     @Test
+    public void aFirstKeyframeAfterZeroStartsTheCutPointsAtZero() {
+        assertArrayEquals(new long[]{0, 2_000_000, 5_000_000},
+                VideoTrim.cutPoints(new long[]{2_000_000, 500_000}, 2, 5_000_000));
+    }
+
+    @Test
     public void aHandleSnapsToTheNearestKeyframeItMayTake() {
         assertEquals(2_000_000, VideoTrim.snap(POINTS, 2_900_000, 0, 7_500_000));
         assertEquals(4_000_000, VideoTrim.snap(POINTS, 3_100_000, 0, 7_500_000));

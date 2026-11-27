@@ -77,7 +77,8 @@ final class VideoTrim {
 
     /**
      * The first {@code count} keyframe times, sorted, without repeats and below {@code durationUs},
-     * then {@code durationUs}; 0 stands in for the first keyframe when none is below the duration.
+     * then {@code durationUs}. The first is always 0: a cut there keeps everything before the first
+     * keyframe, so the shown start and length match what is saved.
      */
     static long[] cutPoints(long[] syncs, int count, long durationUs) {
         long[] sorted = Arrays.copyOf(syncs, count);
@@ -89,6 +90,7 @@ final class VideoTrim {
             out[n++] = time;
         }
         if (n == 0) out[n++] = 0;
+        out[0] = 0;
         out[n++] = durationUs;
         return Arrays.copyOf(out, n);
     }
