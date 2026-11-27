@@ -85,6 +85,7 @@ public final class GalleryBackup {
      * opens and {@code onReturned} once it closed; either may be null.
      */
     static void choose(Activity activity, Runnable onPicking, Runnable onReturned) {
+        // In the order of the modes, so the tapped row is the mode.
         String[] labels = {str("spookd_gallery_backup_export"), str("spookd_gallery_backup_import"),
                 str("spookd_gallery_import_files")};
         new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
@@ -145,7 +146,7 @@ public final class GalleryBackup {
             try {
                 if (mode == EXPORT) export(app, uris.get(0));
                 else if (mode == IMPORT) importArchive(app, uris.get(0));
-                else importFiles(app, uris);
+                else if (mode == IMPORT_FILES) importFiles(app, uris);
             } catch (Exception e) {
                 Logger.printException(() -> "Gallery backup failed", e);
                 Utils.showToastLong(str("spookd_gallery_action_failed"));
