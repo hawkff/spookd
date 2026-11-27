@@ -241,6 +241,11 @@ public class HookFlags {
         }
     }
 
+    private static void keepHomeFeedOnPostLinksFlags() {
+        BOOL_FLAGS.put("106448::28", false); //ig_android_feed_delivery_2026::enable_feed_post_deeplink_feed_refresh
+        BOOL_FLAGS.put("106448::29", false); //ig_android_feed_delivery_2026::enable_reel_post_deeplink_feed_refresh
+    }
+
     private static void hideMuseFlags() {
         if (Pref.hideMuse()) {
             BOOL_FLAGS.put("140048::8", false); //ig_android_shop_with_muse::enable_send_message_to_muse_in_igd
