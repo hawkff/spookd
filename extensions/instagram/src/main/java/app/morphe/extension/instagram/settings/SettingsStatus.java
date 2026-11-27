@@ -385,6 +385,8 @@ public class SettingsStatus {
     public static void storyDownloadButton() {storyDownloadButton = true;}
     public static boolean audioPageDownloadButton = false;
     public static void audioPageDownloadButton() {audioPageDownloadButton = true;}
+    public static boolean galleryPicker = false;
+    public static void galleryPicker() { galleryPicker = true; }
     public static boolean downloadVoiceMessage = false;
     public static void downloadVoiceMessage() { downloadVoiceMessage = true; }
     public static boolean downloadWithExternalDownloader = false;
@@ -445,6 +447,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_category_downloads"),SettingsStatus.downloadMedia);
         FLAGS.put(str("spookd_download_voice_media"),SettingsStatus.downloadVoiceMessage);
         FLAGS.put(str("spookd_download_with_external_downloader"),SettingsStatus.downloadWithExternalDownloader);
+        FLAGS.put(str("spookd_gallery_picker"), SettingsStatus.galleryPicker);
         FLAGS.put(str("spookd_more_profile_options"),SettingsStatus.moreOptionsOnProfile);
         FLAGS.put(str("spookd_enable_more_options_on_post"),SettingsStatus.moreOptionsOnPost);
         FLAGS.put(str("spookd_disable_video_autoplay"),SettingsStatus.disableVideoAutoplay);

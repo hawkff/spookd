@@ -175,6 +175,7 @@ public class Settings {
     public static final StringSetting GALLERY_MAX_AGE_DAYS = new StringSetting("gallery_max_age_days", "0", NOT_REQUIRED);
     public static final StringSetting GALLERY_MAX_SIZE_GB = new StringSetting("gallery_max_size_gb", "0", NOT_REQUIRED);
     public static final BooleanSetting HOME_LONG_PRESS_GALLERY = new BooleanSetting("home_long_press_gallery", false, NOT_REQUIRED);
+    public static final BooleanSetting GALLERY_PICKER = new BooleanSetting("gallery_picker", false, NOT_REQUIRED);
 
     public static final BooleanSetting HIDE_NAVIGATION_FEED = new BooleanSetting("hide_navigation_feed", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_NAVIGATION_REELS = new BooleanSetting("hide_navigation_reels", false, NOT_REQUIRED);

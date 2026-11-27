@@ -575,6 +575,10 @@
     <string name="spookd_private_gallery_desc">Your downloads, shown after you confirm your screen lock</string>
     <string name="spookd_home_long_press_gallery">Open the gallery from Home</string>
     <string name="spookd_home_long_press_gallery_desc">Adds Private gallery to the menu that opens when you hold the Home tab. Holding the Profile tab still switches accounts.</string>
+    <string name="spookd_gallery_picker">Use private gallery in pickers</string>
+    <string name="spookd_gallery_picker_desc">Adds From private gallery to the photo and video picker in chats and to the comment photo button. The gallery asks for your screen lock first. The photo or video you tap is handed to Instagram as if you had picked it there.</string>
+    <string name="spookd_gallery_picker_entry">From private gallery</string>
+    <string name="spookd_gallery_pick_full">Recent picks still take up 1 GB. Try again in an hour.</string>
     <string name="spookd_download_history">Download history</string>
     <string name="spookd_download_history_desc">Downloads made with spookd\'s download buttons and their status. Instagram\'s own Save in chats is not listed. Tap a saved one to open it. A failed download can be retried until Instagram is closed.</string>
     <string name="spookd_download_history_empty">No downloads made with spookd\'s download buttons yet.</string>
