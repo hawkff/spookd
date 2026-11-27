@@ -7,6 +7,8 @@ import app.spookd.patches.instagram.utils.Constants.COMPATIBILITY_INSTAGRAM
 import app.spookd.patches.instagram.utils.Constants.PATCHES_DESCRIPTOR
 import app.spookd.patches.instagram.utils.enableSettings
 import app.morphe.patcher.Fingerprint
+import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.instructions
@@ -85,6 +87,18 @@ internal object ProfileGridPinSyncFingerprint : Fingerprint(
     filters = listOf(literal(PROFILE_GRID_PIN_SYNC_FLAG)),
 )
 
+// Profile grid request succeeded; Instagram cleared its loading state just before.
+internal object ProfileGridRequestFinishedFingerprint : Fingerprint(
+    definingClass = "Lcom/instagram/profile/fragment/UserDetailFragment;",
+    returnType = "V",
+    strings = listOf("FeedRequestCallback.onMediaFeedRequestFinish"),
+)
+
+internal object RerunProfileGridChangeFingerprint : Fingerprint(
+    definingClass = PROFILE_EXTRAS,
+    name = "rerunProfileGridChange",
+)
+
 @Suppress("unused")
 val hideProfileGridReelsPatch =
     patch(
@@ -139,7 +153,9 @@ val hideProfileGridReelsPatch =
                 ).getReference<MethodReference>()!!
                 val loadMore = classDefBy(loader).methods.single { it.returnType == "V" && it.parameterTypes.isEmpty() }
                 val loaderField = classDefBy(PROFILE_MEDIA_TAB).fields.single { it.type == loader }
-                if (hasMore.returnType != "Z" || p0Register < 4) throw PatchException("Unexpected profile grid loader")
+                if (hasMore.returnType != "Z" || p0Register < 4 || parameterTypes.map { it.toString() } != listOf(PROFILE_MEDIA_TAB)) {
+                    throw PatchException("Unexpected profile grid loader")
+                }
 
                 // An emptied page leaves nothing to scroll, so Instagram's scroll-driven loader never asks for the next.
                 addInstructionsWithLabels(
@@ -152,14 +168,29 @@ val hideProfileGridReelsPatch =
                     invoke-interface {v0}, $hasMore
                     move-result v2
                     iget-object v3, p0, $PROFILE_MEDIA_TAB->recyclerView:Landroidx/recyclerview/widget/RecyclerView;
-                    invoke-static {v3, v1, v2}, $PROFILE_EXTRAS->profileGridNeedsNextPage(Landroid/view/View;ZZ)Z
+                    invoke-static {p0, v3, v1, v2}, $PROFILE_EXTRAS->profileGridNeedsNextPage(Ljava/lang/Object;Landroid/view/View;ZZ)Z
                     move-result v1
                     if-eqz v1, :spookd_grid_changed
                     invoke-interface {v0}, $loader->${loadMore.name}()V
                     """.trimIndent(),
                     ExternalLabel("spookd_grid_changed", getInstruction(0)),
                 )
+
+                // A page arrives while its request still counts as loading, so the grid is checked again once it succeeds.
+                RerunProfileGridChangeFingerprint.method.addInstructions(
+                    0,
+                    """
+                    check-cast p0, $PROFILE_MEDIA_TAB
+                    invoke-static {p0}, $PROFILE_MEDIA_TAB->$name($PROFILE_MEDIA_TAB)V
+                    return-void
+                    """.trimIndent(),
+                )
             }
+
+            ProfileGridRequestFinishedFingerprint.method.addInstruction(
+                0,
+                "invoke-static {}, $PROFILE_EXTRAS->onProfileGridRequestFinished()V",
+            )
 
             enableSettings("hideProfileGridReels")
         }

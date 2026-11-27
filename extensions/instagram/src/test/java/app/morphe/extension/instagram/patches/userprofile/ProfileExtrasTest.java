@@ -42,18 +42,36 @@ public class ProfileExtrasTest {
     }
 
     @Test
+    public void anEmptiedPageDeliveredWhileLoadingAsksForExactlyOneMorePageOnceItSucceeds() {
+        Object grid = new Object();
+        ProfileExtras.takeWaitingGrids();
+
+        // The page lands while its request still counts as loading.
+        assertFalse(ProfileExtras.onGridChanged(grid, true, true, true, false));
+        assertEquals(1, ProfileExtras.takeWaitingGrids().size());
+        // The recheck after success sees loading cleared and asks once.
+        assertTrue(ProfileExtras.onGridChanged(grid, true, false, true, false));
+        // That request brings a photo that fills the grid: nothing else is asked or waits.
+        assertFalse(ProfileExtras.onGridChanged(grid, true, true, true, true));
+        assertTrue(ProfileExtras.takeWaitingGrids().isEmpty());
+        // A finish with nothing waiting checks nothing.
+        assertTrue(ProfileExtras.takeWaitingGrids().isEmpty());
+    }
+
+    @Test
     public void nextPageIsOnlyAskedForWhenHidingAndIdleWithMorePages() {
-        assertTrue(ProfileExtras.needsNextPage(true, false, true, false));
-        assertFalse(ProfileExtras.needsNextPage(false, false, true, false));
-        assertFalse(ProfileExtras.needsNextPage(true, true, true, false));
-        assertFalse(ProfileExtras.needsNextPage(true, false, false, false));
-        assertFalse(ProfileExtras.needsNextPage(true, false, true, true));
+        Object grid = new Object();
+        assertFalse(ProfileExtras.onGridChanged(grid, false, false, true, false));
+        assertFalse(ProfileExtras.onGridChanged(grid, true, false, false, false));
+        assertFalse(ProfileExtras.onGridChanged(grid, true, false, true, true));
+        assertTrue(ProfileExtras.takeWaitingGrids().isEmpty());
     }
 
     private static int pagesLoaded(int[] photosPerPage) {
+        Object grid = new Object();
         int loaded = 1;
         int shown = photosPerPage[0];
-        while (ProfileExtras.needsNextPage(true, false, loaded < photosPerPage.length, shown > 0)) {
+        while (ProfileExtras.onGridChanged(grid, true, false, loaded < photosPerPage.length, shown > 0)) {
             shown += photosPerPage[loaded++];
         }
         return loaded;
