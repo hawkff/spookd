@@ -4,6 +4,7 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Application;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.Notification;
@@ -71,7 +72,7 @@ public final class GalleryBackup {
                 Utils.showToastLong(str("spookd_vault_needs_screen_lock"));
                 return;
             }
-            choose(activity, true, null, null);
+            choose(activity, true);
         } catch (Exception e) {
             Logger.printException(() -> "Gallery backup: cannot show the choice", e);
             Utils.showToastShort(str("spookd_gallery_action_failed"));
@@ -80,11 +81,10 @@ public final class GalleryBackup {
 
     /**
      * Main thread. With {@code askLock} the screen lock is asked for each chosen action right before
-     * its file picker, so a choice left open never outlasts a relock; otherwise the caller is behind
-     * the gallery lock. {@code onPicking} runs right before the picker opens and {@code onReturned}
-     * once it closed; either may be null.
+     * its file picker, so a choice left open never outlasts a relock. Without it {@code activity} is
+     * the unlocked gallery, which closes for the chosen action.
      */
-    static void choose(Activity activity, boolean askLock, Runnable onPicking, Runnable onReturned) {
+    static void choose(Activity activity, boolean askLock) {
         // In the order of the modes, so the tapped row is the mode.
         String[] labels = {str("spookd_gallery_backup_export"), str("spookd_gallery_backup_import"),
                 str("spookd_gallery_import_files")};
@@ -92,14 +92,12 @@ public final class GalleryBackup {
                 .setTitle(str("spookd_gallery_backup"))
                 .setItems(labels, (d, which) -> {
                     if (!askLock) {
-                        pick(activity, which, onPicking, onReturned);
+                        pickBelow(activity, which);
                         return;
                     }
                     try {
                         InboxLock.confirm(activity, () -> {
-                            if (!activity.isFinishing() && !activity.isDestroyed()) {
-                                pick(activity, which, onPicking, onReturned);
-                            }
+                            if (!activity.isFinishing() && !activity.isDestroyed()) pick(activity, which);
                         });
                     } catch (Exception e) {
                         Logger.printException(() -> "Gallery backup: cannot ask for the screen lock", e);
@@ -110,7 +108,33 @@ public final class GalleryBackup {
                 .show();
     }
 
-    private static void pick(Activity activity, int mode, Runnable onPicking, Runnable onReturned) {
+    /**
+     * Closes the gallery and opens the picker from the screen it returns to: the gallery is closed
+     * on any stop, also by Inbox lock, so it cannot wait for the picker's result itself.
+     */
+    private static void pickBelow(Activity gallery, int mode) {
+        Application app = gallery.getApplication();
+        // Only the screen shown right after closing; with none, nothing opens later out of the blue.
+        long until = SystemClock.uptimeMillis() + 2000;
+        app.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
+            @Override public void onActivityCreated(Activity a, Bundle b) {}
+            @Override public void onActivityStarted(Activity a) {}
+            @Override public void onActivityPaused(Activity a) {}
+            @Override public void onActivityStopped(Activity a) {}
+            @Override public void onActivitySaveInstanceState(Activity a, Bundle b) {}
+            @Override public void onActivityDestroyed(Activity a) {}
+
+            @Override
+            public void onActivityResumed(Activity a) {
+                if (a == gallery) return;
+                app.unregisterActivityLifecycleCallbacks(this);
+                if (SystemClock.uptimeMillis() <= until) pick(a, mode);
+            }
+        });
+        gallery.finish();
+    }
+
+    private static void pick(Activity activity, int mode) {
         try {
             FragmentManager fragments = activity.getFragmentManager();
             if (activity.isFinishing() || fragments.findFragmentByTag(TAG) != null) return;
@@ -118,9 +142,7 @@ public final class GalleryBackup {
             Bundle args = new Bundle();
             args.putInt(MODE, mode);
             picker.setArguments(args);
-            picker.onReturned = onReturned;
             fragments.beginTransaction().add(picker, TAG).commitAllowingStateLoss();
-            if (onPicking != null) onPicking.run();
         } catch (Exception e) {
             Logger.printException(() -> "Gallery backup: cannot open the file picker", e);
             Utils.showToastShort(str("spookd_gallery_action_failed"));
@@ -301,9 +323,6 @@ public final class GalleryBackup {
 
     /** Headless: opens the file picker and hands what was picked to the work thread. */
     public static final class Picker extends Fragment {
-        // Lost when the activity is recreated meanwhile; the work still starts.
-        Runnable onReturned;
-
         @Override
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
@@ -333,7 +352,6 @@ public final class GalleryBackup {
         private void done() {
             FragmentManager fragments = getFragmentManager();
             if (fragments != null) fragments.beginTransaction().remove(this).commitAllowingStateLoss();
-            if (onReturned != null) onReturned.run();
         }
     }
 }

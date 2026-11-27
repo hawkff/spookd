@@ -348,8 +348,6 @@ public final class PrivateGalleryActivity {
         private int loads;
         private boolean closed;
         private boolean sharing; // main thread only
-        // While the backup file picker is up, a stop clears the screen but keeps the activity for the picker's result.
-        private boolean filePicking;
         private String photoLabel;
         private String videoLabel;
         private String audioLabel;
@@ -530,11 +528,7 @@ public final class PrivateGalleryActivity {
             row.addView(filterAction);
             row.addView(action(str("spookd_gallery_view"), null, v -> chooseView()));
             if (!picking) {
-                row.addView(action("⋯", str("spookd_gallery_more"), v -> GalleryBackup.choose(activity, false,
-                        () -> filePicking = true, () -> {
-                            close();
-                            activity.finish();
-                        })));
+                row.addView(action("⋯", str("spookd_gallery_more"), v -> GalleryBackup.choose(activity, false)));
             }
             return row;
         }
@@ -589,7 +583,7 @@ public final class PrivateGalleryActivity {
                 public void onActivityStopped(Activity a) {
                     if (a != activity || a.isChangingConfigurations()) return;
                     close();
-                    if (!filePicking) a.finish();
+                    a.finish();
                 }
 
                 @Override
