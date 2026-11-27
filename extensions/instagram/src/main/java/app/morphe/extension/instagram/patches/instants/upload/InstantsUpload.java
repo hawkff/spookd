@@ -52,14 +52,10 @@ import app.morphe.extension.shared.Utils;
  */
 @SuppressWarnings({"unused", "deprecation"})
 public final class InstantsUpload {
-    private static final String BUTTON_TAG = "spookd_instants_upload";
     private static final String PICKER_TAG = "spookd_instants_upload_picker";
     private static final String VIDEO_DIR = "spookd_instants_upload";
     // Instagram uploads a sent video from its file, so copies stay this long.
     private static final long VIDEO_KEEP_MS = 24 * 60 * 60 * 1000L;
-    // The latest Instants camera's shutter; written on the main thread.
-    private static volatile WeakReference<Object> shutter = new WeakReference<>(null);
-
     private InstantsUpload() {
     }
 
@@ -76,12 +72,19 @@ public final class InstantsUpload {
     /** Main thread: a round button at the bottom start of the visible square, once per preview. */
     private static void attach(ViewGroup preview, Object cameraShutter) {
         try {
-            shutter = new WeakReference<>(cameraShutter);
-            if (preview.findViewWithTag(BUTTON_TAG) != null) return;
+            for (int i = 0; i < preview.getChildCount(); i++) {
+                Object tag = preview.getChildAt(i).getTag();
+                if (tag instanceof Camera) {
+                    // The same preview set up again: its picks go to the new shutter.
+                    ((Camera) tag).shutter = new WeakReference<>(cameraShutter);
+                    return;
+                }
+            }
+            Camera camera = new Camera(preview, cameraShutter);
             Context context = preview.getContext();
             float density = context.getResources().getDisplayMetrics().density;
             ImageView button = new ImageView(context);
-            button.setTag(BUTTON_TAG);
+            button.setTag(camera);
             int icon = ResourceUtils.getIdentifier(ResourceType.DRAWABLE, "instagram_photo_add_filled_24");
             button.setImageResource(icon != 0 ? icon : android.R.drawable.ic_menu_gallery);
             button.setColorFilter(Color.WHITE);
@@ -92,7 +95,7 @@ public final class InstantsUpload {
             circle.setColor(0x66000000);
             button.setBackground(circle);
             button.setContentDescription(str("spookd_instants_upload_button"));
-            button.setOnClickListener(InstantsUpload::choose);
+            button.setOnClickListener(v -> choose(v, camera));
             int size = (int) (SpookdType.MIN_TOUCH * density);
             preview.addView(button, new ViewGroup.LayoutParams(size, size));
             preview.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> place(preview, button));
@@ -116,7 +119,7 @@ public final class InstantsUpload {
     }
 
     /** Main thread. */
-    private static void choose(View button) {
+    private static void choose(View button, Camera camera) {
         try {
             if (!Pref.sendMediaAsInstants()) {
                 button.setVisibility(View.GONE);
@@ -129,7 +132,7 @@ public final class InstantsUpload {
                     ? new CharSequence[]{phone, str("spookd_gallery_picker_entry")}
                     : new CharSequence[]{phone};
             InstagramDialogBox dialog = new InstagramDialogBox(activity);
-            dialog.addDialogMenuItems(items, (d, which) -> pick(activity, which == 1));
+            dialog.addDialogMenuItems(items, (d, which) -> pick(activity, which == 1, camera));
             dialog.getDialog().show();
         } catch (Throwable t) {
             failed("open the choice", t);
@@ -137,11 +140,12 @@ public final class InstantsUpload {
     }
 
     /** Main thread: a headless fragment of the camera's screen opens the picker and gets its result. */
-    private static void pick(Activity activity, boolean gallery) {
+    private static void pick(Activity activity, boolean gallery, Camera camera) {
         try {
             FragmentManager fragments = activity.getFragmentManager();
             if (activity.isFinishing() || fragments.findFragmentByTag(PICKER_TAG) != null) return;
             Picker picker = new Picker();
+            picker.camera = camera;
             Bundle args = new Bundle();
             args.putBoolean(Picker.GALLERY, gallery);
             picker.setArguments(args);
@@ -168,11 +172,11 @@ public final class InstantsUpload {
     }
 
     /** Background thread. */
-    private static void prepare(Context app, Uri uri) {
+    private static void prepare(Context app, Uri uri, Camera camera) {
         try {
             String type = app.getContentResolver().getType(uri);
-            if (type != null && type.startsWith("video/")) prepareVideo(app, uri);
-            else if (type != null && type.startsWith("image/")) preparePhoto(app, uri);
+            if (type != null && type.startsWith("video/")) prepareVideo(app, uri, camera);
+            else if (type != null && type.startsWith("image/")) preparePhoto(app, uri, camera);
             else Utils.showToastShort(str("spookd_instants_upload_failed"));
         } catch (Throwable t) {
             failed("read " + uri, t);
@@ -180,7 +184,7 @@ public final class InstantsUpload {
     }
 
     /** Background thread: upright, center-cropped to a square no wider than the screen, like a camera frame. */
-    private static void preparePhoto(Context app, Uri uri) throws IOException {
+    private static void preparePhoto(Context app, Uri uri, Camera camera) throws IOException {
         ContentResolver resolver = app.getContentResolver();
         BitmapFactory.Options bounds = new BitmapFactory.Options();
         bounds.inJustDecodeBounds = true;
@@ -213,33 +217,33 @@ public final class InstantsUpload {
         matrix.postRotate(degrees);
         Bitmap photo = Bitmap.createBitmap(decoded, crop[0], crop[1], crop[2], crop[2], matrix, true);
         if (photo != decoded) decoded.recycle();
-        Utils.runOnMainThread(() -> sendPhoto(photo));
+        Utils.runOnMainThread(() -> sendPhoto(photo, camera));
     }
 
     /** Main thread. */
-    private static void sendPhoto(Bitmap photo) {
+    private static void sendPhoto(Bitmap photo, Camera camera) {
         try {
-            Object camera = shutter.get();
-            if (camera == null) {
+            Object live = camera.live();
+            if (live == null) {
                 photo.recycle();
                 Utils.showToastShort(str("spookd_instants_upload_camera_closed"));
                 return;
             }
             // Without a high-quality capture id the frame details are only checked for null.
-            capturePhotoNative(camera, photo, "", null, null, new Object(), Boolean.FALSE, null, Boolean.FALSE);
+            capturePhotoNative(live, photo, "", null, null, new Object(), Boolean.FALSE, null, Boolean.FALSE);
         } catch (Throwable t) {
             failed("send a photo", t);
         }
     }
 
     /** Background thread: refuses a video longer than the camera records, else copies it for Instagram's handler. */
-    private static void prepareVideo(Context app, Uri uri) throws IOException {
-        Object camera = shutter.get();
-        if (camera == null) {
+    private static void prepareVideo(Context app, Uri uri, Camera camera) throws IOException {
+        Object live = camera.shutter.get();
+        if (live == null) {
             Utils.showToastShort(str("spookd_instants_upload_camera_closed"));
             return;
         }
-        long maxMs = maxVideoMillisNative(camera);
+        long maxMs = maxVideoMillisNative(live);
         if (tooLong(durationMs(app, uri), maxMs)) {
             Utils.showToastLong(str("spookd_instants_upload_too_long", maxMs / 1000));
             return;
@@ -258,19 +262,19 @@ public final class InstantsUpload {
             video.delete();
             throw e;
         }
-        Utils.runOnMainThread(() -> sendVideo(video));
+        Utils.runOnMainThread(() -> sendVideo(video, camera));
     }
 
     /** Main thread. */
-    private static void sendVideo(File video) {
+    private static void sendVideo(File video, Camera camera) {
         try {
-            Object camera = shutter.get();
-            if (camera == null) {
+            Object live = camera.live();
+            if (live == null) {
                 video.delete();
                 Utils.showToastShort(str("spookd_instants_upload_camera_closed"));
                 return;
             }
-            captureVideoNative(camera, video);
+            captureVideoNative(live, video);
         } catch (Throwable t) {
             failed("send a video", t);
         }
@@ -305,6 +309,11 @@ public final class InstantsUpload {
     private static void failed(String action, Throwable t) {
         Logger.printException(() -> "InstantsUpload: cannot " + action, t);
         Utils.showToastShort(str("spookd_instants_upload_failed"));
+    }
+
+    /** A pick goes out only while its camera's preview is shown, its shutter not released and the switch on. */
+    static boolean accepts(boolean previewShown, boolean shutterOpen, boolean enabled) {
+        return previewShown && shutterOpen && enabled;
     }
 
     /** {x, y, side} of the centered square of a {@code width} by {@code height} image. */
@@ -359,6 +368,11 @@ public final class InstantsUpload {
         return 0;
     }
 
+    /** Whether Instagram released this shutter when its camera closed. */
+    public static boolean releasedNative(Object camera) {
+        return false;
+    }
+
     public static float horizontalMarginNative(View preview) {
         return 0;
     }
@@ -367,10 +381,31 @@ public final class InstantsUpload {
         return 0;
     }
 
+    /** One Instants camera preview and the shutter its latest setup built; set on the main thread. */
+    static final class Camera {
+        private final WeakReference<View> preview;
+        volatile WeakReference<Object> shutter;
+
+        Camera(View preview, Object shutter) {
+            this.preview = new WeakReference<>(preview);
+            this.shutter = new WeakReference<>(shutter);
+        }
+
+        /** This camera's shutter while it can still take a pick, else null. */
+        Object live() {
+            View view = preview.get();
+            Object current = shutter.get();
+            boolean open = current != null && !releasedNative(current);
+            return accepts(view != null && view.isAttachedToWindow(), open, Pref.sendMediaAsInstants()) ? current : null;
+        }
+    }
+
     /** Headless: opens the phone's photo picker or the private gallery and hands the pick on. */
     public static final class Picker extends Fragment {
         static final String GALLERY = "gallery";
         private static final int REQUEST = 0x1a57;
+        // The camera whose button opened this picker; gone when the picker is recreated.
+        Camera camera;
 
         @Override
         public void onCreate(Bundle savedInstanceState) {
@@ -395,9 +430,12 @@ public final class InstantsUpload {
             if (requestCode != REQUEST) return;
             Uri uri = resultCode == Activity.RESULT_OK && data != null ? data.getData() : null;
             Activity activity = getActivity();
-            if (uri != null && activity != null) {
+            Camera from = camera;
+            if (uri != null && activity != null && from == null) {
+                Utils.showToastShort(str("spookd_instants_upload_camera_closed"));
+            } else if (uri != null && activity != null) {
                 Context app = activity.getApplicationContext();
-                Utils.runOnBackgroundThread(() -> prepare(app, uri));
+                Utils.runOnBackgroundThread(() -> prepare(app, uri, from));
             }
             done();
         }

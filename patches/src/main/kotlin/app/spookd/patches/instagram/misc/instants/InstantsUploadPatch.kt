@@ -15,9 +15,11 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.instructions
 import app.morphe.patcher.patch.PatchException
+import app.morphe.patcher.patch.classDefBy
 import app.morphe.patcher.patch.patch
 import app.morphe.patcher.util.getReference
 import app.morphe.patcher.util.registersUsed
+import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
@@ -94,6 +96,14 @@ val sendMediaAsInstantsPatch =
             val videoField = videoFields.lastOrNull()?.takeIf { it != videoFields.first() }
                 ?: throw PatchException("Instants video handler field not found")
 
+            // The shutter's photo entry first checks, under its lock, whether the camera released it.
+            val releasedField = classDefBy(shutterType).methods.firstOrNull {
+                AccessFlags.STATIC.isSet(it.accessFlags) && it.parameterTypes.firstOrNull()?.toString() == "Landroid/graphics/Bitmap;"
+            }?.implementation?.instructions?.firstNotNullOfOrNull { instruction ->
+                if (instruction.opcode != Opcode.IGET_BOOLEAN) return@firstNotNullOfOrNull null
+                instruction.getReference<FieldReference>()?.takeIf { it.definingClass == shutterType }
+            } ?: throw PatchException("Instants shutter release flag not found")
+
             val ready = InstantsCameraReadyFingerprint.method
             val code = ready.instructions.toList()
             // The recorder's time limit is read from the shutter once, to pass it on in microseconds.
@@ -145,6 +155,14 @@ val sendMediaAsInstantsPatch =
                 check-cast p0, $shutterType
                 iget-wide v0, p0, $maxVideoField
                 return-wide v0
+                """.trimIndent(),
+            )
+            uploadStub("releasedNative").method.addInstructions(
+                0,
+                """
+                check-cast p0, $shutterType
+                iget-boolean p0, p0, $releasedField
+                return p0
                 """.trimIndent(),
             )
             uploadStub("horizontalMarginNative").method.addInstructions(

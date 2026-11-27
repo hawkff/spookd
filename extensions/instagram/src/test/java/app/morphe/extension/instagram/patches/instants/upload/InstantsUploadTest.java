@@ -3,19 +3,36 @@ package app.morphe.extension.instagram.patches.instants.upload;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Intent;
 import android.media.ExifInterface;
+import android.view.View;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 29, manifest = Config.NONE)
 public final class InstantsUploadTest {
+    @Test
+    public void aPickIsDroppedWhenItsCameraClosedWasReleasedOrTheSwitchIsOff() {
+        assertTrue(InstantsUpload.accepts(true, true, true));
+        assertFalse(InstantsUpload.accepts(false, true, true));
+        assertFalse(InstantsUpload.accepts(true, false, true));
+        assertFalse(InstantsUpload.accepts(true, true, false));
+    }
+
+    @Test
+    public void aCameraWhosePreviewIsGoneHasNoLiveShutter() {
+        View preview = new View(RuntimeEnvironment.getApplication());
+        assertNull(new InstantsUpload.Camera(preview, new Object()).live());
+    }
+
     @Test
     public void centerSquareTakesTheMiddleOfTheLongerSide() {
         assertArrayEquals(new int[]{0, 420, 1080}, InstantsUpload.centerSquare(1080, 1920));
