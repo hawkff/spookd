@@ -572,7 +572,8 @@ public final class GalleryStoreTest {
     /** The one index the username-sorted query reads, failing when it also sorts in a temporary tree. */
     private String sortIndex(String source) {
         List<String> args = new ArrayList<>();
-        String query = GalleryStore.listQuery(source, null, false, null, GalleryStore.SORT_USERNAME, args);
+        String query = GalleryStore.listQuery(source, null, false, null, GalleryStore.SORT_USERNAME, false, null,
+                args);
         StringBuilder plan = new StringBuilder();
         try (Cursor rows = db.rawQuery("EXPLAIN QUERY PLAN " + query, args.toArray(new String[0]))) {
             while (rows.moveToNext()) plan.append(rows.getString(rows.getColumnCount() - 1)).append('\n');
@@ -633,6 +634,35 @@ public final class GalleryStoreTest {
         assertEquals("posts", GalleryStore.source("posts", "", "22"));
         assertEquals(GalleryStore.SOURCE_UNKNOWN, GalleryStore.source("posts", "", null));
         assertEquals("dms", GalleryStore.source("dms", null, null));
+    }
+
+    @Test
+    public void thisAccountOnlyKeepsTheCurrentAccountsDownloads() throws Exception {
+        long mine = savedBy("33", GalleryTab.POSTS, "1");
+        long other = savedBy("44", GalleryTab.POSTS, "2");
+        long unknown = savedBy(null, GalleryTab.REELS, "3");
+
+        assertEquals(Arrays.asList(unknown, other, mine),
+                ids(store.list(null, null, false, null, GalleryStore.SORT_NEWEST, false, "33")));
+        assertEquals(Collections.singletonList(mine),
+                ids(store.list(null, null, false, null, GalleryStore.SORT_NEWEST, true, "33")));
+        assertEquals(Collections.singletonList(other),
+                ids(store.list("posts", null, false, "ALI", GalleryStore.SORT_USERNAME, true, "44")));
+        assertTrue(store.list("reels", null, false, null, GalleryStore.SORT_NEWEST, true, "33").isEmpty());
+        // An unknown current account matches nothing, not every download.
+        assertTrue(store.list(null, null, false, null, GalleryStore.SORT_NEWEST, true, null).isEmpty());
+
+        List<String> args = new ArrayList<>();
+        GalleryStore.listQuery("posts", GalleryItem.PHOTO, false, "a", GalleryStore.SORT_NEWEST, true, "33", args);
+        assertEquals(Arrays.asList("posts", "33", GalleryItem.PHOTO, "%a%"), args);
+    }
+
+    /** A photo of alice with a link, saved by {@code accountId} one minute after the previous download. */
+    private long savedBy(String accountId, GalleryTab tab, String content) throws IOException {
+        clock[0] += 60_000;
+        GalleryItem item = new GalleryItem(tab, GalleryItem.PHOTO, "alice", null, "m" + content,
+                "https://www.instagram.com/p/" + content + "/", accountId, null);
+        return store.publish(part(content), item, null, "f.jpg", false);
     }
 
     /** A download with a media id one minute after the previous one, as big as {@code content}. */

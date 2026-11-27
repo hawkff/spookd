@@ -707,6 +707,7 @@
     <string name="spookd_gallery_import_stopped">Import stopped. Imported %1$d. Already in the gallery: %2$d. Not imported: %3$d.</string>
     <string name="spookd_gallery_import_invalid">This file is not a gallery backup, or it is damaged. Nothing was imported.</string>
     <string name="spookd_gallery_edit_photo">Edit photo</string>
+    <string name="spookd_gallery_this_account_only">This account only</string>
     <string name="spookd_photo_editor_save">Save</string>
     <string name="spookd_photo_editor_straighten">Straighten</string>
     <string name="spookd_photo_editor_free">Free</string>

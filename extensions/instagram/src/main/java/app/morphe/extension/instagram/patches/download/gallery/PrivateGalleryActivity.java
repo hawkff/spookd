@@ -171,6 +171,8 @@ public final class PrivateGalleryActivity {
         final String mark;
         /** What the download knows about its media; null for vault items. */
         final GalleryItem details;
+        /** The account that saved it; null when unknown. */
+        final String accountId;
         /** Main thread once shown. */
         boolean favorite;
 
@@ -189,6 +191,7 @@ public final class PrivateGalleryActivity {
             ownerUsername = entry.item.ownerUsername;
             mark = null;
             details = entry.item;
+            accountId = entry.item.accountId;
             favorite = entry.favorite;
         }
 
@@ -207,6 +210,7 @@ public final class PrivateGalleryActivity {
             ownerUsername = stored.senderUsername;
             mark = MediaVault.markResource(stored.viewMode);
             details = null;
+            accountId = stored.accountId;
             this.favorite = favorite;
         }
 
@@ -228,8 +232,9 @@ public final class PrivateGalleryActivity {
         }
 
         /** The filters {@link GalleryStore#list} applies in SQL, for vault items. */
-        boolean matches(String kind, boolean favoritesOnly, String username) {
+        boolean matches(String kind, boolean favoritesOnly, String username, boolean accountOnly, String account) {
             return (kind == null || kind.equals(this.kind)) && (!favoritesOnly || favorite)
+                    && (!accountOnly || (account != null && account.equals(accountId)))
                     && (username.isEmpty() || (!unknownOwner()
                     && ownerUsername.toLowerCase(Locale.ROOT).contains(username)));
         }
@@ -265,9 +270,11 @@ public final class PrivateGalleryActivity {
      * {@code source} is All; vault items are matched and merged here, downloads in SQL.
      */
     private static Loaded load(boolean prune, String source, String kind, boolean favoritesOnly, String username,
-                               String sort) {
+                               String sort, boolean accountOnly) {
         Loaded out = new Loaded();
+        String account = null;
         try {
+            if (accountOnly) account = Gallery.accountId();
             if (prune) Gallery.prune();
             GalleryStore store = GalleryStore.get();
             long[] totals = store.totals();
@@ -276,7 +283,8 @@ public final class PrivateGalleryActivity {
             out.dmDownloads = store.has(DMS);
             out.unknownDownloads = store.has(GalleryStore.SOURCE_UNKNOWN);
             out.importedDownloads = store.has(IMPORTED);
-            for (GalleryStore.Entry entry : store.list(source, kind, favoritesOnly, username, sort)) {
+            for (GalleryStore.Entry entry : store.list(source, kind, favoritesOnly, username, sort, accountOnly,
+                    account)) {
                 out.items.add(new Item(entry));
             }
         } catch (Exception e) {
@@ -300,7 +308,7 @@ public final class PrivateGalleryActivity {
                     out.bytes += stored.sizeBytes;
                     if (!shown) continue;
                     Item item = new Item(stored, favorites.contains(stored.id));
-                    if (!item.matches(kind, favoritesOnly, username)) continue;
+                    if (!item.matches(kind, favoritesOnly, username, accountOnly, account)) continue;
                     out.items.add(item);
                     merged = true;
                 }
@@ -328,6 +336,8 @@ public final class PrivateGalleryActivity {
         private String source;
         private String kind;
         private boolean favoritesOnly;
+        /** Only items the current account saved; kept per device. */
+        private boolean accountOnly;
         private String username = "";
         private String sort;
         private int columns;
@@ -382,6 +392,7 @@ public final class PrivateGalleryActivity {
             columns = Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, viewPrefs.getInt("columns", 3)));
             listView = viewPrefs.getBoolean("list", false);
             overlays = viewPrefs.getBoolean("overlays", true);
+            accountOnly = viewPrefs.getBoolean("account_only", false);
             String savedSort = viewPrefs.getString("sort", GalleryStore.SORT_NEWEST);
             sort = Arrays.asList(SORTS).contains(savedSort) ? savedSort : GalleryStore.SORT_NEWEST;
             photoLabel = str("spookd_media_photo");
@@ -413,6 +424,7 @@ public final class PrivateGalleryActivity {
             root.addView(tabsRow);
 
             controls = buildControls();
+            updateFilterLabel();
             root.addView(controls);
             selectionBar = buildSelectionBar();
             selectionBar.setVisibility(View.GONE);
@@ -621,8 +633,9 @@ public final class PrivateGalleryActivity {
             boolean favoritesOnly = this.favoritesOnly;
             String username = this.username;
             String sort = this.sort;
+            boolean accountOnly = this.accountOnly;
             JOBS.execute(() -> {
-                Loaded loaded = load(prune, source, kind, favoritesOnly, username, sort);
+                Loaded loaded = load(prune, source, kind, favoritesOnly, username, sort, accountOnly);
                 ui.post(() -> {
                     if (!closed && generation == loads) show(loaded);
                 });
@@ -686,7 +699,7 @@ public final class PrivateGalleryActivity {
             adapter = null;
             updateSelection();
             if (list.isEmpty()) {
-                boolean filtered = kind != null || favoritesOnly || !username.isEmpty();
+                boolean filtered = kind != null || favoritesOnly || accountOnly || !username.isEmpty();
                 content.addView(message(str(filtered ? "spookd_gallery_no_matches" : "spookd_gallery_empty")));
                 return;
             }
@@ -795,17 +808,28 @@ public final class PrivateGalleryActivity {
 
         private void chooseFilter() {
             String[] labels = {str("spookd_gallery_all_types"), str("spookd_gallery_photos"),
-                    str("spookd_gallery_videos"), str("spookd_gallery_favorites_only")};
+                    str("spookd_gallery_videos"), str("spookd_gallery_favorites_only"),
+                    str("spookd_gallery_this_account_only")};
             boolean[] checked = {kind == null, GalleryItem.PHOTO.equals(kind), GalleryItem.VIDEO.equals(kind),
-                    favoritesOnly};
+                    favoritesOnly, accountOnly};
             choose(labels, checked, which -> {
-                if (which == 3) favoritesOnly = !favoritesOnly;
-                else kind = which == 1 ? GalleryItem.PHOTO : which == 2 ? GalleryItem.VIDEO : null;
-                int active = (kind == null ? 0 : 1) + (favoritesOnly ? 1 : 0);
-                filterAction.setText(active == 0 ? str("spookd_gallery_filter")
-                        : str("spookd_gallery_filter") + " (" + active + ")");
+                if (which == 3) {
+                    favoritesOnly = !favoritesOnly;
+                } else if (which == 4) {
+                    accountOnly = !accountOnly;
+                    viewPrefs.edit().putBoolean("account_only", accountOnly).apply();
+                } else {
+                    kind = which == 1 ? GalleryItem.PHOTO : which == 2 ? GalleryItem.VIDEO : null;
+                }
+                updateFilterLabel();
                 reload(false);
             });
+        }
+
+        private void updateFilterLabel() {
+            int active = (kind == null ? 0 : 1) + (favoritesOnly ? 1 : 0) + (accountOnly ? 1 : 0);
+            filterAction.setText(active == 0 ? str("spookd_gallery_filter")
+                    : str("spookd_gallery_filter") + " (" + active + ")");
         }
 
         private void chooseView() {
