@@ -26,6 +26,9 @@ import android.provider.MediaStore;
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
+import android.view.ViewTreeObserver;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 
 import java.io.File;
@@ -34,6 +37,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.WeakReference;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import app.morphe.extension.instagram.entity.InstagramDialogBox;
 import app.morphe.extension.instagram.patches.HomeLongPress;
@@ -64,6 +69,9 @@ public final class InstantsUpload {
     private static final Rect visibleRect = new Rect();
     // Instagram uploads a sent video from its file, so copies stay this long.
     private static final long VIDEO_KEEP_MS = 24 * 60 * 60 * 1000L;
+    // Each camera preview's picks, so a repeated setup of the same preview keeps one button; main thread only.
+    private static final Map<View, Camera> cameras = new WeakHashMap<>();
+
     private InstantsUpload() {
     }
 
@@ -77,22 +85,29 @@ public final class InstantsUpload {
         }
     }
 
-    /** Main thread: a round button at the bottom start of the visible square, once per preview. */
+    /**
+     * Main thread: a round button at the bottom start of the visible square, once per preview. Compose
+     * hit-tests its own layers over the preview first, so the button sits outside the camera's Compose
+     * view, as the last child of the frame that holds it.
+     */
     private static void attach(ViewGroup preview, Object cameraShutter) {
         try {
-            for (int i = 0; i < preview.getChildCount(); i++) {
-                Object tag = preview.getChildAt(i).getTag();
-                if (tag instanceof Camera) {
-                    // The same preview set up again: its picks go to the new shutter.
-                    ((Camera) tag).shutter = new WeakReference<>(cameraShutter);
-                    return;
-                }
+            Camera known = cameras.get(preview);
+            if (known != null) {
+                // The same preview set up again: its picks go to the new shutter.
+                known.shutter = new WeakReference<>(cameraShutter);
+                return;
+            }
+            FrameLayout host = hostOf(preview);
+            if (host == null) {
+                Logger.printInfo(() -> "InstantsUpload: no frame outside the camera's Compose view");
+                return;
             }
             Camera camera = new Camera(preview, cameraShutter);
+            cameras.put(preview, camera);
             Context context = preview.getContext();
             float density = context.getResources().getDisplayMetrics().density;
             ImageView button = new ImageView(context);
-            button.setTag(camera);
             int icon = ResourceUtils.getIdentifier(ResourceType.DRAWABLE, "instagram_photo_add_filled_24");
             button.setImageResource(icon != 0 ? icon : android.R.drawable.ic_menu_gallery);
             button.setColorFilter(Color.WHITE);
@@ -104,25 +119,110 @@ public final class InstantsUpload {
             button.setBackground(circle);
             button.setContentDescription(str("spookd_instants_upload_button"));
             button.setOnClickListener(v -> choose(v, camera));
-            int size = (int) (SpookdType.MIN_TOUCH * density);
-            preview.addView(button, new ViewGroup.LayoutParams(size, size));
-            preview.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> place(preview, button));
+            // Above any raised sibling for drawing and touch, without a shadow.
+            button.setOutlineProvider(null);
+            button.setTranslationZ(100 * density);
+            new Overlay(preview, host, button, (int) (SpookdType.MIN_TOUCH * density));
         } catch (Throwable t) {
             Logger.printException(() -> "InstantsUpload: cannot add the button", t);
         }
     }
 
-    /** Main thread, after each preview layout. */
-    private static void place(ViewGroup preview, View button) {
-        try {
+    /** The frame holding the outermost Compose view around {@code preview}, or null. */
+    private static FrameLayout hostOf(View preview) {
+        ViewParent compose = null;
+        for (ViewParent parent = preview.getParent(); parent instanceof View; parent = parent.getParent()) {
+            if (parent.getClass().getName().startsWith("androidx.compose.ui.platform.")) compose = parent;
+        }
+        ViewParent host = compose == null ? null : compose.getParent();
+        return host instanceof FrameLayout ? (FrameLayout) host : null;
+    }
+
+    /** Main thread: on screen, not just attached; a swiped-out pager page stays attached and VISIBLE. */
+    private static boolean onScreen(View view) {
+        return view.isShown() && view.getGlobalVisibleRect(visibleRect) && !visibleRect.isEmpty();
+    }
+
+    /**
+     * The button in its host while the preview is attached: placed over the preview before each draw,
+     * hidden while the preview is off screen. Hierarchy changes are posted, since attach and detach
+     * arrive while the host may be adding or removing other children.
+     */
+    private static final class Overlay implements View.OnAttachStateChangeListener, ViewTreeObserver.OnPreDrawListener {
+        private final View preview;
+        private final FrameLayout host;
+        private final View button;
+        private final int size;
+        private final int[] previewAt = new int[2];
+        private final int[] hostAt = new int[2];
+        private ViewTreeObserver observer;
+
+        Overlay(View preview, FrameLayout host, View button, int size) {
+            this.preview = preview;
+            this.host = host;
+            this.button = button;
+            this.size = size;
+            preview.addOnAttachStateChangeListener(this);
+            if (preview.isAttachedToWindow()) onViewAttachedToWindow(preview);
+        }
+
+        @Override
+        public void onViewAttachedToWindow(View v) {
+            try {
+                if (observer == null) {
+                    observer = preview.getViewTreeObserver();
+                    observer.addOnPreDrawListener(this);
+                }
+                host.post(() -> {
+                    if (preview.isAttachedToWindow() && button.getParent() == null) {
+                        host.addView(button, new FrameLayout.LayoutParams(size, size));
+                    }
+                });
+            } catch (Throwable t) {
+                Logger.printException(() -> "InstantsUpload: cannot show the button", t);
+            }
+        }
+
+        @Override
+        public void onViewDetachedFromWindow(View v) {
+            try {
+                if (observer != null && observer.isAlive()) observer.removeOnPreDrawListener(this);
+                observer = null;
+                host.post(() -> {
+                    if (!preview.isAttachedToWindow() && button.getParent() == host) host.removeView(button);
+                });
+            } catch (Throwable t) {
+                Logger.printException(() -> "InstantsUpload: cannot remove the button", t);
+            }
+        }
+
+        @Override
+        public boolean onPreDraw() {
+            try {
+                place();
+            } catch (Throwable t) {
+                Logger.printException(() -> "InstantsUpload: cannot place the button", t);
+            }
+            return true;
+        }
+
+        /** Each change asks for a draw, which calls this again with the same values. */
+        private void place() {
+            if (button.getParent() != host || !button.isEnabled()) return;
+            boolean shown = onScreen(preview);
+            int visibility = shown ? View.VISIBLE : View.INVISIBLE;
+            if (button.getVisibility() != visibility) button.setVisibility(visibility);
+            if (!shown) return;
+            preview.getLocationInWindow(previewAt);
+            host.getLocationInWindow(hostAt);
             float margin = horizontalMarginNative(preview);
             float top = verticalOffsetNative(preview);
             float inset = SpookdType.SPACE_M * preview.getResources().getDisplayMetrics().density;
             float bottom = Math.min(top + preview.getWidth() - 2 * margin, preview.getHeight());
-            button.setTranslationX(margin + inset);
-            button.setTranslationY(bottom - inset - button.getHeight());
-        } catch (Throwable t) {
-            Logger.printException(() -> "InstantsUpload: cannot place the button", t);
+            float x = previewAt[0] - hostAt[0] + margin + inset - button.getLeft();
+            float y = previewAt[1] - hostAt[1] + bottom - inset - size - button.getTop();
+            if (button.getTranslationX() != x) button.setTranslationX(x);
+            if (button.getTranslationY() != y) button.setTranslationY(y);
         }
     }
 
@@ -130,6 +230,7 @@ public final class InstantsUpload {
     private static void choose(View button, Camera camera) {
         try {
             if (!Pref.sendMediaAsInstants()) {
+                button.setEnabled(false);
                 button.setVisibility(View.GONE);
                 return;
             }
@@ -492,10 +593,7 @@ public final class InstantsUpload {
             View view = preview.get();
             Object current = shutter.get();
             boolean open = current != null && !releasedNative(current);
-            // A camera page swiped out of view stays attached and VISIBLE, so its on-screen area is checked too.
-            boolean shown = view != null && view.isShown() && view.getGlobalVisibleRect(visibleRect)
-                    && !visibleRect.isEmpty();
-            return accepts(shown, open, Pref.sendMediaAsInstants()) ? current : null;
+            return accepts(view != null && onScreen(view), open, Pref.sendMediaAsInstants()) ? current : null;
         }
     }
 
