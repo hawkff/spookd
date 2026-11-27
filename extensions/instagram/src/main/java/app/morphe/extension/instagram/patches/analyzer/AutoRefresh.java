@@ -42,8 +42,11 @@ public final class AutoRefresh {
     private static int resumedActivities;
     private static WeakReference<Activity> lastResumed = new WeakReference<>(null);
     private static boolean checkPending;
-    // Bumped when the app leaves the screen, so an older delayed check does nothing.
+    // Bumped when the app leaves the screen, so older delayed checks, reads and waits start nothing.
     private static int generation;
+    // True once the wait completed in the current foreground stretch; every automatic start needs it.
+    static boolean settled;
+    // True once this process started its automatic scan or found that none is needed.
     static boolean attempted;
     // An account whose due scan waits for the counts of its own profile header.
     private static String waitingAccountId;
@@ -81,7 +84,10 @@ public final class AutoRefresh {
     static void onResumed(Activity activity) {
         resumedActivities++;
         lastResumed = new WeakReference<>(activity);
-        if (attempted || checkPending) return;
+        Row current = row.get();
+        // The settings page came back, maybe after a scan or a delete in the analyzer.
+        if (current != null && current.host == activity) current.readLastScan();
+        if (attempted || settled || checkPending) return;
         checkPending = true;
         int scheduled = generation;
         Utils.runOnMainThreadDelayed(() -> check(scheduled), SETTLE_DELAY_MS);
@@ -91,6 +97,7 @@ public final class AutoRefresh {
         if (resumedActivities > 0) resumedActivities--;
         if (resumedActivities > 0) return;
         generation++;
+        settled = false;
         checkPending = false;
     }
 
@@ -99,32 +106,37 @@ public final class AutoRefresh {
         return resumedActivities > 0 ? lastResumed.get() : null;
     }
 
-    /** Main thread: this process's one attempt, unless the app left the screen during the delay. */
+    /** Main thread: the wait completed; makes this process's one attempt or resumes a deferred one. */
     private static void check(int scheduled) {
         if (scheduled != generation) return;
         checkPending = false;
         Activity activity = resumedActivity();
         if (activity == null) return;
-        attempted = true;
+        settled = true;
+        waitingAccountId = null;
         try {
-            if (Pref.profileAnalyzerAutoRefreshDays() == 0) return;
-            String accountId = ProfileAnalyzer.currentAccountId();
-            if (accountId != null) readAndStart(activity.getApplicationContext(), accountId);
+            String accountId = Pref.profileAnalyzerAutoRefreshDays() == 0 ? null
+                    : ProfileAnalyzer.currentAccountId();
+            if (accountId == null) {
+                attempted = true;
+                return;
+            }
+            readAndStart(activity.getApplicationContext(), accountId, scheduled);
         } catch (Exception e) {
             String error = e.getClass().getSimpleName();
             Logger.printException(() -> "AutoRefresh: check failed: " + error);
         }
     }
 
-    /** Any thread: reads the last scan on the analyzer database queue, then starts on the main thread if due. */
-    private static void readAndStart(Context context, String accountId) {
+    /** Main thread: reads the last scan on the analyzer database queue, then decides on the main thread. */
+    private static void readAndStart(Context context, String accountId, int foreground) {
         ProfileVisits.DB_QUEUE.execute(() -> {
             try {
                 // Read on the queue that deletes run on, so a later delete changes the generation.
                 int dataGeneration = ProfileAnalyzer.dataGeneration();
                 SpookdFollowDb.Scan last = SpookdFollowDb.getInstance(context).latestScan(accountId);
-                if (last == null) return;
-                Utils.runOnMainThread(() -> startIfStillDue(accountId, last.finishedAt, dataGeneration));
+                long finishedAt = last == null ? 0 : last.finishedAt;
+                Utils.runOnMainThread(() -> startIfStillDue(accountId, finishedAt, dataGeneration, foreground));
             } catch (Exception e) {
                 String error = e.getClass().getSimpleName();
                 Logger.printException(() -> "AutoRefresh: last scan read failed: " + error);
@@ -132,32 +144,44 @@ public final class AutoRefresh {
         });
     }
 
-    /** Main thread: starts the scan unless the app left the screen or the setting changed during the read. */
-    private static void startIfStillDue(String accountId, long lastFinishedAt, int dataGeneration) {
+    /**
+     * Main thread: starts the scan unless the setting changed during the read. Leaving the app
+     * during the read defers the start to the next completed wait, which reads again.
+     */
+    private static void startIfStillDue(String accountId, long lastFinishedAt, int dataGeneration,
+                                        int foreground) {
+        if (attempted || foreground != generation) return;
         Activity activity = resumedActivity();
-        if (activity == null || !isDue(lastFinishedAt, Pref.profileAnalyzerAutoRefreshDays(),
-                System.currentTimeMillis())) return;
+        if (activity == null) return;
+        if (!isDue(lastFinishedAt, Pref.profileAnalyzerAutoRefreshDays(), System.currentTimeMillis())) {
+            attempted = true;
+            return;
+        }
         ProfileAnalyzer.Counts counts = ProfileAnalyzer.countsFor(accountId);
         if (counts == null) {
             // The scan's account-size limit needs current counts, which only the own profile header gives.
             waitingAccountId = accountId;
             return;
         }
+        attempted = true;
         ProfileAnalyzer.startAutomaticScan(activity, accountId, counts, dataGeneration);
     }
 
-    /** Main thread, inside Instagram's own profile header bind, once its counts were recorded. */
+    /**
+     * Main thread, inside Instagram's own profile header bind, once its counts were recorded. Before
+     * the wait completed in this foreground stretch, the wait's own check resumes the attempt.
+     */
     static void onOwnCounts(String accountId) {
-        if (!accountId.equals(waitingAccountId)) return;
+        if (!settled || !accountId.equals(waitingAccountId)) return;
         Activity activity = resumedActivity();
         if (activity == null) return;
         waitingAccountId = null;
         // Read again, since the data may have been deleted or rescanned while waiting.
-        readAndStart(activity.getApplicationContext(), accountId);
+        readAndStart(activity.getApplicationContext(), accountId, generation);
     }
 
-    /** Scan worker thread, after a scan was stored: the displayed row shows its new next scan. */
-    static void onScanFinished() {
+    /** Any thread, after a scan was stored or data was deleted: the displayed row shows its new next scan. */
+    static void onDataChanged() {
         Utils.runOnMainThread(() -> {
             Row current = row.get();
             if (current != null) current.readLastScan();
@@ -176,11 +200,14 @@ public final class AutoRefresh {
     }
 
     private static final class Row extends ListPref {
+        // The settings page the row is on.
+        final Context host;
         // Main thread; -1 until read, 0 when this account has no scan.
         private long lastFinishedAt = -1;
 
         Row(Context context) {
             super(context);
+            host = context;
         }
 
         @Override

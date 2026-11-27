@@ -181,6 +181,7 @@ public final class ProfileAnalyzer {
     /** Any thread, on the analyzer database queue with ProfileAnalyzer.class held, right after a delete. */
     static synchronized void onDataDeleted() {
         dataGeneration++;
+        AutoRefresh.onDataChanged();
     }
 
     static synchronized int dataGeneration() {
@@ -348,7 +349,7 @@ public final class ProfileAnalyzer {
         }
         if (state == FollowScan.State.FINISHED) {
             Utils.showToastLong(str("spookd_profile_analyzer_finished", count(followers), count(received)));
-            AutoRefresh.onScanFinished();
+            AutoRefresh.onDataChanged();
         } else if (state == FollowScan.State.FAILED) {
             Utils.showToastLong(str("spookd_profile_analyzer_failed"));
         }
