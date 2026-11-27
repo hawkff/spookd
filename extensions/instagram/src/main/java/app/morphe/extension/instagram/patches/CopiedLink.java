@@ -17,6 +17,7 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import app.morphe.extension.instagram.settings.SafeStartup;
 import app.morphe.extension.shared.Logger;
 
 /** Opens a copied Instagram link or @username inside this app from a Search tab long-press. */
@@ -40,6 +41,7 @@ public final class CopiedLink {
      * @return true when a copied link was opened, false to run Instagram's original handler.
      */
     public static boolean onSearchLongClick(View view) {
+        if (SafeStartup.featuresOff()) return false;
         try {
             Context context = view.getContext();
             ClipboardManager clipboard = context.getSystemService(ClipboardManager.class);
