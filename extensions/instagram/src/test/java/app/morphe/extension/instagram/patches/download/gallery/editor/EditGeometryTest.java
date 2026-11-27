@@ -116,6 +116,18 @@ public final class EditGeometryTest {
     }
 
     @Test
+    public void accessibilityResizeStepsKeepTheMiddleAndTheLimits() {
+        double[] r = {-50, -40, 50, 40};
+        assertArrayEquals(new double[]{-60, -40, 60, 40}, EditGeometry.grown(r, 20, 0, 0, 30, 400, 300, 0), 1e-9);
+        assertArrayEquals(new double[]{-50, -30, 50, 30}, EditGeometry.grown(r, 0, -20, 0, 30, 400, 300, 0), 1e-9);
+        double[] square = EditGeometry.grown(new double[]{-50, -50, 50, 50}, 20, 0, 1, 30, 400, 300, 0);
+        assertEquals(1, width(square) / height(square), 1e-9);
+        assertEquals(0, square[0] + square[2], 1e-9);
+        assertEquals(30, width(EditGeometry.grown(r, -500, 0, 0, 30, 400, 300, 0)), 0.01);
+        assertEquals(400, width(EditGeometry.grown(r, 1000, 0, 0, 30, 400, 300, 0)), 0.01);
+    }
+
+    @Test
     public void movingSlidesAlongTheEdgeItHits() {
         double[] moved = EditGeometry.drag(new double[]{-50, -50, 50, 50}, EditGeometry.MOVE, 1000, 10, 1, 30,
                 400, 300, 0);

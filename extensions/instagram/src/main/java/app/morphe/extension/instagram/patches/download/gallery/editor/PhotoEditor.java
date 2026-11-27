@@ -12,14 +12,21 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.drawable.GradientDrawable;
 import android.media.ExifInterface;
+import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewParent;
 import android.view.WindowManager;
+import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityManager;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityNodeProvider;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
@@ -58,6 +65,25 @@ public final class PhotoEditor extends Dialog {
     private static final double[] RATIOS = {0, 1, 4 / 5.0, 16 / 9.0, -1};
     private static final String[] RATIO_LABELS = {"spookd_photo_editor_free", "1:1", "4:5", "16:9",
             "spookd_photo_editor_original"};
+    /** The edges each crop handle moves, in reading order; a handle's index is its accessibility node id. */
+    private static final int[] HANDLE_EDGES = {
+            EditGeometry.LEFT | EditGeometry.TOP, EditGeometry.TOP, EditGeometry.TOP | EditGeometry.RIGHT,
+            EditGeometry.RIGHT, EditGeometry.RIGHT | EditGeometry.BOTTOM, EditGeometry.BOTTOM,
+            EditGeometry.BOTTOM | EditGeometry.LEFT, EditGeometry.LEFT};
+    private static final String[] HANDLE_LABELS = {"spookd_photo_editor_handle_top_left",
+            "spookd_photo_editor_handle_top", "spookd_photo_editor_handle_top_right",
+            "spookd_photo_editor_handle_right", "spookd_photo_editor_handle_bottom_right",
+            "spookd_photo_editor_handle_bottom", "spookd_photo_editor_handle_bottom_left",
+            "spookd_photo_editor_handle_left"};
+    /** Accessibility actions on the frame; their ids are {@link #ACTION_BASE} plus the index. */
+    private static final String[] FRAME_ACTIONS = {"spookd_photo_editor_move_left",
+            "spookd_photo_editor_move_right", "spookd_photo_editor_move_up", "spookd_photo_editor_move_down",
+            "spookd_photo_editor_wider", "spookd_photo_editor_narrower", "spookd_photo_editor_taller",
+            "spookd_photo_editor_shorter"};
+    private static final int ACTION_BASE = 0x7e5d0000;
+    private static final int ACTION_OUTWARD = ACTION_BASE + 8;
+    private static final int ACTION_INWARD = ACTION_BASE + 9;
+    private static final int HOST = AccessibilityNodeProvider.HOST_VIEW_ID;
 
     private final Activity activity;
     private final File file;
@@ -415,6 +441,56 @@ public final class PhotoEditor extends Dialog {
             enable(chip, ready);
         }
         cropView.invalidate();
+        if (rect != null) cropView.setContentDescription(cropSize());
+    }
+
+    /** Smallest crop side a drag allows, in source pixels. */
+    private double minSide() {
+        return 0.1 * Math.min(baseWidth(), baseHeight());
+    }
+
+    private String cropSize() {
+        return str("spookd_photo_editor_crop_frame", (int) Math.round(rect[2] - rect[0]),
+                (int) Math.round(rect[3] - rect[1]));
+    }
+
+    /**
+     * Accessibility step {@code action} on the frame ({@link #HOST}) or on handle {@code node}: 5% of the
+     * shorter side, clamped like a drag. False when it is not one of their actions.
+     */
+    private boolean stepCrop(int node, int action) {
+        if (preview == null || saving) return false;
+        double step = 0.05 * Math.min(baseWidth(), baseHeight());
+        double w = baseWidth();
+        double h = baseHeight();
+        double min = minSide();
+        double[] next;
+        if (node == HOST) {
+            int move = EditGeometry.MOVE;
+            switch (action - ACTION_BASE) {
+                case 0: next = EditGeometry.drag(rect, move, -step, 0, ratio, min, w, h, degrees); break;
+                case 1: next = EditGeometry.drag(rect, move, step, 0, ratio, min, w, h, degrees); break;
+                case 2: next = EditGeometry.drag(rect, move, 0, -step, ratio, min, w, h, degrees); break;
+                case 3: next = EditGeometry.drag(rect, move, 0, step, ratio, min, w, h, degrees); break;
+                case 4: next = EditGeometry.grown(rect, step, 0, ratio, min, w, h, degrees); break;
+                case 5: next = EditGeometry.grown(rect, -step, 0, ratio, min, w, h, degrees); break;
+                case 6: next = EditGeometry.grown(rect, 0, step, ratio, min, w, h, degrees); break;
+                case 7: next = EditGeometry.grown(rect, 0, -step, ratio, min, w, h, degrees); break;
+                default: return false;
+            }
+        } else {
+            if (action != ACTION_OUTWARD && action != ACTION_INWARD) return false;
+            int edges = HANDLE_EDGES[node];
+            double signed = action == ACTION_OUTWARD ? step : -step;
+            double dx = (edges & EditGeometry.LEFT) != 0 ? -signed : (edges & EditGeometry.RIGHT) != 0 ? signed : 0;
+            double dy = (edges & EditGeometry.TOP) != 0 ? -signed : (edges & EditGeometry.BOTTOM) != 0 ? signed : 0;
+            next = EditGeometry.drag(rect, edges, dx, dy, ratio, min, w, h, degrees);
+        }
+        rect = next;
+        userRect = next;
+        updateViews();
+        cropView.announceForAccessibility(cropSize());
+        return true;
     }
 
     /** Cancel and Back: asks first when there is something to lose. */
@@ -570,7 +646,7 @@ public final class PhotoEditor extends Dialog {
             handle.setStyle(Paint.Style.STROKE);
             handle.setStrokeWidth(4 * density);
             handle.setStrokeCap(Paint.Cap.SQUARE);
-            setContentDescription(str("spookd_photo_editor_crop_area"));
+            setContentDescription(str("spookd_photo_editor_crop_frame", 0, 0));
         }
 
         /** Fits the turned photo's bounds into the view with room for the handles; false before there is one. */
@@ -658,9 +734,8 @@ public final class PhotoEditor extends Dialog {
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     if (dragging == 0) return false;
-                    double min = 0.1 * Math.min(baseWidth(), baseHeight());
                     rect = EditGeometry.drag(downRect, dragging, (event.getX() - downX) / scale,
-                            (event.getY() - downY) / scale, ratio, min, baseWidth(), baseHeight(), degrees);
+                            (event.getY() - downY) / scale, ratio, minSide(), baseWidth(), baseHeight(), degrees);
                     invalidate();
                     return true;
                 case MotionEvent.ACTION_UP:
@@ -672,6 +747,133 @@ public final class PhotoEditor extends Dialog {
                     return true;
                 default:
                     return dragging != 0;
+            }
+        }
+
+        private final Nodes nodes = new Nodes();
+        private int hovered = HOST;
+
+        @Override
+        public AccessibilityNodeProvider getAccessibilityNodeProvider() {
+            return nodes;
+        }
+
+        /** Explore by touch finds the handle under the finger; elsewhere the frame itself. */
+        @Override
+        public boolean dispatchHoverEvent(MotionEvent event) {
+            AccessibilityManager manager = (AccessibilityManager) getContext()
+                    .getSystemService(Context.ACCESSIBILITY_SERVICE);
+            if (manager == null || !manager.isTouchExplorationEnabled() || preview == null || !fitFrame()) {
+                return super.dispatchHoverEvent(event);
+            }
+            int node = HOST;
+            if (event.getActionMasked() != MotionEvent.ACTION_HOVER_EXIT) {
+                int edges = hit(event.getX(), event.getY());
+                for (int i = 0; i < HANDLE_EDGES.length; i++) {
+                    if (HANDLE_EDGES[i] == edges) node = i;
+                }
+            }
+            if (node != hovered) {
+                if (hovered != HOST) nodes.send(hovered, AccessibilityEvent.TYPE_VIEW_HOVER_EXIT);
+                hovered = node;
+                if (node != HOST) nodes.send(node, AccessibilityEvent.TYPE_VIEW_HOVER_ENTER);
+            }
+            return node != HOST || super.dispatchHoverEvent(event);
+        }
+
+        /** Handle {@code node}'s touch area, in this view's coordinates. */
+        private Rect handleBounds(int node) {
+            int edges = HANDLE_EDGES[node];
+            float l = x(rect[0]);
+            float t = y(rect[1]);
+            float r = x(rect[2]);
+            float b = y(rect[3]);
+            float cx = (edges & EditGeometry.LEFT) != 0 ? l : (edges & EditGeometry.RIGHT) != 0 ? r : (l + r) / 2;
+            float cy = (edges & EditGeometry.TOP) != 0 ? t : (edges & EditGeometry.BOTTOM) != 0 ? b : (t + b) / 2;
+            int half = dp(SpookdType.SPACE_XL);
+            return new Rect(Math.round(cx) - half, Math.round(cy) - half, Math.round(cx) + half,
+                    Math.round(cy) + half);
+        }
+
+        /** The frame with its move and resize actions, and one virtual node per handle for TalkBack. */
+        private final class Nodes extends AccessibilityNodeProvider {
+            private int focused = HOST;
+
+            @Override
+            public AccessibilityNodeInfo createAccessibilityNodeInfo(int node) {
+                boolean ready = preview != null && !saving && fitFrame();
+                if (node == HOST) {
+                    AccessibilityNodeInfo info = AccessibilityNodeInfo.obtain(CropView.this);
+                    onInitializeAccessibilityNodeInfo(info);
+                    if (!ready) return info;
+                    for (int i = 0; i < HANDLE_EDGES.length; i++) info.addChild(CropView.this, i);
+                    for (int i = 0; i < FRAME_ACTIONS.length; i++) {
+                        info.addAction(new AccessibilityNodeInfo.AccessibilityAction(ACTION_BASE + i,
+                                str(FRAME_ACTIONS[i])));
+                    }
+                    return info;
+                }
+                if (!ready || node < 0 || node >= HANDLE_EDGES.length) return null;
+                AccessibilityNodeInfo info = AccessibilityNodeInfo.obtain(CropView.this, node);
+                info.setPackageName(getContext().getPackageName());
+                info.setClassName(View.class.getName());
+                info.setParent(CropView.this);
+                info.setContentDescription(str(HANDLE_LABELS[node]));
+                Rect bounds = handleBounds(node);
+                info.setBoundsInParent(bounds);
+                int[] screen = new int[2];
+                getLocationOnScreen(screen);
+                bounds.offset(screen[0], screen[1]);
+                info.setBoundsInScreen(bounds);
+                info.setVisibleToUser(true);
+                info.setEnabled(true);
+                info.setAccessibilityFocused(focused == node);
+                info.addAction(focused == node
+                        ? AccessibilityNodeInfo.AccessibilityAction.ACTION_CLEAR_ACCESSIBILITY_FOCUS
+                        : AccessibilityNodeInfo.AccessibilityAction.ACTION_ACCESSIBILITY_FOCUS);
+                info.addAction(new AccessibilityNodeInfo.AccessibilityAction(ACTION_OUTWARD,
+                        str("spookd_photo_editor_outward")));
+                info.addAction(new AccessibilityNodeInfo.AccessibilityAction(ACTION_INWARD,
+                        str("spookd_photo_editor_inward")));
+                return info;
+            }
+
+            @Override
+            public boolean performAction(int node, int action, Bundle arguments) {
+                try {
+                    if (node == HOST) {
+                        return stepCrop(HOST, action) || performAccessibilityAction(action, arguments);
+                    }
+                    if (node < 0 || node >= HANDLE_EDGES.length) return false;
+                    if (action == AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS) {
+                        if (focused == node) return false;
+                        focused = node;
+                        send(node, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED);
+                        return true;
+                    }
+                    if (action == AccessibilityNodeInfo.ACTION_CLEAR_ACCESSIBILITY_FOCUS) {
+                        if (focused != node) return false;
+                        focused = HOST;
+                        send(node, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED);
+                        return true;
+                    }
+                    return stepCrop(node, action);
+                } catch (Exception e) {
+                    Logger.printException(() -> "PhotoEditor: accessibility action failed", e);
+                    return false;
+                }
+            }
+
+            void send(int node, int type) {
+                ViewParent parent = getParent();
+                if (parent == null) return;
+                AccessibilityEvent event = AccessibilityEvent.obtain(type);
+                event.setSource(CropView.this, node);
+                event.setPackageName(getContext().getPackageName());
+                event.setClassName(View.class.getName());
+                event.setContentDescription(str(HANDLE_LABELS[node]));
+                event.setEnabled(true);
+                parent.requestSendAccessibilityEvent(CropView.this, event);
             }
         }
     }

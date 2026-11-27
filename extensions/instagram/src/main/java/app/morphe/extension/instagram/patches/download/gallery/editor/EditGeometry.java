@@ -80,6 +80,21 @@ final class EditGeometry {
         return farthest(r, handle, dx, dy, ratio, min, w, h, degrees);
     }
 
+    /** {@code r} {@code dWidth} wider and {@code dHeight} taller about its middle (negative narrows), clamped like {@link #drag}. */
+    static double[] grown(double[] r, double dWidth, double dHeight, double ratio, double min,
+                          double w, double h, double degrees) {
+        double[] out = r;
+        if (dWidth != 0) {
+            out = drag(out, LEFT, -dWidth / 2, 0, ratio, min, w, h, degrees);
+            out = drag(out, RIGHT, dWidth / 2, 0, ratio, min, w, h, degrees);
+        }
+        if (dHeight != 0) {
+            out = drag(out, TOP, 0, -dHeight / 2, ratio, min, w, h, degrees);
+            out = drag(out, BOTTOM, 0, dHeight / 2, ratio, min, w, h, degrees);
+        }
+        return out;
+    }
+
     /** The rect of the largest share of the drag that is still valid; {@code r} itself when none is. */
     private static double[] farthest(double[] r, int handle, double dx, double dy, double ratio, double min,
                                      double w, double h, double degrees) {
