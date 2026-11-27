@@ -651,6 +651,11 @@ public class Pref {
         return SettingsStatus.hideProfileGridReels && HIDE_PROFILE_GRID_REELS.get();
     }
 
+    /** "default", "keep" or "remove". */
+    public static String profileReelsSort() {
+        return SettingsStatus.profileReelsSort ? value(Settings.PROFILE_REELS_SORT) : "default";
+    }
+
     public static boolean confirmLike() {
         return on(Settings.CONFIRM_LIKE);
     }

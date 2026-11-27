@@ -300,6 +300,8 @@ public class SettingsStatus {
     public static void profileSavedTab() { profileSavedTab = true; }
     public static boolean hideProfileGridReels = false;
     public static void hideProfileGridReels() { hideProfileGridReels = true; }
+    public static boolean profileReelsSort = false;
+    public static void profileReelsSort() { profileReelsSort = true; }
     public static boolean confirmFollow = false;
     public static void confirmFollow() { confirmFollow = true; }
     public static boolean confirmFeedLike = false;
@@ -367,7 +369,7 @@ public class SettingsStatus {
     public static void moreOptionsOnProfile() { moreOptionsOnProfile = true; }
     public static boolean disableAppHaptics = false;
     public static void disableAppHaptics() { disableAppHaptics = true; }
-    public static boolean miscSection() {return ( disableAppHaptics || moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || defaultPlaybackSpeed || reelsPlayerOptions || reelsAutoScroll || pipForVideos || followBackIndicator || followListNonFollowerBadge || profileAnalyzer || exactProfileCounts || squareProfileGrid || profileSavedTab || hideProfileGridReels || confirmationsSection() || refreshControls || customFont);}
+    public static boolean miscSection() {return ( disableAppHaptics || moreOptionsOnProfile || moreOptionsOnPost || changeLikeAnimation || removeEmptyBottomSpace || copyCommentButton || improveImageViewing || resumeReelsAfterScrolling || playbackSpeedControls || defaultPlaybackSpeed || reelsPlayerOptions || reelsAutoScroll || pipForVideos || followBackIndicator || followListNonFollowerBadge || profileAnalyzer || exactProfileCounts || squareProfileGrid || profileSavedTab || hideProfileGridReels || profileReelsSort || confirmationsSection() || refreshControls || customFont);}
 
     //Font section.
     public static boolean customFont = false;
@@ -495,6 +497,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_square_profile_grid"), SettingsStatus.squareProfileGrid);
         FLAGS.put(str("spookd_profile_saved_tab"), SettingsStatus.profileSavedTab);
         FLAGS.put(str("spookd_hide_profile_grid_reels"), SettingsStatus.hideProfileGridReels);
+        FLAGS.put(str("spookd_profile_reels_sort"), SettingsStatus.profileReelsSort);
         FLAGS.put(str("spookd_confirm_follow"), SettingsStatus.confirmFollow);
         FLAGS.put(str("spookd_patch_confirm_feed_like"), SettingsStatus.confirmFeedLike);
         FLAGS.put(str("spookd_patch_confirm_reel_like"), SettingsStatus.confirmReelLike);

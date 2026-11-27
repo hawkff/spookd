@@ -1165,6 +1165,23 @@ public class ScreenBuilder {
                     Settings.HIDE_PROFILE_GRID_REELS
             ));
         }
+        if (SettingsStatus.profileReelsSort) {
+            ListPref reelsSort = new ListPref(context) {
+                @Override
+                protected void onSetInitialValue(boolean restoreValue, Object defaultValue) {
+                    super.onSetInitialValue(restoreValue, defaultValue);
+                    setEntries(new CharSequence[]{str("spookd_array_default"),
+                            str("spookd_profile_reels_sort_keep"), str("spookd_profile_reels_sort_remove")});
+                    setEntryValues(new CharSequence[]{"default", "keep", "remove"});
+                }
+            };
+            reelsSort.setTitle(str("spookd_profile_reels_sort"));
+            reelsSort.setDialogTitle(str("spookd_profile_reels_sort"));
+            reelsSort.setSummary(str("spookd_profile_reels_sort_desc"));
+            reelsSort.setKey(Settings.PROFILE_REELS_SORT.key);
+            reelsSort.setDefaultValue(Settings.PROFILE_REELS_SORT.defaultValue);
+            addPreference(reelsSort);
+        }
         if (SettingsStatus.disableAppHaptics) {
             addPreference(helper.switchPreference(
                     str("spookd_disable_app_haptics"),

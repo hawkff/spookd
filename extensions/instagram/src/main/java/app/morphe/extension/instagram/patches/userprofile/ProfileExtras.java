@@ -45,4 +45,20 @@ public final class ProfileExtras {
             return enabled;
         }
     }
+
+    /** Takes Instagram's answer to whether a profile's Reels tab offers the Most viewed sort. */
+    public static boolean profileReelsMostViewed(boolean available) {
+        try {
+            return mostViewedSort(Pref.profileReelsSort(), available);
+        } catch (Throwable t) {
+            Logger.printException(() -> "profileReelsMostViewed failure", t);
+            return available;
+        }
+    }
+
+    static boolean mostViewedSort(String mode, boolean available) {
+        if ("keep".equals(mode)) return true;
+        if ("remove".equals(mode)) return false;
+        return available;
+    }
 }

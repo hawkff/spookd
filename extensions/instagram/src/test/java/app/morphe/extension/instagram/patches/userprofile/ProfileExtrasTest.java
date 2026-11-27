@@ -14,4 +14,15 @@ public class ProfileExtrasTest {
         assertTrue(ProfileExtras.profileGridCountRepair(true));
         assertFalse(ProfileExtras.profileGridCountRepair(false));
     }
+
+    @Test
+    public void reelsSortKeepsOrRemovesMostViewedAndOtherwiseFollowsInstagram() {
+        assertTrue(ProfileExtras.mostViewedSort("keep", false));
+        assertFalse(ProfileExtras.mostViewedSort("remove", true));
+        assertTrue(ProfileExtras.mostViewedSort("default", true));
+        assertFalse(ProfileExtras.mostViewedSort("default", false));
+        assertTrue(ProfileExtras.mostViewedSort(null, true));
+        // The patch flag is off in tests, so the setting reads as default.
+        assertFalse(ProfileExtras.profileReelsMostViewed(false));
+    }
 }
