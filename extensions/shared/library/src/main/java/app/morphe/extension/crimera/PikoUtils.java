@@ -45,7 +45,6 @@ public class PikoUtils {
     public static void launchIntent(Intent intent){
         try {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             ctx.startActivity(intent);
          } catch (Exception e) {
             Logger.printException(() -> "launchIntent failure", e);
