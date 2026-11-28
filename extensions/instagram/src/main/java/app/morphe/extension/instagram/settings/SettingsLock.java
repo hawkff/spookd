@@ -11,7 +11,9 @@ import static app.morphe.extension.instagram.utils.IgStr.str;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.WindowManager;
 
 import java.util.Collections;
 import java.util.Set;
@@ -156,7 +158,23 @@ public final class SettingsLock {
 
     private static void show(Activity activity, Runnable setup, Runnable resumedInit) {
         screens.add(activity);
+        hideFromRecents(activity);
         setup.run();
         if (resumed.contains(activity)) resumedInit.run();
+    }
+
+    // The recents preview is taken after the app is left, too late for closing the screens to keep it out.
+    private static void hideFromRecents(Activity activity) {
+        try {
+            if (!stored.getAsBoolean()) return;
+            // Android 13 and newer keep ordinary screenshots working; older ones can only mark the window secure.
+            if (Build.VERSION.SDK_INT >= 33) {
+                activity.setRecentsScreenshotEnabled(false);
+            } else {
+                activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+            }
+        } catch (Throwable t) {
+            Logger.printException(() -> "Settings lock: cannot hide settings from recents", t);
+        }
     }
 }

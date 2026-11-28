@@ -8,6 +8,7 @@ import static org.robolectric.Shadows.shadowOf;
 import android.app.Activity;
 import android.app.KeyguardManager;
 import android.os.Looper;
+import android.view.WindowManager;
 
 import org.junit.After;
 import org.junit.Before;
@@ -200,6 +201,26 @@ public final class SettingsLockTest {
         SettingsLock.open(activity, () -> { }, () -> resumeInits[0]++);
 
         assertEquals(0, resumeInits[0]);
+    }
+
+    @Test
+    public void settingsShownWhileTheLockIsOnAreKeptOutOfRecents() {
+        Activity locked = Robolectric.buildActivity(Activity.class).create().get();
+        Activity open = Robolectric.buildActivity(Activity.class).create().get();
+        secure(locked, true);
+        switchOn[0] = true;
+        SettingsLock.unlocked = true;
+
+        SettingsLock.open(locked, () -> assertTrue(isSecure(locked)), () -> { });
+        switchOn[0] = false;
+        SettingsLock.open(open, () -> { }, () -> { });
+
+        assertTrue(isSecure(locked));
+        assertFalse(isSecure(open));
+    }
+
+    private static boolean isSecure(Activity activity) {
+        return (activity.getWindow().getAttributes().flags & WindowManager.LayoutParams.FLAG_SECURE) != 0;
     }
 
     private static void setPrompting(boolean prompting) throws Exception {
