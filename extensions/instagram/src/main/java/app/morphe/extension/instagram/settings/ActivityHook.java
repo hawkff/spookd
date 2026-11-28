@@ -174,7 +174,8 @@ public class ActivityHook {
 
         switch (launchType) {
             case LAUNCH_TYPE_SETTINGS:
-                SettingsLock.open(activity, () -> SettingsActivity.setupOnActivity(activity, savedInstanceState));
+                SettingsLock.open(activity, () -> SettingsActivity.setupOnActivity(activity, savedInstanceState),
+                        () -> SettingsActivity.onResumedAfterSetup(activity));
                 break;
             case LAUNCH_TYPE_DELETED_MESSAGES:
                 InboxLock.confirmViewer(activity, () -> DeletedMessagesActivity.setupOnActivity(activity));

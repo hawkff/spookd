@@ -49,7 +49,7 @@ public final class SettingsLockTest {
         secure(activity, true);
         boolean[] opened = {false};
 
-        SettingsLock.open(activity, () -> opened[0] = true);
+        SettingsLock.open(activity, () -> opened[0] = true, () -> { });
 
         assertTrue(opened[0]);
     }
@@ -61,7 +61,7 @@ public final class SettingsLockTest {
         switchOn[0] = true;
         boolean[] opened = {false};
 
-        SettingsLock.open(activity, () -> opened[0] = true);
+        SettingsLock.open(activity, () -> opened[0] = true, () -> { });
 
         assertTrue(opened[0]);
         assertFalse(SettingsLock.allowTurningOn(activity));
@@ -78,7 +78,7 @@ public final class SettingsLockTest {
         boolean[] opened = {false};
 
         // Turned on inside settings, so this session opens settings without asking.
-        SettingsLock.open(activity, () -> opened[0] = true);
+        SettingsLock.open(activity, () -> opened[0] = true, () -> { });
         assertTrue(opened[0]);
         assertFalse(activity.isFinishing());
 
@@ -94,7 +94,7 @@ public final class SettingsLockTest {
         Activity activity = controller.get();
         secure(activity, true);
         SettingsLock.install(activity);
-        SettingsLock.open(activity, () -> { });
+        SettingsLock.open(activity, () -> { }, () -> { });
 
         controller.pause().stop();
 
@@ -120,7 +120,7 @@ public final class SettingsLockTest {
         setPrompting(true);
         boolean[] opened = {false};
 
-        SettingsLock.open(activity, () -> opened[0] = true);
+        SettingsLock.open(activity, () -> opened[0] = true, () -> { });
         assertFalse(opened[0]);
         assertFalse(activity.isFinishing());
 
@@ -138,7 +138,7 @@ public final class SettingsLockTest {
         setPrompting(true);
         boolean[] opened = {false};
 
-        SettingsLock.open(activity, () -> opened[0] = true);
+        SettingsLock.open(activity, () -> opened[0] = true, () -> { });
         // The screen lock is gone by the rerun, so the gate opens settings instead of asking.
         secure(activity, false);
         endPrompt(false);
@@ -174,6 +174,32 @@ public final class SettingsLockTest {
         SettingsLock.confirmReset(activity, () -> resets[0]++);
 
         assertEquals(2, resets[0]);
+    }
+
+    @Test
+    public void setupAfterTheHostResumedRunsTheResumeInitItMissed() throws Exception {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        secure(activity, true);
+        switchOn[0] = true;
+        SettingsLock.install(activity);
+        setPrompting(true);
+        int[] resumeInits = {0};
+
+        SettingsLock.open(activity, () -> { }, () -> resumeInits[0]++);
+        assertEquals(0, resumeInits[0]);
+        endPrompt(true);
+
+        assertEquals(1, resumeInits[0]);
+    }
+
+    @Test
+    public void setupDuringCreationLeavesTheResumeInitToTheResume() {
+        Activity activity = Robolectric.buildActivity(Activity.class).create().get();
+        int[] resumeInits = {0};
+
+        SettingsLock.open(activity, () -> { }, () -> resumeInits[0]++);
+
+        assertEquals(0, resumeInits[0]);
     }
 
     private static void setPrompting(boolean prompting) throws Exception {

@@ -35,6 +35,7 @@ public final class SettingsLock {
     static int startedActivities;
     static BooleanSupplier stored = Pref::settingsLock;
     private static final Set<Activity> screens = Collections.newSetFromMap(new WeakHashMap<>());
+    private static final Set<Activity> resumed = Collections.newSetFromMap(new WeakHashMap<>());
 
     private SettingsLock() {
     }
@@ -60,6 +61,7 @@ public final class SettingsLock {
         if (installed) return;
         installed = true;
         startedActivities = 1;
+        resumed.add(first);
         try {
             register(first.getApplication());
         } catch (Throwable t) {
@@ -79,8 +81,8 @@ public final class SettingsLock {
             }
 
             @Override public void onActivityCreated(Activity a, Bundle b) { }
-            @Override public void onActivityResumed(Activity a) { }
-            @Override public void onActivityPaused(Activity a) { }
+            @Override public void onActivityResumed(Activity a) { resumed.add(a); }
+            @Override public void onActivityPaused(Activity a) { resumed.remove(a); }
             @Override public void onActivitySaveInstanceState(Activity a, Bundle b) { }
             @Override public void onActivityDestroyed(Activity a) { }
         });
@@ -99,9 +101,10 @@ public final class SettingsLock {
 
     /**
      * From the settings launch: runs {@code setup} now, or once the screen lock confirms it;
-     * cancelling closes the screen. A gate that fails opens settings anyway.
+     * cancelling closes the screen. A gate that fails opens settings anyway. A setup that runs on
+     * an already resumed activity is followed by {@code resumedInit}, the init its resume would run.
      */
-    static void open(Activity activity, Runnable setup) {
+    static void open(Activity activity, Runnable setup, Runnable resumedInit) {
         boolean ask;
         try {
             ask = !unlocked && enabled(activity);
@@ -110,25 +113,25 @@ public final class SettingsLock {
             ask = false;
         }
         if (!ask) {
-            show(activity, setup);
+            show(activity, setup, resumedInit);
             return;
         }
         if (InboxLock.isPrompting()) {
             // A prompt that confirmed the device lock counts for settings too.
             InboxLock.afterPrompt(confirmed -> {
                 if (confirmed) unlocked = true;
-                if (!activity.isFinishing() && !activity.isDestroyed()) open(activity, setup);
+                if (!activity.isFinishing() && !activity.isDestroyed()) open(activity, setup, resumedInit);
             });
             return;
         }
         try {
             InboxLock.confirmViewerWithCredential(activity, () -> {
                 unlocked = true;
-                if (!activity.isFinishing() && !activity.isDestroyed()) show(activity, setup);
+                if (!activity.isFinishing() && !activity.isDestroyed()) show(activity, setup, resumedInit);
             }, "spookd_settings_lock_prompt");
         } catch (Throwable t) {
             Logger.printException(() -> "Settings lock: prompt failed, opening settings", t);
-            show(activity, setup);
+            show(activity, setup, resumedInit);
         }
     }
 
@@ -151,8 +154,9 @@ public final class SettingsLock {
         }
     }
 
-    private static void show(Activity activity, Runnable setup) {
+    private static void show(Activity activity, Runnable setup, Runnable resumedInit) {
         screens.add(activity);
         setup.run();
+        if (resumed.contains(activity)) resumedInit.run();
     }
 }
