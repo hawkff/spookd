@@ -46,6 +46,8 @@ public final class StickerGalleryPicker {
     // Main thread only.
     private static int listId = -1;
     private static boolean noHostLogged;
+    // The latest pill tap; a result of an earlier one is dropped. Main thread only.
+    private static int currentLaunch;
 
     private StickerGalleryPicker() {
     }
@@ -107,6 +109,7 @@ public final class StickerGalleryPicker {
             if (activity.isFinishing() || fragments.findFragmentByTag(PICKER_TAG) != null) return;
             Picker picker = new Picker();
             picker.grid = new WeakReference<>(grid);
+            picker.launch = ++currentLaunch;
             Bundle args = new Bundle();
             args.putBoolean(GalleryPicker.EXTRA_PHOTOS_ONLY, !allowsVideo(grid));
             picker.setArguments(args);
@@ -134,7 +137,7 @@ public final class StickerGalleryPicker {
     }
 
     /** Background thread: checks the copy and reads a video's length, then hands it to the grid. */
-    private static void prepare(Context app, Uri uri, WeakReference<Object> target) {
+    private static void prepare(Context app, Uri uri, WeakReference<Object> target, int launch) {
         try {
             File file = pickedFile(app.getCacheDir(), uri);
             String type = file == null ? null : URLConnection.guessContentTypeFromName(file.getName());
@@ -148,18 +151,17 @@ public final class StickerGalleryPicker {
                 failed("read the length of " + file, null);
                 return;
             }
-            Utils.runOnMainThread(() -> deliver(target, file, video, length));
+            Utils.runOnMainThread(() -> deliver(target, launch, file, video, length));
         } catch (Throwable t) {
             failed("read " + uri, t);
         }
     }
 
     /** Main thread: Instagram's handler for a tapped cell, while the grid that asked is still shown. */
-    private static void deliver(WeakReference<Object> target, File file, boolean video, int durationMs) {
+    private static void deliver(WeakReference<Object> target, int launch, File file, boolean video, int durationMs) {
         try {
             Object grid = target.get();
-            View container = grid == null ? null : containerNative(grid);
-            if (container == null || !container.isAttachedToWindow() || !Pref.storyStickerGallery()) {
+            if (grid == null || !stillShown(containerNative(grid), launch) || !Pref.storyStickerGallery()) {
                 Utils.showToastShort(str("spookd_story_sticker_gallery_closed"));
                 return;
             }
@@ -172,6 +174,14 @@ public final class StickerGalleryPicker {
         } catch (Throwable t) {
             failed("add the sticker", t);
         }
+    }
+
+    /**
+     * Main thread: the pick of tap {@code launch} still goes to its grid. Instagram hides a grid it
+     * leaves without detaching it, so the grid must be shown and no later tap opened the gallery.
+     */
+    static boolean stillShown(View container, int launch) {
+        return container != null && launch == currentLaunch && container.isShown();
     }
 
     /** As Instagram builds one for a file of its own: no media store id, 1 for a photo and 3 for a video, upright. */
@@ -235,8 +245,9 @@ public final class StickerGalleryPicker {
     /** Headless: opens the private gallery in pick mode and hands the pick on. */
     public static final class Picker extends Fragment {
         private static final int REQUEST = 0x57c4;
-        // The grid whose pill opened this picker; gone when the picker is recreated.
+        // The grid whose pill opened this picker and that tap; gone when the picker is recreated.
         WeakReference<Object> grid;
+        int launch;
 
         @Override
         public void onCreate(Bundle savedInstanceState) {
@@ -260,11 +271,13 @@ public final class StickerGalleryPicker {
                 Uri uri = resultCode == Activity.RESULT_OK && data != null ? data.getData() : null;
                 Activity activity = getActivity();
                 WeakReference<Object> target = grid;
-                if (uri != null && activity != null && (target == null || target.get() == null)) {
+                Object from = target == null ? null : target.get();
+                if (uri != null && activity != null && (from == null || !stillShown(containerNative(from), launch))) {
                     Utils.showToastShort(str("spookd_story_sticker_gallery_closed"));
                 } else if (uri != null && activity != null) {
                     Context app = activity.getApplicationContext();
-                    Utils.runOnBackgroundThread(() -> prepare(app, uri, target));
+                    int tap = launch;
+                    Utils.runOnBackgroundThread(() -> prepare(app, uri, target, tap));
                 }
             } catch (Throwable t) {
                 failed("take the pick", t);
