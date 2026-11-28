@@ -76,6 +76,7 @@ public final class AccountSettings {
             "gallery_max_size_gb",
             "marked_story_keys_v2",
             "inbox_lock",
+            "settings_lock",
             "inbox_lock_notifications",
             "hidden_chats",
             "hidden_chats_taps",

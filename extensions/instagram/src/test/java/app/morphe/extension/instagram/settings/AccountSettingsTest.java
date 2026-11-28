@@ -62,6 +62,17 @@ public class AccountSettingsTest {
     }
 
     @Test
+    public void anAccountSwapNeitherDropsNorOverwritesTheSettingsLock() {
+        Map<String, Object> outgoing = map(OWNER, "1", "settings_lock", true, "disable_ads", true);
+        Map<String, Object> incoming = map(OWNER, "2", "settings_lock", false, "disable_ads", false);
+        Map<String, Object> older = map(OWNER, "3", "disable_ads", false);
+
+        assertFalse(AccountSettings.snapshot(outgoing, "1").containsKey("settings_lock"));
+        assertFalse(AccountSettings.keysToRemove(outgoing, older).contains("settings_lock"));
+        assertFalse(AccountSettings.keysToPut(incoming, "2").containsKey("settings_lock"));
+    }
+
+    @Test
     public void failedReplacementLeavesNoMarker() {
         Map<String, Object> accounts = new HashMap<>();
         assertFalse(AccountSettings.replaceUnderMarker(() -> accounts.put("adopt_live_file", true) == null,
