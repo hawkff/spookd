@@ -89,11 +89,11 @@ val storyStickerVideosPatch =
             val register = (result as OneRegisterInstruction).registerA
 
             // The flag's read comes after the layout check, so the override there leaves its index as is.
-            refresh.insertLiteralOverride(LAYOUT_PICKER_VIDEOS_FLAG, "$STORY_STICKER_VIDEOS_DESCRIPTOR->videos(Z)Z")
+            refresh.insertLiteralOverride(LAYOUT_PICKER_VIDEOS_FLAG, "$STORY_STICKER_VIDEOS_DESCRIPTOR->layoutFlag(Z)Z")
             refresh.addInstructions(
                 layoutPicker + 2,
                 """
-                invoke-static/range { v$register .. v$register }, $STORY_STICKER_VIDEOS_DESCRIPTOR->videos(Z)Z
+                invoke-static/range { v$register .. v$register }, $STORY_STICKER_VIDEOS_DESCRIPTOR->layoutCheck(Z)Z
                 move-result v$register
                 """.trimIndent(),
             )
