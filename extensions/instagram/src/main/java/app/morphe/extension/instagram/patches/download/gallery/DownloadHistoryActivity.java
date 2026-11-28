@@ -94,6 +94,10 @@ public final class DownloadHistoryActivity {
         private List<DownloadHistory.Entry> entries = new ArrayList<>();
         private TextView empty;
         private ListView list;
+        private TextView filter;
+        // Main thread; null shows every status or kind.
+        private String statusFilter;
+        private String kindFilter;
         private int loads;
         private boolean closed;
 
@@ -129,8 +133,18 @@ public final class DownloadHistoryActivity {
             clear.setGravity(Gravity.CENTER_VERTICAL);
             clear.setOnClickListener(v -> confirmClear());
             clear.setVisibility(unlocked ? View.VISIBLE : View.GONE);
+            filter = new TextView(activity);
+            filter.setText(str("spookd_gallery_filter"));
+            SpookdType.apply(filter, SpookdType.BODY);
+            filter.setTextColor(InstagramPreferenceStyle.primaryTextColor());
+            filter.setPadding(dp(12), dp(8), dp(4), dp(8));
+            filter.setMinHeight(dp(SpookdType.MIN_TOUCH));
+            filter.setGravity(Gravity.CENTER_VERTICAL);
+            filter.setOnClickListener(v -> chooseFilter());
+            filter.setVisibility(unlocked ? View.VISIBLE : View.GONE);
             toolbar.addView(back);
             toolbar.addView(title);
+            toolbar.addView(filter);
             toolbar.addView(clear);
             root.addView(toolbar);
 
@@ -220,10 +234,12 @@ public final class DownloadHistoryActivity {
         /** Main thread; the store's changes reload it, and Retry goes when its link expires. */
         private void reload() {
             int generation = ++loads;
+            String status = statusFilter;
+            String kind = kindFilter;
             JOBS.execute(() -> {
                 List<DownloadHistory.Entry> loaded;
                 try {
-                    loaded = DownloadHistory.get().list();
+                    loaded = DownloadHistory.get().list(status, kind);
                 } catch (Exception e) {
                     Logger.printException(() -> "Download history: cannot list", e);
                     loaded = new ArrayList<>();
@@ -233,6 +249,8 @@ public final class DownloadHistoryActivity {
                     if (closed || generation != loads) return;
                     entries = result;
                     adapter.notifyDataSetChanged();
+                    empty.setText(str(status == null && kind == null
+                            ? "spookd_download_history_empty" : "spookd_download_history_no_match"));
                     empty.setVisibility(result.isEmpty() ? View.VISIBLE : View.GONE);
                     list.setVisibility(result.isEmpty() ? View.GONE : View.VISIBLE);
                     ui.removeCallbacks(refresh);
@@ -245,6 +263,32 @@ public final class DownloadHistoryActivity {
                     if (next != Long.MAX_VALUE) ui.postDelayed(refresh, next - now);
                 });
             });
+        }
+
+        /** One list for both filters: a status row sets the status, a type row the type. */
+        private void chooseFilter() {
+            String[] statuses = {null, DownloadHistory.FAILED, DownloadHistory.SAVED};
+            String[] kinds = {null, GalleryItem.PHOTO, GalleryItem.VIDEO, GalleryItem.AUDIO};
+            String[] labels = {str("spookd_download_history_filter_all"), str("spookd_download_history_filter_failed"),
+                    str("spookd_download_history_filter_done"), str("spookd_gallery_all_types"),
+                    str("spookd_gallery_photos"), str("spookd_gallery_videos"),
+                    str("spookd_download_history_filter_audio")};
+            CharSequence[] shown = new CharSequence[labels.length];
+            for (int i = 0; i < labels.length; i++) {
+                boolean checked = i < statuses.length ? TextUtils.equals(statuses[i], statusFilter)
+                        : TextUtils.equals(kinds[i - statuses.length], kindFilter);
+                shown[i] = (checked ? "✓ " : "") + labels[i];
+            }
+            new AlertDialog.Builder(InstagramPreferenceStyle.dialogContext(activity))
+                    .setItems(shown, (d, which) -> {
+                        if (which < statuses.length) statusFilter = statuses[which];
+                        else kindFilter = kinds[which - statuses.length];
+                        int active = (statusFilter == null ? 0 : 1) + (kindFilter == null ? 0 : 1);
+                        filter.setText(active == 0 ? str("spookd_gallery_filter")
+                                : str("spookd_gallery_filter") + " (" + active + ")");
+                        reload();
+                    })
+                    .show();
         }
 
         private void confirmClear() {

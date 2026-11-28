@@ -195,10 +195,26 @@ public final class DownloadHistory {
 
     /** Newest first. */
     synchronized List<Entry> list() {
+        return list(null, null);
+    }
+
+    /** Newest first, only rows with {@code status} and {@code kind}; null matches any. */
+    synchronized List<Entry> list(String status, String kind) {
+        String where = "";
+        List<String> args = new ArrayList<>();
+        if (status != null) {
+            where += " AND h.status = ?";
+            args.add(status);
+        }
+        if (kind != null) {
+            where += " AND h.kind = ?";
+            args.add(kind);
+        }
         List<Entry> out = new ArrayList<>();
         try (Cursor c = db.rawQuery("SELECT h.id, h.kind, h.owner_username, h.file_name, h.started_at,"
                 + " h.status, h.gallery_id, g.file, h.document, h.error FROM " + TABLE + " h"
-                + " LEFT JOIN gallery_items g ON g.id = h.gallery_id ORDER BY h.id DESC", null)) {
+                + " LEFT JOIN gallery_items g ON g.id = h.gallery_id WHERE 1" + where + " ORDER BY h.id DESC",
+                args.toArray(new String[0]))) {
             while (c.moveToNext()) out.add(new Entry(c, galleryDir));
         }
         return out;

@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -329,6 +330,31 @@ public final class DownloadHistoryTest {
         limit[0] = 6;
         for (int i = 0; i < 3; i++) history.start(GalleryItem.PHOTO, "alice", "more" + i + ".jpg");
         assertEquals(6, history.count());
+    }
+
+    @Test
+    public void listFiltersByStatusAndKind() {
+        long failedPhoto = history.start(GalleryItem.PHOTO, "alice", "a.jpg");
+        history.failed(failedPhoto, "IOException");
+        long savedVideo = history.start(GalleryItem.VIDEO, "alice", "b.mp4");
+        history.saved(savedVideo, "b.mp4", null, "content://b");
+        long savedAudio = history.start(GalleryItem.AUDIO, "alice", "c.m4a");
+        history.saved(savedAudio, "c.m4a", null, "content://c");
+        history.start(GalleryItem.VIDEO, "alice", "d.mp4");
+
+        assertEquals(4, history.list(null, null).size());
+        assertEquals(Collections.singletonList(failedPhoto), ids(history.list(DownloadHistory.FAILED, null)));
+        assertEquals(Arrays.asList(savedAudio, savedVideo), ids(history.list(DownloadHistory.SAVED, null)));
+        assertEquals(Collections.singletonList(savedVideo),
+                ids(history.list(DownloadHistory.SAVED, GalleryItem.VIDEO)));
+        assertEquals(2, history.list(null, GalleryItem.VIDEO).size());
+        assertTrue(history.list(DownloadHistory.FAILED, GalleryItem.AUDIO).isEmpty());
+    }
+
+    private static List<Long> ids(List<DownloadHistory.Entry> entries) {
+        List<Long> ids = new ArrayList<>();
+        for (DownloadHistory.Entry entry : entries) ids.add(entry.id);
+        return ids;
     }
 
     @Test
