@@ -1574,6 +1574,16 @@ public class ScreenBuilder {
             );
         }
 
+        if (SettingsStatus.storyStickerGallery) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_story_sticker_gallery"),
+                            str("spookd_story_sticker_gallery_desc"),
+                            Settings.STORY_STICKER_GALLERY
+                    )
+            );
+        }
+
         addPreference(
                 helper.buttonPreference(
                         str("spookd_download_history"),
@@ -2047,6 +2057,15 @@ public class ScreenBuilder {
                             str("spookd_copy_story_link"),
                             str("spookd_copy_story_link_desc"),
                             Settings.COPY_STORY_LINK
+                    )
+            );
+        }
+        if (SettingsStatus.storyStickerVideos) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_story_sticker_videos"),
+                            str("spookd_story_sticker_videos_desc"),
+                            Settings.STORY_STICKER_VIDEOS
                     )
             );
         }

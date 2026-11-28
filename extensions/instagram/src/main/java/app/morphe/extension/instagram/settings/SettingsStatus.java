@@ -154,8 +154,10 @@ public class SettingsStatus {
     public static void searchStoryViewers() { searchStoryViewers = true; }
     public static boolean copyStoryLink = false;
     public static void copyStoryLink() { copyStoryLink = true; }
+    public static boolean storyStickerVideos = false;
+    public static void storyStickerVideos() { storyStickerVideos = true; }
     public static boolean storySection() {
-        return (customiseStoryTimestamp || viewStoryMentions || disableStoryFlipping || loopStory || customiseStoryRingSize || hideStoryFollowButton || storyAutoSave || storyPlayback || storyMute || searchStoryViewers || copyStoryLink);
+        return (customiseStoryTimestamp || viewStoryMentions || disableStoryFlipping || loopStory || customiseStoryRingSize || hideStoryFollowButton || storyAutoSave || storyPlayback || storyMute || searchStoryViewers || copyStoryLink || storyStickerVideos);
     }
 
     //Links section.
@@ -410,6 +412,8 @@ public class SettingsStatus {
     public static void audioPageDownloadButton() {audioPageDownloadButton = true;}
     public static boolean galleryPicker = false;
     public static void galleryPicker() { galleryPicker = true; }
+    public static boolean storyStickerGallery = false;
+    public static void storyStickerGallery() { storyStickerGallery = true; }
     public static boolean downloadVoiceMessage = false;
     public static void downloadVoiceMessage() { downloadVoiceMessage = true; }
     public static boolean downloadWithExternalDownloader = false;
@@ -477,6 +481,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_download_voice_media"),SettingsStatus.downloadVoiceMessage);
         FLAGS.put(str("spookd_download_with_external_downloader"),SettingsStatus.downloadWithExternalDownloader);
         FLAGS.put(str("spookd_gallery_picker"), SettingsStatus.galleryPicker);
+        FLAGS.put(str("spookd_story_sticker_gallery"), SettingsStatus.storyStickerGallery);
         FLAGS.put(str("spookd_more_profile_options"),SettingsStatus.moreOptionsOnProfile);
         FLAGS.put(str("spookd_enable_more_options_on_post"),SettingsStatus.moreOptionsOnPost);
         FLAGS.put(str("spookd_disable_video_autoplay"),SettingsStatus.disableVideoAutoplay);
@@ -516,6 +521,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_mute_stories"), SettingsStatus.storyMute);
         FLAGS.put(str("spookd_search_story_viewers"), SettingsStatus.searchStoryViewers);
         FLAGS.put(str("spookd_copy_story_link"), SettingsStatus.copyStoryLink);
+        FLAGS.put(str("spookd_story_sticker_videos"), SettingsStatus.storyStickerVideos);
         FLAGS.put(str("spookd_follow_back_indicator"),SettingsStatus.followBackIndicator);
         FLAGS.put(str("spookd_exact_profile_counts"), SettingsStatus.exactProfileCounts);
         FLAGS.put(str("spookd_profile_analyzer"), SettingsStatus.profileAnalyzer);

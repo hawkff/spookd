@@ -422,6 +422,11 @@ public class Pref {
         return SettingsStatus.copyStoryLink && on(Settings.COPY_STORY_LINK);
     }
 
+    /** Read each time the story photo sticker's grid refreshes. */
+    public static boolean storyStickerVideos() {
+        return SettingsStatus.storyStickerVideos && on(Settings.STORY_STICKER_VIDEOS);
+    }
+
     /** One kind of activity notification: {@link Settings#ACTIVITY_ALERT_ONLINE} and the like. */
     public static boolean activityAlert(BooleanSetting kind) {
         return SettingsStatus.activityAlerts && on(kind);
@@ -655,6 +660,11 @@ public class Pref {
     // Same condition as the Home entry: the gallery's settings row must be shown.
     public static boolean galleryPicker() {
         return SettingsStatus.galleryPicker && SettingsStatus.downloadSection() && on(Settings.GALLERY_PICKER);
+    }
+    // Same condition as the chat picker's entry.
+    public static boolean storyStickerGallery() {
+        return SettingsStatus.storyStickerGallery && SettingsStatus.downloadSection()
+                && on(Settings.STORY_STICKER_GALLERY);
     }
     public static boolean directlyOpenMetaConfig() {
         return on(Settings.DIRECTLY_OPEN_METACONFIG);
