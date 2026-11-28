@@ -113,6 +113,14 @@ public final class SettingsLock {
             show(activity, setup);
             return;
         }
+        if (InboxLock.isPrompting()) {
+            // A prompt that confirmed the device lock counts for settings too.
+            InboxLock.afterPrompt(confirmed -> {
+                if (confirmed) unlocked = true;
+                if (!activity.isFinishing() && !activity.isDestroyed()) open(activity, setup);
+            });
+            return;
+        }
         try {
             InboxLock.confirmViewerWithCredential(activity, () -> {
                 unlocked = true;

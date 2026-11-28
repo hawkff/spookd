@@ -6,6 +6,7 @@ import static org.robolectric.Shadows.shadowOf;
 
 import android.app.Activity;
 import android.app.KeyguardManager;
+import android.os.Looper;
 
 import org.junit.After;
 import org.junit.Before;
@@ -16,6 +17,10 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
+import app.morphe.extension.instagram.patches.dm.InboxLock;
 import app.morphe.extension.instagram.utils.Pref;
 
 @RunWith(RobolectricTestRunner.class)
@@ -32,8 +37,9 @@ public final class SettingsLockTest {
     }
 
     @After
-    public void tearDown() {
+    public void tearDown() throws Exception {
         SettingsLock.stored = Pref::settingsLock;
+        setPrompting(false);
     }
 
     @Test
@@ -103,6 +109,54 @@ public final class SettingsLockTest {
 
         assertTrue(SettingsLock.allowTurningOn(activity));
         assertTrue(SettingsLock.enabled(activity));
+    }
+
+    @Test
+    public void aLaunchDuringAConfirmedPromptOpensOnceItEnds() throws Exception {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        secure(activity, true);
+        switchOn[0] = true;
+        setPrompting(true);
+        boolean[] opened = {false};
+
+        SettingsLock.open(activity, () -> opened[0] = true);
+        assertFalse(opened[0]);
+        assertFalse(activity.isFinishing());
+
+        endPrompt(true);
+
+        assertTrue(opened[0]);
+        assertTrue(SettingsLock.unlocked);
+    }
+
+    @Test
+    public void aLaunchDuringACancelledPromptRunsAgainInsteadOfBeingDropped() throws Exception {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        secure(activity, true);
+        switchOn[0] = true;
+        setPrompting(true);
+        boolean[] opened = {false};
+
+        SettingsLock.open(activity, () -> opened[0] = true);
+        // The screen lock is gone by the rerun, so the gate opens settings instead of asking.
+        secure(activity, false);
+        endPrompt(false);
+
+        assertTrue(opened[0]);
+        assertFalse(SettingsLock.unlocked);
+    }
+
+    private static void setPrompting(boolean prompting) throws Exception {
+        Field field = InboxLock.class.getDeclaredField("prompting");
+        field.setAccessible(true);
+        field.setBoolean(null, prompting);
+    }
+
+    private static void endPrompt(boolean confirmed) throws Exception {
+        Method method = InboxLock.class.getDeclaredMethod("promptEnded", boolean.class);
+        method.setAccessible(true);
+        method.invoke(null, confirmed);
+        shadowOf(Looper.getMainLooper()).idle();
     }
 
     private static void secure(Activity activity, boolean secure) {

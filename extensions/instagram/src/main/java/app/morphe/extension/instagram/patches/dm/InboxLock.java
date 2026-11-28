@@ -40,6 +40,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.function.Consumer;
 
 import app.morphe.extension.instagram.constants.UI;
 import app.morphe.extension.instagram.settings.preference.widgets.InstagramPreferenceStyle;
@@ -67,6 +68,7 @@ public final class InboxLock {
     private static boolean prompting;
     private static boolean autoPrompted;
     private static Runnable cancelAction;
+    private static final List<Consumer<Boolean>> afterPrompt = new ArrayList<>();
     private static final Set<Activity> secured = Collections.newSetFromMap(new WeakHashMap<>());
     private static final Set<Activity> viewers = Collections.newSetFromMap(new WeakHashMap<>());
     private static int startedActivities;
@@ -275,6 +277,29 @@ public final class InboxLock {
     }
 
     public static boolean isPrompting() { return prompting; }
+
+    /**
+     * Main thread: runs {@code next} once the prompt that is up ends, told whether it confirmed the
+     * device lock, so a request that arrives meanwhile is not dropped. Runs at once with false when none is up.
+     */
+    public static void afterPrompt(Consumer<Boolean> next) {
+        if (!prompting) {
+            next.accept(false);
+            return;
+        }
+        afterPrompt.add(next);
+    }
+
+    // Posted, so a waiting request can start its own prompt after this one has closed.
+    private static void promptEnded(boolean confirmed) {
+        prompting = false;
+        if (afterPrompt.isEmpty()) return;
+        List<Consumer<Boolean>> waiting = new ArrayList<>(afterPrompt);
+        afterPrompt.clear();
+        Utils.runOnMainThread(() -> {
+            for (Consumer<Boolean> next : waiting) next.accept(confirmed);
+        });
+    }
     /** Asks for the device lock and runs afterUnlock once it is confirmed. */
     public static void confirm(Activity activity, Runnable afterUnlock) {
         authenticate(activity, afterUnlock);
@@ -364,7 +389,7 @@ public final class InboxLock {
                     new BiometricPrompt.AuthenticationCallback() {
                         @Override
                         public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
-                            prompting = false;
+                            promptEnded(true);
                             cancelAction = null;
                             unlock();
                             if (afterUnlock != null) afterUnlock.run();
@@ -372,7 +397,7 @@ public final class InboxLock {
 
                         @Override
                         public void onAuthenticationError(int errorCode, CharSequence errString) {
-                            prompting = false;
+                            promptEnded(false);
                             Runnable cancelled = cancelAction;
                             cancelAction = null;
                             if (cancelled != null) cancelled.run();
@@ -380,7 +405,7 @@ public final class InboxLock {
                     });
         } catch (RuntimeException e) {
             // No callback will come, so a prompt that never started must not block later requests.
-            prompting = false;
+            promptEnded(false);
             cancelAction = null;
             throw e;
         }
