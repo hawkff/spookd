@@ -191,6 +191,8 @@ public class Settings {
     // Opt-in private gallery cleanup; "0" turns each limit off.
     public static final StringSetting GALLERY_MAX_AGE_DAYS = new StringSetting("gallery_max_age_days", "0", NOT_REQUIRED);
     public static final StringSetting GALLERY_MAX_SIZE_GB = new StringSetting("gallery_max_size_gb", "0", NOT_REQUIRED);
+    // Rows the download history keeps; lowering it drops the oldest at once.
+    public static final StringSetting DOWNLOAD_HISTORY_LIMIT = new StringSetting("download_history_limit", "500", NOT_REQUIRED);
     public static final BooleanSetting HOME_LONG_PRESS_GALLERY = new BooleanSetting("home_long_press_gallery", false, NOT_REQUIRED);
     public static final BooleanSetting GALLERY_PICKER = new BooleanSetting("gallery_picker", false, NOT_REQUIRED);
 
@@ -256,6 +258,7 @@ public class Settings {
     public static final StringSetting PRESENCE_REFRESH_MINUTES = new StringSetting("presence_refresh_minutes", "default", NOT_REQUIRED);
     public static final BooleanSetting HOLD_SEND_COPY_LINK = new BooleanSetting("hold_send_copy_link", false, REQUIRED);
     public static final BooleanSetting OPEN_SETTINGS_ON_LAUNCH = new BooleanSetting("open_settings_on_launch", false, NOT_REQUIRED);
+    public static final BooleanSetting SETTINGS_LOCK = new BooleanSetting("settings_lock", false, NOT_REQUIRED);
     // Megabytes; "0" turns it off.
     public static final StringSetting AUTO_CLEAR_CACHE_MB = new StringSetting("auto_clear_cache_mb", "0", NOT_REQUIRED);
     public static final BooleanSetting SHOW_NEW_LABELS = new BooleanSetting("show_new_labels", true, NOT_REQUIRED);
@@ -279,6 +282,8 @@ public class Settings {
             RESTORE_ACCOUNT_SEARCH.key,
             REELS_HOLD_TO_PAUSE.key,
             HIDE_MUSE.key,
+            SETTINGS_LOCK.key,
+            DOWNLOAD_HISTORY_LIMIT.key,
             "spookd_report_bug",
             "spookd_request_feature",
             "spookd_gallery_backup"

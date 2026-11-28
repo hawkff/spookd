@@ -117,6 +117,12 @@ public final class SettingsActivity {
         }
     }
 
+    /** Main thread: a setup that ran after the activity resumed missed that resume, so its init runs now. */
+    static void onResumedAfterSetup(Activity activity) {
+        Controller controller = getController(activity);
+        if (controller != null) controller.onResume();
+    }
+
     public static boolean handleBackPressed(Activity activity) {
         Controller controller = getController(activity);
         if (controller != null && controller.exitSearchIfActive()) {

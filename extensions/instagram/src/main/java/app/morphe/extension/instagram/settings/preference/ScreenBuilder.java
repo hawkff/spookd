@@ -33,6 +33,7 @@ import app.morphe.extension.instagram.patches.Links;
 import app.morphe.extension.instagram.patches.analyzer.AutoRefresh;
 import app.morphe.extension.instagram.patches.analyzer.ProfileAnalyzer;
 import app.morphe.extension.instagram.patches.customise.font.FontStorage;
+import app.morphe.extension.instagram.patches.download.gallery.DownloadHistory;
 import app.morphe.extension.instagram.patches.download.gallery.Gallery;
 import app.morphe.extension.instagram.patches.download.gallery.GalleryBackup;
 import app.morphe.extension.instagram.patches.focusLock.FocusLock;
@@ -1582,6 +1583,29 @@ public class ScreenBuilder {
                 )
         );
 
+        ListPref historyLimit = new ListPref(context) {
+            @Override
+            protected void onSetInitialValue(boolean restoreValue, Object defaultValue) {
+                super.onSetInitialValue(restoreValue, defaultValue);
+                CharSequence[] limits = {"100", "250", "500", "1000", "2000"};
+                setEntries(limits);
+                setEntryValues(limits);
+            }
+        };
+        historyLimit.setTitle(str("spookd_download_history_limit"));
+        historyLimit.setDialogTitle(str("spookd_download_history_limit"));
+        historyLimit.setSummary(str("spookd_download_history_limit_desc"));
+        historyLimit.setKey(Settings.DOWNLOAD_HISTORY_LIMIT.key);
+        historyLimit.setDefaultValue(Settings.DOWNLOAD_HISTORY_LIMIT.defaultValue);
+        historyLimit.setOnPreferenceChangeListener((preference, newValue) -> {
+            if (!helper.setValue(preference, newValue)) return false;
+            // The new value, not the getter, which reads the default while features are off.
+            int limit = Integer.parseInt((String) newValue);
+            Utils.runOnBackgroundThread(() -> DownloadHistory.applyLimit(limit));
+            return true;
+        });
+        addPreference(historyLimit);
+
         String phoneStorageReason = Build.VERSION.SDK_INT < 30
                 ? str("spookd_save_downloads_to_phone_storage_old_android")
                 : Gallery.canOpen(context) ? null : str("spookd_save_downloads_to_phone_storage_no_lock");
@@ -1869,6 +1893,14 @@ public class ScreenBuilder {
                         str("spookd_open_settings_on_launch"),
                         str("spookd_open_settings_on_launch_desc"),
                         Settings.OPEN_SETTINGS_ON_LAUNCH
+                )
+        );
+
+        addPreference(
+                helper.switchPreference(
+                        str("spookd_settings_lock"),
+                        str("spookd_settings_lock_desc"),
+                        Settings.SETTINGS_LOCK
                 )
         );
 

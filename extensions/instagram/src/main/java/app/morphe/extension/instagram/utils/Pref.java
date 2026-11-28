@@ -821,6 +821,15 @@ public class Pref {
         return removeLineBreaks(SharedPref.getStringPref(Settings.DOWNLOAD_FILE_NAME_TEMPLATE));
     }
 
+    /** Rows the download history keeps; the default when not a number. */
+    public static int downloadHistoryLimit() {
+        try {
+            return Integer.parseInt(value(Settings.DOWNLOAD_HISTORY_LIMIT).trim());
+        } catch (RuntimeException e) {
+            return Integer.parseInt(Settings.DOWNLOAD_HISTORY_LIMIT.defaultValue);
+        }
+    }
+
     public static boolean saveDownloadsToPhoneStorage() {
         return SharedPref.getBooleanPref(Settings.SAVE_DOWNLOADS_TO_PHONE_STORAGE);
     }
@@ -1088,6 +1097,11 @@ public class Pref {
 
     public static boolean openSettingsOnLaunch() {
         return on(Settings.OPEN_SETTINGS_ON_LAUNCH);
+    }
+
+    // The stored value, like Inbox lock, so the lock holds while features are off.
+    public static boolean settingsLock() {
+        return SharedPref.getBooleanPref(Settings.SETTINGS_LOCK);
     }
 
     /** 0 when off or not a number; auto clear itself does not run while features are off. */

@@ -95,6 +95,7 @@ public final class SafeStartup {
             if (activity == null || mainResumed) return;
             if (!anyResumed) {
                 anyResumed = true;
+                SettingsLock.install(activity);
                 // The first screen shown ends the start; a process started in the background never opened one.
                 Context context = activity.getApplicationContext();
                 closeAttempt(prefs(context));
@@ -186,7 +187,8 @@ public final class SafeStartup {
                 .setPositiveButton(str("spookd_safe_mode_keep"), (dialog, which) -> startup.edit()
                         .putBoolean(DISABLE_ALL_KEY, true).putBoolean(SAFE_MODE_KEY, false).apply())
                 .setNegativeButton(str("spookd_reset_pref"),
-                        (dialog, which) -> InstaUtils.showResetSettingsDialog(activity))
+                        (dialog, which) -> SettingsLock.confirmReset(activity,
+                                () -> InstaUtils.showResetSettingsDialog(activity)))
                 .setNeutralButton(str("spookd_safe_mode_turn_on"), (dialog, which) ->
                         runSave(() -> {
                             boolean saved = startup.edit()

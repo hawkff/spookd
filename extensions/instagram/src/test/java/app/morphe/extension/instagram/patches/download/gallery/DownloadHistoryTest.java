@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -44,6 +45,7 @@ public final class DownloadHistoryTest {
     public TemporaryFolder tmp = new TemporaryFolder();
 
     private final long[] clock = {NOW};
+    private final int[] limit = {500};
     private GalleryDb helper;
     private SQLiteDatabase db;
     private File dir;
@@ -56,7 +58,7 @@ public final class DownloadHistoryTest {
         db = helper.getWritableDatabase();
         dir = tmp.newFolder("piko_gallery");
         gallery = new GalleryStore(db, dir, tmp.newFolder("piko_gallery_thumbs"), () -> clock[0]);
-        history = new DownloadHistory(db, dir, () -> clock[0]);
+        history = new DownloadHistory(db, dir, () -> clock[0], () -> limit[0]);
         DownloadHistory.instance = history;
     }
 
@@ -296,17 +298,74 @@ public final class DownloadHistoryTest {
 
     @Test
     public void startKeepsOnlyTheNewestRowsNewestFirst() {
+        limit[0] = 100;
         long first = 0;
         long last = 0;
-        for (int i = 0; i < DownloadHistory.CAP + 5; i++) {
+        for (int i = 0; i < 105; i++) {
             last = history.start(GalleryItem.PHOTO, "alice", i + ".jpg");
             if (i == 0) first = last;
         }
 
         List<DownloadHistory.Entry> entries = history.list();
-        assertEquals(DownloadHistory.CAP, entries.size());
+        assertEquals(100, entries.size());
         assertEquals(last, entries.get(0).id);
         assertEquals(first + 5, entries.get(entries.size() - 1).id);
+    }
+
+    @Test
+    public void aLoweredSizeDropsTheOldestRowsAtOnceAndARaisedOneKeepsMore() {
+        long last = 0;
+        for (int i = 0; i < 10; i++) last = history.start(GalleryItem.PHOTO, "alice", i + ".jpg");
+        int[] heard = {0};
+        DownloadHistory.setListener(() -> heard[0]++);
+
+        history.trim(4);
+
+        List<DownloadHistory.Entry> entries = history.list();
+        assertEquals(4, entries.size());
+        assertEquals(last, entries.get(0).id);
+        assertEquals(last - 3, entries.get(3).id);
+        assertEquals(1, heard[0]);
+
+        limit[0] = 6;
+        for (int i = 0; i < 3; i++) history.start(GalleryItem.PHOTO, "alice", "more" + i + ".jpg");
+        assertEquals(6, history.count());
+    }
+
+    @Test
+    public void listFiltersByStatusAndKind() {
+        long failedPhoto = history.start(GalleryItem.PHOTO, "alice", "a.jpg");
+        history.failed(failedPhoto, "IOException");
+        long savedVideo = history.start(GalleryItem.VIDEO, "alice", "b.mp4");
+        history.saved(savedVideo, "b.mp4", null, "content://b");
+        long savedAudio = history.start(GalleryItem.AUDIO, "alice", "c.m4a");
+        history.saved(savedAudio, "c.m4a", null, "content://c");
+        history.start(GalleryItem.VIDEO, "alice", "d.mp4");
+
+        assertEquals(4, history.list(null, null).size());
+        assertEquals(Collections.singletonList(failedPhoto), ids(history.list(DownloadHistory.FAILED, null)));
+        assertEquals(Arrays.asList(savedAudio, savedVideo), ids(history.list(DownloadHistory.SAVED, null)));
+        assertEquals(Collections.singletonList(savedVideo),
+                ids(history.list(DownloadHistory.SAVED, GalleryItem.VIDEO)));
+        assertEquals(2, history.list(null, GalleryItem.VIDEO).size());
+        assertTrue(history.list(DownloadHistory.FAILED, GalleryItem.AUDIO).isEmpty());
+    }
+
+    private static List<Long> ids(List<DownloadHistory.Entry> entries) {
+        List<Long> ids = new ArrayList<>();
+        for (DownloadHistory.Entry entry : entries) ids.add(entry.id);
+        return ids;
+    }
+
+    @Test
+    public void theSizeIsKeptBetweenOneRowAndTheLargestChoice() {
+        limit[0] = 0;
+        long id = history.start(GalleryItem.PHOTO, "alice", "a.jpg");
+        assertEquals(id, only().id);
+
+        limit[0] = Integer.MAX_VALUE;
+        for (int i = 0; i < DownloadHistory.MAX_LIMIT + 2; i++) history.start(GalleryItem.PHOTO, "alice", i + ".jpg");
+        assertEquals(DownloadHistory.MAX_LIMIT, history.count());
     }
 
     @Test
@@ -315,7 +374,7 @@ public final class DownloadHistoryTest {
         long saved = history.start(GalleryItem.PHOTO, "alice", "b.jpg");
         history.saved(saved, "b.jpg", null, "content://b");
 
-        history = new DownloadHistory(db, dir, () -> clock[0]);
+        history = new DownloadHistory(db, dir, () -> clock[0], () -> limit[0]);
 
         for (DownloadHistory.Entry entry : history.list()) {
             if (entry.id == running) {
@@ -370,7 +429,7 @@ public final class DownloadHistoryTest {
         db = helper.getWritableDatabase();
 
         assertEquals(1, DatabaseUtils.longForQuery(db, "SELECT COUNT(*) FROM gallery_items", null));
-        history = new DownloadHistory(db, dir, () -> clock[0]);
+        history = new DownloadHistory(db, dir, () -> clock[0], () -> limit[0]);
         history.start(GalleryItem.PHOTO, "alice", "a.jpg");
         assertEquals(1, DatabaseUtils.longForQuery(db, "SELECT COUNT(*) FROM download_history", null));
         db.execSQL("INSERT INTO gallery_favorites (vault, item_id) VALUES (0, 1)");

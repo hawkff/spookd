@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
 
 import app.morphe.extension.crimera.PikoUtils;
@@ -21,14 +22,17 @@ import app.morphe.extension.crimera.legacydownloader.DownloadRequest;
 import app.morphe.extension.crimera.legacydownloader.MediaDownloader;
 import app.morphe.extension.crimera.legacydownloader.StorageUtils;
 import app.morphe.extension.instagram.utils.MediaUrls;
+import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
 
 /**
- * The newest {@link #CAP} downloads with their status, one row each in {@code piko_gallery.db}, for
- * every account as the gallery shows them. Store calls do disk I/O on the caller's background thread.
+ * The newest downloads, as many as the history size setting keeps, with their status, one row each in
+ * {@code piko_gallery.db}, for every account as the gallery shows them. Store calls do disk I/O on the
+ * caller's background thread.
  */
 public final class DownloadHistory {
-    static final int CAP = 500;
+    /** The largest history size the setting offers. */
+    static final int MAX_LIMIT = 2000;
     static final String DOWNLOADING = "downloading";
     static final String SAVED = "saved";
     static final String FAILED = "failed";
@@ -39,7 +43,7 @@ public final class DownloadHistory {
             new LinkedHashMap<Long, DownloadRequest>() {
                 @Override
                 protected boolean removeEldestEntry(Map.Entry<Long, DownloadRequest> eldest) {
-                    return size() > CAP;
+                    return size() > MAX_LIMIT;
                 }
             });
 
@@ -51,6 +55,7 @@ public final class DownloadHistory {
     private final SQLiteDatabase db;
     private final File galleryDir;
     private final LongSupplier clock;
+    private final IntSupplier limit;
 
     /** One download, as the history screen shows it. */
     static final class Entry {
@@ -84,10 +89,12 @@ public final class DownloadHistory {
         }
     }
 
-    DownloadHistory(SQLiteDatabase db, File galleryDir, LongSupplier clock) {
+    /** {@code limit} is the number of rows to keep, read at each start. */
+    DownloadHistory(SQLiteDatabase db, File galleryDir, LongSupplier clock, IntSupplier limit) {
         this.db = db;
         this.galleryDir = galleryDir;
         this.clock = clock;
+        this.limit = limit;
         // The first open in a process: rows still downloading belong to a process that ended mid-download.
         ContentValues values = new ContentValues();
         values.put("status", FAILED);
@@ -117,7 +124,8 @@ public final class DownloadHistory {
                     Context context = PikoUtils.getContext();
                     // The directory GalleryStore keeps its item files in.
                     instance = new DownloadHistory(GalleryDb.getInstance(context).getWritableDatabase(),
-                            new File(context.getNoBackupFilesDir(), "piko_gallery"), System::currentTimeMillis);
+                            new File(context.getNoBackupFilesDir(), "piko_gallery"), System::currentTimeMillis,
+                            Pref::downloadHistoryLimit);
                 }
                 store = instance;
             }
@@ -125,7 +133,7 @@ public final class DownloadHistory {
         return store;
     }
 
-    /** Adds a downloading row and drops rows beyond the newest {@link #CAP}; returns its id. */
+    /** Adds a downloading row and drops rows beyond the newest the history size keeps; returns its id. */
     synchronized long start(String kind, String ownerUsername, String fileName) {
         ContentValues values = new ContentValues();
         values.put("kind", kind);
@@ -134,9 +142,29 @@ public final class DownloadHistory {
         values.put("started_at", clock.getAsLong());
         values.put("status", DOWNLOADING);
         long id = db.insertOrThrow(TABLE, null, values);
-        db.delete(TABLE, "id <= ?", new String[]{String.valueOf(id - CAP)});
+        keepNewest(limit.getAsInt());
         changed();
         return id;
+    }
+
+    /** Drops all but the newest {@code count} rows, kept between 1 and {@link #MAX_LIMIT}. */
+    synchronized void trim(int count) {
+        keepNewest(count);
+        changed();
+    }
+
+    private void keepNewest(int count) {
+        int kept = Math.max(1, Math.min(count, MAX_LIMIT));
+        db.delete(TABLE, "id NOT IN (SELECT id FROM " + TABLE + " ORDER BY id DESC LIMIT " + kept + ")", null);
+    }
+
+    /** From the history size setting: drops the rows beyond a lowered size at once. Background thread, never throws. */
+    public static void applyLimit(int count) {
+        try {
+            get().trim(count);
+        } catch (Exception e) {
+            Logger.printException(() -> "Download history: cannot apply the size", e);
+        }
     }
 
     /** Marks a retried row downloading again. */
@@ -167,10 +195,26 @@ public final class DownloadHistory {
 
     /** Newest first. */
     synchronized List<Entry> list() {
+        return list(null, null);
+    }
+
+    /** Newest first, only rows with {@code status} and {@code kind}; null matches any. */
+    synchronized List<Entry> list(String status, String kind) {
+        String where = "";
+        List<String> args = new ArrayList<>();
+        if (status != null) {
+            where += " AND h.status = ?";
+            args.add(status);
+        }
+        if (kind != null) {
+            where += " AND h.kind = ?";
+            args.add(kind);
+        }
         List<Entry> out = new ArrayList<>();
         try (Cursor c = db.rawQuery("SELECT h.id, h.kind, h.owner_username, h.file_name, h.started_at,"
                 + " h.status, h.gallery_id, g.file, h.document, h.error FROM " + TABLE + " h"
-                + " LEFT JOIN gallery_items g ON g.id = h.gallery_id ORDER BY h.id DESC", null)) {
+                + " LEFT JOIN gallery_items g ON g.id = h.gallery_id WHERE 1" + where + " ORDER BY h.id DESC",
+                args.toArray(new String[0]))) {
             while (c.moveToNext()) out.add(new Entry(c, galleryDir));
         }
         return out;
