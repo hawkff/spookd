@@ -157,7 +157,7 @@ public class SettingsStatus {
     public static boolean storyStickerVideos = false;
     public static void storyStickerVideos() { storyStickerVideos = true; }
     public static boolean storySection() {
-        return (customiseStoryTimestamp || viewStoryMentions || disableStoryFlipping || loopStory || customiseStoryRingSize || hideStoryFollowButton || storyAutoSave || storyPlayback || storyMute || searchStoryViewers || copyStoryLink);
+        return (customiseStoryTimestamp || viewStoryMentions || disableStoryFlipping || loopStory || customiseStoryRingSize || hideStoryFollowButton || storyAutoSave || storyPlayback || storyMute || searchStoryViewers || copyStoryLink || storyStickerVideos);
     }
 
     //Links section.
