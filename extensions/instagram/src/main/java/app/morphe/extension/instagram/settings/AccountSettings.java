@@ -74,6 +74,8 @@ public final class AccountSettings {
             "save_downloads_to_phone_storage",
             "gallery_max_age_days",
             "gallery_max_size_gb",
+            // The history it sizes is shared by every account.
+            "download_history_limit",
             "marked_story_keys_v2",
             "inbox_lock",
             "settings_lock",

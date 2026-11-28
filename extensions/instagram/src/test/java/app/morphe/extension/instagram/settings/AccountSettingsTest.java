@@ -73,6 +73,16 @@ public class AccountSettingsTest {
     }
 
     @Test
+    public void anOlderAccountSnapshotKeepsTheSharedHistorySize() {
+        Map<String, Object> outgoing = map(OWNER, "1", "download_history_limit", "2000", "disable_ads", true);
+        Map<String, Object> older = map(OWNER, "2", "disable_ads", false);
+
+        assertFalse(AccountSettings.keysToRemove(outgoing, older).contains("download_history_limit"));
+        assertFalse(AccountSettings.keysToPut(map(OWNER, "3", "download_history_limit", "100"), "3")
+                .containsKey("download_history_limit"));
+    }
+
+    @Test
     public void failedReplacementLeavesNoMarker() {
         Map<String, Object> accounts = new HashMap<>();
         assertFalse(AccountSettings.replaceUnderMarker(() -> accounts.put("adopt_live_file", true) == null,
