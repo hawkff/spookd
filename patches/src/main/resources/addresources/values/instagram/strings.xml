@@ -1096,6 +1096,16 @@
     <string name="spookd_confirm_instant_video_action">Send</string>
     <string name="spookd_confirm_instant_reaction">Confirm Instant reactions</string>
     <string name="spookd_confirm_instant_reaction_desc">Asks before an emoji reaction to an Instant is sent</string>
+    <string name="spookd_send_media_as_instants">Send media as Instants</string>
+    <string name="spookd_send_media_as_instants_desc">Adds a button to the Instants camera that sends a photo or video from your phone or the private gallery as an Instant. Photos are cropped to a square. Videos are cropped like a recording, so landscape videos and videos longer than the camera records are refused. Confirm Instant videos and Disable Instants creation still apply. The button shows the next time the camera opens.</string>
+    <string name="spookd_instants_upload_button">Send a photo or video as an Instant</string>
+    <string name="spookd_instants_upload_from_phone">From phone</string>
+    <string name="spookd_instants_upload_too_long">This video is longer than %d seconds, the longest Instant the camera records</string>
+    <string name="spookd_instants_upload_video_unreadable">Couldn\'t read this video\'s length, so it was not sent</string>
+    <string name="spookd_instants_upload_video_shape">This video isn\'t tall enough to fill the Instants square, so it was not sent. Pick a portrait video.</string>
+    <string name="spookd_instants_upload_too_large">This video is over 1 GB or storage is almost full, so it was not sent</string>
+    <string name="spookd_instants_upload_camera_closed">The Instants camera was closed, so this was not sent</string>
+    <string name="spookd_instants_upload_failed">Couldn\'t send this as an Instant</string>
 
     <!-- Save & view deleted (unsent) direct messages -->
     <string name="spookd_open_share_in_instagram">Open in Instagram</string>
