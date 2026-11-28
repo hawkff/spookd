@@ -132,6 +132,25 @@ public final class SettingsLock {
         }
     }
 
+    /**
+     * Runs {@code reset}, which deletes settings, now or once the screen lock confirms it while the
+     * lock applies. Cancelling, a prompt already up or a failed prompt runs nothing.
+     */
+    static void confirmReset(Activity activity, Runnable reset) {
+        try {
+            if (unlocked || !enabled(activity)) {
+                reset.run();
+                return;
+            }
+            InboxLock.confirm(activity, () -> {
+                unlocked = true;
+                reset.run();
+            });
+        } catch (Throwable t) {
+            Logger.printException(() -> "Settings lock: reset prompt failed, nothing was reset", t);
+        }
+    }
+
     private static void show(Activity activity, Runnable setup) {
         screens.add(activity);
         setup.run();

@@ -1,5 +1,6 @@
 package app.morphe.extension.instagram.settings;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.robolectric.Shadows.shadowOf;
@@ -144,6 +145,35 @@ public final class SettingsLockTest {
 
         assertTrue(opened[0]);
         assertFalse(SettingsLock.unlocked);
+    }
+
+    @Test
+    public void resetWithTheLockOnRunsNothingUntilTheScreenLockConfirmsIt() throws Exception {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        secure(activity, true);
+        switchOn[0] = true;
+        // Another prompt is up, so this reset's request is not confirmed.
+        setPrompting(true);
+        boolean[] reset = {false};
+
+        SettingsLock.confirmReset(activity, () -> reset[0] = true);
+        endPrompt(false);
+
+        assertFalse(reset[0]);
+    }
+
+    @Test
+    public void resetRunsAtOnceWhileTheLockIsOffOrAlreadyUnlocked() {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        secure(activity, true);
+        int[] resets = {0};
+
+        SettingsLock.confirmReset(activity, () -> resets[0]++);
+        switchOn[0] = true;
+        SettingsLock.unlocked = true;
+        SettingsLock.confirmReset(activity, () -> resets[0]++);
+
+        assertEquals(2, resets[0]);
     }
 
     private static void setPrompting(boolean prompting) throws Exception {
