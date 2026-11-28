@@ -647,6 +647,10 @@
     <string name="spookd_gallery_picker">Use private gallery in pickers</string>
     <string name="spookd_gallery_picker_desc">Adds From private gallery to the photo and video picker in chats and to the comment photo button. The gallery asks for your screen lock first. The photo or video you tap is handed to Instagram as if you had picked it there.</string>
     <string name="spookd_gallery_picker_entry">From private gallery</string>
+    <string name="spookd_story_sticker_gallery">Use private gallery in story photo sticker</string>
+    <string name="spookd_story_sticker_gallery_desc">Adds From private gallery to the photo sticker in the story editor. The gallery asks for your screen lock first. It lists photos, and videos too while Videos in photo sticker is on. The photo or video you tap is added as if you had picked it there.</string>
+    <string name="spookd_story_sticker_gallery_closed">The sticker picker closed before the pick was added</string>
+    <string name="spookd_story_sticker_gallery_failed">Could not add the sticker</string>
     <string name="spookd_gallery_pick_full">Recent picks still take up 1 GB. Try again in an hour.</string>
     <string name="spookd_download_history">Download history</string>
     <string name="spookd_download_history_desc">Downloads made with spookd\'s download buttons and their status. Instagram\'s own Save in chats is not listed. Tap a saved one to open it. A failed download can be retried until Instagram is closed.</string>

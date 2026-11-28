@@ -1574,6 +1574,16 @@ public class ScreenBuilder {
             );
         }
 
+        if (SettingsStatus.storyStickerGallery) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_story_sticker_gallery"),
+                            str("spookd_story_sticker_gallery_desc"),
+                            Settings.STORY_STICKER_GALLERY
+                    )
+            );
+        }
+
         addPreference(
                 helper.buttonPreference(
                         str("spookd_download_history"),

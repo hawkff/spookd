@@ -661,6 +661,11 @@ public class Pref {
     public static boolean galleryPicker() {
         return SettingsStatus.galleryPicker && SettingsStatus.downloadSection() && on(Settings.GALLERY_PICKER);
     }
+    // Same condition as the chat picker's entry.
+    public static boolean storyStickerGallery() {
+        return SettingsStatus.storyStickerGallery && SettingsStatus.downloadSection()
+                && on(Settings.STORY_STICKER_GALLERY);
+    }
     public static boolean directlyOpenMetaConfig() {
         return on(Settings.DIRECTLY_OPEN_METACONFIG);
     }

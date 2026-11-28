@@ -194,6 +194,7 @@ public class Settings {
     public static final StringSetting GALLERY_MAX_SIZE_GB = new StringSetting("gallery_max_size_gb", "0", NOT_REQUIRED);
     public static final BooleanSetting HOME_LONG_PRESS_GALLERY = new BooleanSetting("home_long_press_gallery", false, NOT_REQUIRED);
     public static final BooleanSetting GALLERY_PICKER = new BooleanSetting("gallery_picker", false, NOT_REQUIRED);
+    public static final BooleanSetting STORY_STICKER_GALLERY = new BooleanSetting("story_sticker_gallery", false, NOT_REQUIRED);
 
     public static final BooleanSetting HIDE_NAVIGATION_FEED = new BooleanSetting("hide_navigation_feed", false, NOT_REQUIRED);
     public static final BooleanSetting HIDE_NAVIGATION_REELS = new BooleanSetting("hide_navigation_reels", false, NOT_REQUIRED);
@@ -266,6 +267,7 @@ public class Settings {
             PIP_FOR_VIDEOS.key,
             GALLERY_PICKER.key,
             STORY_STICKER_VIDEOS.key,
+            STORY_STICKER_GALLERY.key,
             MARK_SEEN_ON.key,
             KEEP_SEEN_LOCALLY.key,
             TAB_SHORTCUT_HOME.key,

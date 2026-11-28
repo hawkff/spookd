@@ -115,7 +115,7 @@ public final class GalleryPicker {
                 if (title == null) return;
                 stop();
                 View chevron = chevronId == 0 ? null : header.findViewById(chevronId);
-                TextView entry = entry(header);
+                TextView entry = pill(header, v -> open(sheet, v));
                 ((ViewGroup) header).addView(entry, new ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
                 header.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> place(header, title, chevron, entry));
@@ -143,28 +143,29 @@ public final class GalleryPicker {
             }
         }
 
-        /** A filled pill in the header's colors: 48dp to touch, its fill inset to a 36dp chip. */
-        private TextView entry(View header) {
-            float density = header.getResources().getDisplayMetrics().density;
-            TextView entry = new TextView(header.getContext());
-            entry.setText(str("spookd_private_gallery"));
-            entry.setContentDescription(str("spookd_gallery_picker_entry"));
-            SpookdType.apply(entry, SpookdType.LABEL);
-            entry.setTextColor(InstagramPreferenceStyle.primaryTextColor());
-            entry.setGravity(Gravity.CENTER);
-            entry.setSingleLine(true);
-            entry.setEllipsize(TextUtils.TruncateAt.END);
-            entry.setMinHeight((int) (SpookdType.MIN_TOUCH * density));
-            int padding = (int) (SpookdType.SPACE_M * density);
-            entry.setPadding(padding, 0, padding, 0);
-            int inset = (int) (6 * density);
-            GradientDrawable fill = new GradientDrawable();
-            fill.setColor(InstagramPreferenceStyle.searchBackgroundColor());
-            fill.setCornerRadius((SpookdType.MIN_TOUCH - 2 * 6) * density / 2);
-            entry.setBackground(new InsetDrawable(fill, 0, inset, 0, inset));
-            entry.setOnClickListener(v -> open(sheet, v));
-            return entry;
-        }
+    }
+
+    /** A filled pill in Instagram's colors: 48dp to touch, its fill inset to a 36dp chip. Main thread. */
+    static TextView pill(View anchor, View.OnClickListener onClick) {
+        float density = anchor.getResources().getDisplayMetrics().density;
+        TextView entry = new TextView(anchor.getContext());
+        entry.setText(str("spookd_private_gallery"));
+        entry.setContentDescription(str("spookd_gallery_picker_entry"));
+        SpookdType.apply(entry, SpookdType.LABEL);
+        entry.setTextColor(InstagramPreferenceStyle.primaryTextColor());
+        entry.setGravity(Gravity.CENTER);
+        entry.setSingleLine(true);
+        entry.setEllipsize(TextUtils.TruncateAt.END);
+        entry.setMinHeight((int) (SpookdType.MIN_TOUCH * density));
+        int padding = (int) (SpookdType.SPACE_M * density);
+        entry.setPadding(padding, 0, padding, 0);
+        int inset = (int) (6 * density);
+        GradientDrawable fill = new GradientDrawable();
+        fill.setColor(InstagramPreferenceStyle.searchBackgroundColor());
+        fill.setCornerRadius((SpookdType.MIN_TOUCH - 2 * 6) * density / 2);
+        entry.setBackground(new InsetDrawable(fill, 0, inset, 0, inset));
+        entry.setOnClickListener(onClick);
+        return entry;
     }
 
     /**
