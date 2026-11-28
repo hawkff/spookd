@@ -2,13 +2,16 @@ package app.morphe.extension.instagram.patches.download.gallery.picker;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
 import android.net.Uri;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -59,6 +62,27 @@ public final class StickerGalleryPickerTest {
         grid.setVisibility(View.INVISIBLE);
         assertTrue(grid.isAttachedToWindow());
         assertFalse(StickerGalleryPicker.stillShown(grid, 0));
+    }
+
+    @Test
+    public void theHostIsTheNearestFrameAroundTheGridContainer() {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        FrameLayout tray = new FrameLayout(activity);
+        FrameLayout stickers = new FrameLayout(activity);
+        LinearLayout container = new LinearLayout(activity);
+        tray.addView(stickers);
+        stickers.addView(container);
+        assertSame(stickers, StickerGalleryPicker.hostOf(container));
+        FrameLayout frame = new FrameLayout(activity);
+        assertSame(frame, StickerGalleryPicker.hostOf(frame));
+        assertNull(StickerGalleryPicker.hostOf(new LinearLayout(activity)));
+    }
+
+    @Test
+    public void thePillSitsInsideTheTopEndOfTheContainer() {
+        // The phone's container at [0,598][1080,...] in its frame, a 300 px pill, 21 px margin.
+        assertArrayEquals(new int[]{759, 619}, StickerGalleryPicker.topEnd(new int[]{0, 598}, 1080, 300, 21));
+        assertArrayEquals(new int[]{140, 30}, StickerGalleryPicker.topEnd(new int[]{40, 20}, 200, 90, 10));
     }
 
     @Test

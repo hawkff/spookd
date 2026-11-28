@@ -13,7 +13,7 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewParent;
+import android.view.ViewTreeObserver;
 import android.widget.FrameLayout;
 
 import java.io.File;
@@ -27,8 +27,6 @@ import app.morphe.extension.instagram.patches.download.gallery.Gallery;
 import app.morphe.extension.instagram.settings.preference.widgets.SpookdType;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
-import app.morphe.extension.shared.ResourceType;
-import app.morphe.extension.shared.ResourceUtils;
 import app.morphe.extension.shared.Utils;
 
 /**
@@ -44,7 +42,6 @@ public final class StickerGalleryPicker {
     static final String PICK_PREFIX = "pick-";
     private static volatile Constructor<?> mediumConstructor;
     // Main thread only.
-    private static int listId = -1;
     private static boolean noHostLogged;
     // The latest pill tap; a result of an earlier one is dropped. Main thread only.
     private static int currentLaunch;
@@ -73,14 +70,13 @@ public final class StickerGalleryPicker {
                 // Above the grid for drawing and touch, without a shadow.
                 pill.setOutlineProvider(null);
                 pill.setTranslationZ(100 * density);
-                FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
-                int margin = (int) (SpookdType.SPACE_S * density);
-                params.setMargins(margin, margin, margin, margin);
-                host.addView(pill, params);
+                host.addView(pill, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START));
+                new Placer(container, host, pill, (int) (SpookdType.SPACE_S * density));
             }
             if (pill == null) return;
-            pill.setVisibility(show ? View.VISIBLE : View.GONE);
+            // The placer shows it only while the switch allows it and the grid is shown.
+            pill.setEnabled(show);
             // The same views may be refreshed by a newer grid.
             pill.setOnClickListener(v -> open(grid, v));
         } catch (Throwable t) {
@@ -88,13 +84,76 @@ public final class StickerGalleryPicker {
         }
     }
 
-    /** The grid's container if it is a frame, else the frame holding its list, else null. */
-    private static FrameLayout hostOf(View container) {
-        if (container instanceof FrameLayout) return (FrameLayout) container;
-        if (listId < 0) listId = ResourceUtils.getIdentifier(ResourceType.ID, "gallery_sticker_grid_recycler_view");
-        View list = listId == 0 ? null : container.findViewById(listId);
-        ViewParent parent = list == null ? null : list.getParent();
-        return parent instanceof FrameLayout ? (FrameLayout) parent : null;
+    /** The nearest frame holding the grid's container, which may be the container itself; else null. */
+    static FrameLayout hostOf(View container) {
+        for (Object view = container; view instanceof View; view = ((View) view).getParent()) {
+            if (view instanceof FrameLayout) return (FrameLayout) view;
+        }
+        return null;
+    }
+
+    /** {x, y} that put a {@code pillWidth} pill {@code margin} inside the top end of the container at {@code containerAt}. */
+    static int[] topEnd(int[] containerAt, int containerWidth, int pillWidth, int margin) {
+        return new int[]{containerAt[0] + containerWidth - margin - pillWidth, containerAt[1] + margin};
+    }
+
+    /**
+     * Keeps the pill in its frame at the top end of the grid's container before each draw, and hidden
+     * while Instagram hides the grid; the tray switches pages by visibility and alpha, without a layout.
+     */
+    private static final class Placer implements View.OnAttachStateChangeListener, ViewTreeObserver.OnPreDrawListener {
+        private final View container;
+        private final View host;
+        private final View pill;
+        private final int margin;
+        private final int[] containerAt = new int[2];
+        private final int[] hostAt = new int[2];
+        private ViewTreeObserver observer;
+
+        Placer(View container, View host, View pill, int margin) {
+            this.container = container;
+            this.host = host;
+            this.pill = pill;
+            this.margin = margin;
+            pill.addOnAttachStateChangeListener(this);
+            if (pill.isAttachedToWindow()) onViewAttachedToWindow(pill);
+        }
+
+        @Override
+        public void onViewAttachedToWindow(View v) {
+            if (observer != null) return;
+            observer = pill.getViewTreeObserver();
+            observer.addOnPreDrawListener(this);
+        }
+
+        @Override
+        public void onViewDetachedFromWindow(View v) {
+            if (observer != null && observer.isAlive()) observer.removeOnPreDrawListener(this);
+            observer = null;
+        }
+
+        @Override
+        public boolean onPreDraw() {
+            try {
+                boolean shown = pill.isEnabled() && container.isShown() && container.getAlpha() > 0f;
+                int visibility = shown ? View.VISIBLE : View.GONE;
+                // Each change asks for a draw, which calls this again with the same values.
+                if (pill.getVisibility() != visibility) pill.setVisibility(visibility);
+                if (!shown) return true;
+                container.getLocationInWindow(containerAt);
+                host.getLocationInWindow(hostAt);
+                containerAt[0] -= hostAt[0];
+                containerAt[1] -= hostAt[1];
+                int[] at = topEnd(containerAt, container.getWidth(), pill.getWidth(), margin);
+                float x = at[0] - pill.getLeft();
+                float y = at[1] - pill.getTop();
+                if (pill.getTranslationX() != x) pill.setTranslationX(x);
+                if (pill.getTranslationY() != y) pill.setTranslationY(y);
+            } catch (Throwable t) {
+                Logger.printException(() -> "StickerGalleryPicker: cannot place the entry", t);
+            }
+            return true;
+        }
     }
 
     /** Main thread: a headless fragment of the editor's screen opens the gallery and gets its result. */
