@@ -821,6 +821,15 @@ public class Pref {
         return removeLineBreaks(SharedPref.getStringPref(Settings.DOWNLOAD_FILE_NAME_TEMPLATE));
     }
 
+    /** Rows the download history keeps; the default when not a number. */
+    public static int downloadHistoryLimit() {
+        try {
+            return Integer.parseInt(value(Settings.DOWNLOAD_HISTORY_LIMIT).trim());
+        } catch (RuntimeException e) {
+            return Integer.parseInt(Settings.DOWNLOAD_HISTORY_LIMIT.defaultValue);
+        }
+    }
+
     public static boolean saveDownloadsToPhoneStorage() {
         return SharedPref.getBooleanPref(Settings.SAVE_DOWNLOADS_TO_PHONE_STORAGE);
     }

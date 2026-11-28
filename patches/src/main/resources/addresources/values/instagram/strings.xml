@@ -660,6 +660,8 @@
     <string name="spookd_back">Back</string>
     <string name="spookd_download_history_expired">This link has expired. Download it again from the post.</string>
     <string name="spookd_download_history_gone">This item is no longer in the private gallery</string>
+    <string name="spookd_download_history_limit">Download history size</string>
+    <string name="spookd_download_history_limit_desc">Keeps the newest %1$s downloads. Lowering it removes older entries at once; saved files are kept.</string>
     <string name="spookd_save_downloads_to_phone_storage">Save downloads to phone storage</string>
     <string name="spookd_save_downloads_to_phone_storage_desc">Saves downloads to the download folder. When off, downloads go to the private gallery, which lives inside Instagram and is deleted when Instagram\'s data is cleared or Instagram is uninstalled. Export copies items out to phone storage.</string>
     <string name="spookd_save_downloads_to_phone_storage_old_android">Android 10 and older always save downloads to phone storage</string>

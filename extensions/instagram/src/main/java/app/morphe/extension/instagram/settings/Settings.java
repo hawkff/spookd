@@ -191,6 +191,8 @@ public class Settings {
     // Opt-in private gallery cleanup; "0" turns each limit off.
     public static final StringSetting GALLERY_MAX_AGE_DAYS = new StringSetting("gallery_max_age_days", "0", NOT_REQUIRED);
     public static final StringSetting GALLERY_MAX_SIZE_GB = new StringSetting("gallery_max_size_gb", "0", NOT_REQUIRED);
+    // Rows the download history keeps; lowering it drops the oldest at once.
+    public static final StringSetting DOWNLOAD_HISTORY_LIMIT = new StringSetting("download_history_limit", "500", NOT_REQUIRED);
     public static final BooleanSetting HOME_LONG_PRESS_GALLERY = new BooleanSetting("home_long_press_gallery", false, NOT_REQUIRED);
     public static final BooleanSetting GALLERY_PICKER = new BooleanSetting("gallery_picker", false, NOT_REQUIRED);
 
@@ -281,6 +283,7 @@ public class Settings {
             REELS_HOLD_TO_PAUSE.key,
             HIDE_MUSE.key,
             SETTINGS_LOCK.key,
+            DOWNLOAD_HISTORY_LIMIT.key,
             "spookd_report_bug",
             "spookd_request_feature",
             "spookd_gallery_backup"
