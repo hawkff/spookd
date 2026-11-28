@@ -557,6 +557,10 @@ public class Pref {
         return on(Settings.SEND_KEYBOARD_GIFS) && SettingsStatus.sendKeyboardGifs;
     }
 
+    public static boolean sendAudioAsVoice() {
+        return on(Settings.SEND_AUDIO_AS_VOICE) && SettingsStatus.sendAudioAsVoice;
+    }
+
     public static boolean makeEphemeralMediaPermanent() {
         return on(Settings.UNLIMITED_REPLAYS) && SettingsStatus.unlimitedReplaysOnEphemeralMedia;
     }
