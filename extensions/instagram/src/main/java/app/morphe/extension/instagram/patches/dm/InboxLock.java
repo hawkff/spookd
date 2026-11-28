@@ -308,6 +308,11 @@ public final class InboxLock {
 
     /** {@link #confirmViewer} that asks for the device credential even while the lock is off; the caller checked for a secure screen lock. */
     public static void confirmViewerWithCredential(Activity activity, Runnable setup) {
+        confirmViewerWithCredential(activity, setup, "spookd_inbox_lock_prompt");
+    }
+
+    /** {@link #confirmViewerWithCredential(Activity, Runnable)} with the prompt titled by string resource {@code promptTitle}. */
+    public static void confirmViewerWithCredential(Activity activity, Runnable setup, String promptTitle) {
         if (prompting) {
             activity.finish();
             return;
@@ -319,10 +324,14 @@ public final class InboxLock {
                 hideFromRecents(activity, true);
             }
             setup.run();
-        });
+        }, promptTitle);
     }
 
     private static void authenticate(Activity activity, Runnable afterUnlock) {
+        authenticate(activity, afterUnlock, "spookd_inbox_lock_prompt");
+    }
+
+    private static void authenticate(Activity activity, Runnable afterUnlock, String promptTitle) {
         if (prompting) return;
         KeyguardManager keyguard = (KeyguardManager) activity.getSystemService(Activity.KEYGUARD_SERVICE);
         // Without a screen lock there is nothing to check against, and locking would only trap the user.
@@ -334,7 +343,7 @@ public final class InboxLock {
         }
 
         BiometricPrompt.Builder builder = new BiometricPrompt.Builder(activity)
-                .setTitle(str("spookd_inbox_lock_prompt"));
+                .setTitle(str(promptTitle));
         if (Build.VERSION.SDK_INT >= 30) {
             builder.setAllowedAuthenticators(
                     BiometricManager.Authenticators.BIOMETRIC_STRONG

@@ -256,6 +256,7 @@ public class Settings {
     public static final StringSetting PRESENCE_REFRESH_MINUTES = new StringSetting("presence_refresh_minutes", "default", NOT_REQUIRED);
     public static final BooleanSetting HOLD_SEND_COPY_LINK = new BooleanSetting("hold_send_copy_link", false, REQUIRED);
     public static final BooleanSetting OPEN_SETTINGS_ON_LAUNCH = new BooleanSetting("open_settings_on_launch", false, NOT_REQUIRED);
+    public static final BooleanSetting SETTINGS_LOCK = new BooleanSetting("settings_lock", false, NOT_REQUIRED);
     // Megabytes; "0" turns it off.
     public static final StringSetting AUTO_CLEAR_CACHE_MB = new StringSetting("auto_clear_cache_mb", "0", NOT_REQUIRED);
     public static final BooleanSetting SHOW_NEW_LABELS = new BooleanSetting("show_new_labels", true, NOT_REQUIRED);
@@ -279,6 +280,7 @@ public class Settings {
             RESTORE_ACCOUNT_SEARCH.key,
             REELS_HOLD_TO_PAUSE.key,
             HIDE_MUSE.key,
+            SETTINGS_LOCK.key,
             "spookd_report_bug",
             "spookd_request_feature",
             "spookd_gallery_backup"

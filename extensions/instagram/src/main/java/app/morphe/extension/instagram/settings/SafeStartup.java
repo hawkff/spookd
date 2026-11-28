@@ -95,6 +95,7 @@ public final class SafeStartup {
             if (activity == null || mainResumed) return;
             if (!anyResumed) {
                 anyResumed = true;
+                SettingsLock.install(activity);
                 // The first screen shown ends the start; a process started in the background never opened one.
                 Context context = activity.getApplicationContext();
                 closeAttempt(prefs(context));

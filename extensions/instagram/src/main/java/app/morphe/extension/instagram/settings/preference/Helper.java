@@ -29,6 +29,7 @@ import app.morphe.extension.instagram.settings.preference.widgets.DownloadFileNa
 import app.morphe.extension.instagram.settings.preference.widgets.MultiSelectListPref;
 import app.morphe.extension.instagram.settings.preference.widgets.NavigationBarPreference;
 import app.morphe.extension.instagram.settings.preference.widgets.NavigationStartupPreference;
+import app.morphe.extension.instagram.settings.SettingsLock;
 import app.morphe.extension.instagram.settings.SettingsRestart;
 import app.morphe.extension.instagram.settings.Settings;
 import app.morphe.extension.instagram.theme.MaterialYouTheme;
@@ -216,6 +217,9 @@ public class Helper {
                     }
                     if (Settings.MATERIAL_YOU_THEME.key.equals(key)) {
                         return MaterialYouTheme.requestMaterialYouChange(context, val);
+                    }
+                    if (Settings.SETTINGS_LOCK.key.equals(key) && val && !SettingsLock.allowTurningOn(context)) {
+                        return false;
                     }
                     boolean lockedKey = Settings.INBOX_LOCK.key.equals(key)
                             || Settings.INBOX_LOCK_NOTIFICATIONS.key.equals(key)

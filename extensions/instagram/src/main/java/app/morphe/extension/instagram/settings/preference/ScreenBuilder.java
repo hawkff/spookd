@@ -1874,6 +1874,14 @@ public class ScreenBuilder {
 
         addPreference(
                 helper.switchPreference(
+                        str("spookd_settings_lock"),
+                        str("spookd_settings_lock_desc"),
+                        Settings.SETTINGS_LOCK
+                )
+        );
+
+        addPreference(
+                helper.switchPreference(
                         str("spookd_show_new_labels"),
                         str("spookd_show_new_labels_desc"),
                         Settings.SHOW_NEW_LABELS

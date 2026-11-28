@@ -1090,6 +1090,11 @@ public class Pref {
         return on(Settings.OPEN_SETTINGS_ON_LAUNCH);
     }
 
+    // The stored value, like Inbox lock, so the lock holds while features are off.
+    public static boolean settingsLock() {
+        return SharedPref.getBooleanPref(Settings.SETTINGS_LOCK);
+    }
+
     /** 0 when off or not a number; auto clear itself does not run while features are off. */
     public static long autoClearCacheMb() {
         try {
