@@ -2050,6 +2050,15 @@ public class ScreenBuilder {
                     )
             );
         }
+        if (SettingsStatus.storyStickerVideos) {
+            addPreference(
+                    helper.switchPreference(
+                            str("spookd_story_sticker_videos"),
+                            str("spookd_story_sticker_videos_desc"),
+                            Settings.STORY_STICKER_VIDEOS
+                    )
+            );
+        }
     }
 
     public void buildSettingsPage() {

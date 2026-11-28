@@ -154,6 +154,8 @@ public class SettingsStatus {
     public static void searchStoryViewers() { searchStoryViewers = true; }
     public static boolean copyStoryLink = false;
     public static void copyStoryLink() { copyStoryLink = true; }
+    public static boolean storyStickerVideos = false;
+    public static void storyStickerVideos() { storyStickerVideos = true; }
     public static boolean storySection() {
         return (customiseStoryTimestamp || viewStoryMentions || disableStoryFlipping || loopStory || customiseStoryRingSize || hideStoryFollowButton || storyAutoSave || storyPlayback || storyMute || searchStoryViewers || copyStoryLink);
     }
@@ -516,6 +518,7 @@ public class SettingsStatus {
         FLAGS.put(str("spookd_mute_stories"), SettingsStatus.storyMute);
         FLAGS.put(str("spookd_search_story_viewers"), SettingsStatus.searchStoryViewers);
         FLAGS.put(str("spookd_copy_story_link"), SettingsStatus.copyStoryLink);
+        FLAGS.put(str("spookd_story_sticker_videos"), SettingsStatus.storyStickerVideos);
         FLAGS.put(str("spookd_follow_back_indicator"),SettingsStatus.followBackIndicator);
         FLAGS.put(str("spookd_exact_profile_counts"), SettingsStatus.exactProfileCounts);
         FLAGS.put(str("spookd_profile_analyzer"), SettingsStatus.profileAnalyzer);

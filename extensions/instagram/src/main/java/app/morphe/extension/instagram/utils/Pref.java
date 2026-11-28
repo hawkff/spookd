@@ -422,6 +422,11 @@ public class Pref {
         return SettingsStatus.copyStoryLink && on(Settings.COPY_STORY_LINK);
     }
 
+    /** Read each time the story photo sticker's grid refreshes. */
+    public static boolean storyStickerVideos() {
+        return SettingsStatus.storyStickerVideos && on(Settings.STORY_STICKER_VIDEOS);
+    }
+
     /** One kind of activity notification: {@link Settings#ACTIVITY_ALERT_ONLINE} and the like. */
     public static boolean activityAlert(BooleanSetting kind) {
         return SettingsStatus.activityAlerts && on(kind);

@@ -110,6 +110,7 @@ public class Settings {
     public static final StringSetting STORY_AUTO_SAVE_USERS = new StringSetting("story_auto_save_users", "{}", NOT_REQUIRED);
     public static final BooleanSetting SEARCH_STORY_VIEWERS = new BooleanSetting("search_story_viewers", false, NOT_REQUIRED);
     public static final BooleanSetting COPY_STORY_LINK = new BooleanSetting("copy_story_link", false, NOT_REQUIRED);
+    public static final BooleanSetting STORY_STICKER_VIDEOS = new BooleanSetting("story_sticker_videos", false, NOT_REQUIRED);
     public static final BooleanSetting UNLIMITED_REPLAYS = new BooleanSetting("unlimited_replays", false, REQUIRED);
     public static final BooleanSetting DISABLE_DISAPPEARING_MESSAGES_GESTURE = new BooleanSetting("disable_disappearing_messages_gesture", false, REQUIRED);
     public static final BooleanSetting SEND_KEYBOARD_GIFS = new BooleanSetting("send_keyboard_gifs", true, NOT_REQUIRED);
@@ -264,6 +265,7 @@ public class Settings {
     public static final Set<String> NEW_KEYS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
             PIP_FOR_VIDEOS.key,
             GALLERY_PICKER.key,
+            STORY_STICKER_VIDEOS.key,
             MARK_SEEN_ON.key,
             KEEP_SEEN_LOCALLY.key,
             TAB_SHORTCUT_HOME.key,
