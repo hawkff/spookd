@@ -94,6 +94,17 @@ public final class SettingsLockTest {
         assertFalse(activity.isFinishing());
     }
 
+    @Test
+    @Config(sdk = 29)
+    public void android10WithAScreenLockCanTurnTheLockOn() {
+        Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        secure(activity, true);
+        switchOn[0] = true;
+
+        assertTrue(SettingsLock.allowTurningOn(activity));
+        assertTrue(SettingsLock.enabled(activity));
+    }
+
     private static void secure(Activity activity, boolean secure) {
         shadowOf(activity.getSystemService(KeyguardManager.class)).setIsDeviceSecure(secure);
     }

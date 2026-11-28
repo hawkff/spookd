@@ -327,15 +327,21 @@ public final class InboxLock {
         }, promptTitle);
     }
 
+    /** Whether the prompt can check the device lock here: Android 10 or newer with a secure screen lock. */
+    public static boolean canConfirmCredential(Context context) {
+        if (Build.VERSION.SDK_INT < 29) return false;
+        KeyguardManager keyguard = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
+        return keyguard != null && keyguard.isDeviceSecure();
+    }
+
     private static void authenticate(Activity activity, Runnable afterUnlock) {
         authenticate(activity, afterUnlock, "spookd_inbox_lock_prompt");
     }
 
     private static void authenticate(Activity activity, Runnable afterUnlock, String promptTitle) {
         if (prompting) return;
-        KeyguardManager keyguard = (KeyguardManager) activity.getSystemService(Activity.KEYGUARD_SERVICE);
         // Without a screen lock there is nothing to check against, and locking would only trap the user.
-        if (Build.VERSION.SDK_INT < 29 || keyguard == null || !keyguard.isDeviceSecure()) {
+        if (!canConfirmCredential(activity)) {
             PikoUtils.toast(str("spookd_inbox_lock_no_lock"));
             unlock();
             if (afterUnlock != null) afterUnlock.run();

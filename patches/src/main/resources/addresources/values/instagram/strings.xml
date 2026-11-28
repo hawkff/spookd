@@ -867,9 +867,9 @@
     <string name="spookd_open_settings_on_launch">Open spookd settings on launch</string>
     <string name="spookd_open_settings_on_launch_desc">Opens spookd settings once each time the app starts</string>
     <string name="spookd_settings_lock">Lock spookd settings</string>
-    <string name="spookd_settings_lock_desc">Asks for your fingerprint, face or screen lock before spookd settings open, once each time you return to the app. Leaving the app closes open settings. Needs Android 11 or newer with a screen lock set.</string>
+    <string name="spookd_settings_lock_desc">Asks for your fingerprint, face or screen lock before spookd settings open, once each time you return to the app. Leaving the app closes open settings. Needs Android 10 or newer with a screen lock set.</string>
     <string name="spookd_settings_lock_prompt">Unlock spookd settings</string>
-    <string name="spookd_settings_lock_no_lock">Set a screen lock on your device to use Lock spookd settings. This needs Android 11 or newer.</string>
+    <string name="spookd_settings_lock_no_lock">Set a screen lock on your device to use Lock spookd settings. This needs Android 10 or newer.</string>
     <string name="spookd_show_new_labels">Show NEW labels</string>
     <string name="spookd_show_new_labels_desc">Marks settings added in this version with a NEW label</string>
     <string name="spookd_new_label">NEW</string>

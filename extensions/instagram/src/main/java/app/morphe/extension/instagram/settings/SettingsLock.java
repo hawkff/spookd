@@ -19,7 +19,6 @@ import java.util.WeakHashMap;
 import java.util.function.BooleanSupplier;
 
 import app.morphe.extension.instagram.patches.dm.InboxLock;
-import app.morphe.extension.instagram.patches.download.gallery.Gallery;
 import app.morphe.extension.instagram.utils.Pref;
 import app.morphe.extension.shared.Logger;
 import app.morphe.extension.shared.Utils;
@@ -42,12 +41,12 @@ public final class SettingsLock {
 
     /** Whether the lock applies: the switch is on and a secure screen lock exists, so it never locks the user out. */
     static boolean enabled(Context context) {
-        return stored.getAsBoolean() && Gallery.canOpen(context);
+        return stored.getAsBoolean() && InboxLock.canConfirmCredential(context);
     }
 
     /** From the settings switch: false, with a toast, when there is no secure screen lock to ask for. */
     public static boolean allowTurningOn(Context context) {
-        if (!Gallery.canOpen(context)) {
+        if (!InboxLock.canConfirmCredential(context)) {
             Utils.showToastShort(str("spookd_settings_lock_no_lock"));
             return false;
         }
